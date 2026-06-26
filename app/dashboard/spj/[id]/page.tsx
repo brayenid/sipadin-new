@@ -54,10 +54,10 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
   if (!spj) notFound();
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Detail Surat Pertanggungjawaban</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Detail Surat Pertanggungjawaban</h2>
           <p className="text-slate-500 mt-1">
             {spj.nomorBku ? `Nomor BKU: ${spj.nomorBku}` : "Belum ada Nomor BKU"} • {new Intl.DateTimeFormat("id-ID", {
               day: "2-digit", month: "long", year: "numeric"

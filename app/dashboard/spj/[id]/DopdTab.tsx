@@ -124,15 +124,15 @@ export default function DopdTab({ spj }: { spj: any }) {
     <div className="space-y-6">
       
       {/* HEADER DOPD */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-slate-900 text-white rounded-xl shadow-lg">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
         <div>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Editor Daftar Pengeluaran Riil</p>
-          <p className="text-xl font-bold">Total DOPD: {formatRupiah(totalDopdAll)}</p>
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Pengeluaran Riil (DOPD)</p>
+          <p className="text-xl font-bold text-slate-900">{formatRupiah(totalDopdAll)}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={handleSaveDopd} disabled={loading} className="font-bold">
+          <Button onClick={handleSaveDopd} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan DOPD Permanen
+            Simpan DOPD
           </Button>
         </div>
       </div>
@@ -157,8 +157,8 @@ export default function DopdTab({ spj }: { spj: any }) {
             </Button>
             
             <div className="flex-1 text-center">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Personel Ke-{activePersonIdx + 1} dari {spj.roster.length}</p>
-              <h3 className="text-xl font-black text-slate-900">{activePerson.nama}</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel Ke-{activePersonIdx + 1} dari {spj.roster.length}</p>
+              <h3 className="text-lg font-bold text-slate-900">{activePerson.nama}</h3>
               <p className="text-sm text-slate-500">{activePerson.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"} • {activePerson.jabatan}</p>
             </div>
 
@@ -176,14 +176,14 @@ export default function DopdTab({ spj }: { spj: any }) {
         <CardContent className="p-0">
           <div className="flex items-center justify-between p-6 border-b">
             <div>
-              <p className="text-sm text-slate-500 font-semibold">Subtotal Personel Ini</p>
-              <p className="text-2xl font-bold text-slate-900">{formatRupiah(activePersonSubtotal)}</p>
+              <p className="text-sm text-slate-500 font-medium">Subtotal Personel Ini</p>
+              <p className="text-xl font-bold text-slate-900">{formatRupiah(activePersonSubtotal)}</p>
             </div>
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger render={
-                <Button className="bg-slate-900 text-white hover:bg-slate-800">
-                  <Plus className="w-4 h-4 mr-2" /> ITEM BIAYA
+                <Button variant="outline">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Biaya
                 </Button>
               } />
               <DialogContent className="sm:max-w-[500px]">

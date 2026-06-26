@@ -35,10 +35,10 @@ export default async function BuatSpjPage() {
   ]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Buat SPJ Baru</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Buat SPJ Baru</h2>
           <p className="text-slate-500 mt-1">Formulir terpadu untuk perekaman transaksi Surat Pertanggungjawaban.</p>
         </div>
       </div>

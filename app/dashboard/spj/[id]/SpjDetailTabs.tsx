@@ -20,13 +20,13 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
       <Card className="bg-slate-50 border-slate-200">
         <CardContent className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-lg shadow-sm border flex items-center justify-center text-slate-500">
+            <div className="w-10 h-10 bg-slate-100 rounded-md border flex items-center justify-center text-slate-500">
               {/* Icon Kalkulator placeholder */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Pengajuan SPJ</p>
-              <h3 className="text-3xl font-black text-slate-900">{formatRupiah(spj.totalPengeluaran)}</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pengajuan SPJ</p>
+              <h3 className="text-2xl font-bold text-slate-900">{formatRupiah(spj.totalPengeluaran)}</h3>
             </div>
           </div>
           {/* Opsional Print PDF Button placeholder */}

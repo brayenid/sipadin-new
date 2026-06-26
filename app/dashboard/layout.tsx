@@ -24,9 +24,9 @@ export default async function DashboardLayout({
       .toUpperCase() ?? "??";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen overflow-hidden bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col">
+      <aside className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground shadow-sm">
@@ -72,7 +72,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main content area */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 h-full overflow-y-auto">
         {/* Top bar */}
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
           <div>
