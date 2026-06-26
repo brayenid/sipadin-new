@@ -1,0 +1,394 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createPegawai, deletePegawai, bulkUpsertPegawai } from "@/app/actions/pegawai";
+import { Loader2, Plus, Trash2, Users, Save, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+type Pegawai = {
+  id: string;
+  nip: string | null;
+  nama: string;
+  pangkat: string | null;
+  golongan: string | null;
+  jabatan: string;
+  instansi: string | null;
+};
+
+export default function PegawaiList({ initialData }: { initialData: Pegawai[] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "kartu";
+
+  const [data, setData] = useState<Pegawai[]>(initialData);
+  const [loading, setLoading] = useState(false);
+  
+  // Single Card Mode State
+  const [isOpen, setIsOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Bulk Tabel Mode State
+  const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map(p => ({ ...p })));
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // --- Computed Dirty States ---
+  const isRowDirty = (row: Pegawai) => {
+    if (row.id.startsWith("temp-")) return true;
+    const original = initialData.find(p => p.id === row.id);
+    if (!original) return false;
+    return (
+      (original.nip || "") !== (row.nip || "") ||
+      original.nama !== row.nama ||
+      (original.pangkat || "") !== (row.pangkat || "") ||
+      (original.golongan || "") !== (row.golongan || "") ||
+      original.jabatan !== row.jabatan
+    );
+  };
+
+  const isFieldDirty = (row: Pegawai, field: keyof Pegawai) => {
+    if (row.id.startsWith("temp-")) return true;
+    const original = initialData.find(p => p.id === row.id);
+    if (!original) return false;
+    return (original[field] || "") !== (row[field] || "");
+  };
+
+  const newRowsCount = bulkData.filter(r => r.id.startsWith("temp-")).length;
+  const updatedRowsCount = bulkData.filter(r => !r.id.startsWith("temp-") && isRowDirty(r)).length;
+  const deletedCount = deleteIds.length;
+  const totalChanges = newRowsCount + updatedRowsCount + deletedCount;
+
+  // ---------------- SINGLE MODE HANDLERS ----------------
+  const handleTabChange = (val: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", val);
+    router.replace(`?${params.toString()}`);
+  };
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const nip = formData.get("nip") as string;
+    const nama = formData.get("nama") as string;
+    const pangkat = formData.get("pangkat") as string;
+    const golongan = formData.get("golongan") as string;
+    const jabatan = formData.get("jabatan") as string;
+    
+    try {
+      await createPegawai({ nip, nama, pangkat, golongan, jabatan });
+      setIsOpen(false);
+      window.location.reload();
+    } catch (err) {
+      alert("Gagal menambahkan Pegawai");
+    }
+    setLoading(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setLoading(true);
+    try {
+      await deletePegawai(deleteId);
+      window.location.reload();
+    } catch (err) {
+      alert("Gagal menghapus data.");
+    }
+    setLoading(false);
+    setDeleteId(null);
+  };
+
+  // ---------------- BULK MODE HANDLERS ----------------
+  const addBulkRow = () => {
+    setBulkData([
+      ...bulkData, 
+      {
+        id: `temp-${Date.now()}`,
+        nip: "",
+        nama: "",
+        pangkat: "",
+        golongan: "",
+        jabatan: "",
+        instansi: "Sekretariat Daerah",
+      }
+    ]);
+  };
+
+  const updateBulkRow = (index: number, field: keyof Pegawai, value: string) => {
+    const newData = [...bulkData];
+    newData[index] = { ...newData[index], [field]: value };
+    setBulkData(newData);
+  };
+
+  const removeBulkRow = (index: number, id: string) => {
+    if (!id.startsWith("temp-")) {
+      setDeleteIds([...deleteIds, id]);
+    }
+    const newData = bulkData.filter((_, i) => i !== index);
+    setBulkData(newData);
+  };
+
+  const saveBulk = async () => {
+    setBulkLoading(true);
+    try {
+      await bulkUpsertPegawai(bulkData, deleteIds);
+      // Data berhasil disave, reload untuk memperbarui data dari database dan menghapus highlight kotor.
+      window.location.reload(); 
+    } catch (err) {
+      alert("Gagal menyimpan data massal.");
+    }
+    setBulkLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="relative w-72">
+          <Input placeholder="Cari pegawai..." className="h-9" />
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="kartu">Mode Kartu</TabsTrigger>
+          <TabsTrigger value="tabel">Mode Tabel (Excel)</TabsTrigger>
+        </TabsList>
+
+        {/* ================= MODE KARTU ================= */}
+        <TabsContent value="kartu" className="space-y-6">
+          <div className="flex justify-end">
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Pegawai</Button>} />
+              <DialogContent>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <DialogHeader>
+                    <DialogTitle>Tambah Pegawai Baru</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    <Label>NIP (Opsional)</Label>
+                    <Input name="nip" placeholder="199001012020121001" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nama Lengkap</Label>
+                    <Input name="nama" required placeholder="Dr. Budi Santoso, S.Kom" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Pangkat</Label>
+                      <Input name="pangkat" placeholder="Penata Tk. I" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Golongan</Label>
+                      <Input name="golongan" placeholder="III/d" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Jabatan</Label>
+                    <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
+                  </div>
+                  <Button type="submit" disabled={loading} className="w-full mt-2">
+                    {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {data.length === 0 ? (
+            <Card className="bg-slate-50 border-dashed">
+              <CardContent className="pt-6 text-center text-slate-500 py-12 flex flex-col items-center">
+                <Users className="w-12 h-12 text-slate-300 mb-3" />
+                <p>Belum ada data Pegawai.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {data.map((pegawai) => (
+                <Card key={pegawai.id} className="border-slate-200 shadow-sm relative overflow-hidden">
+                  <CardContent className="p-5 flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-slate-900">{pegawai.nama}</h3>
+                      <p className="text-xs text-slate-500 mt-1">{pegawai.nip || "Non-ASN / NIP tidak ada"}</p>
+                      
+                      <div className="mt-4 space-y-1">
+                        <p className="text-sm text-slate-700"><span className="font-semibold">Jabatan:</span> {pegawai.jabatan}</p>
+                        {(pegawai.pangkat || pegawai.golongan) && (
+                          <p className="text-xs text-slate-500">
+                            Pangkat/Gol: {pegawai.pangkat || "-"} ({pegawai.golongan || "-"})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
+                      onClick={() => setDeleteId(pegawai.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ================= MODE TABEL (BULK) ================= */}
+        <TabsContent value="tabel">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-base">Data Pegawai (Input Tabular)</CardTitle>
+                {totalChanges > 0 && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    {totalChanges} perubahan belum disimpan
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+                </Button>
+                <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
+                  {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Simpan Semua Perubahan
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="w-[150px]">NIP</TableHead>
+                      <TableHead className="w-[250px]">Nama Lengkap</TableHead>
+                      <TableHead className="w-[120px]">Pangkat</TableHead>
+                      <TableHead className="w-[100px]">Golongan</TableHead>
+                      <TableHead className="w-[200px]">Jabatan</TableHead>
+                      <TableHead className="w-[60px] text-center">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkData.map((row, idx) => {
+                      const rowIsNew = row.id.startsWith("temp-");
+                      return (
+                      <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
+                        <TableCell className="p-2">
+                          <Input 
+                            value={row.nip || ""} 
+                            onChange={(e) => updateBulkRow(idx, "nip", e.target.value)} 
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                            placeholder="NIP"
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input 
+                            value={row.nama} 
+                            onChange={(e) => updateBulkRow(idx, "nama", e.target.value)} 
+                            className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
+                            placeholder="Nama Pegawai"
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input 
+                            value={row.pangkat || ""} 
+                            onChange={(e) => updateBulkRow(idx, "pangkat", e.target.value)} 
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                            placeholder="Penata"
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input 
+                            value={row.golongan || ""} 
+                            onChange={(e) => updateBulkRow(idx, "golongan", e.target.value)} 
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                            placeholder="III/c"
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input 
+                            value={row.jabatan} 
+                            onChange={(e) => updateBulkRow(idx, "jabatan", e.target.value)} 
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                            placeholder="Jabatan"
+                          />
+                        </TableCell>
+                        <TableCell className="p-2 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => removeBulkRow(idx, row.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )})}
+                    {bulkData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                          Tidak ada baris data. Klik "Tambah Baris" untuk mulai menginput.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Delete Confirmation Modal untuk Mode Kartu */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pegawai?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Data pegawai akan dihapus secara permanen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -1,13 +1,232 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
-}
-
 datasource db {
   provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+enum UserRole {
+  SUPER_ADMIN
+  TIM_KERJA
+}
+
+enum SpjType {
+  PERJADIN
+  MAKAN_MINUM
+  HONORARIUM
+  OPERASIONAL
+}
+
+enum RosterRole {
+  KEPALA_JALAN
+  PENGIKUT
+}
+
+// ==========================================
+// AUTH & MULTI-TENANT
+// ==========================================
+model Team {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  users     User[]
+  spjs      Spj[]
+  pegawais  Pegawai[]
+  vendors   VendorPihakKetiga[]
+  tahunAnggarans TahunAnggaran[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         UserRole @default(TIM_KERJA)
+
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  spjsCreated  Spj[]
+}
+
+// ==========================================
+// DATABASE MASTER
+// ==========================================
+model Pegawai {
+  id        String   @id @default(uuid())
+  nip       String?
+  nama      String
+  pangkat   String?
+  golongan  String?
+  jabatan   String
+  instansi  String   @default("Sekretariat Daerah Kabupaten Kutai Barat")
+  
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rosterItems SpjRosterItem[]
+
+  @@unique([nip, teamId])
+}
+
+model VendorPihakKetiga {
+  id           String   @id @default(uuid())
+  namaVendor   String
+  namaPemilik  String?
+  alamat       String?
+  npwp         String?
+  rekeningBank String?
+  
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  spjMaminDetails SpjMaminDetail[]
+}
+
+// ==========================================
+// STRUKTUR ANGGARAN & SALDO
+// ==========================================
+model TahunAnggaran {
+  id        String     @id @default(uuid())
+  tahun     String
+  
+  teamId    String
+  team      Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  kegiatan  Kegiatan[]
+
+  @@unique([tahun, teamId])
+}
+
+model Kegiatan {
+  id              String        @id @default(uuid())
+  tahunAnggaranId String
+  tahunAnggaran   TahunAnggaran @relation(fields: [tahunAnggaranId], references: [id], onDelete: Cascade)
+
+  kodeKegiatan    String
+  judulKegiatan   String
+  subKegiatan     SubKegiatan[]
+}
+
+model SubKegiatan {
+  id         String   @id @default(uuid())
+  kegiatanId String
+  kegiatan   Kegiatan @relation(fields: [kegiatanId], references: [id], onDelete: Cascade)
+
+  kodeSub    String
+  judulSub   String
+
+  saldoAwal  BigInt
+  sisaSaldo  BigInt
+
+  spjs       Spj[]
+}
+
+// ==========================================
+// INTI TRANSAKSI SPJ
+// ==========================================
+model Spj {
+  id            String      @id @default(uuid())
+  nomorBku      String?     @unique
+  tanggalSpj    DateTime    @default(now())
+  jenisSpj      SpjType
+
+  // Penghubung ke Sumber Saldo
+  subKegiatanId String
+  subKegiatan   SubKegiatan @relation(fields: [subKegiatanId], references: [id])
+
+  // Atribut Kepemilikan (Multi-Tenant)
+  teamId        String
+  team          Team        @relation(fields: [teamId], references: [id])
+  createdById   String
+  createdBy     User        @relation(fields: [createdById], references: [id])
+
+  totalPengeluaran BigInt   @default(0)
+
+  // Tautan Dokumen Fisik (Google Drive / Cloud Storage Eksternal)
+  driveUrl      String?     // <--- KOLOM BARU DI SINI (Opsional/Wajib sesuai kebijakan)
+
+  // Meta Dokumen Cetak (JSON Dinamis: Menghemat tabel 1-to-1 untuk narasi dokumen)
+  metaDokumen   Json?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Ekstensi Relasi Modular
+  pengeluaranDetails SpjPengeluaranDetail[]
+  roster             SpjRosterItem[]
+  perjadinDetail     SpjPerjadinDetail?
+  maminDetail        SpjMaminDetail?
+}
+
+model SpjPengeluaranDetail {
+  id           String @id @default(uuid())
+  spjId        String
+  spj          Spj    @relation(fields: [spjId], references: [id], onDelete: Cascade)
+
+  uraian       String
+  hargaSatuan  BigInt
+  qty          Int    @default(1)
+  satuan       String @default("Orang")
+  total        BigInt
+}
+
+// ==========================================
+// EXTENSION MODUL SPESIFIK
+// ==========================================
+model SpjPerjadinDetail {
+  id              String   @id @default(uuid())
+  spjId           String   @unique
+  spj             Spj      @relation(fields: [spjId], references: [id], onDelete: Cascade)
+
+  tempatBerangkat String   @default("Sendawar")
+  tempatTujuan    String
+  tglBerangkat    DateTime
+  tglKembali      DateTime
+  lamaPerjalanan  Int
+  alatAngkut      String   @default("Darat")
+  tingkatPerjadin String?
+}
+
+model SpjRosterItem {
+  id        String     @id @default(uuid())
+  spjId     String
+  spj       Spj        @relation(fields: [spjId], references: [id], onDelete: Cascade)
+
+  pegawaiId String
+  pegawai   Pegawai    @relation(fields: [pegawaiId], references: [id])
+
+  order     Int        @default(0)
+  role      RosterRole @default(PENGIKUT)
+
+  // Snapshot Data
+  nama      String
+  nip       String?
+  jabatan   String
+  golongan  String?
+  pangkat   String?
+}
+
+model SpjMaminDetail {
+  id           String            @id @default(uuid())
+  spjId        String            @unique
+  spj          Spj               @relation(fields: [spjId], references: [id], onDelete: Cascade)
+
+  vendorId     String
+  vendor       VendorPihakKetiga @relation(fields: [vendorId], references: [id])
+
+  namaRapat    String
+  jumlahPeserta Int
 }
