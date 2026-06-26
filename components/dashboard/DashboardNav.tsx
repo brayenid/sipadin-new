@@ -8,12 +8,14 @@ import {
   Users,
   Store,
   Calendar,
+  PlusCircle,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const navMain = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/spj", label: "Daftar SPJ", icon: FileText },
+  { href: "/dashboard/spj/buat", label: "Buat SPJ", icon: PlusCircle },
+  { href: "/dashboard/spj", label: "Daftar SPJ", icon: FileText, exact: true },
   { href: "/dashboard/tahun-anggaran", label: "Tahun Anggaran", icon: Calendar },
 ];
 
