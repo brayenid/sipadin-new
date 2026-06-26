@@ -172,15 +172,22 @@ model Spj {
 }
 
 model SpjPengeluaranDetail {
-  id           String @id @default(uuid())
-  spjId        String
-  spj          Spj    @relation(fields: [spjId], references: [id], onDelete: Cascade)
+  id              String @id @default(uuid())
+  spjId           String
+  spj             Spj    @relation(fields: [spjId], references: [id], onDelete: Cascade)
 
-  uraian       String
-  hargaSatuan  BigInt
-  qty          Int    @default(1)
-  satuan       String @default("Orang")
-  total        BigInt
+  // Ekstensi khusus DOPD Perjadin (menempel ke personel)
+  spjRosterItemId String?
+  rosterItem      SpjRosterItem? @relation(fields: [spjRosterItemId], references: [id], onDelete: Cascade)
+  
+  kategori        String? // misal: "UANG HARIAN", "UANG TRANSPORT"
+  faktorPengali   Json?   // misal: [{ label: "org", value: 1 }, { label: "hari", value: 3 }]
+
+  uraian          String
+  hargaSatuan     BigInt
+  qty             Int    @default(1)
+  satuan          String @default("Orang")
+  total           BigInt
 }
 
 // ==========================================
@@ -217,6 +224,8 @@ model SpjRosterItem {
   jabatan   String
   golongan  String?
   pangkat   String?
+
+  pengeluaranDetails SpjPengeluaranDetail[]
 }
 
 model SpjMaminDetail {
