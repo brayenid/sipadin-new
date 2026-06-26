@@ -142,6 +142,7 @@ model Spj {
   nomorBku      String?     @unique
   tanggalSpj    DateTime    @default(now())
   jenisSpj      SpjType
+  perihal       String?     @db.Text // Penjelasan/maksud perjalanan dinas
 
   // Penghubung ke Sumber Saldo
   subKegiatanId String
@@ -157,6 +158,9 @@ model Spj {
 
   // Tautan Dokumen Fisik (Google Drive / Cloud Storage Eksternal)
   driveUrl      String?     // <--- KOLOM BARU DI SINI (Opsional/Wajib sesuai kebijakan)
+
+  // Status Pembayaran
+  terbayar      Boolean     @default(false)
 
   // Meta Dokumen Cetak (JSON Dinamis: Menghemat tabel 1-to-1 untuk narasi dokumen)
   metaDokumen   Json?

@@ -34,6 +34,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
   const [subKegiatanId, setSubKegiatanId] = useState("");
   const [nomorBku, setNomorBku] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
+  const [perihal, setPerihal] = useState("");
   
   // Step 2: Spesifik
   const [perjadin, setPerjadin] = useState({
@@ -48,7 +49,6 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
 
   const [mamin, setMamin] = useState({
     vendorId: "",
-    namaRapat: "",
     jumlahPeserta: "",
   });
 
@@ -149,14 +149,14 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
         subKegiatanId,
         nomorBku,
         driveUrl,
+        perihal,
         totalPengeluaran: totalPengeluaran.toString(),
         pengeluaranDetails: rincian,
         roster: processedRoster,
         spesifik: jenisSpj === "PERJADIN" ? perjadin : (jenisSpj === "MAKAN_MINUM" ? mamin : null),
       });
 
-      router.push("/dashboard/spj");
-      router.refresh();
+      window.location.href = "/dashboard/spj";
     } catch (err: any) {
       setErrorMsg(err.message || "Terjadi kesalahan saat memproses SPJ.");
       setLoading(false);
@@ -218,6 +218,12 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             </div>
 
             <div className="space-y-2 md:col-span-2">
+              <Label>Perihal / Maksud Kegiatan <span className="text-red-500">*</span></Label>
+              <Input placeholder="Contoh: Perjalanan Dinas dalam rangka Koordinasi Anggaran ke Provinsi..." value={perihal} onChange={(e) => setPerihal(e.target.value)} className="font-semibold" />
+              <p className="text-xs text-slate-500">Perihal ini akan digunakan secara otomatis pada dokumen Surat Tugas, Telaahan, dll.</p>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
               <Label>Tautan Dokumen Fisik (Google Drive)</Label>
               <Input placeholder="https://drive.google.com/..." value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} />
               <p className="text-xs text-slate-500">Tempelkan tautan folder / file Google Drive yang berisi bukti kuitansi (hanya tautan saja).</p>
@@ -225,7 +231,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
           </div>
           
           <div className="flex justify-end pt-4">
-            <Button onClick={() => setActiveTab("step-2")} disabled={!subKegiatanId || !tanggalSpj}>
+            <Button onClick={() => setActiveTab("step-2")} disabled={!subKegiatanId || !tanggalSpj || !perihal}>
               Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -264,23 +270,21 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
           )}
 
           {jenisSpj === "MAKAN_MINUM" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Pilih Vendor / Katering</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-slate-50 border border-slate-200 p-8 rounded-xl shadow-sm">
+              <div className="space-y-3">
+                <Label className="text-base font-semibold text-slate-900">Pilih Vendor / Katering</Label>
                 <Combobox 
                   options={vendorOptions} 
                   value={mamin.vendorId} 
                   onChange={(v) => setMamin({...mamin, vendorId: v})} 
                   placeholder="Cari Vendor..."
                 />
+                <p className="text-xs text-slate-500">Pilih penyedia makan/minum dari daftar master data.</p>
               </div>
-              <div className="space-y-2">
-                <Label>Nama Rapat / Kegiatan</Label>
-                <Input value={mamin.namaRapat} onChange={(e) => setMamin({...mamin, namaRapat: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <Label>Jumlah Peserta</Label>
-                <Input type="number" value={mamin.jumlahPeserta} onChange={(e) => setMamin({...mamin, jumlahPeserta: e.target.value})} />
+              <div className="space-y-3">
+                <Label className="text-base font-semibold text-slate-900">Jumlah Peserta</Label>
+                <Input type="number" min="1" value={mamin.jumlahPeserta} onChange={(e) => setMamin({...mamin, jumlahPeserta: e.target.value})} placeholder="Contoh: 50" className="bg-white" />
+                <p className="text-xs text-slate-500">Estimasi kuantitas porsi konsumsi yang disediakan.</p>
               </div>
             </div>
           )}
@@ -296,7 +300,13 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             <Button variant="outline" onClick={() => setActiveTab("step-1")}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
             </Button>
-            <Button onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-4" : "step-3")}>
+            <Button 
+              onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-4" : "step-3")}
+              disabled={
+                (jenisSpj === "PERJADIN" && (!perjadin.tempatBerangkat || !perjadin.tempatTujuan || !perjadin.tglBerangkat || !perjadin.tglKembali || !perjadin.lamaPerjalanan)) ||
+                (jenisSpj === "MAKAN_MINUM" && (!mamin.vendorId || !mamin.jumlahPeserta))
+              }
+            >
               Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>

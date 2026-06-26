@@ -14,6 +14,7 @@ export async function createSpjTransaction(payload: any) {
     subKegiatanId,
     nomorBku,
     driveUrl,
+    perihal,
     pengeluaranDetails,
     roster,
     spesifik,
@@ -61,6 +62,7 @@ export async function createSpjTransaction(payload: any) {
         tanggalSpj: new Date(tanggalSpj),
         subKegiatanId,
         nomorBku: nomorBku || null,
+        perihal: perihal || null,
         driveUrl: driveUrl || null,
         totalPengeluaran,
         teamId: session.user.teamId,
@@ -113,17 +115,80 @@ export async function createSpjTransaction(payload: any) {
           tingkatPerjadin: spesifik.tingkatPerjadin || null,
         },
       });
-    } else if (jenisSpj === "MAKAN_MINUM" && spesifik) {
+      if (!spesifik.vendorId) {
+        throw new Error("Penyedia / Vendor untuk SPJ Makan Minum belum dipilih.");
+      }
+      if (!perihal) {
+        throw new Error("Perihal / Judul Kegiatan wajib diisi untuk SPJ Makan Minum.");
+      }
+      
       await tx.spjMaminDetail.create({
         data: {
           spjId: spj.id,
           vendorId: spesifik.vendorId,
-          namaRapat: spesifik.namaRapat,
+          namaRapat: perihal,
           jumlahPeserta: parseInt(spesifik.jumlahPeserta, 10),
         },
       });
     }
 
-    return spj;
+    return { success: true, id: spj.id };
   });
 }
+
+export async function updateSpjMasterData(spjId: string, payload: { tanggalSpj: string; nomorBku: string; perihal: string; driveUrl: string; terbayar: boolean }) {
+  console.log("-> TRIGGER TURBOPACK RECOMPILE: updateSpjMasterData", spjId);
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const spj = await prisma.spj.findFirst({ where: { id: spjId, teamId: session.user.teamId } });
+  if (!spj) throw new Error("SPJ tidak ditemukan");
+
+  await prisma.spj.update({
+    where: { id: spjId },
+    data: {
+      tanggalSpj: new Date(payload.tanggalSpj),
+      nomorBku: payload.nomorBku || null,
+      perihal: payload.perihal || null,
+      driveUrl: payload.driveUrl || null,
+      terbayar: payload.terbayar,
+    }
+  });
+
+  revalidatePath(`/dashboard/spj/${spjId}`);
+  revalidatePath(`/dashboard/spj`);
+}
+
+export async function deleteSpjTransaction(spjId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Ambil data SPJ untuk mengetahui total pengeluaran dan sub-kegiatan
+    const spj = await tx.spj.findFirst({ 
+      where: { id: spjId, teamId: session.user.teamId } 
+    });
+    
+    if (!spj) throw new Error("SPJ tidak ditemukan atau akses ditolak.");
+
+    // 2. Kembalikan saldo ke pagu Sub-Kegiatan
+    if (spj.totalPengeluaran > BigInt(0)) {
+      await tx.subKegiatan.update({
+        where: { id: spj.subKegiatanId },
+        data: {
+          sisaSaldo: {
+            increment: spj.totalPengeluaran
+          }
+        }
+      });
+    }
+
+    // 3. Hapus SPJ (Relasi OnDelete: Cascade akan menghapus DOPD, Roster, dll secara otomatis)
+    await tx.spj.delete({
+      where: { id: spj.id }
+    });
+
+    return true;
+  });
+}
+
