@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { formatCurrency } from "@/lib/utils";
 
 export async function savePengeluaranUmumTransaction(spjId: string, items: any[]) {
   const session = await auth();
@@ -11,8 +12,8 @@ export async function savePengeluaranUmumTransaction(spjId: string, items: any[]
   return await prisma.$transaction(async (tx) => {
     // 1. Ambil data SPJ
     const spj = await tx.spj.findUnique({
-      where: { id: spjId, teamId: session.user.teamId },
-      include: { subKegiatan: true }
+      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
+      include: { kodeRekening: true }
     });
 
     if (!spj) throw new Error("SPJ tidak ditemukan.");
@@ -41,14 +42,14 @@ export async function savePengeluaranUmumTransaction(spjId: string, items: any[]
     const diff = newTotal - oldTotal;
 
     if (diff > BigInt(0)) {
-      if (spj.subKegiatan.sisaSaldo < diff) {
-        throw new Error(`Saldo Sub-Kegiatan tidak mencukupi. Sisa Saldo: Rp ${spj.subKegiatan.sisaSaldo.toString()}`);
+      if (spj.kodeRekening.sisaSaldo < diff) {
+        throw new Error(`Saldo Kode Rekening tidak mencukupi. Sisa Saldo: ${formatCurrency(spj.kodeRekening.sisaSaldo)}`);
       }
     }
 
     // 4. Update Saldo
-    await tx.subKegiatan.update({
-      where: { id: spj.subKegiatanId },
+    await tx.kodeRekening.update({
+      where: { id: spj.kodeRekeningId },
       data: {
         sisaSaldo: {
           decrement: diff,

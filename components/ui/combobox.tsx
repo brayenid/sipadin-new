@@ -27,7 +27,7 @@ export function Combobox({
   emptyText = "Opsi tidak ditemukan.",
   className,
 }: {
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; content?: React.ReactNode }[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -43,9 +43,9 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between font-normal", className)}
+          className={cn("w-full justify-between font-normal shrink whitespace-normal overflow-hidden", className)}
         >
-          <span className="truncate">
+          <span className="truncate flex-1 text-left min-w-0 block">
             {value
               ? options.find((option) => option.value === value)?.label || placeholder
               : placeholder}
@@ -53,7 +53,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       } />
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent className="w-[400px] p-0" align="start">
         <Command>
           <CommandInput placeholder={`Cari...`} />
           <CommandList>
@@ -70,11 +70,11 @@ export function Combobox({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  {option.content || option.label}
                 </CommandItem>
               ))}
             </CommandGroup>

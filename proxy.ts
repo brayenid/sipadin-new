@@ -6,6 +6,10 @@ export async function proxy(request: NextRequest) {
   const session = await auth();
   const { pathname } = request.nextUrl;
 
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
 

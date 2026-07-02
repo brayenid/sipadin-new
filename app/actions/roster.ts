@@ -11,7 +11,7 @@ export async function addRoster(spjId: string, pegawaiId: string, role: RosterRo
   return await prisma.$transaction(async (tx) => {
     // Verifikasi SPJ
     const spj = await tx.spj.findFirst({
-      where: { id: spjId, teamId: session.user.teamId },
+      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
       include: { roster: true }
     });
     if (!spj) throw new Error("SPJ tidak ditemukan.");
@@ -54,13 +54,22 @@ export async function updateRosterRole(spjId: string, rosterItemId: string, role
 
   // Verifikasi kepemilikan
   const spj = await prisma.spj.findFirst({
-    where: { id: spjId, teamId: session.user.teamId }
+    where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) }
   });
   if (!spj) throw new Error("Akses ditolak.");
 
-  return await prisma.spjRosterItem.update({
-    where: { id: rosterItemId, spjId: spj.id },
-    data: { role }
+  return await prisma.$transaction(async (tx) => {
+    if (role === 'KEPALA_JALAN') {
+      await tx.spjRosterItem.updateMany({
+        where: { spjId: spj.id },
+        data: { role: 'PENGIKUT' }
+      });
+    }
+
+    return await tx.spjRosterItem.update({
+      where: { id: rosterItemId, spjId: spj.id },
+      data: { role }
+    });
   });
 }
 
@@ -70,8 +79,8 @@ export async function deleteRoster(spjId: string, rosterItemId: string) {
 
   return await prisma.$transaction(async (tx) => {
     const spj = await tx.spj.findFirst({
-      where: { id: spjId, teamId: session.user.teamId },
-      include: { subKegiatan: true }
+      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
+      include: { kodeRekening: true }
     });
     if (!spj) throw new Error("SPJ tidak ditemukan.");
 
@@ -87,8 +96,8 @@ export async function deleteRoster(spjId: string, rosterItemId: string) {
     // 2. Jika ada uang yang harus di-refund
     if (dopdRefundAmount > BigInt(0)) {
       // Kembalikan saldo pagu (increment)
-      await tx.subKegiatan.update({
-        where: { id: spj.subKegiatanId },
+      await tx.kodeRekening.update({
+        where: { id: spj.kodeRekeningId },
         data: {
           sisaSaldo: { increment: dopdRefundAmount }
         }

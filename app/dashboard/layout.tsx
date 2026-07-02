@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import DashboardNav from "@/components/dashboard/DashboardNav";
+import MobileSidebarShell from "@/components/dashboard/MobileSidebarShell";
+import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
 
 export default async function DashboardLayout({
   children,
@@ -23,75 +24,71 @@ export default async function DashboardLayout({
       .join("")
       .toUpperCase() ?? "??";
 
-  return (
-    <div className="h-screen overflow-hidden bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-y-auto">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-slate-900 font-bold text-base leading-tight">SIPADIN</p>
-            <p className="text-slate-500 text-[10px] leading-tight">SPJ Elektronik v2</p>
-          </div>
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div className="flex items-center justify-center px-5 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-center w-24 h-16 shrink-0">
+          <img src="/sipadin.png" alt="SIPADIN Logo" className="w-full h-full object-contain drop-shadow-sm" />
         </div>
+      </div>
 
-        {/* Nav — Client component untuk usePathname */}
-        <DashboardNav role={session.user.role} />
+      {/* Nav */}
+      <DashboardNav role={session.user.role} />
 
-        {/* User info + logout */}
-        <div className="px-4 py-4 border-t border-slate-200">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-slate-900 text-sm font-medium truncate">{session.user.name}</p>
-              <p className="text-slate-500 text-xs truncate">{session.user.teamName}</p>
-            </div>
-          </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button
-              type="submit"
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-slate-500 hover:text-destructive hover:bg-destructive/10 transition-colors text-sm font-medium"
-            >
-              <LogOut className="w-4 h-4" />
-              Keluar
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      {/* Main content area */}
-      <main className="flex-1 h-full overflow-y-auto">
-        {/* Top bar */}
-        <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
-          <div>
-            <p className="text-slate-900 font-semibold text-lg">SIPADIN</p>
-            <p className="text-slate-500 text-sm">
-              Selamat datang, {session.user.name?.split(" ")[0]}
-            </p>
+      {/* User info + logout */}
+      <div className="px-3 py-3 border-t border-border flex-shrink-0">
+        <div className="flex items-center gap-2.5 mb-2 px-2">
+          <Avatar className="w-7 h-7">
+            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground text-xs font-semibold truncate">{session.user.name}</p>
+            <p className="text-muted-foreground text-[10px] truncate">{session.user.teamName}</p>
           </div>
           <Badge
             variant="outline"
-            className="border-primary/20 text-primary bg-primary/5 text-xs font-medium"
+            className="text-[9px] border-primary/20 text-primary bg-primary/5 shrink-0"
           >
-            {session.user.role === "SUPER_ADMIN" ? "Super Admin" : "Tim Kerja"}
+            {session.user.role === "SUPER_ADMIN" ? "Admin" : "Tim"}
           </Badge>
-        </header>
+        </div>
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/login" });
+          }}
+        >
+          <button
+            type="submit"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors text-xs font-medium"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Keluar
+          </button>
+        </form>
+      </div>
+    </>
+  );
 
-        {/* Page content */}
-        {children}
-      </main>
-    </div>
+  return (
+    <SidebarProvider>
+      <div className="h-screen overflow-hidden bg-slate-50/50 flex">
+        {/* Desktop Sidebar — always visible on lg+ */}
+        <aside className="hidden lg:flex w-60 flex-shrink-0 border-r border-border bg-card flex-col h-full overflow-y-auto">
+          {sidebarContent}
+        </aside>
+
+        {/* Mobile sidebar drawer + overlay */}
+        <MobileSidebarShell sidebarContent={sidebarContent} />
+
+        {/* Main content area — pt-14 on mobile to clear the fixed top bar */}
+        <main className="flex-1 h-full overflow-y-auto bg-slate-50/50 flex flex-col pt-14 lg:pt-0">
+          {children}
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }

@@ -1,110 +1,202 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
-import { updateSpjMasterData, deleteSpjTransaction } from "@/app/actions/spj";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import DopdTab from "./DopdTab";
-import PersonelTab from "./PersonelTab";
-import TelaahanTab from "./TelaahanTab";
-import PengeluaranTab from "./PengeluaranTab";
-import KuitansiTab from "./KuitansiTab";
-import SuratTugasTab from "./SuratTugasTab";
-import SpdTab from "./SpdTab";
-import VisumTab from "./VisumTab";
-import LaporanTab from "./LaporanTab";
+import { useState, useEffect, useMemo } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2, FileText } from 'lucide-react'
+import { updateSpjMasterData, deleteSpjTransaction } from '@/app/actions/spj'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog'
+import { Combobox } from '@/components/ui/combobox'
+import GlobalPdfCarouselModal from './GlobalPdfCarouselModal'
+import DopdTab from './DopdTab'
+import PersonelTab from './PersonelTab'
+import TelaahanTab from './TelaahanTab'
+import PengeluaranTab from './PengeluaranTab'
+import KuitansiTab from './KuitansiTab'
+import SuratTugasTab from './SuratTugasTab'
+import SpdTab from './SpdTab'
+import VisumTab from './VisumTab'
+import LaporanTab from './LaporanTab'
+import { fmtDateId } from '@/lib/utils'
+import { formatWita } from '@/lib/date-utils'
 
-export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiList: any[] }) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState("ringkasan");
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState(false);
-  const [loadingDelete, setLoadingDelete] = useState(false);
+export default function SpjDetailTabs({
+  spj,
+  pegawaiList,
+  tahunAnggarans = []
+}: {
+  spj: any
+  pegawaiList: any[]
+  tahunAnggarans?: any[]
+}) {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState('ringkasan')
+  const [openEdit, setOpenEdit] = useState(false)
+  const [openDelete, setOpenDelete] = useState(false)
+  const [loadingEdit, setLoadingEdit] = useState(false)
+  const [loadingDelete, setLoadingDelete] = useState(false)
+  const [showCarousel, setShowCarousel] = useState(false)
+  const [selectedCarouselDoc, setSelectedCarouselDoc] = useState<string | null>(null)
+
+  // Unsaved changes guard — tab yang aktif mendeklarasikan isDirty-nya lewat ref ini
+  const [isDirty, setIsDirty] = useState(false)
+  const { showDialog, confirmLeave, confirmLeaveCallback, cancelLeave } = useUnsavedChanges(isDirty)
+
+  // Baca hash saat komponen dimount
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab(hash)
+    }
+  }, [])
+
+  const handleTabChange = async (newTab: string) => {
+    if (isDirty) {
+      const ok = await confirmLeave()
+      if (!ok) return
+      setIsDirty(false)
+    }
+    setActiveTab(newTab)
+    window.history.replaceState(null, '', `#${newTab}`)
+  }
 
   // State form edit master
   const [editForm, setEditForm] = useState({
-    tanggalSpj: spj.tanggalSpj ? new Date(spj.tanggalSpj).toISOString().split('T')[0] : "",
-    nomorBku: spj.nomorBku || "",
-    perihal: spj.perihal || "",
-    driveUrl: spj.metaDokumen?.driveUrl || spj.driveUrl || "",
+    tanggalSpj: spj.tanggalSpj ? formatWita(spj.tanggalSpj, 'yyyy-MM-dd') : '',
+    nomorBku: spj.nomorBku || '',
+    perihal: spj.perihal || '',
+    driveUrl: spj.metaDokumen?.driveUrl || spj.driveUrl || '',
     terbayar: spj.terbayar || false,
-  });
+    tempatBerangkat: spj.perjadinDetail?.tempatBerangkat || 'Sendawar',
+    tempatTujuan: spj.perjadinDetail?.tempatTujuan || '',
+    tglBerangkat: spj.perjadinDetail?.tglBerangkat
+      ? formatWita(spj.perjadinDetail.tglBerangkat, 'yyyy-MM-dd')
+      : '',
+    tglKembali: spj.perjadinDetail?.tglKembali
+      ? formatWita(spj.perjadinDetail.tglKembali, 'yyyy-MM-dd')
+      : '',
+    alatAngkut: spj.perjadinDetail?.alatAngkut || 'Darat',
+    kodeRekeningId: spj.kodeRekeningId || ''
+  })
+
+  const [localRekeningId, setLocalRekeningId] = useState(spj.kodeRekeningId || '')
+
+  // Options for Combobox
+  const kodeRekeningOptions = useMemo(() => {
+    const options: any[] = []
+    tahunAnggarans.forEach((ta) => {
+      ta.kegiatan?.forEach((k: any) => {
+        k.subKegiatan?.forEach((sk: any) => {
+          sk.rekening?.forEach((rek: any) => {
+            const sisaFmt = new Intl.NumberFormat('id-ID', {
+              style: 'currency',
+              currency: 'IDR',
+              maximumFractionDigits: 0
+            }).format(Number(rek.sisaSaldo))
+            options.push({
+              value: rek.id,
+              label: `[${ta.tahun}] ${sk.judulSub} - ${rek.judulRekening} (Sisa: ${sisaFmt})`,
+              sisaSaldo: rek.sisaSaldo,
+              tahun: ta.tahun
+            })
+          })
+        })
+      })
+    })
+    const currentYear = new Date().getFullYear().toString()
+    options.sort((a, b) => {
+      if (a.tahun === currentYear && b.tahun !== currentYear) return -1
+      if (b.tahun === currentYear && a.tahun !== currentYear) return 1
+      return b.tahun.localeCompare(a.tahun)
+    })
+    return options
+  }, [tahunAnggarans])
 
   const handleEditChange = (e: any) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
-  };
+    setEditForm({ ...editForm, [e.target.name]: e.target.value })
+  }
 
   const handleSaveMaster = async () => {
     // TRIGGER TURBOPACK CLIENT RECOMPILE
-    setLoadingEdit(true);
+    setLoadingEdit(true)
     try {
-      await updateSpjMasterData(spj.id, editForm);
-      toast.success("Master Data SPJ berhasil diperbarui.");
-      setOpenEdit(false);
-      router.refresh();
+      await updateSpjMasterData(spj.id, {
+        ...editForm,
+        kodeRekeningId: localRekeningId
+      })
+      toast.success('Master Data SPJ berhasil diperbarui.')
+      setOpenEdit(false)
+      router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Gagal menyimpan data.");
+      toast.error(error.message || 'Gagal menyimpan data.')
     } finally {
-      setLoadingEdit(false);
+      setLoadingEdit(false)
     }
-  };
+  }
 
   const formatRupiah = (val: bigint) => {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(val));
-  };
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
+      Number(val)
+    )
+  }
 
   const handleDeleteSpj = async () => {
-    setLoadingDelete(true);
+    setLoadingDelete(true)
     try {
-      await deleteSpjTransaction(spj.id);
-      window.location.href = "/dashboard/spj";
+      await deleteSpjTransaction(spj.id)
+      window.location.href = '/dashboard/spj'
     } catch (error: any) {
-      toast.error(error.message || "Gagal menghapus SPJ.");
-      setLoadingDelete(false);
-      setOpenDelete(false);
+      toast.error(error.message || 'Gagal menghapus SPJ.')
+      setLoadingDelete(false)
+      setOpenDelete(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeaveCallback} onCancel={cancelLeave} />
+      <GlobalPdfCarouselModal 
+        isOpen={showCarousel} 
+        onClose={() => { setShowCarousel(false); setSelectedCarouselDoc(null); }} 
+        spj={spj} 
+        pegawaiList={pegawaiList} 
+        selectedDocId={selectedCarouselDoc}
+        onGoToTab={handleTabChange} 
+      />
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* SCROLLABLE TABS */}
         <div className="border-b overflow-x-auto no-scrollbar mb-6">
           <TabsList className="bg-transparent border-none w-max h-12 p-0 justify-start gap-6">
-            <TabsTrigger value="ringkasan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Ringkasan</TabsTrigger>
-            {spj.jenisSpj === "PERJADIN" && (
+            <TabsTrigger value="ringkasan">Ringkasan</TabsTrigger>
+            {spj.jenisSpj === 'PERJADIN' && (
               <>
-                <TabsTrigger value="personel" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Personel</TabsTrigger>
-                <TabsTrigger value="telaahan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Telaahan</TabsTrigger>
+                <TabsTrigger value="personel">Personel</TabsTrigger>
+                <TabsTrigger value="telaahan">Telaahan</TabsTrigger>
               </>
             )}
-            
+
             {/* Hanya tampilkan DOPD jika Perjadin */}
-            {spj.jenisSpj === "PERJADIN" && (
-              <TabsTrigger value="dopd" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-bold text-slate-900">DOPD</TabsTrigger>
-            )}
-            {spj.jenisSpj !== "PERJADIN" && (
-              <TabsTrigger value="pengeluaran" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-bold text-slate-900">Pengeluaran</TabsTrigger>
-            )}
-            
-            <TabsTrigger value="kuitansi" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Kuitansi</TabsTrigger>
-            
-            {spj.jenisSpj === "PERJADIN" && (
+            {spj.jenisSpj === 'PERJADIN' && <TabsTrigger value="dopd">DOPD</TabsTrigger>}
+            {spj.jenisSpj !== 'PERJADIN' && <TabsTrigger value="pengeluaran">Pengeluaran</TabsTrigger>}
+
+            <TabsTrigger value="kuitansi">Kuitansi</TabsTrigger>
+
+            {spj.jenisSpj === 'PERJADIN' && (
               <>
-                <TabsTrigger value="surat-tugas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Surat Tugas</TabsTrigger>
-                <TabsTrigger value="spd" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">SPD</TabsTrigger>
-                <TabsTrigger value="visum" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Visum</TabsTrigger>
-                <TabsTrigger value="laporan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full text-sm font-medium">Laporan</TabsTrigger>
+                <TabsTrigger value="surat-tugas">Surat Tugas</TabsTrigger>
+                <TabsTrigger value="spd">SPD</TabsTrigger>
+                <TabsTrigger value="visum">Visum</TabsTrigger>
+                <TabsTrigger value="laporan">Laporan</TabsTrigger>
               </>
             )}
           </TabsList>
@@ -113,15 +205,45 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
         {/* TAB RINGKASAN */}
         <TabsContent value="ringkasan" className="space-y-6">
           <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Cetak Dokumen (Pratinjau)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {spj.jenisSpj === 'PERJADIN' && (
+                  <>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('telaahan'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Telaahan Staf</Button>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('surat-tugas'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Surat Tugas</Button>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('spd'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> SPD</Button>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('visum'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Visum</Button>
+                  </>
+                )}
+                <Button variant="outline" onClick={() => { setSelectedCarouselDoc('kuitansi'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Kuitansi</Button>
+                {spj.jenisSpj === 'PERJADIN' && (
+                  <>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('dopd'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> DOPD</Button>
+                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('laporan'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Laporan</Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Informasi Master SPJ</CardTitle>
               <div className="flex gap-2">
                 <Dialog open={openDelete} onOpenChange={setOpenDelete}>
-                  <DialogTrigger>
-                    <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-8 px-3 cursor-pointer bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700">
-                      <Trash2 className="w-4 h-4 mr-2" /> Hapus SPJ
-                    </div>
-                  </DialogTrigger>
+                  <DialogTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
+                      </Button>
+                    }
+                  />
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle className="text-red-600 flex items-center">
@@ -130,70 +252,167 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
                     </DialogHeader>
                     <div className="py-4">
                       <p className="text-sm text-slate-600 mb-4">
-                        Apakah Anda yakin ingin menghapus permanen SPJ ini beserta seluruh dokumen, rincian biaya, dan anggotanya?
+                        Apakah Anda yakin ingin menghapus permanen SPJ ini beserta seluruh dokumen, rincian biaya, dan
+                        anggotanya?
                       </p>
                       <p className="text-sm text-slate-600 font-medium">
                         Saldo anggaran yang telah terpakai akan otomatis dikembalikan ke Pagu Sub-Kegiatan.
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setOpenDelete(false)}>Batal</Button>
+                      <Button variant="outline" onClick={() => setOpenDelete(false)}>
+                        Batal
+                      </Button>
                       <Button variant="destructive" onClick={handleDeleteSpj} disabled={loadingDelete}>
-                        {loadingDelete ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Ya, Hapus SPJ
+                        {loadingDelete ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}{' '}
+                        Ya, Hapus SPJ
                       </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
                 <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-                  <DialogTrigger>
-                    <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 cursor-pointer">
-                      <Pencil className="w-4 h-4 mr-2" /> Edit Master
+                  <DialogTrigger
+                    render={
+                      <Button variant="outline" size="sm">
+                        <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit Master
+                      </Button>
+                    }
+                  />
+                  <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto overflow-x-hidden">
+                    <DialogHeader>
+                      <DialogTitle>Edit Data Master SPJ</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2 w-full">
+                      <Label>Sumber Dana (Kode Rekening)</Label>
+                      {/* Grid hack: forcing min-w-0 on the grid item prevents flex children from expanding the layout */}
+                      <div className="grid grid-cols-1">
+                        <div className="min-w-0">
+                          <Combobox 
+                            options={kodeRekeningOptions} 
+                            value={localRekeningId} 
+                            onChange={setLocalRekeningId} 
+                            placeholder="Pilih Kode Rekening..."
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Mengubah sumber dana akan memotong sisa pagu anggaran rekening baru, dan mengembalikan pagu rekening lama.</p>
                     </div>
-                  </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Data Master SPJ</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Tanggal SPJ</Label>
-                      <Input type="date" name="tanggalSpj" value={editForm.tanggalSpj} onChange={handleEditChange} />
-                      <p className="text-xs text-slate-500 mt-1">Tanggal penetapan/dikeluarkannya dokumen SPJ secara keseluruhan.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Nomor BKU</Label>
-                      <Input name="nomorBku" value={editForm.nomorBku} onChange={handleEditChange} placeholder="Contoh: 001/BKU/2026" />
-                      <p className="text-xs text-slate-500 mt-1">Nomor Buku Kas Umum (Opsional jika belum diterbitkan).</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Perihal / Judul Kegiatan</Label>
-                      <Input name="perihal" value={editForm.perihal} onChange={handleEditChange} />
-                      <p className="text-xs text-slate-500 mt-1">Perihal ini akan muncul otomatis sebagai Maksud/Tujuan di seluruh dokumen.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tautan Bukti Fisik (Google Drive)</Label>
-                      <Input name="driveUrl" value={editForm.driveUrl} onChange={handleEditChange} />
-                      <p className="text-xs text-slate-500 mt-1">Link penyimpanan cloud untuk hasil scan kuitansi/nota/tiket.</p>
-                    </div>
-                    <div className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-slate-50">
-                      <div className="space-y-0.5">
-                        <Label className="text-base">Status Pembayaran</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Tandai jika SPJ ini sudah lunas dibayarkan ke pegawai / vendor.
+                      <div className="space-y-2">
+                        <Label>Tanggal SPJ</Label>
+                        <Input type="date" name="tanggalSpj" value={editForm.tanggalSpj} onChange={handleEditChange} />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Tanggal penetapan/dikeluarkannya dokumen SPJ secara keseluruhan.
                         </p>
                       </div>
-                      <Switch checked={editForm.terbayar} onCheckedChange={(val) => setEditForm({ ...editForm, terbayar: val })} />
+                      <div className="space-y-2">
+                        <Label>Nomor BKU</Label>
+                        <Input
+                          name="nomorBku"
+                          value={editForm.nomorBku}
+                          onChange={handleEditChange}
+                          placeholder="Contoh: 001/BKU/2026"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Nomor Buku Kas Umum (Opsional jika belum diterbitkan).
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Perihal / Judul Kegiatan</Label>
+                        <Input name="perihal" value={editForm.perihal} onChange={handleEditChange} />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Perihal ini akan muncul otomatis sebagai Maksud/Tujuan di seluruh dokumen.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tautan Bukti Fisik (Google Drive)</Label>
+                        <Input name="driveUrl" value={editForm.driveUrl} onChange={handleEditChange} />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Link penyimpanan cloud untuk hasil scan kuitansi/nota/tiket.
+                        </p>
+                      </div>
+
+                      {spj.jenisSpj === 'PERJADIN' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Asal / Tempat Berangkat</Label>
+                              <Input
+                                name="tempatBerangkat"
+                                value={editForm.tempatBerangkat}
+                                onChange={handleEditChange}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Tempat Tujuan</Label>
+                              <Input name="tempatTujuan" value={editForm.tempatTujuan} onChange={handleEditChange} />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Tanggal Berangkat</Label>
+                              <Input
+                                type="date"
+                                name="tglBerangkat"
+                                value={editForm.tglBerangkat}
+                                onChange={handleEditChange}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Tanggal Kembali</Label>
+                              <Input
+                                type="date"
+                                name="tglKembali"
+                                value={editForm.tglKembali}
+                                onChange={handleEditChange}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Alat Angkut</Label>
+                            <Input
+                              name="alatAngkut"
+                              value={editForm.alatAngkut}
+                              onChange={handleEditChange}
+                              placeholder="Cth: Darat, Udara, Sungai"
+                            />
+                          </div>
+                        </>
+                      )}
+                      <div className="flex flex-row items-center justify-between rounded-lg border p-4 bg-slate-50">
+                        <div className="space-y-0.5">
+                          <Label className="text-base">Status Pembayaran</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Tandai jika SPJ ini sudah lunas dibayarkan ke pegawai / vendor.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={editForm.terbayar}
+                          onCheckedChange={(val) => setEditForm({ ...editForm, terbayar: val })}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setOpenEdit(false)}>Batal</Button>
-                    <Button onClick={handleSaveMaster} disabled={loadingEdit || !editForm.tanggalSpj || !editForm.perihal}>
-                      {loadingEdit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Simpan Perubahan
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setOpenEdit(false)}>
+                        Batal
+                      </Button>
+                      <Button
+                        onClick={handleSaveMaster}
+                        disabled={loadingEdit || !editForm.tanggalSpj || !editForm.perihal}>
+                        {loadingEdit ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        Simpan Perubahan
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>
@@ -214,16 +433,24 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
                 </div>
                 <div className="space-y-1">
                   <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Tanggal SPJ</p>
-                  <p className="font-semibold text-slate-900">{new Intl.DateTimeFormat("id-ID").format(new Date(spj.tanggalSpj))}</p>
+                  <p className="font-semibold text-slate-900">
+                    {formatWita(spj.tanggalSpj, 'dd MMMM yyyy')}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Nomor BKU</p>
-                  <p className="font-semibold text-slate-900">{spj.nomorBku || "-"}</p>
+                  <p className="font-semibold text-slate-900">{spj.nomorBku || '-'}</p>
                 </div>
                 <div className="space-y-1 md:col-span-2">
                   <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Link Drive</p>
                   <p className="font-semibold text-blue-600 truncate">
-                    {spj.metaDokumen?.driveUrl ? <a href={spj.metaDokumen.driveUrl} target="_blank" rel="noreferrer" className="hover:underline">{spj.metaDokumen.driveUrl}</a> : "-"}
+                    {spj.metaDokumen?.driveUrl ? (
+                      <a href={spj.metaDokumen.driveUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                        {spj.metaDokumen.driveUrl}
+                      </a>
+                    ) : (
+                      '-'
+                    )}
                   </p>
                 </div>
               </div>
@@ -238,21 +465,25 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Tahun Anggaran</p>
-                  <p className="font-medium">{spj.subKegiatan.kegiatan.tahunAnggaran.tahun}</p>
+                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.kegiatan?.tahunAnggaran?.tahun}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Judul Kegiatan</p>
-                  <p className="font-medium">{spj.subKegiatan.kegiatan.judulKegiatan}</p>
+                  <p className="text-slate-500">Kegiatan</p>
+                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.kegiatan?.judulKegiatan}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-slate-500">Judul Sub-Kegiatan</p>
-                  <p className="font-medium">{spj.subKegiatan.judulSub}</p>
+                  <p className="text-slate-500">Sub-Kegiatan</p>
+                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.judulSub}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Kode Rekening</p>
+                  <p className="font-medium">{spj.kodeRekening?.judulRekening}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {spj.jenisSpj === "PERJADIN" && spj.perjadinDetail && (
+          {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
             <Card>
               <CardHeader>
                 <CardTitle>Rute Perjalanan Dinas</CardTitle>
@@ -270,9 +501,8 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
                   <div>
                     <p className="text-slate-500">Tanggal Perjalanan</p>
                     <p className="font-medium">
-                      {new Intl.DateTimeFormat("id-ID").format(new Date(spj.perjadinDetail.tglBerangkat))} 
-                      {" "}s/d{" "} 
-                      {new Intl.DateTimeFormat("id-ID").format(new Date(spj.perjadinDetail.tglKembali))}
+                      {fmtDateId(spj.perjadinDetail.tglBerangkat)} s.d.{' '}
+                      {fmtDateId(spj.perjadinDetail.tglKembali)}
                     </p>
                   </div>
                   <div>
@@ -286,53 +516,53 @@ export default function SpjDetailTabs({ spj, pegawaiList }: { spj: any, pegawaiL
         </TabsContent>
 
         {/* TAB PERSONEL & TELAAHAN (KHUSUS PERJADIN) */}
-        {spj.jenisSpj === "PERJADIN" && (
+        {spj.jenisSpj === 'PERJADIN' && (
           <>
             <TabsContent value="personel">
               <PersonelTab spj={spj} pegawaiList={pegawaiList} />
             </TabsContent>
             <TabsContent value="telaahan">
-              <TelaahanTab spj={spj} />
+              <TelaahanTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
             </TabsContent>
           </>
         )}
 
         {/* TAB DOPD (KHUSUS PERJADIN) */}
-        {spj.jenisSpj === "PERJADIN" && (
+        {spj.jenisSpj === 'PERJADIN' && (
           <TabsContent value="dopd">
-            <DopdTab spj={spj} />
+            <DopdTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
           </TabsContent>
         )}
 
         {/* TAB PENGELUARAN (KHUSUS NON-PERJADIN) */}
-        {spj.jenisSpj !== "PERJADIN" && (
+        {spj.jenisSpj !== 'PERJADIN' && (
           <TabsContent value="pengeluaran">
-            <PengeluaranTab spj={spj} />
+            <PengeluaranTab spj={spj} onDirtyChange={setIsDirty} />
           </TabsContent>
         )}
 
         <TabsContent value="kuitansi">
-          <KuitansiTab spj={spj} />
+          <KuitansiTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
         </TabsContent>
 
         <TabsContent value="surat-tugas">
           <SuratTugasTab spj={spj} pegawaiList={pegawaiList} />
         </TabsContent>
 
-        {spj.jenisSpj === "PERJADIN" && (
+        {spj.jenisSpj === 'PERJADIN' && (
           <>
             <TabsContent value="spd">
-              <SpdTab spj={spj} />
+              <SpdTab spj={spj} pegawaiList={pegawaiList} />
             </TabsContent>
             <TabsContent value="visum">
-              <VisumTab spj={spj} />
+              <VisumTab spj={spj} pegawaiList={pegawaiList} />
             </TabsContent>
             <TabsContent value="laporan">
-              <LaporanTab spj={spj} />
+              <LaporanTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
             </TabsContent>
           </>
         )}
       </Tabs>
     </div>
-  );
+  )
 }

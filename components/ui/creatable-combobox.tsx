@@ -74,7 +74,7 @@ export function CreatableCombobox({
                   }}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Gunakan "{search}"
+                  Gunakan &quot;{search}&quot;
                 </div>
               ) : (
                 emptyText
@@ -110,7 +110,7 @@ export function CreatableCombobox({
                   }}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Gunakan "{search}"
+                  Gunakan &quot;{search}&quot;
                 </CommandItem>
               )}
             </CommandGroup>

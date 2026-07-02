@@ -11,7 +11,7 @@ import { Plus, Trash2, Save, Loader2, FileText } from "lucide-react";
 import { savePengeluaranUmumTransaction } from "@/app/actions/pengeluaran";
 import { toast } from "sonner";
 
-export default function PengeluaranTab({ spj }: { spj: any }) {
+export default function PengeluaranTab({ spj, onDirtyChange }: { spj: any; onDirtyChange?: (dirty: boolean) => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -28,8 +28,13 @@ export default function PengeluaranTab({ spj }: { spj: any }) {
 
   const [rincian, setRincian] = useState<any[]>(initialItems);
 
+  const updateRincianList = (items: any[]) => {
+    setRincian(items);
+    onDirtyChange?.(true);
+  };
+
   const addRincian = () => {
-    setRincian([...rincian, { id: `temp-${Date.now()}`, uraian: "", hargaSatuan: "0", qty: "1", satuan: "Kali", total: "0" }]);
+    updateRincianList([...rincian, { id: `temp-${Date.now()}`, uraian: "", hargaSatuan: "0", qty: "1", satuan: "Kali", total: "0" }]);
   };
 
   const updateRincian = (idx: number, field: string, val: string) => {
@@ -42,10 +47,11 @@ export default function PengeluaranTab({ spj }: { spj: any }) {
       newR[idx].total = (harga * qty).toString();
     }
     setRincian(newR);
+    onDirtyChange?.(true);
   };
 
   const removeRincian = (idx: number) => {
-    setRincian(rincian.filter((_, i) => i !== idx));
+    updateRincianList(rincian.filter((_, i) => i !== idx));
   };
 
   const totalPengeluaran = rincian.reduce((acc, curr) => acc + BigInt(curr.total || 0), BigInt(0));
@@ -56,6 +62,7 @@ export default function PengeluaranTab({ spj }: { spj: any }) {
     try {
       await savePengeluaranUmumTransaction(spj.id, rincian);
       toast.success("Daftar pengeluaran berhasil disimpan.");
+      onDirtyChange?.(false);
       router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || "Terjadi kesalahan saat menyimpan pengeluaran.");
@@ -70,7 +77,7 @@ export default function PengeluaranTab({ spj }: { spj: any }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <div>
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Daftar Pengeluaran</p>
           <p className="text-xl font-bold text-slate-900">{formatRupiah(totalPengeluaran)}</p>

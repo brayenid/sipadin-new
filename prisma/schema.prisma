@@ -26,6 +26,14 @@ enum RosterRole {
   PENGIKUT
 }
 
+enum JenisNaskah {
+  SURAT_TUGAS
+  SURAT_PERINTAH
+  TELAAHAN_STAF
+  SURAT_EDARAN_SEKDA
+  SURAT_EDARAN_BUPATI
+}
+
 // ==========================================
 // AUTH & MULTI-TENANT
 // ==========================================
@@ -37,7 +45,7 @@ model Team {
   spjs      Spj[]
   pegawais  Pegawai[]
   vendors   VendorPihakKetiga[]
-  tahunAnggarans TahunAnggaran[]
+  naskahDinas NaskahDinas[]
 }
 
 model User {
@@ -53,6 +61,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   spjsCreated  Spj[]
+  subKegiatan  SubKegiatan[]
+  naskahDinas  NaskahDinas[]
 }
 
 // ==========================================
@@ -100,14 +110,9 @@ model VendorPihakKetiga {
 // ==========================================
 model TahunAnggaran {
   id        String     @id @default(uuid())
-  tahun     String
+  tahun     String     @unique
   
-  teamId    String
-  team      Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
   kegiatan  Kegiatan[]
-
-  @@unique([tahun, teamId])
 }
 
 model Kegiatan {
@@ -128,10 +133,22 @@ model SubKegiatan {
   kodeSub    String
   judulSub   String
 
-  saldoAwal  BigInt
-  sisaSaldo  BigInt
+  rekening   KodeRekening[]
+  users      User[]
+}
 
-  spjs       Spj[]
+model KodeRekening {
+  id            String      @id @default(uuid())
+  subKegiatanId String
+  subKegiatan   SubKegiatan @relation(fields: [subKegiatanId], references: [id], onDelete: Cascade)
+
+  kodeRekening  String
+  judulRekening String
+
+  saldoAwal     BigInt
+  sisaSaldo     BigInt
+
+  spjs          Spj[]
 }
 
 // ==========================================
@@ -145,8 +162,8 @@ model Spj {
   perihal       String?     @db.Text // Penjelasan/maksud perjalanan dinas
 
   // Penghubung ke Sumber Saldo
-  subKegiatanId String
-  subKegiatan   SubKegiatan @relation(fields: [subKegiatanId], references: [id])
+  kodeRekeningId String
+  kodeRekening   KodeRekening @relation(fields: [kodeRekeningId], references: [id])
 
   // Atribut Kepemilikan (Multi-Tenant)
   teamId        String
@@ -242,4 +259,27 @@ model SpjMaminDetail {
 
   namaRapat    String
   jumlahPeserta Int
+}
+
+// ==========================================
+// TATA NASKAH DINAS
+// ==========================================
+model NaskahDinas {
+  id          String      @id @default(uuid())
+  jenisNaskah JenisNaskah
+  nomorSurat  String?
+  tanggal     DateTime    @default(now())
+  perihal     String?     @db.Text
+  
+  // Atribut Kepemilikan (Multi-Tenant)
+  teamId      String
+  team        Team        @relation(fields: [teamId], references: [id])
+  createdById String
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  // Data spesifik dokumen JSON
+  data        Json?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import SpjDetailTabs from "./SpjDetailTabs";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
 export const metadata = {
   title: "Detail SPJ - SIPADIN",
@@ -16,14 +18,18 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
   const spj = await prisma.spj.findFirst({
     where: { 
       id: params.id,
-      teamId: session.user.teamId 
+      ...(session.user.role === 'SUPER_ADMIN' ? {} : { createdById: session.user.id })
     },
     include: {
-      subKegiatan: {
+      kodeRekening: {
         include: {
-          kegiatan: {
+          subKegiatan: {
             include: {
-              tahunAnggaran: true
+              kegiatan: {
+                include: {
+                  tahunAnggaran: true
+                }
+              }
             }
           }
         }
@@ -52,34 +58,65 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
     orderBy: { nama: "asc" }
   });
 
+  const tahunAnggarans = await prisma.tahunAnggaran.findMany({
+    include: {
+      kegiatan: {
+        include: {
+          subKegiatan: {
+            where: session.user.role === "SUPER_ADMIN" ? undefined : {
+              users: { some: { id: session.user.id } }
+            },
+            include: {
+              rekening: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { tahun: "desc" }
+  });
+
   if (!spj) notFound();
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+    <div className="p-4 sm:p-8 space-y-4">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-sm text-slate-500">
+        <Link
+          href="/dashboard/spj"
+          className="hover:text-slate-900 transition-colors flex items-center gap-1"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          SPJ
+        </Link>
+        <span>/</span>
+        <span className="font-medium text-slate-900">Rincian</span>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-lg border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-900">Detail Surat Pertanggungjawaban</h2>
+            <h2 className="text-lg font-semibold text-slate-800">Detail Surat Pertanggungjawaban</h2>
             <Badge variant="outline" className="text-slate-500 bg-slate-50">{spj.jenisSpj}</Badge>
           </div>
           {spj.perihal && (
-            <p className="text-base font-semibold text-slate-700 mt-1">"{spj.perihal}"</p>
+            <p className="text-sm font-medium text-slate-700 mt-1">Perihal: {spj.perihal}</p>
           )}
-          <p className="text-sm text-slate-500 mt-1">
-            {spj.nomorBku ? `No. BKU: ${spj.nomorBku}` : "Belum ada No. BKU"} • {new Intl.DateTimeFormat("id-ID", {
-              day: "2-digit", month: "long", year: "numeric"
+          <p className="text-xs text-slate-500 mt-1.5">
+            {new Intl.DateTimeFormat("id-ID", {
+              day: "numeric", month: "long", year: "numeric"
             }).format(spj.tanggalSpj)}
           </p>
         </div>
-        <div className="text-right bg-slate-50 py-2 px-4 rounded-md border border-slate-200">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Total Pengajuan SPJ</p>
-          <p className="text-xl font-black text-slate-900">
+        <div className="text-right bg-slate-50 py-2 px-4 rounded-md border border-slate-200/60">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Total Pengajuan</p>
+          <p className="text-lg font-bold text-slate-900">
             {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(spj.totalPengeluaran))}
           </p>
         </div>
       </div>
 
-      <SpjDetailTabs spj={spj} pegawaiList={pegawaiList} />
+      <SpjDetailTabs spj={spj} pegawaiList={pegawaiList} tahunAnggarans={tahunAnggarans} />
     </div>
   );
 }

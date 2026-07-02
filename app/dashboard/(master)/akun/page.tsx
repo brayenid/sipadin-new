@@ -1,0 +1,46 @@
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getAkuns } from "@/app/actions/akun";
+import AkunList from "./AkunList";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+
+export const metadata = {
+  title: "Master Akun - SIPADIN",
+};
+
+export default async function AkunPage() {
+  const session = await auth();
+
+  // Guard: Hanya Super Admin
+  if (!session || session.user.role !== "SUPER_ADMIN") {
+    redirect("/dashboard");
+  }
+
+  const initialData = await getAkuns();
+
+  return (
+    <div className="p-4 sm:p-8">
+      <div className="mb-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+          <Link
+            href="/dashboard"
+            className="hover:text-slate-900 transition-colors flex items-center gap-1"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Dashboard
+          </Link>
+          <span>/</span>
+          <span className="font-medium text-slate-900">Master Akun</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Master Akun</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Kelola data pengguna aplikasi.
+        </p>
+      </div>
+
+      <AkunList initialData={initialData} />
+    </div>
+  );
+}

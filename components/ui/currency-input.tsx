@@ -36,8 +36,10 @@ export function CurrencyInput({
     if (value !== undefined && value !== null) {
       const numValue = value.toString()
       if (numValue === "0" || numValue === "") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDisplayValue("")
       } else {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDisplayValue(formatRupiah(numValue))
       }
     }
@@ -61,7 +63,7 @@ export function CurrencyInput({
         value={displayValue}
         onChange={handleChange}
         disabled={disabled}
-        className={`pl-9 text-right font-medium ${className || ""}`}
+        className={`pl-9 text-right font-mono text-slate-900 font-medium ${className || ""}`}
       />
     </div>
   )

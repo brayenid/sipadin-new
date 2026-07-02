@@ -1,73 +1,186 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Plus, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, Eye, ChevronLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import SpjFilters from './SpjFilters'
+import SpjDeleteButton from './SpjDeleteButton'
+import SpjDuplicateButton from './SpjDuplicateButton'
+import SpjExportModal from './SpjExportModal'
+import { Prisma } from '@prisma/client'
 
 export const metadata = {
-  title: "Daftar SPJ - SIPADIN",
-};
+  title: 'Daftar SPJ - SIPADIN'
+}
 
-export default async function SpjListPage() {
-  const session = await auth();
-  if (!session) redirect("/login");
+export default async function SpjListPage({
+  searchParams
+}: {
+  searchParams: Promise<{ page?: string; search?: string; jenis?: string }>
+}) {
+  const session = await auth()
+  if (!session) redirect('/login')
 
-  const spjList = await prisma.spj.findMany({
-    where: { teamId: session.user.teamId },
-    include: {
-      subKegiatan: true,
-      perjadinDetail: true,
-      roster: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const sp = await searchParams
+
+  const page = Number(sp?.page) || 1
+  const limit = 10
+  const skip = (page - 1) * limit
+  const searchQuery = sp?.search || ''
+  const jenisQuery = sp?.jenis || ''
+
+  const whereClause: Prisma.SpjWhereInput = {
+    ...(session.user.role === 'SUPER_ADMIN' ? {} : { createdById: session.user.id }),
+    ...(jenisQuery ? { jenisSpj: jenisQuery as any } : {}),
+    ...(searchQuery
+      ? {
+          OR: [
+            { kodeRekening: { judulRekening: { contains: searchQuery, mode: 'insensitive' } } },
+            { roster: { some: { nama: { contains: searchQuery, mode: 'insensitive' } } } }
+          ]
+        }
+      : {})
+  }
+
+  const [spjList, totalData] = await Promise.all([
+    prisma.spj.findMany({
+      where: whereClause,
+      include: {
+        kodeRekening: true,
+        perjadinDetail: true,
+        roster: true
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit
+    }),
+    prisma.spj.count({
+      where: whereClause
+    })
+  ])
+
+  const totalPages = Math.ceil(totalData / limit)
 
   const formatRupiah = (val: bigint) => {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(val));
-  };
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
+      Number(val)
+    )
+  }
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date(date));
+  }
+
+  const renderTanggalRange = (spj: any) => {
+    if (spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail) {
+      const start = formatDate(spj.perjadinDetail.tglBerangkat);
+      const end = formatDate(spj.perjadinDetail.tglKembali);
+      
+      // Jika bulannya sama, persingkat (misal: 12 - 15 Okt 2026)
+      const startParts = start.split(' ');
+      const endParts = end.split(' ');
+      
+      if (startParts[1] === endParts[1] && startParts[2] === endParts[2]) {
+        return `${startParts[0]} - ${end}`;
+      }
+      return `${start} - ${end}`;
+    }
+    
+    return formatDate(spj.tanggalSpj);
+  }
 
   const getJenisBadge = (jenis: string) => {
     switch (jenis) {
-      case "PERJADIN": return <Badge className="bg-blue-500">Perjalanan Dinas</Badge>;
-      case "MAKAN_MINUM": return <Badge className="bg-orange-500">Makan Minum</Badge>;
-      case "HONORARIUM": return <Badge className="bg-purple-500">Honorarium</Badge>;
-      default: return <Badge className="bg-slate-500">{jenis}</Badge>;
+      case 'PERJADIN':
+        return (
+          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200/60 font-medium">
+            Perjalanan Dinas
+          </Badge>
+        )
+      case 'MAKAN_MINUM':
+        return (
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/60 font-medium">
+            Makan Minum
+          </Badge>
+        )
+      case 'HONORARIUM':
+        return (
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200/60 font-medium">
+            Honorarium
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200/60 font-medium">
+            {jenis}
+          </Badge>
+        )
     }
-  };
+  }
+
+  const createPageUrl = (targetPage: number) => {
+    const params = new URLSearchParams()
+    if (targetPage > 1) params.set('page', targetPage.toString())
+    if (searchQuery) params.set('search', searchQuery)
+    if (jenisQuery) params.set('jenis', jenisQuery)
+    return `/dashboard/spj?${params.toString()}`
+  }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-8 space-y-6 pb-24 lg:pb-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+            <Link
+              href="/dashboard"
+              className="hover:text-slate-900 transition-colors flex items-center gap-1"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Dashboard
+            </Link>
+            <span>/</span>
+            <span className="font-medium text-slate-900">Daftar SPJ</span>
+          </div>
           <h2 className="text-2xl font-bold text-slate-900">Daftar SPJ</h2>
           <p className="text-slate-500 mt-1">Kelola dan pantau seluruh Surat Pertanggungjawaban.</p>
         </div>
-        <Link href="/dashboard/spj/buat">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Buat SPJ Baru
-          </Button>
-        </Link>
+        <div className="shrink-0 flex items-center gap-2">
+          <div className="hidden lg:block">
+            <SpjExportModal />
+          </div>
+          <Link href="/dashboard/spj/buat">
+            <Button className="hidden lg:flex">
+              <Plus className="w-4 h-4 mr-2" />
+              Buat SPJ Baru
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      <SpjFilters />
 
       <Card>
         <CardHeader>
-          <CardTitle>Riwayat Transaksi</CardTitle>
-          <CardDescription>Semua kuitansi yang telah direkam ke dalam sistem.</CardDescription>
+          <CardTitle>Riwayat SPJ</CardTitle>
+          <CardDescription>Semua data SPJ yang telah direkam ke dalam sistem.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="border rounded-md">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Jenis</TableHead>
-                  <TableHead>No. BKU</TableHead>
-                  <TableHead>Sumber Dana (Sub-Kegiatan)</TableHead>
+                  <TableHead>Personel</TableHead>
                   <TableHead className="text-right">Total Biaya</TableHead>
                   <TableHead className="text-center">Aksi</TableHead>
                 </TableRow>
@@ -75,7 +188,7 @@ export default async function SpjListPage() {
               <TableBody>
                 {spjList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={5} className="h-32 text-center text-slate-500">
                       Belum ada SPJ yang dibuat.
                     </TableCell>
                   </TableRow>
@@ -83,40 +196,36 @@ export default async function SpjListPage() {
                   spjList.map((spj) => (
                     <TableRow key={spj.id}>
                       <TableCell className="font-medium">
-                        {new Intl.DateTimeFormat("id-ID", {
-                          day: "2-digit", month: "short", year: "numeric"
-                        }).format(spj.tanggalSpj)}
+                        {renderTanggalRange(spj)}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           <div>{getJenisBadge(spj.jenisSpj)}</div>
-                          {spj.jenisSpj === "PERJADIN" && spj.perjadinDetail && (
-                            <span className="text-xs text-slate-500">
-                              Tujuan: {spj.perjadinDetail.tempatTujuan}
-                            </span>
+                          {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
+                            <span className="text-xs text-slate-500">Tujuan: {spj.perjadinDetail.tempatTujuan}</span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {spj.nomorBku ? (
-                          <span className="font-mono text-xs">{spj.nomorBku}</span>
-                        ) : (
-                          <span className="text-slate-400 italic text-xs">Belum ada</span>
-                        )}
+                        <span className="text-sm text-slate-600">
+                          {spj.roster && spj.roster.length > 0
+                            ? spj.roster.map((r) => r.nama.split(' ')[0]).join(', ')
+                            : '-'}
+                        </span>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{spj.subKegiatan.judulSub}</span>
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
+                      <TableCell className="text-right font-mono text-sm text-slate-900 font-medium">
                         {formatRupiah(spj.totalPengeluaran)}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Link href={`/dashboard/spj/${spj.id}`}>
-                          <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                            <Eye className="w-4 h-4 mr-2" />
-                            Detail
-                          </Button>
-                        </Link>
+                        <div className="flex items-center justify-center gap-1">
+                          <Link href={`/dashboard/spj/${spj.id}`}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5" title="Lihat Detail">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <SpjDuplicateButton spjId={spj.id} />
+                          <SpjDeleteButton spjId={spj.id} />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -124,8 +233,54 @@ export default async function SpjListPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalData > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
+              <p className="text-sm text-slate-500">
+                Menampilkan <span className="font-medium text-slate-900">{skip + 1}</span> hingga{' '}
+                <span className="font-medium text-slate-900">{Math.min(skip + limit, totalData)}</span> dari{' '}
+                <span className="font-medium text-slate-900">{totalData}</span> data
+              </p>
+              <div className="flex items-center gap-2">
+                <Link href={createPageUrl(page > 1 ? page - 1 : 1)}>
+                  <Button variant="outline" size="sm" disabled={page <= 1} className="h-8">
+                    Sebelumnya
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <Link key={p} href={createPageUrl(p)}>
+                      <Button
+                        variant={p === page ? 'default' : 'outline'}
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${p !== page ? 'text-slate-600 hover:text-slate-900' : ''}`}>
+                        {p}
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
+                <Link href={createPageUrl(page < totalPages ? page + 1 : totalPages)}>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages} className="h-8">
+                    Selanjutnya
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Mobile bottom action bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex gap-2">
+        <SpjExportModal />
+        <Link href="/dashboard/spj/buat" className="flex-1">
+          <Button className="w-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Buat SPJ Baru
+          </Button>
+        </Link>
+      </div>
     </div>
-  );
+  )
 }

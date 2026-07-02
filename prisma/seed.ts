@@ -53,9 +53,9 @@ async function main() {
 
   // 4. Buat contoh Tahun Anggaran
   const tahun = await prisma.tahunAnggaran.upsert({
-    where: { tahun_teamId: { tahun: "2026", teamId: team.id } },
+    where: { tahun: "2026" },
     update: {},
-    create: { tahun: "2026", teamId: team.id },
+    create: { tahun: "2026" },
   });
   console.log(`✅ Tahun Anggaran dibuat: ${tahun.tahun}`);
 
@@ -82,12 +82,27 @@ async function main() {
       kegiatanId: kegiatan.id,
       kodeSub: "4.01.4.01.0.00.0.000.001.001",
       judulSub: "Perjalanan Dinas Dalam Daerah",
+      users: {
+        connect: [{ id: timUser.id }]
+      }
+    },
+  });
+
+  const rekening = await prisma.kodeRekening.upsert({
+    where: { id: "seed-kode-rekening-001" },
+    update: {},
+    create: {
+      id: "seed-kode-rekening-001",
+      subKegiatanId: subKegiatan.id,
+      kodeRekening: "5.1.02.04.01.0001",
+      judulRekening: "Belanja Perjalanan Dinas Biasa",
       saldoAwal: saldoAwal,
       sisaSaldo: saldoAwal,
     },
   });
+
   console.log(
-    `✅ Sub-Kegiatan dibuat: ${subKegiatan.judulSub} (Saldo: Rp ${saldoAwal.toLocaleString("id-ID")})`
+    `✅ Sub-Kegiatan dibuat: ${subKegiatan.judulSub} (Saldo Rekening: Rp ${saldoAwal.toLocaleString("id-ID")})`
   );
 
   console.log("\n🎉 Seeding selesai! Akun login siap digunakan:\n");

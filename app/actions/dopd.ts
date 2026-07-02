@@ -3,16 +3,17 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { formatCurrency } from "@/lib/utils";
 
-export async function saveDopdTransaction(spjId: string, dopdItems: any[]) {
+export async function saveDopdTransaction(spjId: string, dopdItems: any[], dopdMeta?: any) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
   return await prisma.$transaction(async (tx) => {
     // 1. Ambil data SPJ saat ini
     const spj = await tx.spj.findUnique({
-      where: { id: spjId, teamId: session.user.teamId },
-      include: { subKegiatan: true }
+      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
+      include: { kodeRekening: true }
     });
 
     if (!spj) throw new Error("SPJ tidak ditemukan.");
@@ -52,14 +53,14 @@ export async function saveDopdTransaction(spjId: string, dopdItems: any[]) {
 
     if (diff > BigInt(0)) {
       // Jika bertambah, pastikan sisa saldo mencukupi
-      if (spj.subKegiatan.sisaSaldo < diff) {
-        throw new Error(`Saldo Sub-Kegiatan tidak mencukupi untuk penambahan DOPD ini. Sisa Saldo: Rp ${spj.subKegiatan.sisaSaldo.toString()}`);
+      if (spj.kodeRekening.sisaSaldo < diff) {
+        throw new Error(`Saldo Kode Rekening tidak mencukupi untuk penambahan DOPD ini. Sisa Saldo: ${formatCurrency(spj.kodeRekening.sisaSaldo)}`);
       }
     }
 
     // 4. Update Saldo (Kurangi atau Tambah kembali jika minus)
-    await tx.subKegiatan.update({
-      where: { id: spj.subKegiatanId },
+    await tx.kodeRekening.update({
+      where: { id: spj.kodeRekeningId },
       data: {
         sisaSaldo: {
           decrement: diff,
@@ -68,10 +69,16 @@ export async function saveDopdTransaction(spjId: string, dopdItems: any[]) {
     });
 
     // 5. Update Total Pengeluaran di SPJ
+    const newMeta = spj.metaDokumen ? { ...(spj.metaDokumen as any) } : {};
+    if (dopdMeta) {
+      newMeta.dopd = { ...newMeta.dopd, ...dopdMeta };
+    }
+
     await tx.spj.update({
       where: { id: spj.id },
       data: {
-        totalPengeluaran: newTotalDopd
+        totalPengeluaran: newTotalDopd,
+        ...(dopdMeta ? { metaDokumen: newMeta } : {})
       }
     });
 

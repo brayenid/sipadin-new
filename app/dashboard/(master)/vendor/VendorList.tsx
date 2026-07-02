@@ -1,6 +1,8 @@
+ 
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createVendor, deleteVendor, bulkUpsertVendor } from "@/app/actions/vendor";
 import { Loader2, Plus, Store, Trash2, Save, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import MobileActionBar from "@/components/dashboard/MobileActionBar";
 
 type Vendor = {
   id: string;
@@ -46,6 +49,10 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
   const [data, setData] = useState<Vendor[]>(initialData);
   const [loading, setLoading] = useState(false);
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
   // Single Card Mode State
   const [isOpen, setIsOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -86,6 +93,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", val);
     router.replace(`?${params.toString()}`);
+    setCurrentPage(1);
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -104,8 +112,8 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
       await createVendor(payload);
       setIsOpen(false);
       window.location.reload();
-    } catch (err) {
-      alert("Gagal menambahkan Vendor");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menambahkan Vendor");
     }
     setLoading(false);
   };
@@ -116,8 +124,8 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
     try {
       await deleteVendor(deleteId);
       window.location.reload();
-    } catch (err) {
-      alert("Gagal menghapus data.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus data.");
     }
     setLoading(false);
     setDeleteId(null);
@@ -126,7 +134,6 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
   // ---------------- BULK MODE HANDLERS ----------------
   const addBulkRow = () => {
     setBulkData([
-      ...bulkData, 
       {
         id: `temp-${Date.now()}`,
         namaVendor: "",
@@ -134,8 +141,10 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
         alamat: "",
         npwp: "",
         rekeningBank: "",
-      }
+      },
+      ...bulkData
     ]);
+    setCurrentPage(1);
   };
 
   const updateBulkRow = (index: number, field: keyof Vendor, value: string) => {
@@ -157,14 +166,39 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
     try {
       await bulkUpsertVendor(bulkData, deleteIds);
       window.location.reload();
-    } catch (err) {
-      alert("Gagal menyimpan data massal.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan data massal.");
     }
     setBulkLoading(false);
   };
 
+  const paginatedKartuData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedBulkData = bulkData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalItems = activeTab === "kartu" ? data.length : bulkData.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  const renderPagination = () => {
+    if (totalItems <= itemsPerPage) return null;
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-xl mt-4 border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <p className="text-sm text-slate-500">
+          Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span> data
+        </p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">Sebelumnya</Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">Selanjutnya</Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 lg:pb-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="relative w-72">
@@ -175,12 +209,12 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="kartu">Mode Kartu</TabsTrigger>
-          <TabsTrigger value="tabel">Mode Tabel (Excel)</TabsTrigger>
+          <TabsTrigger value="tabel">Mode Tabel</TabsTrigger>
         </TabsList>
 
         {/* ================= MODE KARTU ================= */}
         <TabsContent value="kartu" className="space-y-6">
-          <div className="flex justify-end">
+          <div className="hidden lg:flex justify-end">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Vendor</Button>} />
               <DialogContent>
@@ -227,8 +261,8 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {data.map((vendor) => (
-                <Card key={vendor.id} className="border-slate-200 shadow-sm relative overflow-hidden">
+              {paginatedKartuData.map((vendor) => (
+                <Card key={vendor.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <CardContent className="p-5 flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-slate-900">{vendor.namaVendor}</h3>
@@ -254,11 +288,12 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
               ))}
             </div>
           )}
+          {renderPagination()}
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
         <TabsContent value="tabel">
-          <Card className="border-slate-200 shadow-sm">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-4">
                 <CardTitle className="text-base">Data Vendor (Input Tabular)</CardTitle>
@@ -293,7 +328,8 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bulkData.map((row, idx) => {
+                    {paginatedBulkData.map((row, pageIdx) => {
+                      const idx = (currentPage - 1) * itemsPerPage + pageIdx;
                       const rowIsNew = row.id.startsWith("temp-");
                       return (
                       <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
@@ -352,7 +388,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                     {bulkData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                          Tidak ada baris data. Klik "Tambah Baris" untuk mulai menginput.
+                          Tidak ada baris data. Klik &quot;Tambah Baris&quot; untuk mulai menginput.
                         </TableCell>
                       </TableRow>
                     )}
@@ -361,6 +397,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
               </div>
             </CardContent>
           </Card>
+          {renderPagination()}
         </TabsContent>
       </Tabs>
 
@@ -385,6 +422,25 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mobile bottom action bar — tab-aware */}
+      <MobileActionBar>
+        {activeTab === "kartu" ? (
+          <Button className="w-full" onClick={() => setIsOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Tambah Vendor
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button className="flex-1" variant="outline" onClick={addBulkRow}>
+              <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+            </Button>
+            <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
+              {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Simpan
+            </Button>
+          </div>
+        )}
+      </MobileActionBar>
     </div>
   );
 }

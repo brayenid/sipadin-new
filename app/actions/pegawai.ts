@@ -40,6 +40,14 @@ export async function deletePegawai(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
+  const usedPegawai = await prisma.spjRosterItem.findFirst({
+    where: { pegawaiId: id }
+  });
+
+  if (usedPegawai) {
+    throw new Error("Pegawai ini tidak bisa dihapus karena sudah dipakai dalam pembuatan SPJ. Hapus SPJ terkait terlebih dahulu.");
+  }
+
   await prisma.pegawai.delete({
     where: {
       id,
@@ -68,6 +76,14 @@ export async function bulkUpsertPegawai(
   await prisma.$transaction(async (tx) => {
     // Delete
     if (deleteIds.length > 0) {
+      const usedPegawai = await tx.spjRosterItem.findFirst({
+        where: { pegawaiId: { in: deleteIds } }
+      });
+
+      if (usedPegawai) {
+        throw new Error("Beberapa pegawai tidak bisa dihapus karena sudah dipakai dalam pembuatan SPJ. Hapus SPJ terkait terlebih dahulu.");
+      }
+
       await tx.pegawai.deleteMany({
         where: {
           id: { in: deleteIds },
@@ -113,3 +129,88 @@ export async function bulkUpsertPegawai(
   revalidatePath("/dashboard/pegawai");
 }
 
+export async function importPegawaiExcel(
+  data: {
+    nip?: string | null;
+    nama: string;
+    pangkat?: string | null;
+    golongan?: string | null;
+    jabatan: string;
+    instansi?: string | null;
+  }[]
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  await prisma.$transaction(async (tx) => {
+    for (const item of data) {
+      if (!item.nama.trim() || !item.jabatan.trim()) {
+        skipped++;
+        continue;
+      }
+
+      // Resolusi Konflik Berdasarkan NIP
+      // Jika NIP diisi, kita cek apakah sudah ada NIP yang sama di dalam tim ini
+      if (item.nip && item.nip.trim() !== "") {
+        const existing = await tx.pegawai.findUnique({
+          where: {
+            nip_teamId: {
+              nip: item.nip.trim(),
+              teamId: session.user.teamId,
+            }
+          }
+        });
+
+        if (existing) {
+          // Update data yang sudah ada
+          await tx.pegawai.update({
+            where: { id: existing.id },
+            data: {
+              nama: item.nama,
+              pangkat: item.pangkat || null,
+              golongan: item.golongan || null,
+              jabatan: item.jabatan,
+              instansi: item.instansi || "Sekretariat Daerah",
+            },
+          });
+          updated++;
+        } else {
+          // Insert data baru
+          await tx.pegawai.create({
+            data: {
+              nip: item.nip.trim(),
+              nama: item.nama,
+              pangkat: item.pangkat || null,
+              golongan: item.golongan || null,
+              jabatan: item.jabatan,
+              instansi: item.instansi || "Sekretariat Daerah",
+              teamId: session.user.teamId,
+            },
+          });
+          inserted++;
+        }
+      } else {
+        // Jika tidak ada NIP, selalu insert baru karena tidak bisa dilacak untuk conflict resolution
+        await tx.pegawai.create({
+          data: {
+            nip: null,
+            nama: item.nama,
+            pangkat: item.pangkat || null,
+            golongan: item.golongan || null,
+            jabatan: item.jabatan,
+            instansi: item.instansi || "Sekretariat Daerah",
+            teamId: session.user.teamId,
+          },
+        });
+        inserted++;
+      }
+    }
+  });
+
+  revalidatePath("/dashboard/pegawai");
+  return { inserted, updated, skipped };
+}

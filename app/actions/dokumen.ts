@@ -10,7 +10,7 @@ export async function updateMetaDokumen(spjId: string, docKey: string, payload: 
 
   // Verifikasi kepemilikan
   const spj = await prisma.spj.findFirst({
-    where: { id: spjId, teamId: session.user.teamId }
+    where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) }
   });
 
   if (!spj) throw new Error("SPJ tidak ditemukan atau akses ditolak.");

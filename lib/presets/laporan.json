@@ -1,0 +1,213 @@
+{
+  "hasilPembuka": [
+    {
+      "id": "hp-standar",
+      "title": "Pembuka: Laporan Standar",
+      "text": "Sehubungan dengan pelaksanaan perjalanan dinas tersebut di atas, bersama ini disampaikan poin-poin hasil kegiatan sebagai berikut:"
+    },
+    {
+      "id": "hp-instruksi",
+      "title": "Pembuka: Tindak Lanjut Instruksi",
+      "text": "Menindaklanjuti instruksi pimpinan dan penugasan yang diberikan, tim pelaksana telah melakukan asistensi teknis dan observasi lapangan dengan hasil capaian sebagai berikut:"
+    }
+  ],
+  "hasilPoin": [
+    {
+      "id": "pt-1",
+      "title": "SP: Verifikasi Draf",
+      "text": "Telah dilakukan verifikasi mendalam terhadap draf Standar Pelayanan (SP) guna memastikan pematuhan terhadap amanat UU Nomor 25 Tahun 2009."
+    },
+    {
+      "id": "pt-2",
+      "title": "SOP: Penyelarasan Probis",
+      "text": "Dilakukan penyelarasan draf Standar Operasional Prosedur (SOP) lintas fungsi untuk memastikan peta proses bisnis (Probis) telah terintegrasi sesuai Permenpan RB Nomor 19 Tahun 2018."
+    },
+    {
+      "id": "pt-3",
+      "title": "SOP: Catatan Perbaikan",
+      "text": "Pihak ............. memberikan catatan perbaikan pada aspek janji layanan dan sistem pengelolaan pengaduan masyarakat agar lebih responsif."
+    },
+    {
+      "id": "pt-4",
+      "title": "SKM: Sosialisasi Teknis",
+      "text": "Tim menyampaikan tata cara teknis pengisian Formulir Survei Kepuasan Masyarakat (SKM) bagi aparatur, terutama petugas SKM. Hal ini guna memastikan bahwa petugas telah memiliki dasar pengetahuan yang cukup untuk menjalankan kuesioner."
+    },
+    {
+      "id": "pt-5",
+      "title": "SKM: Sosialisasi Laporan 1",
+      "text": "Tim memberikan panduan dasar cara membuat laporan SKM dengan memberikan format dasar laporan SKM."
+    },
+    {
+      "id": "pt-5a",
+      "title": "SKM: Sosialisasi Laporan 2",
+      "text": "Tim menyampaikan tentang latar belakang SKM bersama dengan kebutuhan akan penerapannya dalam pelayanan publik."
+    },
+    {
+      "id": "pt-5b",
+      "title": "SKM: Sosialisasi Laporan 3",
+      "text": "Tim meminta data admin yang membidangi SKM serta menjelaskan urgensi kebutuhan untuk dapat dimasukan dalam Surat Keputusan Bupati tentang SKM."
+    },
+    {
+      "id": "pt-5c",
+      "title": "SKM: Sosialisasi Laporan 4",
+      "text": "Tim memberikan panduan dasar cara membuat laporan SKM dengan memberikan format dasar laporan SKM."
+    },
+    {
+      "id": "pt-6",
+      "title": "PEKPPP: Instrumen Baru",
+      "text": "Memaparkan instrumen evaluasi PEKPPP terbaru yang menekankan pada transformasi digital dan integrasi layanan sesuai dengan pedoman dari Kementerian PANRB."
+    },
+    {
+      "id": "pt-7",
+      "title": "PEKPPP: Identifikasi Gap",
+      "text": "Melakukan pemetaan antara kondisi riil penyelenggaraan pelayanan di unit kerja dengan standar indikator penilaian PEKPPP untuk menemukan area yang memerlukan perbaikan mendesak."
+    },
+    {
+      "id": "pt-8",
+      "title": "PEKPPP: 6 Aspek Evaluasi",
+      "text": "Menjelaskan secara rinci enam aspek penilaian PEKPPP yang meliputi Kebijakan Pelayanan, Profesionalisme SDM, Sarana Prasarana, SIPP, Konsultasi Pengaduan, dan Inovasi."
+    },
+    {
+      "id": "pt-9",
+      "title": "PEKPPP: Inovasi Layanan",
+      "text": "Mendorong unit penyelenggara pelayanan untuk mendokumentasikan dan mengembangkan inovasi pelayanan agar memberikan dampak nyata dan berkelanjutan bagi masyarakat."
+    },
+    {
+      "id": "pt-10",
+      "title": "PEKPPP: Kelompok Rentan",
+      "text": "Menekankan pemenuhan standar fasilitas bagi kelompok rentan, seperti penyediaan jalur pemandu (guiding block), kursi roda, dan loket khusus guna meningkatkan inklusivitas pelayanan."
+    },
+    {
+      "id": "pt-11",
+      "title": "PEKPPP: Pengelolaan Pengaduan",
+      "text": "Menginstruksikan penguatan responsivitas pengelolaan pengaduan melalui integrasi kanal SP4N-LAPOR! untuk menjamin setiap keluhan masyarakat ditindaklanjuti secara transparan."
+    },
+    {
+      "id": "pt-12",
+      "title": "PEKPPP: SIPP Online",
+      "text": "Melakukan asistensi pemutakhiran data pada Sistem Informasi Pelayanan Publik (SIPP) online sebagai bagian dari transparansi informasi standar pelayanan kepada masyarakat."
+    },
+    {
+      "id": "pt-13",
+      "title": "Pakaian Dinas: Sosialisasi Aturan",
+      "text": "Menyampaikan ketentuan terbaru mengenai penggunaan Pakaian Dinas bagi Aparatur Sipil Negara (ASN) di lingkungan Pemerintah Kabupaten Kutai Barat sesuai dengan peraturan yang berlaku."
+    },
+    {
+      "id": "pt-14",
+      "title": "Pakaian Dinas: Keseragaman",
+      "text": "Menekankan pentingnya keseragaman dan kerapian penggunaan atribut atribut pakaian dinas, termasuk penggunaan tanda jabatan, lencana korpri, dan papan nama."
+    },
+    {
+      "id": "pt-15",
+      "title": "Pakaian Dinas: Jadwal Penggunaan",
+      "text": "Melakukan verifikasi dan penguatan kembali jadwal penggunaan pakaian dinas tertentu, seperti batik nasional/daerah, pakaian seragam KORPRI, dan pakaian dinas lapangan."
+    },
+    {
+      "id": "pt-16",
+      "title": "Pakaian Dinas: Identitas Instansi",
+      "text": "Memberikan arahan mengenai spesifikasi teknis warna dan model pakaian dinas guna menjaga marwah dan identitas instansi di mata publik."
+    },
+    {
+      "id": "pt-17",
+      "title": "Biro Org: Verifikasi SP",
+      "text": "Melakukan koordinasi dengan Biro Organisasi Setda Provinsi terkait verifikasi draf Standar Pelayanan (SP) guna memastikan kesesuaian dengan standar regional sebelum ditetapkan."
+    },
+    {
+      "id": "pt-18",
+      "title": "Biro Org: Asistensi SOP",
+      "text": "Berkonsultasi dengan Biro Organisasi Provinsi terkait penyelarasan Standar Operasional Prosedur (SOP) lintas sektor agar tercipta integrasi proses bisnis yang lebih efisien."
+    },
+    {
+      "id": "pt-19",
+      "title": "Biro Org: Monitoring SKM",
+      "text": "Melakukan sinkronisasi data Survei Kepuasan Masyarakat (SKM) dengan Biro Organisasi Provinsi untuk validasi nilai indeks kepuasan di tingkat perangkat daerah."
+    },
+    {
+      "id": "pt-20",
+      "title": "Menpan: Validasi LKE PEKPPP",
+      "text": "Berkonsultasi dengan tim teknis Kementerian PANRB terkait pemenuhan bukti dukung pada Lembar Kerja Evaluasi (LKE) PEKPPP guna meningkatkan kualitas penyelenggaraan pelayanan publik."
+    },
+    {
+      "id": "pt-21",
+      "title": "Menpan: Inovasi Pelayanan",
+      "text": "Melakukan koordinasi dengan Kementerian PANRB terkait pendaftaran dan pengembangan inovasi pelayanan publik agar dapat direplikasi serta memberikan dampak luas bagi masyarakat."
+    },
+    {
+      "id": "pt-22",
+      "title": "Menpan: SIPP Terintegrasi",
+      "text": "Koordinasi dengan Kementerian PANRB mengenai optimalisasi penggunaan Sistem Informasi Pelayanan Publik (SIPP) dalam rangka transparansi informasi standar pelayanan secara nasional."
+    },
+    {
+      "id": "pt-23",
+      "title": "Menpan: Standar Kelompok Rentan",
+      "text": "Melakukan asistensi teknis dengan Kementerian PANRB terkait standar penyediaan sarana prasarana ramah kelompok rentan sesuai dengan kebijakan pelayanan publik inklusif."
+    },
+    {
+      "id": "pt-24",
+      "title": "Mendagri: Sinkronisasi TND",
+      "text": "Melakukan koordinasi dengan Ditjen Bina Administrasi Kewilayahan Kemendagri terkait implementasi Tata Naskah Dinas terbaru yang berpedoman pada Permendagri Nomor 1 Tahun 2023."
+    },
+    {
+      "id": "pt-25",
+      "title": "Mendagri: Pakaian Dinas",
+      "text": "Melakukan sinkronisasi dengan Kemendagri terkait kebijakan atribut dan pakaian dinas ASN guna memastikan keseragaman identitas aparatur sesuai regulasi nasional."
+    },
+    {
+      "id": "pt-26",
+      "title": "Mendagri: Administrasi Tata Laksana",
+      "text": "Berkonsultasi dengan Kemendagri terkait penguatan tata laksana internal pemerintah daerah guna mendukung percepatan digitalisasi administrasi perkantoran."
+    },
+    {
+      "id": "pt-27",
+      "title": "Pusat: Implementasi TTE",
+      "text": "Melakukan koordinasi teknis dengan instansi pusat terkait legalitas dan kesiapan infrastruktur implementasi Tanda Tangan Elektronik (TTE) pada dokumen pelayanan publik."
+    },
+    {
+      "id": "pt-28",
+      "title": "Pusat: Evaluasi Maklumat",
+      "text": "Koordinasi terkait standarisasi teks dan format Maklumat Pelayanan serta mekanisme publikasinya pada media informasi publik agar mudah dipahami oleh pengguna layanan."
+    },
+    {
+      "id": "pt-29",
+      "title": "Pusat: Manajemen Pengaduan",
+      "text": "Melakukan konsultasi terkait penguatan sistem pengelolaan pengaduan melalui integrasi kanal resmi guna menjamin setiap masukan masyarakat ditindaklanjuti secara terukur."
+    }
+  ],
+  "hasilNarasi": [
+    {
+      "id": "hnar-konsultasi-teknis",
+      "title": "Narasi: Laporan Konsultasi Teknis",
+      "text": "Kegiatan konsultasi dilaksanakan di kantor instansi pembina dengan fokus utama penyelarasan regulasi daerah guna memastikan kepatuhan terhadap standar pelayanan minimal. Tim pelaksana memaparkan hambatan implementasi di lapangan dan mendapatkan arahan teknis mengenai simplifikasi alur birokrasi. Hasil pertemuan menyepakati adanya penyesuaian pada beberapa draf dokumen tata laksana agar lebih adaptif terhadap sistem digital yang sedang dikembangkan di tingkat pusat."
+    },
+    {
+      "id": "hnar-sosialisasi-skm",
+      "title": "Narasi: Sosialisasi & Pendampingan SKM",
+      "text": "Pelaksanaan kegiatan difokuskan pada penguatan pemahaman aparatur mengenai metodologi Survei Kepuasan Masyarakat (SKM) terbaru. Dalam sesi diskusi, ditekankan bahwa hasil survei bukan sekadar pemenuhan angka indeks, melainkan dasar utama bagi perbaikan kualitas layanan publik secara berkelanjutan. Staf diberikan simulasi pengolahan data kuesioner agar mampu menyusun laporan berkala yang akurat, transparan, dan akuntabel sesuai dengan standar penilaian nasional."
+    },
+    {
+      "id": "hnar-asistensi-pekppp",
+      "title": "Narasi: Asistensi Evaluasi PEKPPP",
+      "text": "Kegiatan asistensi ini dilakukan untuk memverifikasi kesiapan bukti dukung pada Lembar Kerja Evaluasi (LKE) PEKPPP. Fokus utama pemeriksaan meliputi ketersediaan fasilitas bagi kelompok rentan, publikasi standar pelayanan melalui berbagai kanal informasi, serta efektivitas pengelolaan pengaduan masyarakat. Dari hasil asistensi, ditemukan beberapa poin krusial yang perlu segera dioptimalkan agar unit penyelenggara pelayanan dapat mencapai predikat kinerja prima pada saat evaluasi lapangan dilaksanakan."
+    },
+    {
+      "id": "hnar-tata-naskah",
+      "title": "Narasi: Harmonisasi Tata Naskah Dinas",
+      "text": "Pertemuan ini membahas secara mendalam mengenai penerapan format tata naskah dinas terbaru pasca berlakunya regulasi kementerian terkait. Diskusi mencakup standarisasi penulisan surat dinas, penggunaan logo instansi, hingga tata cara penomoran naskah yang lebih sistematis. Implementasi ini bertujuan untuk menciptakan keseragaman administrasi di seluruh perangkat daerah guna meminimalisir kesalahan penafsiran dokumen dan memperkuat identitas kelembagaan pemerintah daerah."
+    },
+    {
+      "id": "hnar-studi-tiru-mpp",
+      "title": "Narasi: Studi Tiru Mal Pelayanan Publik",
+      "text": "Kunjungan kerja dilakukan dengan meninjau langsung operasional Mal Pelayanan Publik (MPP) yang telah sukses mengintegrasikan berbagai jenis layanan dalam satu pintu. Pelaksana mempelajari sistem antrean terpadu, mekanisme koordinasi antar instansi vertikal dan daerah, serta manajemen fasilitas pendukung kenyamanan pengguna layanan. Poin-poin keberhasilan dari lokasi studi akan diadaptasi sebagai referensi dalam meningkatkan kualitas tata laksana dan kenyamanan pelayanan publik di daerah asal."
+    },
+    {
+      "id": "hnar-pakaian-dinas",
+      "title": "Narasi: Sosialisasi Keseragaman Atribut",
+      "text": "Dalam rangka meningkatkan kedisiplinan dan citra profesionalisme aparatur, telah dilakukan pengarahan terkait kepatuhan penggunaan pakaian dinas dan atribut lengkap. Materi sosialisasi menekankan pada kesesuaian jadwal penggunaan jenis pakaian dinas dengan regulasi terbaru serta standarisasi pemasangan tanda jabatan dan papan nama. Hal ini diharapkan dapat memperkuat identitas ASN sebagai pelayan masyarakat yang rapi, berwibawa, dan mudah dikenali oleh publik."
+    },
+    {
+      "id": "hnar-digitalisasi-tatalaksana",
+      "title": "Narasi: Percepatan TTE & Digitalisasi",
+      "text": "Fokus kegiatan adalah melakukan sinkronisasi teknis terkait penggunaan Tanda Tangan Elektronik (TTE) untuk mempercepat proses penandatanganan dokumen dinas. Dibahas mengenai aspek keamanan informasi dan legalitas dokumen digital dalam rangka mendukung transformasi tata laksana menuju administrasi nirkertas (paperless). Diskusi menghasilkan rencana aksi untuk melakukan migrasi bertahap dari sistem manual ke aplikasi perkantoran terintegrasi guna meningkatkan efisiensi waktu dan penghematan biaya operasional."
+    }
+  ]
+}

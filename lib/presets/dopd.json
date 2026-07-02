@@ -1,0 +1,34 @@
+{
+  "uraian": [
+    {
+      "id": "uraian-transportasi-darat",
+      "title": "Transportasi Darat (PP)",
+      "text": "Transportasi: [ASAL] - [TUJUAN] (PP)"
+    },
+    {
+      "id": "uraian-transportasi-udara",
+      "title": "Transportasi Udara (PP)",
+      "text": "Udara: [ASAL] - [TUJUAN] (PP)"
+    },
+    {
+      "id": "uraian-penginapan",
+      "title": "Penginapan (Hotel)",
+      "text": "Penginapan (Hotel)"
+    },
+    {
+      "id": "uraian-sewa-kendaraan",
+      "title": "Sewa Kendaraan",
+      "text": "Sewa Kendaraan"
+    },
+    {
+      "id": "uraian-bbm-tol",
+      "title": "BBM & Tol",
+      "text": "BBM & Tol"
+    },
+    {
+      "id": "uraian-uang-harian",
+      "title": "Uang Harian",
+      "text": "Uang Harian"
+    }
+  ]
+}

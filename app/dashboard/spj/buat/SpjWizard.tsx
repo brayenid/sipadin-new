@@ -18,9 +18,13 @@ type SpjWizardProps = {
   pegawais: any[];
   vendors: any[];
   tahunAnggarans: any[];
+  teams?: any[];
+  userRole?: string;
+  userTeamId?: string;
+  userId?: string;
 };
 
-export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWizardProps) {
+export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [], userRole, userTeamId, userId }: SpjWizardProps) {
   const router = useRouter();
   
   // -- STATE: TAB NAV --
@@ -31,10 +35,19 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
   // -- STATE: FORM DATA --
   const [jenisSpj, setJenisSpj] = useState("PERJADIN");
   const [tanggalSpj, setTanggalSpj] = useState("");
-  const [subKegiatanId, setSubKegiatanId] = useState("");
+  const [kodeRekeningId, setKodeRekeningId] = useState("");
   const [nomorBku, setNomorBku] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
   const [perihal, setPerihal] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(userRole !== "SUPER_ADMIN" ? userId : "");
+  
+  // Derived state
+  const selectedTeamId = useMemo(() => {
+    if (userRole !== "SUPER_ADMIN") return userTeamId;
+    if (!selectedUserId) return "";
+    const selectedUser = teams.find(t => t.id === selectedUserId);
+    return selectedUser ? selectedUser.teamId : "";
+  }, [selectedUserId, teams, userRole, userTeamId]);
   
   // Step 2: Spesifik
   const [perjadin, setPerjadin] = useState({
@@ -53,45 +66,79 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
   });
 
   // Step 3: Rincian Harga
-  const [rincian, setRincian] = useState<any[]>([{ id: `temp-${Date.now()}`, uraian: "", hargaSatuan: "0", qty: "1", satuan: "Kali", total: "0" }]);
+  const [rincian, setRincian] = useState<any[]>([{ id: `temp-initial-1`, uraian: "", hargaSatuan: "0", qty: "1", satuan: "Kali", total: "0" }]);
 
   // Step 4: Roster (Pegawai)
   const [roster, setRoster] = useState<any[]>([]);
 
   // -- OPTIONS FORMATTING --
-  const subKegiatanOptions = useMemo(() => {
+  const kodeRekeningOptions = useMemo(() => {
+    if (userRole === "SUPER_ADMIN" && !selectedUserId) return [];
     const options: any[] = [];
     tahunAnggarans.forEach((ta) => {
       ta.kegiatan.forEach((k: any) => {
         k.subKegiatan.forEach((sk: any) => {
-          // Format sisa saldo agar user tahu batasan pagu
-          const sisaFmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(sk.sisaSaldo));
-          options.push({
-            value: sk.id,
-            label: `[${ta.tahun}] ${sk.judulSub} (Sisa: ${sisaFmt})`,
-            sisaSaldo: sk.sisaSaldo,
+          // If super admin, verify the subKegiatan is accessible to the selected user (Tim Kerja account)
+          if (userRole === "SUPER_ADMIN") {
+            const hasUserAccess = sk.users?.some((u: any) => u.id === selectedUserId);
+            if (!hasUserAccess) return;
+          }
+          sk.rekening?.forEach((rek: any) => {
+            const sisaFmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(rek.sisaSaldo));
+            options.push({
+              value: rek.id,
+              label: `[${ta.tahun}] ${sk.judulSub} - ${rek.judulRekening} (Sisa: ${sisaFmt})`,
+              content: (
+                <div className="flex flex-col py-1 gap-1 border-b border-slate-50 last:border-0 w-full overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                      TA {ta.tahun}
+                    </span>
+                    <span className="text-xs font-medium text-slate-500 truncate" title={sk.judulSub}>
+                      {sk.judulSub}
+                    </span>
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 whitespace-normal leading-snug">
+                    {rek.judulRekening}
+                  </div>
+                  <div className="text-xs font-bold text-emerald-600 mt-0.5">
+                    Sisa Pagu: {sisaFmt}
+                  </div>
+                </div>
+              ),
+              sisaSaldo: rek.sisaSaldo,
+              tahun: ta.tahun,
+            });
           });
         });
       });
     });
+
+    const currentYear = new Date().getFullYear().toString();
+    options.sort((a, b) => {
+      if (a.tahun === currentYear && b.tahun !== currentYear) return -1;
+      if (b.tahun === currentYear && a.tahun !== currentYear) return 1;
+      return b.tahun.localeCompare(a.tahun);
+    });
+
     return options;
-  }, [tahunAnggarans]);
+  }, [tahunAnggarans, selectedUserId, userRole]);
 
   const pegawaiOptions = useMemo(() => {
-    return pegawais.map(p => ({ value: p.id, label: p.nama }));
-  }, [pegawais]);
+    return pegawais.filter(p => p.teamId === selectedTeamId).map(p => ({ value: p.id, label: p.nama }));
+  }, [pegawais, selectedTeamId]);
 
   const vendorOptions = useMemo(() => {
-    return vendors.map(v => ({ value: v.id, label: v.namaVendor }));
-  }, [vendors]);
+    return vendors.filter(v => v.teamId === selectedTeamId).map(v => ({ value: v.id, label: v.namaVendor }));
+  }, [vendors, selectedTeamId]);
 
   // -- COMPUTATIONS --
   const totalPengeluaran = jenisSpj === "PERJADIN" 
     ? BigInt(0) 
     : rincian.reduce((acc, curr) => acc + (BigInt(curr.total || 0)), BigInt(0));
     
-  const selectedSubKegiatan = subKegiatanOptions.find(o => o.value === subKegiatanId);
-  const isValidSaldo = selectedSubKegiatan ? BigInt(selectedSubKegiatan.sisaSaldo) >= totalPengeluaran : true;
+  const selectedRekening = kodeRekeningOptions.find(o => o.value === kodeRekeningId);
+  const isValidSaldo = selectedRekening ? BigInt(selectedRekening.sisaSaldo) >= totalPengeluaran : true;
 
   // -- HANDLERS --
   const addRincian = () => {
@@ -143,10 +190,10 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
     });
 
     try {
-      await createSpjTransaction({
+      const result = await createSpjTransaction({
         jenisSpj,
         tanggalSpj,
-        subKegiatanId,
+        kodeRekeningId,
         nomorBku,
         driveUrl,
         perihal,
@@ -154,9 +201,14 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
         pengeluaranDetails: rincian,
         roster: processedRoster,
         spesifik: jenisSpj === "PERJADIN" ? perjadin : (jenisSpj === "MAKAN_MINUM" ? mamin : null),
+        teamId: selectedTeamId,
+        userId: selectedUserId,
       });
 
-      window.location.href = "/dashboard/spj";
+      // Tunda sedikit agar React bisa menyelesaikan state internal sebelum routing
+      setTimeout(() => {
+        router.push(`/dashboard/spj/${result.id}`);
+      }, 300);
     } catch (err: any) {
       setErrorMsg(err.message || "Terjadi kesalahan saat memproses SPJ.");
       setLoading(false);
@@ -165,28 +217,55 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
 
   return (
     <Card className="w-full">
-      <CardHeader className="border-b bg-slate-50/50">
+      <CardHeader className="border-b">
         <CardTitle>Form Wizard SPJ</CardTitle>
       </CardHeader>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* TAB LIST DISABLED POINTER EVENTS SO USER MUST USE BUTTONS */}
-        <div className="px-6 pt-4">
-          <TabsList className={`grid w-full ${jenisSpj === "PERJADIN" ? "grid-cols-3" : "grid-cols-4"} pointer-events-none`}>
+        <div className="px-6 pt-6">
+          <TabsList className="pointer-events-none mb-6">
             <TabsTrigger value="step-1">1. Info Dasar</TabsTrigger>
             <TabsTrigger value="step-2">2. Detail SPJ</TabsTrigger>
-            {jenisSpj !== "PERJADIN" && <TabsTrigger value="step-3">3. Rincian Biaya</TabsTrigger>}
-            <TabsTrigger value="step-4">{jenisSpj === "PERJADIN" ? "3. Personil & Final" : "4. Personil & Final"}</TabsTrigger>
+            {jenisSpj !== "PERJADIN" && (
+              <TabsTrigger value="step-3">
+                {jenisSpj === "MAKAN_MINUM" ? "3. Rincian Biaya & Final" : "3. Rincian Biaya"}
+              </TabsTrigger>
+            )}
+            {jenisSpj !== "MAKAN_MINUM" && (
+              <TabsTrigger value="step-4">
+                {jenisSpj === "PERJADIN" ? "3. Personil & Final" : "4. Personil & Final"}
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
         {/* STEP 1: INFO DASAR */}
         <TabsContent value="step-1" className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {userRole === "SUPER_ADMIN" && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Pilih Tim Kerja (Khusus Super Admin) <span className="text-red-500">*</span></Label>
+                <select
+                  className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors"
+                  value={selectedUserId || ""}
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value);
+                    setKodeRekeningId(""); // reset rekening on team change
+                  }}
+                >
+                  <option value="" disabled>Pilih Tim Kerja...</option>
+                  {teams?.map((t: any) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-amber-600">Anda harus memilih Tim Kerja terlebih dahulu sebelum memilih Sumber Dana.</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Jenis SPJ</Label>
               <select 
-                className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors disabled:opacity-50"
                 value={jenisSpj}
                 onChange={(e) => setJenisSpj(e.target.value)}
               >
@@ -198,12 +277,12 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             </div>
             
             <div className="space-y-2">
-              <Label>Sumber Dana (Sub-Kegiatan) <span className="text-red-500">*</span></Label>
+              <Label>Sumber Dana (Kode Rekening) <span className="text-red-500">*</span></Label>
               <Combobox 
-                options={subKegiatanOptions} 
-                value={subKegiatanId} 
-                onChange={setSubKegiatanId} 
-                placeholder="Pilih Sub-Kegiatan..."
+                options={kodeRekeningOptions} 
+                value={kodeRekeningId} 
+                onChange={setKodeRekeningId} 
+                placeholder="Pilih Kode Rekening..."
               />
             </div>
 
@@ -218,20 +297,14 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label>Perihal / Maksud Kegiatan <span className="text-red-500">*</span></Label>
-              <Input placeholder="Contoh: Perjalanan Dinas dalam rangka Koordinasi Anggaran ke Provinsi..." value={perihal} onChange={(e) => setPerihal(e.target.value)} className="font-semibold" />
+              <Label>Perihal Kegiatan <span className="text-red-500">*</span></Label>
+              <Input placeholder="Contoh: Perjalanan Dinas dalam rangka Koordinasi Anggaran ke Provinsi..." value={perihal} onChange={(e) => setPerihal(e.target.value)} />
               <p className="text-xs text-slate-500">Perihal ini akan digunakan secara otomatis pada dokumen Surat Tugas, Telaahan, dll.</p>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label>Tautan Dokumen Fisik (Google Drive)</Label>
-              <Input placeholder="https://drive.google.com/..." value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} />
-              <p className="text-xs text-slate-500">Tempelkan tautan folder / file Google Drive yang berisi bukti kuitansi (hanya tautan saja).</p>
             </div>
           </div>
           
           <div className="flex justify-end pt-4">
-            <Button onClick={() => setActiveTab("step-2")} disabled={!subKegiatanId || !tanggalSpj || !perihal}>
+            <Button onClick={() => setActiveTab("step-2")} disabled={!kodeRekeningId || !tanggalSpj || !perihal}>
               Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -258,11 +331,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
                 <Label>Tanggal Kembali</Label>
                 <Input type="date" value={perjadin.tglKembali} onChange={(e) => setPerjadin({...perjadin, tglKembali: e.target.value})} />
               </div>
-              <div className="space-y-2">
-                <Label>Lama Perjalanan (Hari)</Label>
-                <Input type="number" value={perjadin.lamaPerjalanan} onChange={(e) => setPerjadin({...perjadin, lamaPerjalanan: e.target.value})} />
-              </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label>Alat Angkut</Label>
                 <Input value={perjadin.alatAngkut} onChange={(e) => setPerjadin({...perjadin, alatAngkut: e.target.value})} />
               </div>
@@ -270,7 +339,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
           )}
 
           {jenisSpj === "MAKAN_MINUM" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-slate-50 border border-slate-200 p-8 rounded-xl shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-slate-50 border border-slate-200 p-8 rounded-xl">
               <div className="space-y-3">
                 <Label className="text-base font-semibold text-slate-900">Pilih Vendor / Katering</Label>
                 <Combobox 
@@ -303,7 +372,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             <Button 
               onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-4" : "step-3")}
               disabled={
-                (jenisSpj === "PERJADIN" && (!perjadin.tempatBerangkat || !perjadin.tempatTujuan || !perjadin.tglBerangkat || !perjadin.tglKembali || !perjadin.lamaPerjalanan)) ||
+                (jenisSpj === "PERJADIN" && (!perjadin.tempatBerangkat || !perjadin.tempatTujuan || !perjadin.tglBerangkat || !perjadin.tglKembali)) ||
                 (jenisSpj === "MAKAN_MINUM" && (!mamin.vendorId || !mamin.jumlahPeserta))
               }
             >
@@ -375,13 +444,25 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             )}
           </div>
 
+          {errorMsg && jenisSpj === "MAKAN_MINUM" && (
+            <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md text-sm border border-red-200">
+              {errorMsg}
+            </div>
+          )}
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={() => setActiveTab("step-2")}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
             </Button>
-            <Button onClick={() => setActiveTab("step-4")}>
-              Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            {jenisSpj === "MAKAN_MINUM" ? (
+              <Button onClick={handleSubmit} disabled={loading || !isValidSaldo || !kodeRekeningId || !tanggalSpj} className="bg-primary text-white">
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} 
+                Simpan & Rekam SPJ
+              </Button>
+            ) : (
+              <Button onClick={() => setActiveTab("step-4")}>
+                Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
           </div>
         </TabsContent>
 
@@ -443,7 +524,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans }: SpjWiza
             <Button variant="outline" onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-2" : "step-3")} disabled={loading}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
             </Button>
-            <Button onClick={handleSubmit} disabled={loading || !isValidSaldo || !subKegiatanId || !tanggalSpj} className="bg-primary text-white">
+            <Button onClick={handleSubmit} disabled={loading || !isValidSaldo || !kodeRekeningId || !tanggalSpj} className="bg-primary text-white">
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} 
               Simpan & Rekam SPJ
             </Button>

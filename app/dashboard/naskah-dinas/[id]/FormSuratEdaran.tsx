@@ -1,0 +1,343 @@
+"use client"
+
+import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2, Save, FileText, Trash2, Plus } from "lucide-react"
+import { updateNaskahDinas } from "@/app/actions/naskah-dinas"
+import { toast } from "sonner"
+import NaskahDinasPdfPreview, { PdfLayoutOptions } from "./NaskahDinasPdfPreview"
+import SuratEdaranPdf from "@/pdf/templates/SuratEdaranPdf"
+import { CreatableCombobox } from "@/components/ui/creatable-combobox"
+import { getDefaultNomorSuffix } from "@/lib/utils"
+import { MarkdownLiteEditor } from "@/components/ui/markdown-lite-editor"
+
+function DynamicStringList({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder?: string }) {
+  const handleAdd = () => onChange([...items, ""])
+  const handleRemove = (index: number) => onChange(items.filter((_, i) => i !== index))
+  const handleChange = (index: number, val: string) => {
+    const newItems = [...items]
+    newItems[index] = val
+    onChange(newItems)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {items.map((item, index) => (
+        <div key={index} className="flex gap-2 items-center">
+          <div className="text-sm text-slate-400 w-6 text-right shrink-0">{index + 1}.</div>
+          <Input 
+            value={item} 
+            onChange={(e) => handleChange(index, e.target.value)} 
+            placeholder={placeholder} 
+            className="flex-1"
+          />
+          {items.length > 1 && (
+            <Button variant="ghost" size="icon" type="button" onClick={() => handleRemove(index)} className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="mt-2">
+        <Plus className="w-4 h-4 mr-1" /> Tambah Baris
+      </Button>
+    </div>
+  )
+}
+
+function DynamicParafList({ label, items, pegawaiList, onChange }: { label: string, items: string[], pegawaiList: any[], onChange: (items: string[]) => void }) {
+  const pegawaiOptions = pegawaiList.map((p) => ({ value: p.id, label: p.nama }))
+  const handleAdd = () => { if (items.length < 4) onChange([...items, ""]) }
+  const handleRemove = (index: number) => onChange(items.filter((_, i) => i !== index))
+  const handleChange = (index: number, val: string) => {
+    const newItems = [...items]
+    newItems[index] = val
+    onChange(newItems)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {items.map((item, index) => (
+        <div key={index} className="flex gap-2 items-center">
+          <div className="text-sm text-slate-400 w-6 text-right shrink-0">{index + 1}.</div>
+          <div className="flex-1">
+            <CreatableCombobox 
+              options={pegawaiOptions} 
+              value={item} 
+              onChange={(val) => handleChange(index, val)} 
+              placeholder="Pilih Pejabat..."
+              className="w-full bg-white"
+            />
+          </div>
+          {items.length > 1 && (
+            <Button variant="ghost" size="icon" type="button" onClick={() => handleRemove(index)} className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      {items.length < 4 && (
+        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="mt-2">
+          <Plus className="w-4 h-4 mr-1" /> Tambah Paraf
+        </Button>
+      )}
+      <p className="text-xs text-slate-500">Maksimal 4 pejabat pemaraf.</p>
+    </div>
+  )
+}
+
+export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, pegawaiList: any[] }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const meta = typeof naskah.data === 'object' && naskah.data !== null ? naskah.data : {}
+
+  const [form, setForm] = useState({
+    nomorPrefix: meta.nomorPrefix ?? "800.1.11.1/",
+    nomorTengah: meta.nomorTengah ?? "",
+    nomorSuffix: meta.nomorSuffix ?? getDefaultNomorSuffix(),
+    sifat: meta.sifat ?? "Penting",
+    lampiran: meta.lampiran ?? "-",
+    hal: meta.hal ?? naskah.perihal ?? "",
+    tanggal: meta.tanggal || naskah.tanggal.toISOString().split("T")[0],
+    penerimaTipe: meta.penerimaTipe ?? "SEMUA", // SEMUA, TERLAMPIR, LANGSUNG
+    penerimaTeksSemua: meta.penerimaTeksSemua ?? "Seluruh Kepala Perangkat Daerah",
+    penerimaDaftar: Array.isArray(meta.penerimaDaftar) && meta.penerimaDaftar.length > 0 ? meta.penerimaDaftar : [""],
+    isiSurat: meta.isiSurat ?? "",
+    tembusan: Array.isArray(meta.tembusan) && meta.tembusan.length > 0 ? meta.tembusan : [""],
+    penandatanganId: meta.penandatanganId || "",
+    parafTampilkan: meta.parafTampilkan ?? false,
+    parafDaftar: Array.isArray(meta.parafDaftar) && meta.parafDaftar.length > 0 ? meta.parafDaftar : [""],
+  })
+
+  const handleChange = (e: any) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSave = async () => {
+    setLoading(true)
+    try {
+      await updateNaskahDinas(naskah.id, {
+        nomorSurat: `${form.nomorPrefix}${form.nomorTengah}${form.nomorSuffix}`,
+        tanggal: form.tanggal,
+        perihal: form.hal,
+        data: form
+      })
+      toast.success("Perubahan Surat Edaran Sekda berhasil disimpan")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menyimpan perubahan")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signer = pegawaiList.find(p => p.id === form.penandatanganId)
+  const parafPejabatList = form.parafDaftar.map((id: string) => pegawaiList.find(p => p.id === id)).filter(Boolean)
+  const pegawaiOptions = pegawaiList.map((p) => ({ value: p.id, label: p.nama }))
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle>Atribut Surat</CardTitle>
+          <CardDescription>Atribut kepala surat (Nomor, Tanggal, Sifat, Lampiran, Hal).</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>Tanggal Surat</Label>
+            <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
+          </div>
+          <div className="space-y-2">
+            <Label>Nomor Surat Edaran Sekda</Label>
+            <div className="flex items-center">
+              <Input 
+                name="nomorPrefix" 
+                value={form.nomorPrefix} 
+                onChange={handleChange} 
+                className="w-1/3 rounded-r-none border-r-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center" 
+              />
+              <Input 
+                name="nomorTengah" 
+                value={form.nomorTengah} 
+                onChange={handleChange} 
+                className="rounded-none font-bold text-center flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-400"
+                placeholder="Contoh: 123"
+              />
+              <Input 
+                name="nomorSuffix" 
+                value={form.nomorSuffix} 
+                onChange={handleChange} 
+                className="w-1/3 rounded-l-none border-l-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-xs" 
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Sifat</Label>
+            <Input name="sifat" value={form.sifat} onChange={handleChange} placeholder="Contoh: Penting" />
+          </div>
+          <div className="space-y-2">
+            <Label>Lampiran</Label>
+            <Input name="lampiran" value={form.lampiran} onChange={handleChange} placeholder="Contoh: 1 (satu) Berkas" />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Hal</Label>
+            <Input name="hal" value={form.hal} onChange={handleChange} placeholder="Tentang edaran..." />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle>Tujuan (Yth.)</CardTitle>
+          <CardDescription>Pilih siapa saja yang dituju dalam surat edaran ini.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <RadioGroup 
+            value={form.penerimaTipe} 
+            onValueChange={(val) => setForm({ ...form, penerimaTipe: val })}
+            className="flex flex-col space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="SEMUA" id="r1" />
+              <Label htmlFor="r1" className="cursor-pointer">Semua (Teks Statis)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="TERLAMPIR" id="r2" />
+              <Label htmlFor="r2" className="cursor-pointer">Terlampir (Halaman Daftar Undangan Khusus)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="LANGSUNG" id="r3" />
+              <Label htmlFor="r3" className="cursor-pointer">Langsung (List Poin di bawah Yth)</Label>
+            </div>
+          </RadioGroup>
+
+          {form.penerimaTipe === "SEMUA" && (
+            <div className="space-y-2 mt-4">
+              <Label>Teks Tujuan</Label>
+              <Input 
+                name="penerimaTeksSemua" 
+                value={form.penerimaTeksSemua} 
+                onChange={handleChange} 
+                placeholder="Contoh: Seluruh Kepala Perangkat Daerah" 
+              />
+            </div>
+          )}
+
+          {(form.penerimaTipe === "TERLAMPIR" || form.penerimaTipe === "LANGSUNG") && (
+            <div className="mt-4">
+              <DynamicStringList 
+                label="Daftar Tujuan/Instansi" 
+                items={form.penerimaDaftar} 
+                onChange={(items) => setForm({ ...form, penerimaDaftar: items })} 
+                placeholder="Contoh: Dinas Pemuda dan Olahraga"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle>Isi Surat</CardTitle>
+          <CardDescription>
+            Tulis isi surat Anda menggunakan editor visual di bawah ini. Anda dapat menambah, menghapus, atau merubah jenis setiap blok paragraf.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <MarkdownLiteEditor 
+            value={form.isiSurat}
+            onChange={(val) => setForm(prev => ({ ...prev, isiSurat: val }))}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle>Tembusan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DynamicStringList 
+            label="Daftar Tembusan (Opsional)" 
+            items={form.tembusan} 
+            onChange={(items) => setForm({ ...form, tembusan: items })} 
+            placeholder="Contoh: Bupati Kutai Barat"
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle>Penandatangan & Paraf</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Pejabat yang Menandatangani</Label>
+            <CreatableCombobox 
+              options={pegawaiOptions} 
+              value={form.penandatanganId} 
+              onChange={(val) => setForm({ ...form, penandatanganId: val })} 
+              placeholder="Cari pejabat penandatangan..."
+              className="w-full bg-white"
+            />
+          </div>
+
+          <div className="pt-4 border-t space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="parafTampilkan" 
+                checked={form.parafTampilkan} 
+                onCheckedChange={(checked) => setForm({ ...form, parafTampilkan: checked === true })} 
+              />
+              <Label htmlFor="parafTampilkan" className="cursor-pointer font-semibold">Tampilkan Kotak Paraf Berjenjang</Label>
+            </div>
+
+            {form.parafTampilkan && (
+              <DynamicParafList 
+                label="Daftar Pejabat Pemaraf" 
+                items={form.parafDaftar} 
+                pegawaiList={pegawaiList}
+                onChange={(items) => setForm({ ...form, parafDaftar: items })} 
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-start gap-4 items-center pt-4 pb-12">
+        <Button variant="outline" onClick={() => setShowPreview(true)}>
+          <FileText className="w-4 h-4 mr-2" /> Pratinjau PDF
+        </Button>
+        <Button onClick={handleSave} disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Simpan Perubahan
+        </Button>
+      </div>
+
+      <NaskahDinasPdfPreview
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        title="Pratinjau Surat Edaran Sekda"
+        renderDocument={(layout: PdfLayoutOptions) => (
+          <SuratEdaranPdf 
+            data={form} 
+            signer={signer}
+            parafList={parafPejabatList}
+            layout={layout}
+          />
+        )}
+      />
+    </div>
+  )
+}

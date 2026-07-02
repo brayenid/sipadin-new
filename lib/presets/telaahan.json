@@ -1,0 +1,239 @@
+{
+  "dasar": [
+    {
+      "id": "dasar-umum-1",
+      "title": "Dasar Umum: Mutu Pelayanan",
+      "text": "Guna memelihara standar mutu pelayanan publik secara berkelanjutan, diperlukan langkah konkret berupa koordinasi dan konsultasi intensif untuk memastikan kesesuaian standar operasional prosedur."
+    },
+    {
+      "id": "dasar-umum-2",
+      "title": "Dasar Umum: Undangan Kegiatan",
+      "text": "Menindaklanjuti surat undangan resmi terkait agenda strategis, kehadiran wakil dari perangkat daerah sangat diperlukan sebagai wujud partisipasi aktif dan pemenuhan kewajiban administratif."
+    },
+    {
+      "id": "dasar-sp-prov-1",
+      "title": "Konsultasi: SP & SOP (Biro Org Prov)",
+      "text": "Dalam rangka percepatan penyusunan dan penetapan Standar Pelayanan (SP) serta SOP Perangkat Daerah, diperlukan asistensi dan verifikasi teknis ke Biro Organisasi Provinsi guna memastikan dokumen yang disusun telah memenuhi standar regulasi."
+    },
+    {
+      "id": "dasar-menpan-1",
+      "title": "Konsultasi: Kebijakan Yanlik (KemenPANRB)",
+      "text": "Terdapat isu strategis terkait penerapan kebijakan pelayanan publik dan RB Tematik yang memerlukan arahan langsung dari Kedeputian terkait di Kementerian PANRB agar implementasi di daerah selaras dengan kebijakan nasional."
+    },
+    {
+      "id": "dasar-skm-1",
+      "title": "Konsultasi: SKM & PEKPPP",
+      "text": "Guna meningkatkan indeks hasil Survei Kepuasan Masyarakat (SKM) dan nilai evaluasi PEKPPP, dipandang perlu melakukan konsultasi teknis terkait metodologi survei dan pemenuhan bukti dukung pada aplikasi evaluasi."
+    },
+    {
+      "id": "dasar-tnd-1",
+      "title": "Konsultasi: TND & Pakaian Dinas",
+      "text": "Sehubungan dengan perubahan regulasi pusat mengenai Tata Naskah Dinas (TND) dan Pakaian Dinas ASN, diperlukan harmonisasi rancangan Peraturan Bupati agar selaras dengan Permendagri terbaru dan tertib administrasi."
+    },
+    {
+      "id": "dasar-monev-lokal-1",
+      "title": "Monev: Kinerja Kecamatan/Kampung",
+      "text": "Dalam rangka pembinaan kewilayahan, diperlukan monitoring dan evaluasi (Monev) langsung terhadap kinerja pelayanan umum dan tata kelola administrasi pemerintahan di tingkat Kecamatan dan Kampung."
+    },
+    {
+      "id": "dasar-monev-lokal-2",
+      "title": "Monev: Unit Pelayanan (Puskesmas)",
+      "text": "Untuk memastikan standar pelayanan minimal (SPM) bidang kesehatan berjalan optimal, diperlukan pemantauan langsung terhadap kepatuhan maklumat pelayanan dan alur layanan di UPT Puskesmas."
+    },
+    {
+      "id": "dasar-sosialisasi-1",
+      "title": "Sosialisasi: TND/SOP ke PD",
+      "text": "Agar tercipta keseragaman pemahaman dan implementasi regulasi terbaru (TND/SOP/SP), dipandang perlu melaksanakan sosialisasi dan pendampingan teknis secara langsung (jemput bola) ke Perangkat Daerah."
+    },
+    {
+      "id": "dasar-bimtek-1",
+      "title": "Peningkatan Kapasitas (Bimtek)",
+      "text": "Perlunya peningkatan kompetensi aparatur sipil negara dalam memahami regulasi terbaru dan teknis operasional sistem, sehingga dipandang perlu untuk menugaskan pegawai mengikuti pendidikan/pelatihan/bimbingan teknis terkait."
+    },
+    {
+      "id": "dasar-pekppp-opp-1",
+      "title": "Sosialisasi PEKPPP ke OPP",
+      "text": "Dalam rangka persiapan pelaksanaan Pemantauan dan Evaluasi Kinerja Penyelenggara Pelayanan Publik (PEKPPP) tahun berjalan, dipandang perlu untuk melakukan sosialisasi dan pendampingan pengisian instrumen evaluasi secara langsung kepada Organisasi Penyelenggara Pelayanan (OPP) agar pemahaman indikator penilaian seragam."
+    },
+    {
+      "id": "dasar-pekppp-opp-2",
+      "title": "Pendampingan Pra-Evaluasi PEKPPP",
+      "text": "Menindaklanjuti pedoman evaluasi pelayanan publik terbaru, diperlukan langkah pendampingan intensif (coaching clinic) ke unit lokus evaluasi guna memastikan kelengkapan bukti dukung pada aspek Kebijakan Pelayanan, Profesionalisme SDM, Sarpras, SIPP, Konsultasi Pengaduan, dan Inovasi."
+    }
+  ],
+  "analisis": [
+    {
+      "id": "analisis-anggaran-1",
+      "title": "Analisis: Ketersediaan Anggaran",
+      "text": "Ditinjau dari aspek pembiayaan, alokasi dana untuk pelaksanaan kegiatan ini telah tersedia secara memadai dalam Dokumen Pelaksanaan Anggaran (DPA) SKPD pada Tahun Anggaran berjalan dan kode rekening yang relevan."
+    },
+    {
+      "id": "analisis-urgensi-validasi",
+      "title": "Analisis: Urgensi Validasi Dokumen",
+      "text": "Dokumen rancangan (SP/SOP/Perbup) yang telah disusun memerlukan validasi pakar/instansi pembina untuk meminimalisir kesalahan substansi hukum. Konsultasi tatap muka krusial untuk pembahasan pasal per pasal yang sulit dilakukan daring."
+    },
+    {
+      "id": "analisis-lapangan-1",
+      "title": "Analisis: Kebutuhan Cek Lapangan",
+      "text": "Laporan tertulis dari unit kerja (Kecamatan/Puskesmas) perlu diverifikasi dengan kondisi riil di lapangan (uji petik). Kehadiran tim monitoring diperlukan untuk mengidentifikasi hambatan pelayanan yang sebenarnya terjadi."
+    },
+    {
+      "id": "analisis-pembinaan-1",
+      "title": "Analisis: Efektivitas Pembinaan",
+      "text": "Sosialisasi/pembinaan langsung ke lokasi (on-site) dinilai lebih efektif dibandingkan metode daring, karena tim teknis dapat langsung melakukan simulasi dan koreksi dokumen di tempat."
+    },
+    {
+      "id": "analisis-kinerja-1",
+      "title": "Analisis: Dukungan Target IKU",
+      "text": "Kegiatan ini mendukung langsung pencapaian Indikator Kinerja Utama (IKU) Perangkat Daerah, khususnya pada sasaran peningkatan kualitas pelayanan publik dan akuntabilitas kinerja instansi pemerintah."
+    },
+    {
+      "id": "analisis-pekppp-opp-1",
+      "title": "Analisis: Efektivitas Bimbingan PEKPPP",
+      "text": "Sosialisasi langsung ke OPP dinilai strategis untuk membedah rincian indikator penilaian yang kompleks. Metode pendampingan on-site memungkinkan Tim Evaluator untuk melakukan simulasi penilaian mandiri dan identifikasi kekurangan bukti dukung secara *real-time* di lokasi layanan."
+    },
+    {
+      "id": "analisis-pekppp-opp-2",
+      "title": "Analisis: Target Kenaikan IPP",
+      "text": "Kesiapan OPP sangat menentukan capaian Indeks Pelayanan Publik (IPP) Kabupaten. Intervensi berupa sosialisasi dan pra-evaluasi ini akan meminimalisir gap antara kondisi riil lapangan dengan standar yang dipersyaratkan oleh KemenPANRB."
+    }
+  ],
+  "kesimpulan": [
+    {
+      "id": "kesimpulan-1",
+      "title": "Kesimpulan: Persetujuan Administratif",
+      "text": "Berdasarkan telaahan terhadap dasar hukum, urgensi, dan ketersediaan anggaran, maka rencana perjalanan dinas ini telah memenuhi seluruh persyaratan administratif dan substantif untuk dilaksanakan."
+    },
+    {
+      "id": "kesimpulan-2",
+      "title": "Kesimpulan: Manfaat Perbaikan",
+      "text": "Hasil dari kegiatan ini akan menjadi bahan masukan strategis dalam perbaikan tata kelola organisasi/pelayanan, sehingga permohonan penugasan ini layak dan patut untuk disetujui."
+    },
+    {
+      "id": "kesimpulan-3",
+      "title": "Kesimpulan: Pembinaan Wilayah",
+      "text": "Kegiatan monitoring/sosialisasi ini mutlak diperlukan sebagai fungsi pengawasan dan pembinaan perangkat daerah terhadap unit kerja di bawah koordinasinya."
+    },
+    {
+      "id": "kesimpulan-pekppp-opp-1",
+      "title": "Kesimpulan: Kesiapan Evaluasi",
+      "text": "Kegiatan sosialisasi ini merupakan langkah preventif dan kuratif yang krusial untuk memastikan kesiapan fisik maupun administratif OPP dalam menghadapi penilaian nasional, sehingga target kategori pelayanan prima dapat diupayakan."
+    }
+  ],
+  "saran": [
+    {
+      "id": "saran-1",
+      "title": "Saran: Penerbitan ST & SPD 1",
+      "text": "Sehubungan dengan kegiatan dimaksud, maka kami mengusulkan pegawai yang akan mengikuti kegiatan tersebut:"
+    },
+    {
+      "id": "saran-2",
+      "title": "Saran: Penerbitan ST & SPD 2",
+      "text": "Sehubungan dengan hal tersebut, mohon perkenan Bapak/Ibu sekiranya dapat menyetujui penugasan serta menandatangani Surat Tugas dan Surat Perintah Perjalanan Dinas (SPD) bagi pegawai yang ditunjuk."
+    },
+    {
+      "id": "saran-3",
+      "title": "Saran: Pelaporan Hasil",
+      "text": "Sekiranya Bapak/Ibu sependapat, usul penugasan ini dapat disetujui dengan arahan agar pelaksana segera menyampaikan laporan hasil kegiatan dan rencana tindak lanjut (RTL) sekembalinya dari penugasan."
+    },
+    {
+      "id": "saran-4",
+      "title": "Saran: Pelaporan Temuan (Monev)",
+      "text": "Khusus bagi kegiatan pemantauan, diusulkan agar tim yang ditugaskan dapat segera melaporkan kondisi faktual di lapangan sebagai bahan pertimbangan Bapak/Ibu dalam pengambilan kebijakan strategis selanjutnya."
+    },
+    {
+      "id": "saran-pekppp-opp-1",
+      "title": "Saran: Pendampingan Teknis PEKPPP",
+      "text": "Guna optimalisasi persiapan evaluasi, mohon perkenan Bapak/Ibu untuk menugaskan Tim Evaluator Internal agar dapat memberikan bimbingan teknis kepada OPP dalam penyusunan Lembar Kerja Evaluasi Mandiri."
+    },
+    {
+      "id": "saran-umum-lanjutan",
+      "title": "Saran: Arahan Pimpinan",
+      "text": "Demikian saran tindak ini disampaikan, kiranya Bapak/Ibu berkenan memberikan persetujuan serta arahan lebih lanjut terkait pelaksanaan kegiatan dimaksud."
+    }
+  ],
+  "praAnggapan": [
+    {
+      "id": "pra-anggaran-1",
+      "title": "Pra-anggapan: Dukungan Anggaran",
+      "text": "Pelaksanaan kegiatan ini diyakini dapat berjalan optimal dengan dukungan ketersediaan anggaran yang telah teralokasi pada DPA Tahun Anggaran berjalan."
+    },
+    {
+      "id": "pra-efektivitas-1",
+      "title": "Pra-anggapan: Efektivitas Metode",
+      "text": "Koordinasi secara langsung (tatap muka) dipandang sebagai pendekatan yang paling efektif untuk pendalaman materi dan penyelesaian kendala teknis yang sulit terakomodir melalui media daring."
+    },
+    {
+      "id": "pra-dampak-1",
+      "title": "Pra-anggapan: Kontribusi Kinerja",
+      "text": "Realisasi kegiatan ini diproyeksikan akan memberikan kontribusi positif yang signifikan terhadap pencapaian target kinerja dan perbaikan kualitas pelayanan publik di daerah."
+    },
+    {
+      "id": "pra-resiko-1",
+      "title": "Pra-anggapan: Mitigasi Risiko",
+      "text": "Langkah konsultasi ini merupakan upaya preventif yang krusial untuk memitigasi potensi kesalahan administrasi maupun ketidaksesuaian regulasi di kemudian hari."
+    },
+    {
+      "id": "pra-kompetensi-1",
+      "title": "Pra-anggapan: Kapasitas Personel",
+      "text": "Personel yang ditugaskan dinilai memiliki kapasitas yang memadai untuk menyerap materi dan diharapkan mampu mendiseminasikan hasil kegiatan kepada rekan kerja di lingkungan internal."
+    },
+    {
+      "id": "pra-tindak-lanjut-1",
+      "title": "Pra-anggapan: Keberlanjutan Program",
+      "text": "Hasil dari perjalanan dinas ini diharapkan menjadi landasan strategis bagi penyusunan kebijakan atau langkah teknis selanjutnya yang lebih terarah."
+    }
+  ],
+  "fakta": [
+    {
+      "id": "fakta-umum-1",
+      "title": "Fakta: Undangan Resmi",
+      "text": "Telah diterima surat undangan resmi dari penyelenggara kegiatan yang mewajibkan konfirmasi kehadiran peserta dan mensyaratkan kehadiran pejabat teknis terkait."
+    },
+    {
+      "id": "fakta-sp-1",
+      "title": "Fakta: UU 25/2009 (Standar Pelayanan)",
+      "text": "Amanat Undang-Undang Nomor 25 Tahun 2009 tentang Pelayanan Publik dan Permenpan RB Nomor 15 Tahun 2014 mewajibkan setiap penyelenggara pelayanan menyusun, menetapkan, dan menerapkan Standar Pelayanan (SP)."
+    },
+    {
+      "id": "fakta-skm-1",
+      "title": "Fakta: Permenpan 14/2017 (SKM)",
+      "text": "Sesuai Peraturan Menteri PANRB Nomor 14 Tahun 2017, Unit Penyelenggara Pelayanan Publik wajib melakukan Survei Kepuasan Masyarakat (SKM) secara berkala minimal 1 kali setahun dan mempublikasikan hasilnya."
+    },
+    {
+      "id": "fakta-pekppp-1",
+      "title": "Fakta: Permenpan 29/2022 (PEKPPP)",
+      "text": "Berdasarkan Permenpan RB Nomor 29 Tahun 2022 tentang Pemantauan dan Evaluasi Kinerja Penyelenggara Pelayanan Publik (PEKPPP), diperlukan pemenuhan bukti dukung pada 6 aspek penilaian untuk meningkatkan Indeks Pelayanan Publik."
+    },
+    {
+      "id": "fakta-rb-1",
+      "title": "Fakta: Permenpan 3/2023 (RB Tematik)",
+      "text": "Tuntutan implementasi Reformasi Birokrasi (RB) Tematik sesuai Permenpan RB Nomor 3 Tahun 2023 mengharuskan Pemerintah Daerah fokus pada penyelesaian masalah nyata (kemiskinan, investasi, digitalisasi) yang memerlukan penyesuaian proses bisnis."
+    },
+    {
+      "id": "fakta-tnd-1",
+      "title": "Fakta: Permendagri 1/2023 (Tata Naskah)",
+      "text": "Telah diterbitkannya Permendagri Nomor 1 Tahun 2023 tentang Tata Naskah Dinas di Lingkungan Pemda yang mencabut regulasi sebelumnya, sehingga format naskah dinas daerah saat ini belum sepenuhnya sesuai dan perlu penyesuaian segera."
+    },
+    {
+      "id": "fakta-pakaian-1",
+      "title": "Fakta: Permendagri 11/2020 (Pakaian Dinas)",
+      "text": "Masih ditemukannya ketidakseragaman penggunaan atribut pakaian dinas ASN di lingkungan Pemkab yang belum mengacu sepenuhnya pada Permendagri Nomor 11 Tahun 2020."
+    },
+    {
+      "id": "fakta-probis-1",
+      "title": "Fakta: Permenpan 19/2018 (Proses Bisnis)",
+      "text": "Sesuai Permenpan RB Nomor 19 Tahun 2018, Peta Proses Bisnis Instansi Pemerintah merupakan prasyarat utama sebelum penyusunan Standar Operasional Prosedur (SOP) dan Analisis Jabatan, namun saat ini peta lintas fungsi belum terintegrasi."
+    },
+    {
+      "id": "fakta-lhp-1",
+      "title": "Fakta: Temuan LHP (Inspektorat/BPK)",
+      "text": "Terdapat catatan rekomendasi dalam Laporan Hasil Pemeriksaan (LHP) APIP/BPK terkait ketatalaksanaan/pelayanan publik yang mewajibkan tindak lanjut perbaikan regulasi/SOP dalam batas waktu tertentu."
+    },
+    {
+      "id": "fakta-inovasi-1",
+      "title": "Fakta: Inovasi (JIPP)",
+      "text": "Kewajiban pelaporan inovasi daerah melalui Jaringan Inovasi Pelayanan Publik (JIPP) memerlukan pendampingan teknis dalam penyusunan proposal inovasi agar memenuhi kriteria transferabilitas dan keberlanjutan."
+    }
+  ]
+}

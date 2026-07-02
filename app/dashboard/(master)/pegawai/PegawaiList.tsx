@@ -1,6 +1,8 @@
+ 
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -26,8 +29,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createPegawai, deletePegawai, bulkUpsertPegawai } from "@/app/actions/pegawai";
-import { Loader2, Plus, Trash2, Users, Save, AlertCircle } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import PegawaiExcelActions from "./PegawaiExcelActions";
 
 type Pegawai = {
   id: string;
@@ -46,7 +51,15 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
 
   const [data, setData] = useState<Pegawai[]>(initialData);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
+  // Sort State
+  const [sortConfig, setSortConfig] = useState<{ key: 'nama' | 'golongan', direction: 'asc' | 'desc' }>({ key: 'golongan', direction: 'desc' });
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+
   // Single Card Mode State
   const [isOpen, setIsOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -87,6 +100,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", val);
     router.replace(`?${params.toString()}`);
+    setCurrentPage(1);
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -103,8 +117,8 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
       await createPegawai({ nip, nama, pangkat, golongan, jabatan });
       setIsOpen(false);
       window.location.reload();
-    } catch (err) {
-      alert("Gagal menambahkan Pegawai");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menambahkan Pegawai");
     }
     setLoading(false);
   };
@@ -115,8 +129,8 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
     try {
       await deletePegawai(deleteId);
       window.location.reload();
-    } catch (err) {
-      alert("Gagal menghapus data.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus data.");
     }
     setLoading(false);
     setDeleteId(null);
@@ -125,7 +139,6 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
   // ---------------- BULK MODE HANDLERS ----------------
   const addBulkRow = () => {
     setBulkData([
-      ...bulkData, 
       {
         id: `temp-${Date.now()}`,
         nip: "",
@@ -134,8 +147,10 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
         golongan: "",
         jabatan: "",
         instansi: "Sekretariat Daerah",
-      }
+      },
+      ...bulkData
     ]);
+    setCurrentPage(1);
   };
 
   const updateBulkRow = (index: number, field: keyof Pegawai, value: string) => {
@@ -158,30 +173,143 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
       await bulkUpsertPegawai(bulkData, deleteIds);
       // Data berhasil disave, reload untuk memperbarui data dari database dan menghapus highlight kotor.
       window.location.reload(); 
-    } catch (err) {
-      alert("Gagal menyimpan data massal.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan data massal.");
     }
     setBulkLoading(false);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-72">
-          <Input placeholder="Cari pegawai..." className="h-9" />
+  // ---------------- SEARCH & FILTER ----------------
+  const filteredData = data.filter((p) => 
+    p.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (p.nip || "").includes(searchQuery) ||
+    p.jabatan.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const filteredBulkData = bulkData.filter((p) => 
+    p.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (p.nip || "").includes(searchQuery) ||
+    p.jabatan.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // ---------------- SORTING LOGIC ----------------
+  const getGolonganWeight = (gol: string | null, jab: string) => {
+    const j = jab.trim().toLowerCase();
+    
+    // Bupati / PPK selalu teratas
+    if ((gol && gol.trim().toUpperCase() === "PPK") || j.includes("bupati")) {
+      return 1000;
+    }
+    
+    // Sekda di bawah Bupati
+    if (j === "sekda" || j.includes("sekretaris daerah")) {
+      return 900;
+    }
+
+    if (!gol) return 0;
+    const g = gol.trim().toUpperCase();
+    
+    // Pemetaan standar golongan PNS
+    const weights: Record<string, number> = {
+      "I/A": 11, "I/B": 12, "I/C": 13, "I/D": 14,
+      "II/A": 21, "II/B": 22, "II/C": 23, "II/D": 24,
+      "III/A": 31, "III/B": 32, "III/C": 33, "III/D": 34,
+      "IV/A": 41, "IV/B": 42, "IV/C": 43, "IV/D": 44, "IV/E": 45,
+    };
+    
+    return weights[g] || 50; // Jika tidak diketahui, beri bobot tengah
+  };
+
+  const sortData = (dataArray: Pegawai[]) => {
+    if (!sortConfig) return dataArray;
+    return [...dataArray].sort((a, b) => {
+      if (sortConfig.key === 'nama') {
+        const res = a.nama.localeCompare(b.nama);
+        return sortConfig.direction === 'asc' ? res : -res;
+      }
+      if (sortConfig.key === 'golongan') {
+        const weightA = getGolonganWeight(a.golongan, a.jabatan);
+        const weightB = getGolonganWeight(b.golongan, b.jabatan);
+        const res = weightA - weightB;
+        
+        // Jika bobot sama, fallback sort by nama
+        if (res === 0) {
+          return a.nama.localeCompare(b.nama);
+        }
+        return sortConfig.direction === 'asc' ? res : -res;
+      }
+      return 0;
+    });
+  };
+
+  const sortedKartuData = sortData(filteredData);
+  const sortedBulkData = sortData(filteredBulkData);
+
+  const paginatedKartuData = sortedKartuData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedBulkData = sortedBulkData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalItems = activeTab === "kartu" ? filteredData.length : filteredBulkData.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  const renderPagination = () => {
+    if (totalItems <= itemsPerPage) return null;
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-xl mt-4 border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] gap-4">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-slate-500">
+            Menampilkan <span className="font-medium text-slate-900">{totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
+          </p>
+          <div className="flex items-center gap-2 border-l pl-3 border-slate-200">
+            <span className="text-sm text-slate-500">Tampilkan</span>
+            <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}>
+              <SelectTrigger className="h-8 w-16 text-xs bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">12</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">Sebelumnya</Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">Selanjutnya</Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 pb-24 lg:pb-0">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative w-full sm:w-72">
+          <Input 
+            placeholder="Cari pegawai..." 
+            className="h-9 w-full" 
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+        <PegawaiExcelActions data={data} />
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="kartu">Mode Kartu</TabsTrigger>
-          <TabsTrigger value="tabel">Mode Tabel (Excel)</TabsTrigger>
+          <TabsTrigger value="tabel">Mode Tabel</TabsTrigger>
         </TabsList>
 
         {/* ================= MODE KARTU ================= */}
         <TabsContent value="kartu" className="space-y-6">
-          <div className="flex justify-end">
+          <div className="hidden lg:flex justify-end">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Pegawai</Button>} />
               <DialogContent>
@@ -219,17 +347,17 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
             </Dialog>
           </div>
 
-          {data.length === 0 ? (
+          {filteredData.length === 0 ? (
             <Card className="bg-slate-50 border-dashed">
               <CardContent className="pt-6 text-center text-slate-500 py-12 flex flex-col items-center">
                 <Users className="w-12 h-12 text-slate-300 mb-3" />
-                <p>Belum ada data Pegawai.</p>
+                <p>{searchQuery ? "Tidak ada pegawai yang cocok dengan pencarian." : "Belum ada data Pegawai."}</p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {data.map((pegawai) => (
-                <Card key={pegawai.id} className="border-slate-200 shadow-sm relative overflow-hidden">
+              {paginatedKartuData.map((pegawai) => (
+                <Card key={pegawai.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <CardContent className="p-5 flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-slate-900">{pegawai.nama}</h3>
@@ -258,11 +386,12 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
               ))}
             </div>
           )}
+          {renderPagination()}
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
         <TabsContent value="tabel">
-          <Card className="border-slate-200 shadow-sm">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-4">
                 <CardTitle className="text-base">Data Pegawai (Input Tabular)</CardTitle>
@@ -289,15 +418,48 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                   <TableHeader className="bg-slate-50">
                     <TableRow>
                       <TableHead className="w-[150px]">NIP</TableHead>
-                      <TableHead className="w-[250px]">Nama Lengkap</TableHead>
+                      <TableHead 
+                        className="w-[250px] cursor-pointer hover:bg-slate-100/50 select-none group"
+                        onClick={() => {
+                          let direction: 'asc' | 'desc' = 'asc';
+                          if (sortConfig?.key === 'nama' && sortConfig.direction === 'asc') direction = 'desc';
+                          setSortConfig({ key: 'nama', direction });
+                        }}
+                      >
+                        <div className="flex items-center">
+                          Nama Lengkap
+                          {sortConfig?.key === 'nama' ? (
+                            sortConfig.direction === 'asc' ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
+                          ) : (
+                            <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[120px]">Pangkat</TableHead>
-                      <TableHead className="w-[100px]">Golongan</TableHead>
+                      <TableHead 
+                        className="w-[100px] cursor-pointer hover:bg-slate-100/50 select-none group"
+                        onClick={() => {
+                          let direction: 'asc' | 'desc' = 'asc';
+                          if (sortConfig?.key === 'golongan' && sortConfig.direction === 'asc') direction = 'desc';
+                          setSortConfig({ key: 'golongan', direction });
+                        }}
+                      >
+                        <div className="flex items-center">
+                          Golongan
+                          {sortConfig?.key === 'golongan' ? (
+                            sortConfig.direction === 'asc' ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
+                          ) : (
+                            <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[200px]">Jabatan</TableHead>
                       <TableHead className="w-[60px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bulkData.map((row, idx) => {
+                    {paginatedBulkData.map((row, pageIdx) => {
+                      const idx = (currentPage - 1) * itemsPerPage + pageIdx;
                       const rowIsNew = row.id.startsWith("temp-");
                       return (
                       <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
@@ -306,7 +468,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                             value={row.nip || ""} 
                             onChange={(e) => updateBulkRow(idx, "nip", e.target.value)} 
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="NIP"
+                            placeholder=""
                           />
                         </TableCell>
                         <TableCell className="p-2">
@@ -314,7 +476,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                             value={row.nama} 
                             onChange={(e) => updateBulkRow(idx, "nama", e.target.value)} 
                             className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Nama Pegawai"
+                            placeholder=""
                           />
                         </TableCell>
                         <TableCell className="p-2">
@@ -322,7 +484,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                             value={row.pangkat || ""} 
                             onChange={(e) => updateBulkRow(idx, "pangkat", e.target.value)} 
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Penata"
+                            placeholder=""
                           />
                         </TableCell>
                         <TableCell className="p-2">
@@ -330,7 +492,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                             value={row.golongan || ""} 
                             onChange={(e) => updateBulkRow(idx, "golongan", e.target.value)} 
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="III/c"
+                            placeholder=""
                           />
                         </TableCell>
                         <TableCell className="p-2">
@@ -338,7 +500,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                             value={row.jabatan} 
                             onChange={(e) => updateBulkRow(idx, "jabatan", e.target.value)} 
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Jabatan"
+                            placeholder=""
                           />
                         </TableCell>
                         <TableCell className="p-2 text-center">
@@ -353,10 +515,10 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                         </TableCell>
                       </TableRow>
                     )})}
-                    {bulkData.length === 0 && (
+                    {filteredBulkData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                          Tidak ada baris data. Klik "Tambah Baris" untuk mulai menginput.
+                          {searchQuery ? "Tidak ada pegawai yang cocok dengan pencarian." : "Tidak ada baris data. Klik \"Tambah Baris\" untuk mulai menginput."}
                         </TableCell>
                       </TableRow>
                     )}
@@ -365,6 +527,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
               </div>
             </CardContent>
           </Card>
+          {renderPagination()}
         </TabsContent>
       </Tabs>
 
@@ -389,6 +552,25 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mobile bottom action bar — tab-aware */}
+      <MobileActionBar>
+        {activeTab === "kartu" ? (
+          <Button className="w-full" onClick={() => setIsOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Tambah Pegawai
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button className="flex-1" variant="outline" onClick={addBulkRow}>
+              <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+            </Button>
+            <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
+              {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Simpan
+            </Button>
+          </div>
+        )}
+      </MobileActionBar>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MoreVertical, UserPlus, UserMinus, ShieldAlert, Loader2 } from "lucide-react";
 import { addRoster, deleteRoster, updateRosterRole } from "@/app/actions/roster";
 
@@ -21,6 +23,10 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newPegawaiId, setNewPegawaiId] = useState("");
   const [newRole, setNewRole] = useState<"KEPALA_JALAN" | "PENGIKUT">("PENGIKUT");
+
+  // Alert Dialog States
+  const [confirmRoleData, setConfirmRoleData] = useState<{ id: string, role: "KEPALA_JALAN" | "PENGIKUT" } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const unassignedPegawai = pegawaiList.filter(p => !spj.roster.some((r: any) => r.pegawaiId === p.id));
   const pegawaiOptions = unassignedPegawai.map(p => ({
@@ -48,27 +54,37 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
     }
   };
 
-  const handleUpdateRole = async (rosterItemId: string, newRole: "KEPALA_JALAN" | "PENGIKUT") => {
-    if (!confirm("Ubah peran personel ini?")) return;
+  const handleUpdateRole = (rosterItemId: string, newRole: "KEPALA_JALAN" | "PENGIKUT") => {
+    setConfirmRoleData({ id: rosterItemId, role: newRole });
+  };
+
+  const executeRoleUpdate = async () => {
+    if (!confirmRoleData) return;
     setLoading(true);
     try {
-      await updateRosterRole(spj.id, rosterItemId, newRole);
+      await updateRosterRole(spj.id, confirmRoleData.id, confirmRoleData.role);
       router.refresh();
+      setConfirmRoleData(null);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Gagal mengubah peran.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (rosterItemId: string) => {
-    if (!confirm("HAPUS PERSONEL?\nPERINGATAN: Semua biaya DOPD yang terkait dengan orang ini akan otomatis dihapus dan saldo Pagu dikembalikan. Lanjutkan?")) return;
+  const handleDelete = (rosterItemId: string) => {
+    setConfirmDeleteId(rosterItemId);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
     setLoading(true);
     try {
-      await deleteRoster(spj.id, rosterItemId);
+      await deleteRoster(spj.id, confirmDeleteId);
       router.refresh();
+      setConfirmDeleteId(null);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Gagal menghapus personel.");
     } finally {
       setLoading(false);
     }
@@ -76,16 +92,15 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50 rounded-t-xl">
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Daftar Personel</CardTitle>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger>
-            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 shadow hover:bg-slate-900/90 h-8 px-3">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Tambah Personel
-            </div>
-          </DialogTrigger>
-          <DialogContent>
+          <DialogTrigger render={
+            <Button>
+              <UserPlus className="w-4 h-4 mr-2" /> Tambah Personel
+            </Button>
+          } />
+          <DialogContent className="sm:max-w-[550px] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Tambah Personel ke SPJ</DialogTitle>
             </DialogHeader>
@@ -104,7 +119,7 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
               <div className="space-y-2">
                 <Label>Peran (Role)</Label>
                 <select 
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200/60 bg-white px-3 py-2 text-sm"
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as any)}
                 >
@@ -133,7 +148,7 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
               const dopdAmount = r.pengeluaranDetails ? r.pengeluaranDetails.reduce((acc: any, curr: any) => acc + BigInt(curr.total), BigInt(0)) : BigInt(0);
               
               return (
-                <div key={r.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div key={r.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg bg-white">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
@@ -146,7 +161,7 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
                     
                     {dopdAmount > BigInt(0) && (
                       <p className="text-xs text-green-600 font-semibold mt-2 bg-green-50 px-2 py-1 rounded inline-block">
-                        Biaya DOPD Tersemat: Rp {dopdAmount.toString()}
+                        Biaya DOPD Tersemat: Rp {new Intl.NumberFormat("id-ID").format(Number(dopdAmount))}
                       </p>
                     )}
                   </div>
@@ -176,6 +191,41 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
             })}
           </div>
         )}
+        <AlertDialog open={!!confirmRoleData} onOpenChange={(open) => !open && setConfirmRoleData(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Ubah Peran?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Anda yakin ingin mengubah peran personel ini?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+              <AlertDialogAction onClick={executeRoleUpdate} disabled={loading}>
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Ya, Ubah Peran
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Hapus Personel?</AlertDialogTitle>
+              <AlertDialogDescription>
+                PERINGATAN: Semua biaya DOPD yang terkait dengan orang ini akan otomatis dihapus dan saldo Pagu dikembalikan. Lanjutkan?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+              <AlertDialogAction onClick={executeDelete} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Ya, Hapus
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
