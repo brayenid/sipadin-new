@@ -149,17 +149,15 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             nomorSurat: `${bapbMeta.nomorPrefix || ""}${bapbMeta.nomorTengah ? bapbMeta.nomorTengah : '               '}${bapbMeta.nomorSuffix || ""}`,
             tanggalBapb: bapbMeta.tanggalBapb || null,
             tanggalSpb: bapbMeta.tanggalSpb || null,
+            tanggalSpbLabel: bapbMeta.tanggalSpbLabel || null,
             nomorSpb: bapbMeta.nomorSpb || '.............................',
             bagianOrganisasiLabel: config.content?.bagianOrganisasiLabel || "Bagian Organisasi Setdakab Kutai Barat",
-          };
-          const vendorData = {
-            nama: spj.maminDetail?.vendor?.namaPemilik || "......................................",
-            jabatan: `Pemilik ${spj.maminDetail?.vendor?.namaVendor || ""}`.trim()
+            vendorNama: spj.maminDetail?.vendor?.namaVendor || "......................................",
+            vendorPemilik: spj.maminDetail?.vendor?.namaPemilik || "......................................",
           };
           return (
             <BapbPdf 
               spj={spjData} 
-              vendor={vendorData}
               kpa={kpa ? { nama: kpa.nama, nip: kpa.nip, jabatan: "Kuasa Pengguna Anggaran" } : null}
               pptk={pptk ? { nama: pptk.nama, nip: pptk.nip, jabatan: "Pejabat Pelaksana Teknis Kegiatan" } : null} 
               layout={config.styles}

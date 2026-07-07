@@ -82,7 +82,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
   const handleSave = async () => {
     setLoading(true);
     try {
-      const totalHonor = combinedData.reduce((sum, item) => sum + item.jumlah, 0);
+      const totalHonor = combinedData.reduce((sum: number, item: any) => sum + item.jumlah, 0);
       let totalDopd = 0;
       if (spj.metaDokumen?.dopdHonorarium?.items) {
         totalDopd = spj.metaDokumen.dopdHonorarium.items.reduce((acc: number, curr: any) => acc + Number(curr.total || 0), 0);
@@ -119,8 +119,8 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
     const bersih = jumlah - pph;
     return {
       ...n,
-      id: rowId,
       ...td,
+      id: rowId,
       kegiatan: kegiatanLabel,
       jumlah,
       pph,
@@ -237,7 +237,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                     </td>
                   </tr>
                 ) : (
-                  combinedData.map((row, idx) => (
+                  combinedData.map((row: any, idx: number) => (
                     <tr key={row.id || `row-${idx}`} className="border-b last:border-0">
                       <td className="px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
                       <td className="px-3 py-2 font-medium">{row.nama}</td>
