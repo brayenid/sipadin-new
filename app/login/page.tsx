@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import SetupSuperadminModal from './SetupSuperadminModal'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username wajib diisi'),
@@ -127,6 +128,7 @@ export default function LoginPage() {
           © {new Date().getFullYear()} Sekretariat Daerah Kab. Kutai Barat
         </p>
       </div>
+      <SetupSuperadminModal />
     </div>
   )
 }
