@@ -343,7 +343,7 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
                   <View style={[styles.parafColHeader, { width: 50, borderRightWidth: 0 }]}><Text>PARAF</Text></View>
                 </View>
                 {parafList.map((p, idx) => (
-                  <View key={idx} style={[styles.parafRow, idx === parafList.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View key={idx} style={[styles.parafRow, idx === parafList.length - 1 ? { borderBottomWidth: 0 } : {}]}>
                     <View style={[styles.parafCol, { width: 30, alignItems: 'center' }]}><Text>{idx + 1}</Text></View>
                     <View style={[styles.parafCol, { flex: 1 }]}><Text>{p.nama}</Text></View>
                     <View style={[styles.parafCol, { width: 80 }]}><Text>{p.jabatan}</Text></View>

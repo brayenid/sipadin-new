@@ -209,8 +209,8 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
         />
 
         <View style={styles.blockCenter}>
-          <Text style={styles.title}>SURAT TUGAS</Text>
-          <Text style={styles.nomor}>
+          <Text style={styles.titleText}>SURAT TUGAS</Text>
+          <Text style={styles.nomorText}>
             NOMOR : {spj.noSuratTugas || '.......................................................'}
           </Text>
         </View>
@@ -220,10 +220,10 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
         <View style={styles.table}>
           {/* Kepada */}
           <View style={styles.row}>
-            <Text style={styles.colLeft}>Kepada</Text>
-            <Text style={styles.colColon}>:</Text>
+            <Text style={styles.labelCol}>Kepada</Text>
+            <Text style={styles.colonCol}>:</Text>
 
-            <View style={styles.colRight}>
+            <View style={styles.valueCol}>
               <View style={styles.subWrap}>
                 {roster.map((r, idx) => (
                   <View key={r.id} style={{ marginBottom: 8 }}>
@@ -262,30 +262,30 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
 
           {/* Untuk */}
           <View style={styles.row}>
-            <Text style={styles.colLeft}>Untuk</Text>
-            <Text style={styles.colColon}>:</Text>
-            <Text style={styles.colRight}>{suratTugas.untuk}</Text>
+            <Text style={styles.labelCol}>Untuk</Text>
+            <Text style={styles.colonCol}>:</Text>
+            <Text style={styles.valueCol}>{suratTugas.untuk}</Text>
           </View>
 
           {/* Tujuan */}
           <View style={styles.row}>
-            <Text style={styles.colLeft}>Tujuan</Text>
-            <Text style={styles.colColon}>:</Text>
-            <Text style={styles.colRight}>{spj.tempatTujuan}</Text>
+            <Text style={styles.labelCol}>Tujuan</Text>
+            <Text style={styles.colonCol}>:</Text>
+            <Text style={styles.valueCol}>{spj.tempatTujuan}</Text>
           </View>
 
           {/* Lamanya */}
           <View style={styles.row}>
-            <Text style={styles.colLeft}>Lamanya</Text>
-            <Text style={styles.colColon}>:</Text>
-            <Text style={styles.colRight}>{lamaText}</Text>
+            <Text style={styles.labelCol}>Lamanya</Text>
+            <Text style={styles.colonCol}>:</Text>
+            <Text style={styles.valueCol}>{lamaText}</Text>
           </View>
 
           {/* Beban Anggaran */}
           <View style={styles.row}>
-            <Text style={styles.colLeft}>Beban Anggaran</Text>
-            <Text style={styles.colColon}>:</Text>
-            <Text style={styles.colRight}>{spj.akunAnggaran ?? '-'}</Text>
+            <Text style={styles.labelCol}>Beban Anggaran</Text>
+            <Text style={styles.colonCol}>:</Text>
+            <Text style={styles.valueCol}>{spj.akunAnggaran ?? '-'}</Text>
           </View>
         </View>
 

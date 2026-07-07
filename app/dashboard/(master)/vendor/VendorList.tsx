@@ -38,10 +38,11 @@ type Vendor = {
   namaPemilik: string | null;
   alamat: string | null;
   npwp: string | null;
+  npwpd: string | null;
   rekeningBank: string | null;
 };
 
-export default function VendorList({ initialData }: { initialData: Vendor[] }) {
+export default function VendorList({ initialData, isSuperAdmin = false }: { initialData: Vendor[], isSuperAdmin?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "kartu";
@@ -72,6 +73,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
       (original.namaPemilik || "") !== (row.namaPemilik || "") ||
       (original.alamat || "") !== (row.alamat || "") ||
       (original.npwp || "") !== (row.npwp || "") ||
+      (original.npwpd || "") !== (row.npwpd || "") ||
       (original.rekeningBank || "") !== (row.rekeningBank || "")
     );
   };
@@ -105,6 +107,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
       namaPemilik: formData.get("namaPemilik") as string,
       alamat: formData.get("alamat") as string,
       npwp: formData.get("npwp") as string,
+      npwpd: formData.get("npwpd") as string,
       rekeningBank: formData.get("rekeningBank") as string,
     };
     
@@ -140,6 +143,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
         namaPemilik: "",
         alamat: "",
         npwp: "",
+        npwpd: "",
         rekeningBank: "",
       },
       ...bulkData
@@ -214,43 +218,49 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
 
         {/* ================= MODE KARTU ================= */}
         <TabsContent value="kartu" className="space-y-6">
-          <div className="hidden lg:flex justify-end">
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Vendor</Button>} />
-              <DialogContent>
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <DialogHeader>
-                    <DialogTitle>Tambah Vendor Baru</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-2">
-                    <Label>Nama Vendor / RM / Katering</Label>
-                    <Input name="namaVendor" required placeholder="Contoh: RM Padang Sederhana" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nama Pemilik (Opsional)</Label>
-                    <Input name="namaPemilik" placeholder="Bpk. Budi" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Alamat (Opsional)</Label>
-                    <Input name="alamat" placeholder="Jl. Melati No 12" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+          {isSuperAdmin && (
+            <div className="hidden lg:flex justify-end">
+              <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Vendor</Button>} />
+                <DialogContent>
+                  <form onSubmit={handleCreate} className="space-y-4">
+                    <DialogHeader>
+                      <DialogTitle>Tambah Vendor Baru</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-2">
-                      <Label>NPWP (Opsional)</Label>
-                      <Input name="npwp" placeholder="00.000.000.0-000.000" />
+                      <Label>Nama Vendor / RM / Katering</Label>
+                      <Input name="namaVendor" required placeholder="Contoh: RM Padang Sederhana" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Nama Pemilik (Opsional)</Label>
+                      <Input name="namaPemilik" placeholder="Bpk. Budi" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Alamat (Opsional)</Label>
+                      <Input name="alamat" placeholder="Jl. Melati No 12" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>NPWP (Opsional)</Label>
+                        <Input name="npwp" placeholder="00.000.000.0-000.000" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>NPWPD (Opsional)</Label>
+                        <Input name="npwpd" placeholder="P.12345678" />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>No. Rekening (Opsional)</Label>
                       <Input name="rekeningBank" placeholder="BPD Kaltimtara - 012345678" />
                     </div>
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full mt-2">
-                    {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                    <Button type="submit" disabled={loading} className="w-full mt-2">
+                      {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
 
           {data.length === 0 ? (
             <Card className="bg-slate-50 border-dashed">
@@ -271,18 +281,21 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                       <div className="mt-4 space-y-1 text-sm text-slate-700">
                         {vendor.alamat && <p><span className="font-semibold text-slate-500">Alamat:</span> {vendor.alamat}</p>}
                         {vendor.npwp && <p><span className="font-semibold text-slate-500">NPWP:</span> {vendor.npwp}</p>}
+                        {vendor.npwpd && <p><span className="font-semibold text-slate-500">NPWPD:</span> {vendor.npwpd}</p>}
                         {vendor.rekeningBank && <p><span className="font-semibold text-slate-500">Rek:</span> {vendor.rekeningBank}</p>}
                       </div>
                     </div>
                     
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
-                      onClick={() => setDeleteId(vendor.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {isSuperAdmin && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
+                        onClick={() => setDeleteId(vendor.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -305,13 +318,17 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                 )}
               </div>
               <div className="flex gap-2">
-                <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-                </Button>
-                <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
-                  {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Simpan Semua Perubahan
-                </Button>
+                {isSuperAdmin && (
+                  <>
+                    <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
+                      <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+                    </Button>
+                    <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
+                      {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Simpan Semua Perubahan
+                    </Button>
+                  </>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -323,8 +340,9 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                       <TableHead className="w-[150px]">Nama Pemilik</TableHead>
                       <TableHead className="w-[200px]">Alamat</TableHead>
                       <TableHead className="w-[150px]">NPWP</TableHead>
+                      <TableHead className="w-[150px]">NPWPD</TableHead>
                       <TableHead className="w-[150px]">No. Rekening</TableHead>
-                      <TableHead className="w-[60px] text-center">Aksi</TableHead>
+                      {isSuperAdmin && <TableHead className="w-[60px] text-center">Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -337,6 +355,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                           <Input 
                             value={row.namaVendor} 
                             onChange={(e) => updateBulkRow(idx, "namaVendor", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaVendor') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
                             placeholder="Nama Vendor"
                           />
@@ -345,6 +364,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                           <Input 
                             value={row.namaPemilik || ""} 
                             onChange={(e) => updateBulkRow(idx, "namaPemilik", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaPemilik') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="Pemilik"
                           />
@@ -353,6 +373,7 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                           <Input 
                             value={row.alamat || ""} 
                             onChange={(e) => updateBulkRow(idx, "alamat", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'alamat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="Alamat"
                           />
@@ -361,28 +382,41 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
                           <Input 
                             value={row.npwp || ""} 
                             onChange={(e) => updateBulkRow(idx, "npwp", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwp') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="00.000..."
                           />
                         </TableCell>
                         <TableCell className="p-2">
                           <Input 
+                            value={row.npwpd || ""} 
+                            onChange={(e) => updateBulkRow(idx, "npwpd", e.target.value)} 
+                            readOnly={!isSuperAdmin}
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwpd') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                            placeholder="NPWPD..."
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input 
                             value={row.rekeningBank || ""} 
                             onChange={(e) => updateBulkRow(idx, "rekeningBank", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'rekeningBank') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="No. Rekening"
                           />
                         </TableCell>
-                        <TableCell className="p-2 text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeBulkRow(idx, row.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
+                        {isSuperAdmin && (
+                          <TableCell className="p-2 text-center">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeBulkRow(idx, row.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     )})}
                     {bulkData.length === 0 && (
@@ -424,23 +458,25 @@ export default function VendorList({ initialData }: { initialData: Vendor[] }) {
       </AlertDialog>
 
       {/* Mobile bottom action bar — tab-aware */}
-      <MobileActionBar>
-        {activeTab === "kartu" ? (
-          <Button className="w-full" onClick={() => setIsOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Tambah Vendor
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button className="flex-1" variant="outline" onClick={addBulkRow}>
-              <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+      {isSuperAdmin && (
+        <MobileActionBar>
+          {activeTab === "kartu" ? (
+            <Button className="w-full" onClick={() => setIsOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Tambah Vendor
             </Button>
-            <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
-              {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Simpan
-            </Button>
-          </div>
-        )}
-      </MobileActionBar>
+          ) : (
+            <div className="flex gap-2">
+              <Button className="flex-1" variant="outline" onClick={addBulkRow}>
+                <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+              </Button>
+              <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
+                {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Simpan
+              </Button>
+            </div>
+          )}
+        </MobileActionBar>
+      )}
     </div>
   );
 }

@@ -243,7 +243,7 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
             const no = startNo + idx
             const f = factorsToInline(it.factors)
             return (
-              <View key={it.id} style={styles.rincianRow}>
+              <View key={it.id || `rincian-${idx}`} style={styles.rincianRow}>
                 <Text style={styles.rincianLeft}>{`${no}. ${it.uraian || it.kategori || '-'}`}</Text>
                 <Text style={styles.rincianColon}>:</Text>
                 <View style={styles.rincianRightLine}>
@@ -307,7 +307,7 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
             <View style={styles.subBlock}>
               <Row3 leftNo="" indent label="b. Pengikut" value="" />
               {pengikut.map((p, idx) => (
-                <View key={p.id} style={{ marginTop: idx === 0 ? 6 : 10 }}>
+                <View key={p.id || `pengikut-${idx}`} style={{ marginTop: idx === 0 ? 6 : 10 }}>
                   <Row3 leftNo="" indent2 label="- Nama" value={p.nama} boldValue />
                   <Row3 leftNo="" indent2 label="- Perinciannya" value="" />
                   <RincianTable items={itemsByRoster.get(p.id) ?? []} startNo={1} showJumlah />
@@ -344,7 +344,7 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
               <>
                 <Text style={[styles.ttdSub, { marginTop: 6 }]}>b. Pengikut</Text>
                 {pengikut.map((p, i) => (
-                  <View key={p.id} style={styles.ttdRow}>
+                  <View key={p.id || `ttd-${i}`} style={styles.ttdRow}>
                     <View style={styles.ttdLeft}>
                       <Text>{i + 1}. {p.nama}</Text>
                     </View>

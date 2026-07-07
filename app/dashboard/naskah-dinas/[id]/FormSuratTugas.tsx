@@ -289,16 +289,15 @@ export default function FormSuratTugas({
               tglSuratTugas: form.tanggal ? new Date(form.tanggal) : new Date(),
               noSuratTugas: form.nomorSurat,
             }}
-            dasarSurat={dasar}
-            untukSurat={untuk}
+            suratTugas={{
+              untuk: untuk.join(", "),
+              assignedRosterItemId: null,
+              signerNama: signer?.nama || "",
+              signerNip: signer?.nip || "",
+              signerJabatan: signer?.jabatan || "",
+              signerPangkatGolongan: signer ? `${signer.pangkat || ""} ${signer.golongan || ""}`.trim() : ""
+            }}
             roster={roster}
-            signer={signer ? {
-              nama: signer.nama,
-              nip: signer.nip,
-              jabatan: signer.jabatan,
-              pangkat: signer.pangkat,
-              golongan: signer.golongan
-            } : undefined}
           />
         )}
       />

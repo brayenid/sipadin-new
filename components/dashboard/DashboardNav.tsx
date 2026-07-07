@@ -22,7 +22,7 @@ const navMain = [
 ];
 
 const navTambahan = [
-  { href: "/dashboard/naskah-dinas", label: "Tata Naskah Dinas", icon: PenBox },
+  { href: "/dashboard/naskah-dinas", label: "Naskah Dinas", icon: PenBox },
 ];
 
 const navMaster = [
@@ -30,8 +30,11 @@ const navMaster = [
   { href: "/dashboard/vendor", label: "Master Vendor", icon: Store },
 ];
 
+import { Trash2 } from "lucide-react";
+
 const navSuperAdmin = [
   { href: "/dashboard/akun", label: "Master Akun", icon: Users },
+  { href: "/dashboard/recycle-bin", label: "Recycle Bin", icon: Trash2 },
 ];
 
 function NavLink({

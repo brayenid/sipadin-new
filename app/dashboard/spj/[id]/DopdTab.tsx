@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { Plus, Trash2, ChevronLeft, ChevronRight, Save, Loader2, FileText, Edit } from "lucide-react";
-import { saveDopdTransaction } from "@/app/actions/dopd";
+import { saveDopdTransaction, saveDopdHonorarium } from "@/app/actions/dopd";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import { PresetDialog } from "@/components/ui/preset-dialog";
@@ -29,6 +29,30 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   const [errorMsg, setErrorMsg] = useState("");
   const [showPreview, setShowPreview] = useState(false);
 
+  const isHonor = spj.jenisSpj === 'HONORARIUM';
+  const sourceMeta = isHonor ? spj.metaDokumen?.dopdHonorarium : spj.metaDokumen?.dopd;
+
+  const [dopdMeta, setDopdMeta] = useState({
+    kpaId: sourceMeta?.kpaId || "",
+    bppId: sourceMeta?.bppId || "",
+    kotaTandaTangan: sourceMeta?.kotaTandaTangan || "Sendawar",
+    pejabatMemberiPerintahLabel: sourceMeta?.pejabatMemberiPerintahLabel || "Sekretaris Daerah Kabupaten Kutai Barat",
+  });
+
+  const rosterList = useMemo(() => {
+    if (isHonor) {
+       return (spj.metaDokumen?.daftarHadirNarasumber?.narasumber || []).map((n: any, idx: number) => ({
+          id: n.id || `narsum-${idx}`, // Ensure there's an ID
+          nama: n.nama,
+          jabatan: n.jabatan,
+          instansi: n.instansi,
+          role: "PENGIKUT", // Fallback for ui
+          nip: null
+       }));
+    }
+    return spj.roster || [];
+  }, [spj, isHonor]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input
@@ -40,19 +64,13 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       if (e.key === "ArrowLeft") {
         setActivePersonIdx((prev) => Math.max(0, prev - 1));
       } else if (e.key === "ArrowRight") {
-        setActivePersonIdx((prev) => Math.min((spj.roster?.length || 1) - 1, prev + 1));
+        setActivePersonIdx((prev) => Math.min((rosterList.length || 1) - 1, prev + 1));
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [spj.roster?.length]);
-
-  const [dopdMeta, setDopdMeta] = useState({
-    kpaId: spj.metaDokumen?.dopd?.kpaId || "",
-    bppId: spj.metaDokumen?.dopd?.bppId || "",
-    kotaTandaTangan: spj.metaDokumen?.dopd?.kotaTandaTangan || "Sendawar",
-  });
+  }, [rosterList.length]);
 
   const pegawaiOptions = useMemo(() => {
     return pegawaiList.map((p) => ({
@@ -63,8 +81,11 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   
   // Initialize local items from database
   const initialItems = useMemo(() => {
+    if (isHonor) {
+       return spj.metaDokumen?.dopdHonorarium?.items || [];
+    }
     const items: any[] = [];
-    spj.roster.forEach((r: any) => {
+    rosterList.forEach((r: any) => {
       if (r.pengeluaranDetails && r.pengeluaranDetails.length > 0) {
         r.pengeluaranDetails.forEach((d: any) => {
           items.push({
@@ -79,7 +100,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       }
     });
     return items;
-  }, [spj]);
+  }, [spj, isHonor, rosterList]);
 
   const [dopdItems, setDopdItems] = useState<any[]>(initialItems);
 
@@ -99,7 +120,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   });
 
   // -- COMPUTATIONS --
-  const activePerson = spj.roster[activePersonIdx];
+  const activePerson = rosterList[activePersonIdx];
   const activePersonItems = dopdItems.filter(item => item.spjRosterItemId === activePerson?.id);
   
   const calculateItemTotal = (item: any) => {
@@ -124,6 +145,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     
     // Prepare payload
     const payload = dopdItems.map(item => ({
+      id: item.id,
       spjRosterItemId: item.spjRosterItemId,
       kategori: item.kategori,
       uraian: item.uraian,
@@ -132,7 +154,11 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     }));
 
     try {
-      await saveDopdTransaction(spj.id, payload, dopdMeta);
+      if (isHonor) {
+        await saveDopdHonorarium(spj.id, payload, dopdMeta);
+      } else {
+        await saveDopdTransaction(spj.id, payload, dopdMeta);
+      }
       onDirtyChange?.(false);
       router.refresh();
       toast.success("Rincian DOPD berhasil disimpan.");
@@ -213,7 +239,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
             </Button>
             
             <div className="flex-1 text-center">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel {activePersonIdx + 1} / {spj.roster.length}</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel {activePersonIdx + 1} / {rosterList.length}</p>
               <h3 className="font-extrabold text-lg text-slate-900">{activePerson.nama}</h3>
               <p className="text-sm text-slate-500">{activePerson.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"} - {activePerson.jabatan}</p>
             </div>
@@ -221,8 +247,8 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
             <Button 
               variant="outline" 
               size="icon" 
-              onClick={() => setActivePersonIdx(Math.min(spj.roster.length - 1, activePersonIdx + 1))}
-              disabled={activePersonIdx === spj.roster.length - 1}
+              onClick={() => setActivePersonIdx(Math.min(rosterList.length - 1, activePersonIdx + 1))}
+              disabled={activePersonIdx === rosterList.length - 1}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -362,10 +388,10 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
               </div>
             ) : (
               <div className="divide-y">
-                {activePersonItems.map((item) => {
+                {activePersonItems.map((item, index) => {
                   const itemTotal = calculateItemTotal(item);
                   return (
-                    <div key={item.id} className="flex items-center px-6 py-4 gap-6 hover:bg-slate-50 transition-colors group">
+                    <div key={item.id || `item-${index}`} className="flex items-center px-6 py-4 gap-6 hover:bg-slate-50 transition-colors group">
                       
                       <div className="w-32 flex-shrink-0">
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
@@ -453,6 +479,14 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 placeholder="Cth: Sendawar"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Pejabat Memberi Perintah</Label>
+              <Input 
+                value={dopdMeta.pejabatMemberiPerintahLabel}
+                onChange={(e) => setDopdMeta({ ...dopdMeta, pejabatMemberiPerintahLabel: e.target.value })}
+                placeholder="Cth: Kepala Bagian Organisasi"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -477,12 +511,12 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
           return (
             <DopdPdf 
               spj={{
-                pejabatMemberiPerintahLabel: "Kepala Bagian Organisasi", // bisa dinamis nanti
+                pejabatMemberiPerintahLabel: dopdMeta.pejabatMemberiPerintahLabel,
                 tingkatPerjalananLabel: "Perjalanan Dinas Dalam Daerah", // bisa dinamis nanti
                 kotaTandaTangan: dopdMeta.kotaTandaTangan,
                 tglSuratTugas: spj.tanggalAwal || undefined
               }}
-              roster={[...(spj.roster || [])]
+              roster={[...rosterList]
                 .sort((a: any, b: any) => (a.role === 'KEPALA_JALAN' ? -1 : (b.role === 'KEPALA_JALAN' ? 1 : 0)))
                 .map((r: any, idx: number) => ({
                   id: r.id,

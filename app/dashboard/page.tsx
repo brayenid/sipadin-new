@@ -20,7 +20,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session) return null;
+  if (!session?.user) return null;
 
   // Ambil data statistik dari database berdasarkan teamId
   const teamId = session.user.teamId;
@@ -36,8 +36,12 @@ export default async function DashboardPage() {
   const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
 
   const spjWhereFilter = isSuperAdmin 
-    ? (activeTahunAnggaranId ? { kodeRekening: { subKegiatan: { kegiatan: { tahunAnggaranId: activeTahunAnggaranId } } } } : {})
+    ? {
+        isDeleted: false,
+        ...(activeTahunAnggaranId ? { kodeRekening: { subKegiatan: { kegiatan: { tahunAnggaranId: activeTahunAnggaranId } } } } : {})
+      }
     : {
+        isDeleted: false,
         createdById: session.user.id,
         ...(activeTahunAnggaranId ? { kodeRekening: { subKegiatan: { kegiatan: { tahunAnggaranId: activeTahunAnggaranId } } } } : {})
       };
@@ -94,8 +98,78 @@ export default async function DashboardPage() {
     }
   });
 
+  // 7. SPJ per Jenis SPJ di tahun berjalan
+  const allSpjThisYear = await prisma.spj.findMany({
+    where: spjWhereFilter,
+    select: { jenisSpj: true, totalPengeluaran: true }
+  });
+  
+  const spjPerJenisMap: Record<string, { count: number, total: bigint }> = {
+    PERJADIN: { count: 0, total: BigInt(0) },
+    MAKAN_MINUM: { count: 0, total: BigInt(0) },
+    HONORARIUM: { count: 0, total: BigInt(0) },
+    OPERASIONAL: { count: 0, total: BigInt(0) },
+  };
+  
+  allSpjThisYear.forEach(spj => {
+    if (spjPerJenisMap[spj.jenisSpj]) {
+      spjPerJenisMap[spj.jenisSpj].count += 1;
+      spjPerJenisMap[spj.jenisSpj].total += spj.totalPengeluaran;
+    }
+  });
+
+  const spjPerJenis = Object.entries(spjPerJenisMap)
+    .filter(([_, data]) => data.count > 0 || data.total > BigInt(0))
+    .map(([jenis, data]) => ({ jenis, ...data }))
+    .sort((a, b) => Number(b.total - a.total));
+
+  const maxTotalSpjJenis = spjPerJenis.reduce((max, curr) => curr.total > max ? curr.total : max, BigInt(0));
+
+  // 8. Naskah Dinas summary
+  const naskahFilter = isSuperAdmin ? { isDeleted: false } : { isDeleted: false, createdById: session.user.id };
+  const naskahDinasGrouped = await prisma.naskahDinas.groupBy({
+    by: ['jenisNaskah'],
+    where: naskahFilter,
+    _count: { _all: true }
+  });
+  
+  const totalNaskah = naskahDinasGrouped.reduce((acc, curr) => acc + curr._count._all, 0);
+  
+  const formatEnumName = (jenis: string) => {
+    return jenis.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+  };
+
+  // 9. Rekap Perjalanan Dinas (Leaderboard Pegawai)
+  const rosterPerjadin = await prisma.spjRosterItem.groupBy({
+    by: ['pegawaiId'],
+    where: {
+      spj: {
+        jenisSpj: 'PERJADIN',
+        ...spjWhereFilter
+      }
+    },
+    _count: {
+      spjId: true
+    },
+    orderBy: {
+      _count: { spjId: 'desc' }
+    },
+    take: 3
+  });
+
+  const pegawaiIds = rosterPerjadin.map((r) => r.pegawaiId);
+  const pegawaiList = await prisma.pegawai.findMany({
+    where: { id: { in: pegawaiIds } },
+    select: { id: true, nama: true }
+  });
+
+  const rekapPerjadin = rosterPerjadin.map((r) => ({
+    pegawai: pegawaiList.find((p) => p.id === r.pegawaiId),
+    count: r._count.spjId
+  }));
+
   return (
-    <div className="p-4 sm:p-8 space-y-6">
+    <div className="p-4 sm:p-8 space-y-4">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Ikhtisar Dashboard</h1>
@@ -105,35 +179,147 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title="Total SPJ"
           value={totalSpjCount.toString()}
           description={`TA ${activeTahunString}`}
-          icon={<ClipboardList className="w-5 h-5 text-indigo-500" />}
+          icon={<ClipboardList className="w-4 h-4 text-indigo-500" />}
         />
         <StatCard
           title="Total Pagu"
           value={`${formatCurrency(totalPagu.toString())}`}
           description={`TA ${activeTahunString}`}
-          icon={<FileText className="w-5 h-5 text-indigo-500" />}
+          icon={<FileText className="w-4 h-4 text-indigo-500" />}
         />
         <StatCard
           title="Total Pengeluaran"
           value={`${formatCurrency(totalPengeluaran.toString())}`}
           description={`TA ${activeTahunString}`}
-          icon={<TrendingDown className="w-5 h-5 text-rose-500" />}
+          icon={<TrendingDown className="w-4 h-4 text-rose-500" />}
         />
         <StatCard
           title="Sisa Saldo"
           value={`${formatCurrency(totalSisaSaldo.toString())}`}
           description={`TA ${activeTahunString}`}
-          icon={<Wallet className="w-5 h-5 text-emerald-500" />}
+          icon={<Wallet className="w-4 h-4 text-emerald-500" />}
         />
       </div>
 
+      {/* Baris Kedua: SPJ Per Jenis, Naskah Dinas & Rekap Perjadin */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        
+        {/* Grafik SPJ Per Jenis (2 Kolom) */}
+        <Card className="border-slate-200/60 lg:col-span-2 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+          <CardHeader className="pt-4 pb-2">
+            <CardTitle className="text-base">Distribusi Pengeluaran</CardTitle>
+            <CardDescription className="text-xs">Berdasarkan jenis SPJ sepanjang TA {activeTahunString}.</CardDescription>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="space-y-2">
+              {spjPerJenis.length === 0 && <p className="text-xs text-slate-400">Belum ada data pengeluaran.</p>}
+              {spjPerJenis.map((item, i) => {
+                const percentage = maxTotalSpjJenis > BigInt(0) 
+                  ? Number((item.total * BigInt(100)) / maxTotalSpjJenis) 
+                  : 0;
+                
+                return (
+                  <div key={i} className="flex items-center gap-3 text-xs">
+                    <div className="w-24 text-slate-600 font-medium truncate" title={formatEnumName(item.jenis)}>
+                      {formatEnumName(item.jenis)}
+                    </div>
+                    <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden relative">
+                      <div 
+                        className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <div className="w-24 text-right text-slate-700 font-semibold whitespace-nowrap">
+                      {formatCurrency(item.total.toString())}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Naskah Dinas Summary (1 Kolom) */}
+        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
+          <CardHeader className="pt-4 pb-2">
+            <CardTitle className="text-base">Naskah Dinas</CardTitle>
+            <CardDescription className="text-xs">Dokumen yang telah dibuat.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col pb-4">
+            <div className="mb-4">
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">{totalNaskah}</p>
+              <p className="text-xs font-medium text-slate-500">Total Keseluruhan</p>
+            </div>
+            
+            <div className="space-y-1.5 flex-1">
+              {naskahDinasGrouped.length === 0 ? (
+                <p className="text-xs text-slate-400">Belum ada naskah dinas.</p>
+              ) : (
+                naskahDinasGrouped.map((group, idx) => (
+                  <div key={idx} className="flex justify-between items-center px-2 py-1.5 rounded bg-slate-50 border border-slate-100">
+                    <span className="text-xs font-medium text-slate-600 truncate" title={formatEnumName(group.jenisNaskah)}>
+                      {formatEnumName(group.jenisNaskah)}
+                    </span>
+                    <Badge variant="secondary" className="bg-white text-xs font-bold text-slate-700 border-slate-200 ml-2 px-1.5 py-0">
+                      {group._count._all}
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-slate-100">
+               <Link href="/dashboard/naskah-dinas">
+                <Button variant="outline" size="sm" className="w-full text-slate-600 h-8 text-xs">
+                  Kelola Naskah Dinas
+                </Button>
+               </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rekap Perjadin Summary (1 Kolom) */}
+        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
+          <CardHeader className="pt-4 pb-2">
+            <CardTitle className="text-base">Rekap Perjadin</CardTitle>
+            <CardDescription className="text-xs">Pegawai paling sering bertugas.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col pb-4">
+            <div className="space-y-1.5 flex-1">
+              {rekapPerjadin.length === 0 ? (
+                <p className="text-xs text-slate-400">Belum ada rekap perjalanan dinas.</p>
+              ) : (
+                rekapPerjadin.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center px-2 py-1.5 rounded bg-slate-50 border border-slate-100">
+                    <span className="text-xs font-medium text-slate-600 truncate" title={item.pegawai?.nama}>
+                      {item.pegawai?.nama || 'Unknown'}
+                    </span>
+                    <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 text-xs font-bold border-indigo-100 ml-2 px-1.5 py-0 shrink-0">
+                      {item.count}x
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-slate-100">
+               <Link href="/dashboard/spj?jenis=PERJADIN">
+                <Button variant="outline" size="sm" className="w-full text-slate-600 h-8 text-xs">
+                  Lihat Semua
+                </Button>
+               </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Recent SPJs */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
         <CardHeader>
           <CardTitle>SPJ Terbaru</CardTitle>
           <CardDescription>Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
@@ -197,7 +383,7 @@ export default async function DashboardPage() {
           {recentSpjs.length > 0 && (
             <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
               <Link href="/dashboard/spj">
-                <Button variant="outline" size="sm" className="text-slate-500">Lihat Semua SPJ</Button>
+                <Button variant="outline" size="sm" className="text-slate-500 shadow-sm">Lihat Semua SPJ</Button>
               </Link>
             </div>
           )}
@@ -219,8 +405,8 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <Card className="border-slate-200">
-      <CardContent className="pt-6">
+    <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+      <CardContent className="pt-4 pb-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-slate-500">{title}</p>
           <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">

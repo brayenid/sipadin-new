@@ -73,7 +73,6 @@ export default async function NaskahDinasDetailPage({
             return <FormTelaahanStaf naskah={naskah} pegawaiList={pegawais} />
           case 'SURAT_PERINTAH':
             return <FormSuratPerintah naskah={naskah} pegawaiList={pegawais} />
-          case 'SURAT_EDARAN':
           case 'SURAT_EDARAN_SEKDA':
             return <FormSuratEdaran naskah={naskah} pegawaiList={pegawais} />
           case 'SURAT_EDARAN_BUPATI':

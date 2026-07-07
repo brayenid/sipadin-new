@@ -42,7 +42,8 @@ export default function NaskahDinasSearch() {
     return () => clearTimeout(timer)
   }, [query, pathname, router, createQueryString, searchParams])
 
-  const handleJenisChange = (val: string) => {
+  const handleJenisChange = (val: string | null) => {
+    if (!val) return
     setJenis(val)
     router.push(`${pathname}?${createQueryString("jenis", val)}`)
   }

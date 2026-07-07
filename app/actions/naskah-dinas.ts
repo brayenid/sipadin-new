@@ -9,7 +9,7 @@ export async function getNaskahDinasList() {
   if (!session) throw new Error("Unauthorized");
 
   const list = await prisma.naskahDinas.findMany({
-    where: { teamId: session.user.teamId },
+    where: { teamId: session.user.teamId, isDeleted: false },
     orderBy: { createdAt: "desc" },
     include: { createdBy: { select: { name: true } } }
   });
@@ -83,8 +83,49 @@ export async function deleteNaskahDinas(id: string) {
 
   if (!naskah) throw new Error("Naskah Dinas tidak ditemukan atau akses ditolak.");
 
+  await prisma.naskahDinas.update({ 
+    where: { id },
+    data: { isDeleted: true }
+  });
+
+  revalidatePath("/dashboard/naskah-dinas");
+  return true;
+}
+
+export async function restoreNaskahDinas(id: string) {
+  const session = await auth();
+  if (!session || session.user.role !== 'SUPER_ADMIN') throw new Error("Unauthorized");
+
+  const naskah = await prisma.naskahDinas.findFirst({
+    where: { id, teamId: session.user.teamId },
+  });
+
+  if (!naskah) throw new Error("Naskah Dinas tidak ditemukan atau akses ditolak.");
+
+  await prisma.naskahDinas.update({ 
+    where: { id },
+    data: { isDeleted: false }
+  });
+
+  revalidatePath("/dashboard/naskah-dinas");
+  revalidatePath("/dashboard/recycle-bin");
+  revalidatePath("/dashboard");
+  return true;
+}
+
+export async function permanentDeleteNaskahDinas(id: string) {
+  const session = await auth();
+  if (!session || session.user.role !== 'SUPER_ADMIN') throw new Error("Unauthorized");
+
+  const naskah = await prisma.naskahDinas.findFirst({
+    where: { id, teamId: session.user.teamId },
+  });
+
+  if (!naskah) throw new Error("Naskah Dinas tidak ditemukan atau akses ditolak.");
+
   await prisma.naskahDinas.delete({ where: { id } });
 
   revalidatePath("/dashboard/naskah-dinas");
+  revalidatePath("/dashboard/recycle-bin");
   return true;
 }

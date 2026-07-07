@@ -44,7 +44,7 @@ type Pegawai = {
   instansi: string | null;
 };
 
-export default function PegawaiList({ initialData }: { initialData: Pegawai[] }) {
+export default function PegawaiList({ initialData, isSuperAdmin = false }: { initialData: Pegawai[], isSuperAdmin?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "kartu";
@@ -298,7 +298,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
           />
         </div>
-        <PegawaiExcelActions data={data} />
+        {isSuperAdmin && <PegawaiExcelActions data={data} />}
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -309,43 +309,45 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
 
         {/* ================= MODE KARTU ================= */}
         <TabsContent value="kartu" className="space-y-6">
-          <div className="hidden lg:flex justify-end">
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Pegawai</Button>} />
-              <DialogContent>
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <DialogHeader>
-                    <DialogTitle>Tambah Pegawai Baru</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-2">
-                    <Label>NIP (Opsional)</Label>
-                    <Input name="nip" placeholder="199001012020121001" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nama Lengkap</Label>
-                    <Input name="nama" required placeholder="Dr. Budi Santoso, S.Kom" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+          {isSuperAdmin && (
+            <div className="hidden lg:flex justify-end">
+              <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Pegawai</Button>} />
+                <DialogContent>
+                  <form onSubmit={handleCreate} className="space-y-4">
+                    <DialogHeader>
+                      <DialogTitle>Tambah Pegawai Baru</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-2">
-                      <Label>Pangkat</Label>
-                      <Input name="pangkat" placeholder="Penata Tk. I" />
+                      <Label>NIP (Opsional)</Label>
+                      <Input name="nip" placeholder="199001012020121001" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Golongan</Label>
-                      <Input name="golongan" placeholder="III/d" />
+                      <Label>Nama Lengkap</Label>
+                      <Input name="nama" required placeholder="Dr. Budi Santoso, S.Kom" />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Jabatan</Label>
-                    <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full mt-2">
-                    {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Pangkat</Label>
+                        <Input name="pangkat" placeholder="Penata Tk. I" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Golongan</Label>
+                        <Input name="golongan" placeholder="III/d" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Jabatan</Label>
+                      <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
+                    </div>
+                    <Button type="submit" disabled={loading} className="w-full mt-2">
+                      {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
 
           {filteredData.length === 0 ? (
             <Card className="bg-slate-50 border-dashed">
@@ -373,14 +375,16 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                       </div>
                     </div>
                     
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
-                      onClick={() => setDeleteId(pegawai.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {isSuperAdmin && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
+                        onClick={() => setDeleteId(pegawai.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -403,13 +407,17 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                 )}
               </div>
               <div className="flex gap-2">
-                <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-                </Button>
-                <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
-                  {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Simpan Semua Perubahan
-                </Button>
+                {isSuperAdmin && (
+                  <>
+                    <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
+                      <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+                    </Button>
+                    <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
+                      {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Simpan Semua Perubahan
+                    </Button>
+                  </>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -454,7 +462,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                         </div>
                       </TableHead>
                       <TableHead className="w-[200px]">Jabatan</TableHead>
-                      <TableHead className="w-[60px] text-center">Aksi</TableHead>
+                      {isSuperAdmin && <TableHead className="w-[60px] text-center">Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -467,6 +475,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                           <Input 
                             value={row.nip || ""} 
                             onChange={(e) => updateBulkRow(idx, "nip", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
@@ -475,6 +484,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                           <Input 
                             value={row.nama} 
                             onChange={(e) => updateBulkRow(idx, "nama", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
@@ -483,6 +493,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                           <Input 
                             value={row.pangkat || ""} 
                             onChange={(e) => updateBulkRow(idx, "pangkat", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
@@ -491,6 +502,7 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                           <Input 
                             value={row.golongan || ""} 
                             onChange={(e) => updateBulkRow(idx, "golongan", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
@@ -499,20 +511,23 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
                           <Input 
                             value={row.jabatan} 
                             onChange={(e) => updateBulkRow(idx, "jabatan", e.target.value)} 
+                            readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
                         </TableCell>
-                        <TableCell className="p-2 text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeBulkRow(idx, row.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
+                        {isSuperAdmin && (
+                          <TableCell className="p-2 text-center">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeBulkRow(idx, row.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     )})}
                     {filteredBulkData.length === 0 && (
@@ -554,23 +569,25 @@ export default function PegawaiList({ initialData }: { initialData: Pegawai[] })
       </AlertDialog>
 
       {/* Mobile bottom action bar — tab-aware */}
-      <MobileActionBar>
-        {activeTab === "kartu" ? (
-          <Button className="w-full" onClick={() => setIsOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Tambah Pegawai
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button className="flex-1" variant="outline" onClick={addBulkRow}>
-              <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+      {isSuperAdmin && (
+        <MobileActionBar>
+          {activeTab === "kartu" ? (
+            <Button className="w-full" onClick={() => setIsOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Tambah Pegawai
             </Button>
-            <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
-              {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Simpan
-            </Button>
-          </div>
-        )}
-      </MobileActionBar>
+          ) : (
+            <div className="flex gap-2">
+              <Button className="flex-1" variant="outline" onClick={addBulkRow}>
+                <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+              </Button>
+              <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
+                {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Simpan
+              </Button>
+            </div>
+          )}
+        </MobileActionBar>
+      )}
     </div>
   );
 }

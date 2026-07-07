@@ -35,6 +35,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
   // -- STATE: FORM DATA --
   const [jenisSpj, setJenisSpj] = useState("PERJADIN");
   const [tanggalSpj, setTanggalSpj] = useState("");
+  const [tanggalPelaksanaan, setTanggalPelaksanaan] = useState("");
   const [kodeRekeningId, setKodeRekeningId] = useState("");
   const [nomorBku, setNomorBku] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
@@ -193,6 +194,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
       const result = await createSpjTransaction({
         jenisSpj,
         tanggalSpj,
+        tanggalPelaksanaan: tanggalPelaksanaan || undefined,
         kodeRekeningId,
         nomorBku,
         driveUrl,
@@ -359,9 +361,17 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
           )}
 
           {["HONORARIUM", "OPERASIONAL"].includes(jenisSpj) && (
-            <div className="py-12 text-center text-slate-500">
-              <p>Tidak ada detail khusus yang diperlukan untuk jenis SPJ ini.</p>
-              <p>Silakan lanjut ke langkah pengisian Rincian Biaya.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-slate-50 border border-slate-200 p-8 rounded-xl">
+              <div className="space-y-3">
+                <Label className="text-base font-semibold text-slate-900">Tanggal Pelaksanaan <span className="text-red-500">*</span></Label>
+                <Input
+                  type="date"
+                  value={tanggalPelaksanaan}
+                  onChange={(e) => setTanggalPelaksanaan(e.target.value)}
+                  className="bg-white"
+                />
+                <p className="text-xs text-slate-500">Tanggal spesifik pelaksanaan kegiatan. Akan otomatis muncul di dokumen Daftar Hadir Narasumber.</p>
+              </div>
             </div>
           )}
 

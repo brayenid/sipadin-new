@@ -34,13 +34,17 @@ export default async function SpjListPage({
   const jenisQuery = sp?.jenis || ''
 
   const whereClause: Prisma.SpjWhereInput = {
+    isDeleted: false,
     ...(session.user.role === 'SUPER_ADMIN' ? {} : { createdById: session.user.id }),
     ...(jenisQuery ? { jenisSpj: jenisQuery as any } : {}),
     ...(searchQuery
       ? {
           OR: [
             { kodeRekening: { judulRekening: { contains: searchQuery, mode: 'insensitive' } } },
-            { roster: { some: { nama: { contains: searchQuery, mode: 'insensitive' } } } }
+            { roster: { some: { nama: { contains: searchQuery, mode: 'insensitive' } } } },
+            { perihal: { contains: searchQuery, mode: 'insensitive' } },
+            { perjadinDetail: { tempatTujuan: { contains: searchQuery, mode: 'insensitive' } } },
+            { maminDetail: { vendor: { namaVendor: { contains: searchQuery, mode: 'insensitive' } } } }
           ]
         }
       : {})
@@ -52,6 +56,7 @@ export default async function SpjListPage({
       include: {
         kodeRekening: true,
         perjadinDetail: true,
+        maminDetail: { include: { vendor: true } },
         roster: true
       },
       orderBy: { createdAt: 'desc' },
@@ -180,7 +185,7 @@ export default async function SpjListPage({
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Jenis</TableHead>
-                  <TableHead>Personel</TableHead>
+                  <TableHead>Keterangan</TableHead>
                   <TableHead className="text-right">Total Biaya</TableHead>
                   <TableHead className="text-center">Aksi</TableHead>
                 </TableRow>
@@ -199,19 +204,42 @@ export default async function SpjListPage({
                         {renderTanggalRange(spj)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <div>{getJenisBadge(spj.jenisSpj)}</div>
-                          {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
-                            <span className="text-xs text-slate-500">Tujuan: {spj.perjadinDetail.tempatTujuan}</span>
-                          )}
-                        </div>
+                        <div>{getJenisBadge(spj.jenisSpj)}</div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-slate-600">
-                          {spj.roster && spj.roster.length > 0
-                            ? spj.roster.map((r) => r.nama.split(' ')[0]).join(', ')
-                            : '-'}
-                        </span>
+                        <div className="text-sm text-slate-600">
+                          {spj.jenisSpj === 'MAKAN_MINUM' ? (
+                            <div className="flex flex-col gap-0.5 max-w-[250px]">
+                              <span className="font-medium text-slate-700 truncate" title={spj.perihal || ''}>{spj.perihal || '-'}</span>
+                              <span className="text-xs text-slate-500 truncate" title={spj.maminDetail?.vendor?.namaVendor || ''}>Vendor: {spj.maminDetail?.vendor?.namaVendor || '-'}</span>
+                            </div>
+                          ) : spj.jenisSpj === 'HONORARIUM' ? (
+                            <div className="flex flex-col gap-0.5 max-w-[250px]">
+                              <span className="font-medium text-slate-700 truncate block" title={spj.perihal || ''}>{spj.perihal || '-'}</span>
+                              <span className="text-xs text-slate-500 truncate block capitalize">
+                                Narasumber: {((spj.metaDokumen as any)?.daftarHadirNarasumber?.narasumber || []).length > 0 
+                                  ? ((spj.metaDokumen as any)?.daftarHadirNarasumber?.narasumber as any[]).map(n => (n.nama || '').split(' ')[0].toLowerCase()).join(', ') 
+                                  : '-'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-0.5 max-w-[250px]">
+                              <span className="font-medium text-slate-700 truncate block capitalize" title={spj.roster?.map(r => r.nama).join(', ').toLowerCase()}>
+                                {spj.roster && spj.roster.length > 0
+                                  ? spj.roster.map((r) => r.nama.split(' ')[0].toLowerCase()).join(', ')
+                                  : '-'}
+                              </span>
+                              <span className="text-xs text-slate-600 truncate block" title={spj.perihal || ''}>
+                                {spj.perihal || '-'}
+                              </span>
+                              {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
+                                <span className="text-xs text-slate-500 truncate block">
+                                  Tujuan: {spj.perjadinDetail.tempatTujuan}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-slate-900 font-medium">
                         {formatRupiah(spj.totalPengeluaran)}

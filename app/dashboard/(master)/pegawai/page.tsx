@@ -1,4 +1,5 @@
 import { getPegawais } from "@/app/actions/pegawai";
+import { auth } from "@/lib/auth";
 import PegawaiList from "./PegawaiList";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -8,6 +9,8 @@ export const metadata = {
 };
 
 export default async function PegawaiPage() {
+  const session = await auth();
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const data = await getPegawais();
 
   return (
@@ -31,7 +34,7 @@ export default async function PegawaiPage() {
         </p>
       </div>
 
-      <PegawaiList initialData={data} />
+      <PegawaiList initialData={data} isSuperAdmin={isSuperAdmin} />
     </div>
   );
 }

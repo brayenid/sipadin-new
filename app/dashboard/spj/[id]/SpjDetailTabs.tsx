@@ -16,26 +16,33 @@ import { useRouter } from 'next/navigation'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog'
 import { Combobox } from '@/components/ui/combobox'
-import GlobalPdfCarouselModal from './GlobalPdfCarouselModal'
 import DopdTab from './DopdTab'
 import PersonelTab from './PersonelTab'
 import TelaahanTab from './TelaahanTab'
 import PengeluaranTab from './PengeluaranTab'
+import SuratPengantarTab from './SuratPengantarTab'
+import BapbTab from './BapbTab'
+import BastbTab from './BastbTab'
+import DaftarHadirTab from './DaftarHadirTab'
 import KuitansiTab from './KuitansiTab'
 import SuratTugasTab from './SuratTugasTab'
 import SpdTab from './SpdTab'
 import VisumTab from './VisumTab'
 import LaporanTab from './LaporanTab'
+import DaftarHadirNarasumberTab from './DaftarHadirNarasumberTab'
+import DaftarTandaTerimaTab from './DaftarTandaTerimaTab'
 import { fmtDateId } from '@/lib/utils'
 import { formatWita } from '@/lib/date-utils'
 
 export default function SpjDetailTabs({
   spj,
   pegawaiList,
+  vendorList = [],
   tahunAnggarans = []
 }: {
   spj: any
   pegawaiList: any[]
+  vendorList?: any[]
   tahunAnggarans?: any[]
 }) {
   const router = useRouter()
@@ -44,8 +51,6 @@ export default function SpjDetailTabs({
   const [openDelete, setOpenDelete] = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
   const [loadingDelete, setLoadingDelete] = useState(false)
-  const [showCarousel, setShowCarousel] = useState(false)
-  const [selectedCarouselDoc, setSelectedCarouselDoc] = useState<string | null>(null)
 
   // Unsaved changes guard — tab yang aktif mendeklarasikan isDirty-nya lewat ref ini
   const [isDirty, setIsDirty] = useState(false)
@@ -73,6 +78,7 @@ export default function SpjDetailTabs({
   // State form edit master
   const [editForm, setEditForm] = useState({
     tanggalSpj: spj.tanggalSpj ? formatWita(spj.tanggalSpj, 'yyyy-MM-dd') : '',
+    tanggalPelaksanaan: spj.tanggalPelaksanaan ? formatWita(spj.tanggalPelaksanaan, 'yyyy-MM-dd') : '',
     nomorBku: spj.nomorBku || '',
     perihal: spj.perihal || '',
     driveUrl: spj.metaDokumen?.driveUrl || spj.driveUrl || '',
@@ -86,10 +92,20 @@ export default function SpjDetailTabs({
       ? formatWita(spj.perjadinDetail.tglKembali, 'yyyy-MM-dd')
       : '',
     alatAngkut: spj.perjadinDetail?.alatAngkut || 'Darat',
-    kodeRekeningId: spj.kodeRekeningId || ''
+    kodeRekeningId: spj.kodeRekeningId || '',
+    vendorId: spj.maminDetail?.vendorId || ''
   })
 
   const [localRekeningId, setLocalRekeningId] = useState(spj.kodeRekeningId || '')
+  const [localVendorId, setLocalVendorId] = useState(spj.maminDetail?.vendorId || '')
+
+  // Options for Vendor Combobox
+  const vendorOptions = useMemo(() => {
+    return vendorList.map((v) => ({
+      value: v.id,
+      label: v.namaVendor,
+    }));
+  }, [vendorList]);
 
   // Options for Combobox
   const kodeRekeningOptions = useMemo(() => {
@@ -132,7 +148,8 @@ export default function SpjDetailTabs({
     try {
       await updateSpjMasterData(spj.id, {
         ...editForm,
-        kodeRekeningId: localRekeningId
+        kodeRekeningId: localRekeningId,
+        vendorId: localVendorId
       })
       toast.success('Master Data SPJ berhasil diperbarui.')
       setOpenEdit(false)
@@ -165,14 +182,6 @@ export default function SpjDetailTabs({
   return (
     <div className="space-y-6">
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeaveCallback} onCancel={cancelLeave} />
-      <GlobalPdfCarouselModal 
-        isOpen={showCarousel} 
-        onClose={() => { setShowCarousel(false); setSelectedCarouselDoc(null); }} 
-        spj={spj} 
-        pegawaiList={pegawaiList} 
-        selectedDocId={selectedCarouselDoc}
-        onGoToTab={handleTabChange} 
-      />
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* SCROLLABLE TABS */}
         <div className="border-b overflow-x-auto no-scrollbar mb-6">
@@ -185,9 +194,27 @@ export default function SpjDetailTabs({
               </>
             )}
 
-            {/* Hanya tampilkan DOPD jika Perjadin */}
-            {spj.jenisSpj === 'PERJADIN' && <TabsTrigger value="dopd">DOPD</TabsTrigger>}
-            {spj.jenisSpj !== 'PERJADIN' && <TabsTrigger value="pengeluaran">Pengeluaran</TabsTrigger>}
+            {/* Hanya tampilkan DOPD jika Perjadin atau Honorarium */}
+            {(spj.jenisSpj === 'PERJADIN' || spj.jenisSpj === 'HONORARIUM') && <TabsTrigger value="dopd">DOPD</TabsTrigger>}
+            {spj.jenisSpj !== 'PERJADIN' && spj.jenisSpj !== 'HONORARIUM' && (
+              <TabsTrigger value="pengeluaran">Pengeluaran</TabsTrigger>
+            )}
+
+            {spj.jenisSpj === 'HONORARIUM' && (
+              <>
+                <TabsTrigger value="daftar-hadir-narasumber">Daftar Hadir Narasumber</TabsTrigger>
+                <TabsTrigger value="daftar-tanda-terima">Daftar Tanda Terima</TabsTrigger>
+              </>
+            )}
+
+            {spj.jenisSpj === 'MAKAN_MINUM' && (
+              <>
+                <TabsTrigger value="surat-pengantar">SPPB</TabsTrigger>
+                <TabsTrigger value="daftar-hadir">Daftar Hadir</TabsTrigger>
+                <TabsTrigger value="bapb">BAPB</TabsTrigger>
+                <TabsTrigger value="bastb">BASTB</TabsTrigger>
+              </>
+            )}
 
             <TabsTrigger value="kuitansi">Kuitansi</TabsTrigger>
 
@@ -204,32 +231,8 @@ export default function SpjDetailTabs({
 
         {/* TAB RINGKASAN */}
         <TabsContent value="ringkasan" className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Cetak Dokumen (Pratinjau)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {spj.jenisSpj === 'PERJADIN' && (
-                  <>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('telaahan'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Telaahan Staf</Button>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('surat-tugas'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Surat Tugas</Button>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('spd'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> SPD</Button>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('visum'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Visum</Button>
-                  </>
-                )}
-                <Button variant="outline" onClick={() => { setSelectedCarouselDoc('kuitansi'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Kuitansi</Button>
-                {spj.jenisSpj === 'PERJADIN' && (
-                  <>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('dopd'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> DOPD</Button>
-                    <Button variant="outline" onClick={() => { setSelectedCarouselDoc('laporan'); setShowCarousel(true); }}><FileText className="w-4 h-4 mr-2 text-slate-500" /> Laporan</Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
+          <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Informasi Master SPJ</CardTitle>
               <div className="flex gap-2">
@@ -329,6 +332,13 @@ export default function SpjDetailTabs({
                         </p>
                       </div>
                       <div className="space-y-2">
+                        <Label>Tanggal Pelaksanaan (Opsional)</Label>
+                        <Input type="date" name="tanggalPelaksanaan" value={editForm.tanggalPelaksanaan} onChange={handleEditChange} />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Tanggal spesifik kapan kegiatan ini dilakukan. (Akan tampil di BASTB, dll).
+                        </p>
+                      </div>
+                      <div className="space-y-2">
                         <Label>Tautan Bukti Fisik (Google Drive)</Label>
                         <Input name="driveUrl" value={editForm.driveUrl} onChange={handleEditChange} />
                         <p className="text-xs text-slate-500 mt-1">
@@ -383,6 +393,24 @@ export default function SpjDetailTabs({
                           </div>
                         </>
                       )}
+
+                      {spj.jenisSpj === 'MAKAN_MINUM' && (
+                        <div className="space-y-2 w-full">
+                          <Label>Penyedia / Vendor (Pihak Ketiga)</Label>
+                          <div className="grid grid-cols-1">
+                            <div className="min-w-0">
+                              <Combobox 
+                                options={vendorOptions} 
+                                value={localVendorId} 
+                                onChange={setLocalVendorId} 
+                                placeholder="Pilih Vendor..."
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">Vendor ini akan bertindak sebagai pihak penerima pembayaran pada Kuitansi SPJ Makan Minum.</p>
+                        </div>
+                      )}
+
                       <div className="flex flex-row items-center justify-between rounded-lg border p-4 bg-slate-50">
                         <div className="space-y-0.5">
                           <Label className="text-base">Status Pembayaran</Label>
@@ -438,10 +466,16 @@ export default function SpjDetailTabs({
                   </p>
                 </div>
                 <div className="space-y-1">
+                  <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Tanggal Pelaksanaan</p>
+                  <p className="font-semibold text-slate-900">
+                    {spj.tanggalPelaksanaan ? formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy') : '-'}
+                  </p>
+                </div>
+                <div className="space-y-1">
                   <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Nomor BKU</p>
                   <p className="font-semibold text-slate-900">{spj.nomorBku || '-'}</p>
                 </div>
-                <div className="space-y-1 md:col-span-2">
+                <div className="space-y-1">
                   <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Link Drive</p>
                   <p className="font-semibold text-blue-600 truncate">
                     {spj.metaDokumen?.driveUrl ? (
@@ -457,7 +491,7 @@ export default function SpjDetailTabs({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
             <CardHeader>
               <CardTitle>Informasi Anggaran</CardTitle>
             </CardHeader>
@@ -483,8 +517,32 @@ export default function SpjDetailTabs({
             </CardContent>
           </Card>
 
+          {spj.jenisSpj === 'MAKAN_MINUM' && spj.maminDetail && (
+            <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+              <CardHeader>
+                <CardTitle>Informasi Penyedia (Pihak Ketiga)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Nama Badan Usaha / Vendor</p>
+                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.namaVendor || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Nama Pemilik / Direktur</p>
+                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.namaPemilik || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-500">Alamat Usaha</p>
+                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.alamat || "-"}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
-            <Card>
+            <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
               <CardHeader>
                 <CardTitle>Rute Perjalanan Dinas</CardTitle>
               </CardHeader>
@@ -527,17 +585,52 @@ export default function SpjDetailTabs({
           </>
         )}
 
-        {/* TAB DOPD (KHUSUS PERJADIN) */}
-        {spj.jenisSpj === 'PERJADIN' && (
+        {/* TAB DOPD (KHUSUS PERJADIN & HONORARIUM) */}
+        {(spj.jenisSpj === 'PERJADIN' || spj.jenisSpj === 'HONORARIUM') && (
           <TabsContent value="dopd">
             <DopdTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
           </TabsContent>
         )}
 
         {/* TAB PENGELUARAN (KHUSUS NON-PERJADIN) */}
-        {spj.jenisSpj !== 'PERJADIN' && (
-          <TabsContent value="pengeluaran">
+        {spj.jenisSpj !== 'PERJADIN' && spj.jenisSpj !== 'HONORARIUM' && (
+          <TabsContent value="pengeluaran" className="mt-6">
             <PengeluaranTab spj={spj} onDirtyChange={setIsDirty} />
+          </TabsContent>
+        )}
+
+        {spj.jenisSpj === 'MAKAN_MINUM' && (
+          <TabsContent value="surat-pengantar">
+            <SuratPengantarTab spj={spj} pegawaiList={pegawaiList} />
+          </TabsContent>
+        )}
+        
+        {spj.jenisSpj === 'MAKAN_MINUM' && (
+          <TabsContent value="daftar-hadir">
+            <DaftarHadirTab spj={spj} />
+          </TabsContent>
+        )}
+
+        {spj.jenisSpj === 'MAKAN_MINUM' && (
+          <TabsContent value="bapb">
+            <BapbTab spj={spj} pegawaiList={pegawaiList} />
+          </TabsContent>
+        )}
+
+        {spj.jenisSpj === 'HONORARIUM' && (
+          <>
+            <TabsContent value="daftar-hadir-narasumber">
+              <DaftarHadirNarasumberTab spj={spj} pegawaiList={pegawaiList} />
+            </TabsContent>
+            <TabsContent value="daftar-tanda-terima">
+              <DaftarTandaTerimaTab spj={spj} pegawaiList={pegawaiList} />
+            </TabsContent>
+          </>
+        )}
+
+        {spj.jenisSpj === 'MAKAN_MINUM' && (
+          <TabsContent value="bastb">
+            <BastbTab spj={spj} pegawaiList={pegawaiList} />
           </TabsContent>
         )}
 

@@ -1,4 +1,5 @@
 import { getVendors } from "@/app/actions/vendor";
+import { auth } from "@/lib/auth";
 import VendorList from "./VendorList";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -8,6 +9,8 @@ export const metadata = {
 };
 
 export default async function VendorPage() {
+  const session = await auth();
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const data = await getVendors();
 
   return (
@@ -31,7 +34,7 @@ export default async function VendorPage() {
         </p>
       </div>
 
-      <VendorList initialData={data} />
+      <VendorList initialData={data} isSuperAdmin={isSuperAdmin} />
     </div>
   );
 }

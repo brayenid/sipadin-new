@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
     marginTop: 40,
-    marginLeft: -10
+    paddingRight: 100
   },
   penerimaWrap: {},
   sendawarLabel: { marginBottom: 2 },

@@ -19,6 +19,7 @@ export async function createVendor(data: {
   namaPemilik?: string;
   alamat?: string;
   npwp?: string;
+  npwpd?: string;
   rekeningBank?: string;
 }) {
   const session = await auth();
@@ -56,6 +57,7 @@ export async function bulkUpsertVendor(
     namaPemilik?: string | null;
     alamat?: string | null;
     npwp?: string | null;
+    npwpd?: string | null;
     rekeningBank?: string | null;
   }[],
   deleteIds: string[]
@@ -87,6 +89,7 @@ export async function bulkUpsertVendor(
             namaPemilik: item.namaPemilik || null,
             alamat: item.alamat || null,
             npwp: item.npwp || null,
+            npwpd: item.npwpd || null,
             rekeningBank: item.rekeningBank || null,
           },
         });
@@ -98,6 +101,7 @@ export async function bulkUpsertVendor(
             namaPemilik: item.namaPemilik || null,
             alamat: item.alamat || null,
             npwp: item.npwp || null,
+            npwpd: item.npwpd || null,
             rekeningBank: item.rekeningBank || null,
             teamId: session.user.teamId,
           },

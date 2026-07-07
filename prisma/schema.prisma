@@ -94,6 +94,7 @@ model VendorPihakKetiga {
   namaPemilik  String?
   alamat       String?
   npwp         String?
+  npwpd        String?
   rekeningBank String?
   
   teamId       String
@@ -160,6 +161,7 @@ model Spj {
   tanggalSpj    DateTime    @default(now())
   jenisSpj      SpjType
   perihal       String?     @db.Text // Penjelasan/maksud perjalanan dinas
+  tanggalPelaksanaan DateTime?
 
   // Penghubung ke Sumber Saldo
   kodeRekeningId String
@@ -181,6 +183,8 @@ model Spj {
 
   // Meta Dokumen Cetak (JSON Dinamis: Menghemat tabel 1-to-1 untuk narasi dokumen)
   metaDokumen   Json?
+
+  isDeleted     Boolean     @default(false)
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -279,6 +283,8 @@ model NaskahDinas {
 
   // Data spesifik dokumen JSON
   data        Json?
+
+  isDeleted   Boolean     @default(false)
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

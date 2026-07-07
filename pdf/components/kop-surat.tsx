@@ -100,7 +100,7 @@ export default function KopSurat({
           <Text style={styles.instansi1}>{instansiLine1}</Text>
           <Text style={styles.instansi2}>{instansiLine2}</Text>
           {alamatLine.replace(/\\n/g, '\n').split('\n').map((line, idx) => (
-            <Text key={idx} style={[styles.alamat, useBookman && { fontSize: 8 }]}>{line}</Text>
+            <Text key={idx} style={[styles.alamat, useBookman ? { fontSize: 8 } : {}]}>{line}</Text>
           ))}
         </View>
         <View style={{ width: 48 }} />

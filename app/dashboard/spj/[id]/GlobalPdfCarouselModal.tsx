@@ -14,6 +14,11 @@ import VisumPdf from "@/pdf/templates/VisumPdf";
 import KuitansiPdf from "@/pdf/templates/KuitansiPdf";
 import LaporanPdf from "@/pdf/templates/LaporanPdf";
 import DopdPdf from "@/pdf/templates/DopdPdf";
+import BapbPdf from "@/pdf/templates/BapbPdf";
+import SuratPengantarPdf from "@/pdf/templates/SuratPengantarPdf";
+import BastbPdf from "@/pdf/templates/BastbPdf";
+import DaftarHadirPdf from "@/pdf/templates/DaftarHadirPdf";
+import { formatWita } from "@/lib/date-utils";
 
 const PDFViewer = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
@@ -85,6 +90,169 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             signer={signer} 
           />
         )
+      });
+    }
+
+    // --- SURAT PENGANTAR (MAKAN MINUM) ---
+    if (spj.jenisSpj === 'MAKAN_MINUM') {
+      const sp = meta.suratPengantar || {};
+      const config = meta.suratPengantarPdfConfig || { content: {}, styles: {} };
+      const penandatanganId = sp.penandatanganId || meta.bapb?.pptkId || meta.bastb?.pptkId;
+      const pengesahPegawai = penandatanganId ? pegawaiList.find((p) => p.id === penandatanganId) : null;
+      docs.push({
+        id: "surat-pengantar",
+        title: "Surat Pengantar",
+        tabId: "surat-pengantar",
+        render: () => {
+          const defaultKeterangan = config.content?.keteranganOverride ||
+            (spj.tanggalPelaksanaan && spj.perihal 
+              ? `${spj.perihal} pada ${formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy')}` 
+              : spj.perihal) || "";
+          const spjData = {
+            nomorSurat: `${sp.nomorPrefix || ""}${sp.nomorTengah ? sp.nomorTengah : '               '}${sp.nomorSuffix || ""}`,
+            tanggalSurat: sp.tanggalSurat || null,
+            tanggalPenerima: sp.tanggalPenerima || null,
+            vendorNama: spj.maminDetail?.vendor?.namaVendor || "......................................",
+            vendorPemilik: spj.maminDetail?.vendor?.namaPemilik || "......................................",
+            bagianOrganisasiLabel: config.content?.bagianOrganisasiLabel || "BAGIAN ORGANISASI SETDAKAB KUTAI BARAT"
+          };
+          const itemsData = (spj.pengeluaranDetails || []).map((d: any, i: number) => ({
+            no: i + 1,
+            jenisBarang: d.uraian || "",
+            qty: Number(d.qty || 1),
+            satuan: d.satuan || "",
+            keterangan: defaultKeterangan
+          }));
+          const pengesah = pengesahPegawai ? {
+            nama: pengesahPegawai.nama,
+            nip: pengesahPegawai.nip
+          } : null;
+          return <SuratPengantarPdf spj={spjData} items={itemsData} pptk={pengesah} layout={config.styles} />;
+        }
+      });
+    }
+
+    // --- BAPB (MAKAN MINUM) ---
+    if (spj.jenisSpj === 'MAKAN_MINUM') {
+      const bapbMeta = meta.bapb || {};
+      const config = meta.bapbPdfConfig || { content: {}, styles: {} };
+      const kpaId = bapbMeta.kpaId || meta.dopd?.kpaId;
+      const pptkId = bapbMeta.pptkId || meta.suratPengantar?.penandatanganId;
+      const kpa = kpaId ? pegawaiList.find(p => p.id === kpaId) : null;
+      const pptk = pptkId ? pegawaiList.find(p => p.id === pptkId) : null;
+      docs.push({
+        id: "bapb",
+        title: "BAPB",
+        tabId: "bapb",
+        render: () => {
+          const spjData = {
+            nomorSurat: `${bapbMeta.nomorPrefix || ""}${bapbMeta.nomorTengah ? bapbMeta.nomorTengah : '               '}${bapbMeta.nomorSuffix || ""}`,
+            tanggalBapb: bapbMeta.tanggalBapb || null,
+            tanggalSpb: bapbMeta.tanggalSpb || null,
+            nomorSpb: bapbMeta.nomorSpb || '.............................',
+            bagianOrganisasiLabel: config.content?.bagianOrganisasiLabel || "Bagian Organisasi Setdakab Kutai Barat",
+          };
+          const vendorData = {
+            nama: spj.maminDetail?.vendor?.namaPemilik || "......................................",
+            jabatan: `Pemilik ${spj.maminDetail?.vendor?.namaVendor || ""}`.trim()
+          };
+          return (
+            <BapbPdf 
+              spj={spjData} 
+              vendor={vendorData}
+              kpa={kpa ? { nama: kpa.nama, nip: kpa.nip, jabatan: "Kuasa Pengguna Anggaran" } : null}
+              pptk={pptk ? { nama: pptk.nama, nip: pptk.nip, jabatan: "Pejabat Pelaksana Teknis Kegiatan" } : null} 
+              layout={config.styles}
+            />
+          );
+        }
+      });
+    }
+
+    // --- BASTB (MAKAN MINUM) ---
+    if (spj.jenisSpj === 'MAKAN_MINUM') {
+      const bastbMeta = meta.bastb || {};
+      const config = meta.bastbPdfConfig || { content: {}, styles: {} };
+      const pptkId = bastbMeta.pptkId || meta.bapb?.pptkId || meta.suratPengantar?.penandatanganId;
+      const pptk = pptkId ? pegawaiList.find((p) => p.id === pptkId) : null;
+      docs.push({
+        id: "bastb",
+        title: "BASTB",
+        tabId: "bastb",
+        render: () => {
+          const defaultKeterangan = config.content?.keteranganOverride ||
+            (spj.tanggalPelaksanaan && spj.perihal 
+              ? `Tanggal ${formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy')} ${spj.perihal}` 
+              : spj.perihal) || "";
+
+          const spjData = {
+            nomorSurat: `${bastbMeta.nomorPrefix || ""}${bastbMeta.nomorTengah ? bastbMeta.nomorTengah : '               '}${bastbMeta.nomorSuffix || ""}`,
+            tanggalBastb: bastbMeta.tanggalBastb || null,
+          };
+          const vendorData = {
+            nama: spj.maminDetail?.vendor?.namaPemilik || "......................................",
+            npwp: spj.maminDetail?.vendor?.npwp || "-",
+            npwpd: spj.maminDetail?.vendor?.npwpd || "-",
+            alamat: spj.maminDetail?.vendor?.alamat || "-",
+            jabatan: `Pemilik ${spj.maminDetail?.vendor?.namaVendor || ""}`.trim()
+          };
+          const itemsData = (spj.pengeluaranDetails || []).map((d: any, i: number) => ({
+            no: i + 1,
+            jenisBarang: d.uraian || "",
+            qty: Number(d.qty || 1),
+            satuan: d.satuan || "",
+            keterangan: defaultKeterangan
+          }));
+          return (
+            <BastbPdf 
+              spj={spjData} 
+              vendor={vendorData}
+              pptk={pptk ? { 
+                nama: pptk.nama, 
+                nip: pptk.nip, 
+                jabatan: "Pejabat Pelaksana Teknis Kegiatan", 
+                alamat: "Jl. Komplek Perkantoran Bupati Kutai Barat" 
+              } : null}
+              items={itemsData}
+              layout={config.styles}
+            />
+          );
+        }
+      });
+    }
+
+    // --- DAFTAR HADIR (MAKAN MINUM) ---
+    if (spj.jenisSpj === 'MAKAN_MINUM') {
+      const dhMeta = meta.daftarHadir || {};
+      const config = meta.daftarHadirPdfConfig || { content: {}, styles: {} };
+      const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const hariLabel = spj.tanggalPelaksanaan 
+        ? hariArr[new Date(spj.tanggalPelaksanaan).getDay()]
+        : "";
+      const tanggalLabel = spj.tanggalPelaksanaan 
+        ? formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy') 
+        : (dhMeta.tanggal || "");
+
+      docs.push({
+        id: "daftar-hadir",
+        title: "Daftar Hadir",
+        tabId: "daftar-hadir",
+        render: () => {
+          const spjData = {
+            hari: hariLabel,
+            tanggalLabel: tanggalLabel,
+            waktu: dhMeta.waktu || "09.00 Wita s/d Selesai",
+            tempat: dhMeta.tempat || "",
+            acara: spj.perihal || ""
+          };
+          return (
+            <DaftarHadirPdf 
+              spj={spjData} 
+              jumlahPeserta={Number(dhMeta.jumlahPeserta) || 10}
+              layout={config.styles}
+            />
+          );
+        }
       });
     }
 
@@ -227,7 +395,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           judulRekening: spj.kodeRekening?.judulRekening || "-",
           upGu: "",
           nomorBku: spj.nomorBku || "",
-          maksudDinas: spj.perihal,
+          maksudDinas: spj.tanggalPelaksanaan && spj.perihal ? `${spj.perihal} pada ${formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy')}` : spj.perihal,
           kotaTandaTangan: "Sendawar",
           tanggalKuitansiLabel: null
         };

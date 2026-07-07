@@ -297,7 +297,7 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
         </div>
       ))}
 
-      <Button type="button" variant="dashed" className="w-full mt-2 h-10 text-slate-500" onClick={() => addBlock(blocks.length - 1)}>
+      <Button type="button" variant="outline" className="w-full mt-2 h-10 text-slate-500 border-dashed" onClick={() => addBlock(blocks.length - 1)}>
         <Plus className="w-4 h-4 mr-2" /> Tambah Paragraf Baru
       </Button>
     </div>

@@ -146,7 +146,7 @@ export default function SpjExportModal() {
 
         <div className="space-y-2 mt-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Jenis SPJ</Label>
-          <Select value={jenisSpj} onValueChange={setJenisSpj}>
+          <Select value={jenisSpj} onValueChange={(val) => { if (val) setJenisSpj(val); }}>
             <SelectTrigger className="w-full h-10 border-slate-200">
               <SelectValue placeholder="Pilih Jenis SPJ" />
             </SelectTrigger>

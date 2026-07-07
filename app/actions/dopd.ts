@@ -100,3 +100,95 @@ export async function saveDopdTransaction(spjId: string, dopdItems: any[], dopdM
     return true;
   });
 }
+
+export async function saveDopdHonorarium(spjId: string, dopdItems: any[], dopdMeta?: any) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Ambil data SPJ saat ini
+    const spj = await tx.spj.findUnique({
+      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
+      include: { kodeRekening: true }
+    });
+
+    if (!spj) throw new Error("SPJ tidak ditemukan.");
+
+    // 2. Hitung total biaya DOPD yang baru
+    let newTotalDopd = BigInt(0);
+    const validItemsToInsert = dopdItems.map(item => {
+      const hargaSatuan = BigInt(item.hargaSatuan);
+      let multiplier = 1;
+      if (item.faktorPengali && Array.isArray(item.faktorPengali)) {
+        item.faktorPengali.forEach((f: any) => {
+          multiplier *= (parseInt(f.value, 10) || 1);
+        });
+      }
+      const itemTotal = hargaSatuan * BigInt(multiplier);
+      newTotalDopd += itemTotal;
+
+      return {
+        id: item.id,
+        spjRosterItemId: item.spjRosterItemId,
+        kategori: item.kategori,
+        uraian: item.uraian,
+        hargaSatuan: hargaSatuan.toString(),
+        total: itemTotal.toString(),
+        faktorPengali: item.faktorPengali,
+      };
+    });
+
+    // 3. Hitung total biaya Honorarium dari metaDokumen
+    let totalHonor = BigInt(0);
+    const meta = spj.metaDokumen && typeof spj.metaDokumen === 'object' ? (spj.metaDokumen as any) : {};
+    
+    if (meta.daftarTandaTerima && meta.daftarTandaTerima.tandaTerimaData) {
+      const narasumberData = Object.values(meta.daftarTandaTerima.tandaTerimaData) as any[];
+      narasumberData.forEach((row: any) => {
+        const jumlah = (row.hargaSatuan || 0) * (row.kuantitas || 0);
+        totalHonor += BigInt(jumlah);
+      });
+    }
+
+    const newGrandTotal = totalHonor + newTotalDopd;
+    const oldTotal = spj.totalPengeluaran;
+    const diff = newGrandTotal - oldTotal;
+
+    // 4. Validasi Saldo Pagu
+    if (diff > BigInt(0)) {
+      if (spj.kodeRekening.sisaSaldo < diff) {
+        throw new Error(`Saldo Kode Rekening tidak mencukupi untuk penambahan DOPD ini. Sisa Saldo: ${formatCurrency(spj.kodeRekening.sisaSaldo)}`);
+      }
+    }
+
+    // 5. Update Saldo (Kurangi atau Tambah kembali jika minus)
+    if (diff !== BigInt(0)) {
+      await tx.kodeRekening.update({
+        where: { id: spj.kodeRekeningId },
+        data: {
+          sisaSaldo: {
+            decrement: diff,
+          }
+        }
+      });
+    }
+
+    // 6. Update Total Pengeluaran di SPJ dan simpan JSON DOPD
+    const newMeta = { ...meta };
+    newMeta.dopdHonorarium = {
+      ...dopdMeta,
+      items: validItemsToInsert
+    };
+
+    await tx.spj.update({
+      where: { id: spj.id },
+      data: {
+        totalPengeluaran: newGrandTotal,
+        metaDokumen: newMeta
+      }
+    });
+
+    return true;
+  });
+}
+

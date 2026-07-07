@@ -18,7 +18,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
   const spj = await prisma.spj.findFirst({
     where: { 
       id: params.id,
-      ...(session.user.role === 'SUPER_ADMIN' ? {} : { createdById: session.user.id })
+      teamId: session.user.teamId
     },
     include: {
       kodeRekening: {
@@ -56,6 +56,11 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
   const pegawaiList = await prisma.pegawai.findMany({
     where: { teamId: session.user.teamId },
     orderBy: { nama: "asc" }
+  });
+  
+  const vendorList = await prisma.vendorPihakKetiga.findMany({
+    where: { teamId: session.user.teamId },
+    orderBy: { namaVendor: "asc" }
   });
 
   const tahunAnggarans = await prisma.tahunAnggaran.findMany({
@@ -97,7 +102,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-800">Detail Surat Pertanggungjawaban</h2>
-            <Badge variant="outline" className="text-slate-500 bg-slate-50">{spj.jenisSpj}</Badge>
+            <Badge variant="outline" className="text-slate-500 bg-slate-50">{spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan Minum' : (spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj)}</Badge>
           </div>
           {spj.perihal && (
             <p className="text-sm font-medium text-slate-700 mt-1">Perihal: {spj.perihal}</p>
@@ -116,7 +121,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <SpjDetailTabs spj={spj} pegawaiList={pegawaiList} tahunAnggarans={tahunAnggarans} />
+      <SpjDetailTabs spj={spj} pegawaiList={pegawaiList} vendorList={vendorList} tahunAnggarans={tahunAnggarans} />
     </div>
   );
 }

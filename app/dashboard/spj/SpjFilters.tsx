@@ -50,7 +50,7 @@ export default function SpjFilters() {
       <div className="relative w-full sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input
-          placeholder="Cari sumber dana atau personel..."
+          placeholder="Cari perihal, sumber dana, vendor..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"

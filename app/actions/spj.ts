@@ -125,7 +125,7 @@ export async function createSpjTransaction(payload: any) {
           tingkatPerjadin: spesifik.tingkatPerjadin || null,
         },
       });
-    } else if (jenisSpj === "MAMIN" && spesifik) {
+    } else if (jenisSpj === "MAKAN_MINUM" && spesifik) {
       if (!spesifik.vendorId) {
         throw new Error("Penyedia / Vendor untuk SPJ Makan Minum belum dipilih.");
       }
@@ -138,7 +138,7 @@ export async function createSpjTransaction(payload: any) {
           spjId: spj.id,
           vendorId: spesifik.vendorId,
           namaRapat: perihal,
-          jumlahPeserta: parseInt(spesifik.jumlahPeserta, 10),
+          jumlahPeserta: parseInt(spesifik.jumlahPeserta || "0", 10),
         },
       });
     }
@@ -181,6 +181,7 @@ export async function updateSpjMasterData(spjId: string, payload: any) {
       where: { id: spjId },
       data: {
         tanggalSpj: parseWitaInput(payload.tanggalSpj) || new Date(),
+        tanggalPelaksanaan: payload.tanggalPelaksanaan ? parseWitaInput(payload.tanggalPelaksanaan) : null,
         kodeRekeningId: payload.kodeRekeningId || spj.kodeRekeningId,
         nomorBku: payload.nomorBku || null,
         perihal: payload.perihal || null,
@@ -203,6 +204,19 @@ export async function updateSpjMasterData(spjId: string, payload: any) {
           tglKembali: dKembali,
           lamaPerjalanan: calcLama,
           alatAngkut: payload.alatAngkut,
+        }
+      });
+    } else if (spj.jenisSpj === "MAKAN_MINUM" && payload.vendorId) {
+      await tx.spjMaminDetail.upsert({
+        where: { spjId: spj.id },
+        update: {
+          vendorId: payload.vendorId
+        },
+        create: {
+          spjId: spj.id,
+          vendorId: payload.vendorId,
+          namaRapat: payload.perihal || spj.perihal || "Makan Minum",
+          jumlahPeserta: 0
         }
       });
     }
@@ -236,13 +250,69 @@ export async function deleteSpjTransaction(spjId: string) {
       });
     }
 
-    // 3. Hapus SPJ (Relasi OnDelete: Cascade akan menghapus DOPD, Roster, dll secara otomatis)
-    await tx.spj.delete({
-      where: { id: spj.id }
+    // 3. Hapus SPJ (Soft Delete)
+    await tx.spj.update({
+      where: { id: spj.id },
+      data: { isDeleted: true }
     });
 
     return true;
   });
+}
+
+export async function restoreSpjTransaction(spjId: string) {
+  const session = await auth();
+  if (!session || session.user.role !== 'SUPER_ADMIN') throw new Error("Unauthorized");
+
+  return await prisma.$transaction(async (tx) => {
+    const spj = await tx.spj.findFirst({ 
+      where: { id: spjId, teamId: session.user.teamId } 
+    });
+    
+    if (!spj) throw new Error("SPJ tidak ditemukan.");
+
+    if (spj.totalPengeluaran > BigInt(0)) {
+      const rekening = await tx.kodeRekening.findUnique({ where: { id: spj.kodeRekeningId } });
+      if (!rekening) throw new Error("Kode Rekening tidak ditemukan.");
+      
+      if (rekening.sisaSaldo < spj.totalPengeluaran) {
+        throw new Error("Sisa Saldo Pagu tidak mencukupi untuk memulihkan SPJ ini.");
+      }
+
+      await tx.kodeRekening.update({
+        where: { id: spj.kodeRekeningId },
+        data: {
+          sisaSaldo: {
+            decrement: spj.totalPengeluaran
+          }
+        }
+      });
+    }
+
+    await tx.spj.update({
+      where: { id: spj.id },
+      data: { isDeleted: false }
+    });
+
+    return true;
+  });
+
+  revalidatePath("/dashboard/recycle-bin");
+  revalidatePath("/dashboard/spj");
+  revalidatePath("/dashboard");
+}
+
+export async function permanentDeleteSpj(spjId: string) {
+  const session = await auth();
+  if (!session || session.user.role !== 'SUPER_ADMIN') throw new Error("Unauthorized");
+
+  await prisma.spj.delete({
+    where: { id: spjId, teamId: session.user.teamId }
+  });
+
+  revalidatePath("/dashboard/recycle-bin");
+  revalidatePath("/dashboard/spj");
+  return true;
 }
 
 export async function duplicateSpjTransaction(spjId: string) {
