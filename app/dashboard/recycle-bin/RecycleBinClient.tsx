@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Trash2, RotateCcw, AlertCircle, FileText, ChevronLeft, Loader2 } from "lucide-react";
 import { restoreSpjTransaction, permanentDeleteSpj } from "@/app/actions/spj";
+import { restoreNaskahDinas, permanentDeleteNaskahDinas } from "@/app/actions/naskah-dinas";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
