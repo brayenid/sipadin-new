@@ -1,8 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -10,12 +8,6 @@ const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
 });
-
-function getPrisma() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -56,7 +48,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
 
         const { username, password } = parsed.data;
-        const prisma = getPrisma();
 
         try {
           const user = await prisma.user.findUnique({
@@ -80,8 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } catch (error) {
           console.error("[auth] authorize error:", error);
           return null;
-        } finally {
-          await prisma.$disconnect();
         }
       },
     }),

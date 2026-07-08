@@ -1,8 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -11,12 +9,6 @@ const setupSchema = z.object({
   password: z.string().min(6),
 });
 
-function getPrisma() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
-}
-
 export async function setupSuperadmin(data: { username: string; password: string }) {
   const parsed = setupSchema.safeParse(data);
   if (!parsed.success) {
@@ -24,7 +16,6 @@ export async function setupSuperadmin(data: { username: string; password: string
   }
 
   const { username, password } = parsed.data;
-  const prisma = getPrisma();
 
   try {
     // Check if any SUPER_ADMIN already exists
@@ -63,7 +54,5 @@ export async function setupSuperadmin(data: { username: string; password: string
   } catch (error: any) {
     console.error("[setup] error:", error);
     return { success: false, error: error.message || "Terjadi kesalahan internal." };
-  } finally {
-    await prisma.$disconnect();
   }
 }

@@ -1,15 +1,10 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { PrismaClient, UserRole } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 /**
  * Memastikan bahwa user yang merequest adalah SUPER_ADMIN.
