@@ -12,9 +12,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SIPADIN – Sistem Pencatatan SPJ Elektronik v2",
-  description:
-    "Sistem Pencatatan SPJ Elektronik berbasis web untuk Sekretariat Daerah Kabupaten Kutai Barat. Multi-tenant, aman, dan akurat.",
+  title: "SIPADIN",
+  description: "Sistem pengarsipan dinas tim Bagian Organisasi, dikembangkan oleh Tim PPTL",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -23,6 +22,27 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  openGraph: {
+    title: "SIPADIN",
+    description: "Sistem pengarsipan dinas tim Bagian Organisasi, dikembangkan oleh Tim PPTL",
+    url: "/",
+    siteName: "SIPADIN",
+    images: [
+      {
+        url: "/sipadin.png",
+        width: 1200,
+        height: 630,
+        alt: "SIPADIN Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SIPADIN",
+    description: "Sistem pengarsipan dinas tim Bagian Organisasi, dikembangkan oleh Tim PPTL",
+    images: ["/sipadin.png"],
   },
 };
 
