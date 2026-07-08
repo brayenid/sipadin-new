@@ -46,17 +46,17 @@ export default function SpjFilters() {
   }, [debouncedSearch, jenis, router, searchParams]);
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6">
-      <div className="relative w-full sm:max-w-xs">
+    <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input
           placeholder="Cari perihal, sumber dana, vendor..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-9 h-10 bg-white border-slate-200"
         />
       </div>
-      <div className="w-full sm:max-w-[200px]">
+      <div className="w-full sm:w-[240px]">
         <select
           value={jenis}
           onChange={(e) => setJenis(e.target.value)}

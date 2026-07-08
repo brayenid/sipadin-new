@@ -186,7 +186,7 @@ export default function AnggaranList({
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              className="pl-9 h-10 border-slate-200/60 focus-visible:ring-1 focus-visible:ring-blue-500"
+              className="pl-9 h-10 bg-white focus-visible:ring-1 focus-visible:ring-blue-500"
               placeholder="Cari tahun anggaran..."
               value={localSearch}
               onChange={(e) => {

@@ -10,6 +10,7 @@ import {
   Calendar,
   PlusCircle,
   PenBox,
+  Info,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "./SidebarProvider";
@@ -23,6 +24,10 @@ const navMain = [
 
 const navTambahan = [
   { href: "/dashboard/naskah-dinas", label: "Naskah Dinas", icon: PenBox },
+];
+
+const navInformasi = [
+  { href: "/dashboard/tentang", label: "Tentang Aplikasi", icon: Info, exact: true },
 ];
 
 const navMaster = [
@@ -94,6 +99,15 @@ export default function DashboardNav({ role }: { role: string }) {
         Data Master
       </p>
       {navMaster.map((item) => (
+        <NavLink key={item.href} {...item} />
+      ))}
+
+      <Separator className="my-3 bg-slate-100" />
+
+      <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
+        Informasi
+      </p>
+      {navInformasi.map((item) => (
         <NavLink key={item.href} {...item} />
       ))}
 

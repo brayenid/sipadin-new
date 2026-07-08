@@ -225,7 +225,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* TAB LIST DISABLED POINTER EVENTS SO USER MUST USE BUTTONS */}
-        <div className="px-6 pt-6">
+        <div className="px-6">
           <TabsList className="pointer-events-none mb-6">
             <TabsTrigger value="step-1">1. Info Dasar</TabsTrigger>
             <TabsTrigger value="step-2">2. Detail SPJ</TabsTrigger>

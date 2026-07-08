@@ -154,18 +154,17 @@ export default async function NaskahDinasListPage(props: {
           {/* Pagination */}
           {totalData > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
-              <p className="text-sm text-slate-500">
-                Menampilkan <span className="font-medium text-slate-900">{skip + 1}</span> hingga{' '}
-                <span className="font-medium text-slate-900">{Math.min(skip + limit, totalData)}</span> dari{' '}
-                <span className="font-medium text-slate-900">{totalData}</span> data
+              <p className="text-[10px] sm:text-sm text-slate-500">
+                Menampilkan <span className="font-medium text-slate-900">{skip + 1}</span>-<span className="font-medium text-slate-900">{Math.min(skip + limit, totalData)}</span> dari <span className="font-medium text-slate-900">{totalData}</span>
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link href={createPageUrl(page > 1 ? page - 1 : 1)}>
-                  <Button variant="outline" size="sm" disabled={page <= 1} className="h-8">
-                    Sebelumnya
+                  <Button variant="outline" size="sm" disabled={page <= 1} className="h-8 px-2 sm:px-3">
+                    <span className="hidden sm:inline">Sebelumnya</span>
+                    <span className="sm:hidden">&laquo;</span>
                   </Button>
                 </Link>
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <Link key={p} href={createPageUrl(p)}>
                       <Button
@@ -177,9 +176,13 @@ export default async function NaskahDinasListPage(props: {
                     </Link>
                   ))}
                 </div>
+                <div className="flex sm:hidden items-center justify-center px-2 text-xs font-medium text-slate-600">
+                  {page} / {totalPages}
+                </div>
                 <Link href={createPageUrl(page < totalPages ? page + 1 : totalPages)}>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages} className="h-8">
-                    Selanjutnya
+                  <Button variant="outline" size="sm" disabled={page >= totalPages} className="h-8 px-2 sm:px-3">
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <span className="sm:hidden">&raquo;</span>
                   </Button>
                 </Link>
               </div>

@@ -23,7 +23,7 @@ export default function MobileSidebarShell({
       {/* Mobile top bar — only visible below lg */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-card border-b border-slate-200/60 flex items-center justify-between px-4">
         <div className="flex items-center">
-          <img src="/sipadin.png" alt="SIPADIN Logo" className="h-7 w-auto object-contain" />
+          <img src="/sipadin.png" alt="SIPADIN Logo" className="h-8 sm:h-9 w-auto object-contain" />
         </div>
         <button
           onClick={toggle}
@@ -35,7 +35,7 @@ export default function MobileSidebarShell({
       </div>
 
       <Drawer open={isOpen} onOpenChange={(val) => (val ? open() : close())} showSwipeHandle>
-        <DrawerContent className="lg:hidden max-h-[85vh] bg-card outline-none">
+        <DrawerContent className="lg:hidden h-[95dvh] max-h-[95dvh] bg-card outline-none">
           <div className="sr-only">
             <DrawerHeader>
               <DrawerTitle>Menu Navigasi</DrawerTitle>

@@ -99,12 +99,12 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>Informasi Surat</CardTitle>
-          <CardDescription>Nomor dan tanggal penetapan Surat Perintah.</CardDescription>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Informasi Surat</CardTitle>
+          <CardDescription className="text-[10px] sm:text-xs mt-1 text-slate-500">Nomor dan tanggal penetapan Surat Perintah.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
           <div className="space-y-2">
             <Label>Tanggal Surat</Label>
             <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
@@ -139,11 +139,11 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
         </CardContent>
       </Card>
 
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>Penerima & Klausul Perintah</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Penerima & Klausul Perintah</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
           <div className="space-y-2">
             <Label>Kepada (Pegawai yang Diperintah)</Label>
             <CreatableCombobox 
@@ -179,11 +179,11 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
         </CardContent>
       </Card>
 
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>Penandatangan</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Penandatangan</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <div className="space-y-2">
             <Label>Pejabat yang Menandatangani</Label>
             <CreatableCombobox 
@@ -198,11 +198,11 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
         </CardContent>
       </Card>
 
-      <div className="flex justify-start gap-4 items-center pt-4 pb-12">
-        <Button variant="outline" onClick={() => setShowPreview(true)}>
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-0 items-center pt-4 pb-12">
+        <Button variant="outline" onClick={() => setShowPreview(true)} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           <FileText className="w-4 h-4 mr-2" /> Pratinjau PDF
         </Button>
-        <Button onClick={handleSave} disabled={loading}>
+        <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Simpan Perubahan
         </Button>

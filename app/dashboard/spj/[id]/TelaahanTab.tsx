@@ -230,45 +230,45 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         </div>
 
         {/* BAGIAN ISI TELAHS */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">I. Dasar</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">I. Dasar</Label>
             <PresetDialog 
               title="Preset Dasar" 
               options={telaahanPresets.dasar} 
               onSelect={(text) => handleSelectPresetString("dasar", text)} 
             />
           </div>
-          <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Surat Undangan / DPA SKPD..." className={checkDirty("dasar") ? dirtyClass : ""} />
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Landasan hukum atau surat yang mendasari perjalanan dinas ini.</p>
+          <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Contoh: Surat Undangan / DPA SKPD..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("dasar") ? dirtyClass : ""}`} />
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Landasan hukum atau surat yang mendasari perjalanan dinas ini.</p>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">II. Pra Anggapan</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">II. Pra Anggapan</Label>
             <div className="flex items-center gap-2">
               <PresetDialog 
                 title="Preset Pra Anggapan" 
                 options={telaahanPresets.praAnggapan} 
                 onSelect={(text) => handleSelectPresetArray("praAnggapan", text)} 
               />
-              <Button type="button" variant="outline" size="sm" onClick={() => handleAddListItem("praAnggapan")}>
-                <Plus className="w-3 h-3 mr-2" /> Tambah Poin
+              <Button type="button" variant="outline" size="sm" onClick={() => handleAddListItem("praAnggapan")} className="h-8 px-2">
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          <div className="space-y-3 pl-4 border-l-2 border-slate-200/60">
+          <div className="border border-slate-200 rounded-b-lg p-2 bg-white space-y-2">
             {form.praAnggapan.map((item: string, index: number) => (
               <div key={index} className="flex gap-2 items-start">
-                <span className="text-xs sm:text-sm font-bold text-slate-400 mt-2 sm:mt-2.5">{index + 1}.</span>
+                <span className="mt-2.5 text-sm font-medium text-slate-400 w-6 text-right shrink-0">{index + 1}.</span>
                 <Textarea 
                   value={item} 
                   onChange={(e) => handleListChange("praAnggapan", index, e.target.value)} 
                   rows={2} 
-                  className={`resize-none ${checkDirty("praAnggapan") ? dirtyClass : ""}`}
-                  placeholder="Masukkan asumsi atau pra anggapan..."
+                  className={`text-[13px] resize-none focus-visible:ring-1 ${checkDirty("praAnggapan") ? dirtyClass : ""}`}
+                  placeholder="Contoh: Kondisi atau asumsi saat ini yang menjadi dasar..."
                 />
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("praAnggapan", index)}>
+                <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0 mt-1" onClick={() => handleRemoveListItem("praAnggapan", index)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -276,32 +276,32 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">III. Fakta yang Memengaruhi</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">III. Fakta yang Memengaruhi</Label>
             <div className="flex items-center gap-2">
               <PresetDialog 
                 title="Preset Fakta" 
                 options={telaahanPresets.fakta} 
                 onSelect={(text) => handleSelectPresetArray("fakta", text)} 
               />
-              <Button type="button" variant="outline" size="sm" onClick={() => handleAddListItem("fakta")}>
-                <Plus className="w-3 h-3 mr-2" /> Tambah Poin
+              <Button type="button" variant="outline" size="sm" onClick={() => handleAddListItem("fakta")} className="h-8 px-2">
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          <div className="space-y-3 pl-4 border-l-2 border-slate-200/60">
+          <div className="border border-slate-200 rounded-b-lg p-2 bg-white space-y-2">
             {form.fakta.map((item: string, index: number) => (
               <div key={index} className="flex gap-2 items-start">
-                <span className="text-xs sm:text-sm font-bold text-slate-400 mt-2 sm:mt-2.5">{index + 1}.</span>
+                <span className="mt-2.5 text-sm font-medium text-slate-400 w-6 text-right shrink-0">{index + 1}.</span>
                 <Textarea 
                   value={item} 
                   onChange={(e) => handleListChange("fakta", index, e.target.value)} 
                   rows={2} 
-                  className={`resize-none ${checkDirty("fakta") ? dirtyClass : ""}`}
-                  placeholder="Fakta-fakta di lapangan..."
+                  className={`text-[13px] resize-none focus-visible:ring-1 ${checkDirty("fakta") ? dirtyClass : ""}`}
+                  placeholder="Contoh: Data, angka, atau kejadian nyata di lapangan..."
                 />
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("fakta", index)}>
+                <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0 mt-1" onClick={() => handleRemoveListItem("fakta", index)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -309,43 +309,43 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">IV. Analisis</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">IV. Analisis</Label>
             <PresetDialog 
               title="Preset Analisis" 
               options={telaahanPresets.analisis} 
               onSelect={(text) => handleSelectPresetString("analisis", text)} 
             />
           </div>
-          <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={4} placeholder="Analisa terhadap fakta dan pra anggapan..." className={checkDirty("analisis") ? dirtyClass : ""} />
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Analisa mendalam mengenai kegiatan yang akan dilakukan.</p>
+          <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={4} placeholder="Contoh: Berdasarkan fakta tersebut, dapat dianalisis bahwa..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("analisis") ? dirtyClass : ""}`} />
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Analisa mendalam mengenai kegiatan yang akan dilakukan.</p>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">V. Kesimpulan</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">V. Kesimpulan</Label>
             <PresetDialog 
               title="Preset Kesimpulan" 
               options={telaahanPresets.kesimpulan} 
               onSelect={(text) => handleSelectPresetString("kesimpulan", text)} 
             />
           </div>
-          <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} placeholder="Kesimpulan dari analisis..." className={checkDirty("kesimpulan") ? dirtyClass : ""} />
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Intisari dari analisa telaahan staf.</p>
+          <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} placeholder="Contoh: Maka dapat ditarik kesimpulan perlunya..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("kesimpulan") ? dirtyClass : ""}`} />
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Intisari dari analisa telaahan staf.</p>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm">VI. Saran</Label>
+        <div>
+          <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+            <Label className="font-bold text-slate-700">VI. Saran</Label>
             <PresetDialog 
               title="Preset Saran" 
               options={telaahanPresets.saran} 
               onSelect={(text) => handleSelectPresetString("saran", text)} 
             />
           </div>
-          <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} placeholder="Saran tindakan..." className={checkDirty("saran") ? dirtyClass : ""} />
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Rekomendasi yang diajukan kepada pimpinan berdasarkan kesimpulan.</p>
+          <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} placeholder="Contoh: Mohon arahan dan persetujuan Bapak/Ibu untuk tindak lanjut..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("saran") ? dirtyClass : ""}`} />
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Rekomendasi yang diajukan kepada pimpinan berdasarkan kesimpulan.</p>
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
@@ -377,17 +377,17 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 : null
             }}
             telaahan={{
-              kepada: data.kepada,
-              sifat: data.sifat,
-              lampiran: data.lampiran,
+              kepada: form.kepada,
+              sifat: form.sifat,
+              lampiran: form.lampiran,
               perihal: form.perihal || spj.perihal,
-              dasar: data.dasar,
-              praAnggapan: data.praAnggapan,
-              fakta: data.fakta,
-              analisis: data.analisis,
-              kesimpulan: data.kesimpulan,
-              saran: data.saran,
-              tglTelaahan: data.tanggal ? new Date(data.tanggal) : undefined
+              dasar: form.dasar,
+              praAnggapan: form.praAnggapan,
+              fakta: form.fakta,
+              analisis: form.analisis,
+              kesimpulan: form.kesimpulan,
+              saran: form.saran,
+              tglTelaahan: form.tanggal ? new Date(form.tanggal) : undefined
             }}
             roster={spj.roster || []}
             config={config}

@@ -149,7 +149,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
 
   return (
     <div className="space-y-6">
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Atribut Surat</CardTitle>
           <CardDescription className="text-[10px] sm:text-xs mt-1 text-slate-500">Atribut kepala surat (Nomor, Tanggal, Sifat, Lampiran, Hal).</CardDescription>
@@ -198,7 +198,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
         </CardContent>
       </Card>
 
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Tujuan (Yth.)</CardTitle>
           <CardDescription className="text-[10px] sm:text-xs mt-1 text-slate-500">Pilih siapa saja yang dituju dalam surat edaran ini.</CardDescription>
@@ -248,7 +248,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
         </CardContent>
       </Card>
 
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Isi Surat</CardTitle>
           <CardDescription className="text-[10px] sm:text-xs mt-1 text-slate-500">
@@ -263,7 +263,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
         </CardContent>
       </Card>
 
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Tembusan</CardTitle>
         </CardHeader>
@@ -277,7 +277,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
         </CardContent>
       </Card>
 
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Penandatangan & Paraf</CardTitle>
         </CardHeader>

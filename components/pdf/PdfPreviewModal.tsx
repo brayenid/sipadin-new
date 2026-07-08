@@ -100,23 +100,26 @@ export default function PdfPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[95vw] w-full h-[95vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 [&>button[data-slot=dialog-close]]:hidden">
-        <DialogHeader className="px-6 py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between">
-          <DialogTitle className="text-xl">Preview & Edit: {title}</DialogTitle>
-          <div className="flex items-center gap-2 ml-auto">
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Simpan Layout
+      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full h-[100dvh] sm:h-[95vh] max-h-[100dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 [&>button[data-slot=dialog-close]]:hidden rounded-none sm:rounded-lg border-0 sm:border">
+        <DialogHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between gap-2">
+          <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 flex-1 text-left">
+            {title.toLowerCase().startsWith("pratinjau") ? title : `Pratinjau: ${title}`}
+          </DialogTitle>
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
+            <Button onClick={handleSave} disabled={isSaving} size="sm" className="h-8 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-4">
+              {isSaving ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 animate-spin" /> : <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />}
+              <span className="hidden sm:inline">Simpan Layout</span>
+              <span className="sm:hidden">Simpan</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} className="border border-slate-200">
-              <X className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 border border-slate-200">
+              <X className="w-3 h-3 sm:w-4 sm:h-4" />
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        <div className="flex-1 flex flex-col-reverse lg:flex-row min-h-0">
           {/* Left Panel: Editor */}
-          <div className="w-full lg:w-[350px] shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+          <div className="h-[40vh] lg:h-auto w-full lg:w-[350px] shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
             <Tabs defaultValue="layout" className="flex-1 flex flex-col">
               <TabsList className="w-full rounded-none border-b border-slate-200 h-12 bg-slate-50 shrink-0">
                 <TabsTrigger value="layout" className="flex-1 data-[state=active]:bg-white">Layout</TabsTrigger>

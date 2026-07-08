@@ -114,11 +114,11 @@ export default function FormTelaahanStaf({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>Informasi Umum</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Informasi Umum</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
           <div className="space-y-2">
             <Label>Kepada Yth.</Label>
             <Input name="kepada" value={form.kepada} onChange={handleChange} placeholder="Contoh: Bapak Sekretaris Daerah..." />
@@ -146,84 +146,88 @@ export default function FormTelaahanStaf({
         </CardContent>
       </Card>
 
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Isi Telaahan</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="flex flex-row items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Isi Telaahan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">A. Dasar</Label>
+        <CardContent className="space-y-6 p-4 sm:p-6">
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">A. Dasar</Label>
               <PresetDialog title="Preset Dasar" options={telaahanPresets.dasar} onSelect={(text) => handleSelectPreset("dasar", text)} />
             </div>
-            <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Dasar pelaksanaan kegiatan..." />
+            <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Dasar pelaksanaan kegiatan..." className="rounded-t-none text-[13px] resize-none focus-visible:ring-1" />
           </div>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">A. Pra Anggapan</Label>
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">B. Pra Anggapan</Label>
               <div className="flex gap-2">
                 <PresetDialog title="Preset Pra Anggapan" options={telaahanPresets.praAnggapan} onSelect={(text) => handleSelectArrayPreset(setPraAnggapan, praAnggapan, text)} />
-                <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setPraAnggapan, praAnggapan)}><Plus className="w-4 h-4" /></Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setPraAnggapan, praAnggapan)} className="h-8 px-2"><Plus className="w-4 h-4" /></Button>
               </div>
             </div>
-            {praAnggapan.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <span className="mt-2 text-sm text-slate-500 w-6">{idx + 1}.</span>
-                <Textarea value={item} onChange={(e) => handleArrayChange(setPraAnggapan, praAnggapan, idx, e.target.value)} rows={2} />
-                <Button variant="ghost" size="icon" className="text-red-500 shrink-0" onClick={() => handleRemoveArray(setPraAnggapan, praAnggapan, idx)}><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            ))}
+            <div className="border border-slate-200 rounded-b-lg p-2 bg-white space-y-2">
+              {praAnggapan.map((item, idx) => (
+                <div key={idx} className="flex gap-2 items-start">
+                  <span className="mt-2.5 text-sm font-medium text-slate-400 w-6 text-right shrink-0">{idx + 1}.</span>
+                  <Textarea value={item} onChange={(e) => handleArrayChange(setPraAnggapan, praAnggapan, idx, e.target.value)} rows={2} placeholder="Contoh: Kondisi atau asumsi saat ini yang menjadi dasar..." className="text-[13px] resize-none focus-visible:ring-1" />
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0 mt-1" onClick={() => handleRemoveArray(setPraAnggapan, praAnggapan, idx)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">B. Fakta - Fakta</Label>
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">C. Fakta - Fakta</Label>
               <div className="flex gap-2">
                 <PresetDialog title="Preset Fakta" options={telaahanPresets.fakta} onSelect={(text) => handleSelectArrayPreset(setFakta, fakta, text)} />
-                <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setFakta, fakta)}><Plus className="w-4 h-4" /></Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setFakta, fakta)} className="h-8 px-2"><Plus className="w-4 h-4" /></Button>
               </div>
             </div>
-            {fakta.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <span className="mt-2 text-sm text-slate-500 w-6">{idx + 1}.</span>
-                <Textarea value={item} onChange={(e) => handleArrayChange(setFakta, fakta, idx, e.target.value)} rows={2} />
-                <Button variant="ghost" size="icon" className="text-red-500 shrink-0" onClick={() => handleRemoveArray(setFakta, fakta, idx)}><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            ))}
+            <div className="border border-slate-200 rounded-b-lg p-2 bg-white space-y-2">
+              {fakta.map((item, idx) => (
+                <div key={idx} className="flex gap-2 items-start">
+                  <span className="mt-2.5 text-sm font-medium text-slate-400 w-6 text-right shrink-0">{idx + 1}.</span>
+                  <Textarea value={item} onChange={(e) => handleArrayChange(setFakta, fakta, idx, e.target.value)} rows={2} placeholder="Contoh: Data, angka, atau kejadian nyata di lapangan..." className="text-[13px] resize-none focus-visible:ring-1" />
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0 mt-1" onClick={() => handleRemoveArray(setFakta, fakta, idx)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">D. Analisis</Label>
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">D. Analisis</Label>
               <PresetDialog title="Preset Analisis" options={telaahanPresets.analisis} onSelect={(text) => handleSelectPreset("analisis", text)} />
             </div>
-            <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={3} />
+            <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={3} placeholder="Contoh: Berdasarkan fakta tersebut, dapat dianalisis bahwa..." className="rounded-t-none text-[13px] resize-none focus-visible:ring-1" />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">C. Kesimpulan</Label>
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">E. Kesimpulan</Label>
               <PresetDialog title="Preset Kesimpulan" options={telaahanPresets.kesimpulan} onSelect={(text) => handleSelectPreset("kesimpulan", text)} />
             </div>
-            <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} />
+            <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} placeholder="Contoh: Maka dapat ditarik kesimpulan perlunya..." className="rounded-t-none text-[13px] resize-none focus-visible:ring-1" />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">E. Saran / Tindakan</Label>
+          <div>
+            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
+              <Label className="font-bold text-slate-700">F. Saran / Tindakan</Label>
               <PresetDialog title="Preset Saran" options={telaahanPresets.saran} onSelect={(text) => handleSelectPreset("saran", text)} />
             </div>
-            <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} />
+            <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} placeholder="Contoh: Mohon arahan dan persetujuan Bapak/Ibu untuk tindak lanjut..." className="rounded-t-none text-[13px] resize-none focus-visible:ring-1" />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>Penandatangan</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Penandatangan</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <div className="space-y-2">
             <Label>Pegawai Penandatangan</Label>
             <CreatableCombobox 
@@ -238,11 +242,11 @@ export default function FormTelaahanStaf({
         </CardContent>
       </Card>
 
-      <div className="flex justify-start gap-4 items-center pt-4 pb-12">
-        <Button variant="outline" onClick={() => setShowPreview(true)}>
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4 sm:mt-6 mb-6">
+        <Button variant="outline" onClick={() => setShowPreview(true)} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           <FileText className="w-4 h-4 mr-2" /> Pratinjau PDF
         </Button>
-        <Button onClick={handleSave} disabled={loading}>
+        <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Simpan Perubahan
         </Button>
@@ -252,7 +256,7 @@ export default function FormTelaahanStaf({
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
         title="Pratinjau Telaahan Staf"
-        renderDocument={() => (
+        renderDocument={(layout) => (
           <TelaahanStafPdf
             spj={{
               kotaTandaTangan: "Sendawar",
@@ -280,7 +284,7 @@ export default function FormTelaahanStaf({
               pangkat: signer.pangkat,
               golongan: signer.golongan
             } : undefined}
-            config={{ content: { dariOverride: form.dari } }}
+            config={{ styles: layout, content: { dariOverride: form.dari } }}
           />
         )}
       />

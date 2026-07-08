@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Loader2, X } from "lucide-react"
 
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
@@ -44,14 +45,19 @@ export default function NaskahDinasPdfPreview({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[95vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-6 py-4 border-b bg-slate-50 shrink-0">
-          <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full h-[100dvh] sm:h-[95vh] max-h-[100dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 [&>button]:hidden rounded-none sm:rounded-lg border-0 sm:border">
+        <DialogHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between gap-2">
+          <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 flex-1 text-left">
+            {title}
+          </DialogTitle>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+          </Button>
         </DialogHeader>
-        <div className="flex-1 w-full flex bg-slate-500/20 overflow-hidden">
+        <div className="flex-1 w-full flex flex-col-reverse lg:flex-row min-h-0 bg-slate-500/20 overflow-hidden">
           
           {/* Sidebar Pengaturan */}
-          <div className="w-64 bg-white border-r p-4 overflow-y-auto shrink-0 space-y-6">
+          <div className="h-[40vh] lg:h-auto w-full lg:w-64 bg-white border-r p-4 overflow-y-auto shrink-0 space-y-6">
             <div>
               <h3 className="font-semibold text-sm mb-4">Pengaturan Tata Letak</h3>
             </div>
@@ -115,9 +121,9 @@ export default function NaskahDinasPdfPreview({
 
           </div>
 
-          <div className="flex-1 w-full bg-slate-500/20">
+          <div className="flex-1 min-h-[50vh] lg:min-h-0 w-full bg-slate-500/20">
             {isOpen && (
-              <PDFViewer width="100%" height="100%" className="border-none">
+              <PDFViewer width="100%" height="100%" className="border-none w-full h-full flex-1">
                 {renderDocument(layout)}
               </PDFViewer>
             )}

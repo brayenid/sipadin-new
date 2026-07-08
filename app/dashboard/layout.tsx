@@ -38,19 +38,19 @@ export default async function DashboardLayout({
 
       {/* User info + logout */}
       <div className="px-3 py-3 border-t border-border flex-shrink-0">
-        <div className="flex items-center gap-2.5 mb-2 px-2">
-          <Avatar className="w-7 h-7">
-            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+        <div className="flex items-center gap-3 mb-3 lg:mb-4 px-1.5">
+          <Avatar className="w-8 h-8 lg:w-9 lg:h-9">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs lg:text-sm font-bold">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-foreground text-xs font-semibold truncate">{session.user.name}</p>
-            <p className="text-muted-foreground text-[10px] truncate">{session.user.teamName}</p>
+            <p className="text-foreground text-sm font-semibold truncate">{session.user.name}</p>
+            <p className="text-muted-foreground text-xs truncate">{session.user.teamName}</p>
           </div>
           <Badge
             variant="outline"
-            className="text-[9px] border-primary/20 text-primary bg-primary/5 shrink-0"
+            className="text-[9px] px-1.5 py-0 lg:py-0.5 border-primary/20 text-primary bg-primary/5 shrink-0"
           >
             {session.user.role === "SUPER_ADMIN" ? "Admin" : "Tim"}
           </Badge>
@@ -63,9 +63,9 @@ export default async function DashboardLayout({
         >
           <button
             type="submit"
-            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors text-xs font-medium"
+            className="w-full flex justify-center items-center gap-2 px-3 py-2 lg:py-2.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors text-sm font-semibold mt-3"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-4 h-4" />
             Keluar
           </button>
         </form>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -489,7 +489,7 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                   <PDFDownloadLink
                     document={<ReportPDF data={data} />}
                     fileName={`Laporan_Anggaran_${data.tahun}.pdf`}
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-white hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    className={buttonVariants({ variant: "outline", className: "bg-white !border !border-slate-200" })}
                   >
                     {({ loading }) => (
                       <>
@@ -824,7 +824,7 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                   <PDFDownloadLink
                     document={<ReportPDF data={data} />}
                     fileName={`Laporan_Anggaran_${data.tahun}.pdf`}
-                    className="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-white hover:bg-slate-50 h-10 px-4 py-2"
+                    className={buttonVariants({ variant: "outline", className: "flex-1 bg-white !border !border-slate-200" })}
                   >
                     {({ loading }) => (
                       <>
