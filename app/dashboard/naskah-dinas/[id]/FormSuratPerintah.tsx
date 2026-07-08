@@ -198,7 +198,7 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
         </CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-0 items-center pt-4 pb-12">
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 pb-4">
         <Button variant="outline" onClick={() => setShowPreview(true)} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           <FileText className="w-4 h-4 mr-2" /> Pratinjau PDF
         </Button>

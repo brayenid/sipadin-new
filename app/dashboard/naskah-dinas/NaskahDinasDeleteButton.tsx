@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 
 export default function NaskahDinasDeleteButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
@@ -27,6 +28,7 @@ export default function NaskahDinasDeleteButton({ id }: { id: string }) {
     try {
       await deleteNaskahDinas(id)
       toast.success("Dokumen berhasil dihapus")
+      setOpen(false)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Gagal menghapus dokumen")
@@ -36,7 +38,7 @@ export default function NaskahDinasDeleteButton({ id }: { id: string }) {
   }
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger className="inline-flex shrink-0 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 cursor-pointer">
         <Trash2 className="w-4 h-4" />
       </AlertDialogTrigger>

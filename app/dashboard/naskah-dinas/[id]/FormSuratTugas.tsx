@@ -15,6 +15,43 @@ import SuratTugasPdf from "@/pdf/templates/SuratTugasPdf"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 
+function DynamicListInput({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder?: string }) {
+  const handleAdd = () => onChange([...items, ""])
+  const handleRemove = (index: number) => onChange(items.filter((_, i) => i !== index))
+  const handleChange = (index: number, val: string) => {
+    const newItems = [...items]
+    newItems[index] = val
+    onChange(newItems)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {items.map((item, index) => (
+        <div key={index} className="flex gap-2 items-start">
+          <div className="pt-2 text-sm text-slate-400 w-6 text-right shrink-0">{index + 1}.</div>
+          <Textarea 
+            value={item} 
+            onChange={(e) => handleChange(index, e.target.value)} 
+            placeholder={placeholder} 
+            rows={2}
+            className="flex-1"
+          />
+          {items.length > 1 && (
+            <Button variant="ghost" size="icon" type="button" onClick={() => handleRemove(index)} className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="mt-2">
+        <Plus className="w-4 h-4 mr-1" /> Tambah Poin
+      </Button>
+    </div>
+  )
+}
+
+
 export default function FormSuratTugas({
   naskah,
   pegawaiList
@@ -179,40 +216,28 @@ export default function FormSuratTugas({
         <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
           <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Klausul Surat Tugas</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">Dasar</Label>
-              <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setDasar, dasar)}><Plus className="w-4 h-4" /></Button>
-            </div>
-            {dasar.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <span className="mt-2 text-sm text-slate-500 w-6">{idx + 1}.</span>
-                <Textarea value={item} onChange={(e) => handleArrayChange(setDasar, dasar, idx, e.target.value)} rows={2} />
-                <Button variant="ghost" size="icon" className="text-red-500 shrink-0" onClick={() => handleRemoveArray(setDasar, dasar, idx)}><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="font-bold">Untuk</Label>
-              <Button type="button" variant="outline" size="sm" onClick={() => handleAddArray(setUntuk, untuk)}><Plus className="w-4 h-4" /></Button>
-            </div>
-            {untuk.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <span className="mt-2 text-sm text-slate-500 w-6">{idx + 1}.</span>
-                <Textarea value={item} onChange={(e) => handleArrayChange(setUntuk, untuk, idx, e.target.value)} rows={2} />
-                <Button variant="ghost" size="icon" className="text-red-500 shrink-0" onClick={() => handleRemoveArray(setUntuk, untuk, idx)}><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            ))}
-          </div>
+        <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+          <DynamicListInput 
+            label="Dasar" 
+            items={dasar} 
+            onChange={setDasar} 
+            placeholder="Contoh: Surat Edaran Menteri Dalam Negeri Nomor..."
+          />
+          <DynamicListInput 
+            label="Untuk" 
+            items={untuk} 
+            onChange={setUntuk} 
+            placeholder="Contoh: Mengikuti Rapat Koordinasi Teknis di..."
+          />
         </CardContent>
       </Card>
 
       <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Daftar Pegawai yang Ditugaskan</CardTitle>
+        <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 flex flex-row items-center justify-between">
+          <CardTitle className="text-base sm:text-lg font-bold text-slate-800">
+            <span className="hidden sm:inline">Daftar Pegawai yang Ditugaskan</span>
+            <span className="sm:hidden">Daftar Pegawai</span>
+          </CardTitle>
           <Button type="button" variant="outline" size="sm" onClick={handleAddPersonel}><Plus className="w-4 h-4 mr-2" /> Tambah Personel</Button>
         </CardHeader>
         <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
@@ -261,7 +286,7 @@ export default function FormSuratTugas({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-0 items-center pt-4 pb-12">
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 pb-4">
         <Button variant="outline" onClick={() => setShowPreview(true)} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
           <FileText className="w-4 h-4 mr-2" /> Pratinjau PDF
         </Button>

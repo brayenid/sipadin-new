@@ -29,7 +29,7 @@ export default async function NaskahDinasListPage(props: {
   const limit = 10
   const skip = (page - 1) * limit
 
-  const whereClause: any = { teamId: session.user.teamId }
+  const whereClause: any = { teamId: session.user.teamId, isDeleted: false }
 
   if (q) {
     whereClause.OR = [

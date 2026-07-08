@@ -106,7 +106,7 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
         </TabsList>
 
         <TabsContent value="spj" className="mt-4">
-          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
             <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
               <CardTitle className="text-base sm:text-lg font-bold text-slate-800">SPJ Terhapus</CardTitle>
               <CardDescription className="text-[10px] sm:text-sm">Daftar SPJ yang dihapus. Memulihkan SPJ akan memotong kembali pagu anggaran.</CardDescription>
@@ -201,7 +201,7 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
         </TabsContent>
 
         <TabsContent value="naskah" className="mt-4">
-          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
             <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
               <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Naskah Dinas Terhapus</CardTitle>
               <CardDescription className="text-[10px] sm:text-sm">Daftar Naskah Dinas yang dihapus sementara.</CardDescription>
