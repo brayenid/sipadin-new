@@ -463,7 +463,7 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             {/* Breadcrumb */}
-            <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
               <Link
                 href="/dashboard/tahun-anggaran"
                 className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -474,8 +474,8 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
               <span>/</span>
               <span className="font-medium text-slate-900">{data.tahun}</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Rincian Anggaran Tahun {data.tahun}</h1>
-            <p className="text-sm text-slate-500 mt-1">Kelola Kegiatan, Sub-Kegiatan, dan Kode Rekening.</p>
+            <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Rincian Anggaran Tahun {data.tahun}</h1>
+            <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola Kegiatan, Sub-Kegiatan, dan Kode Rekening.</p>
           </div>
 
           {/* Desktop action buttons */}
@@ -554,14 +554,14 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                         </div>
                       ) : (
                         <>
-                          <div className="text-xs text-slate-500 font-mono mb-1">{keg.kodeKegiatan}</div>
-                          <div className="text-base font-medium text-slate-900">{keg.judulKegiatan}</div>
+                          <div className="text-[10px] sm:text-xs text-slate-500 font-mono mb-0.5 sm:mb-1">{keg.kodeKegiatan}</div>
+                          <div className="text-sm sm:text-base font-medium text-slate-900">{keg.judulKegiatan}</div>
                         </>
                       )}
                     </div>
                     
                     {!isEditMode && (
-                      <div className="flex flex-col items-end mr-4">
+                      <div className="flex flex-col items-start sm:items-end mt-2 sm:mt-0 mr-0 sm:mr-4">
                         {(() => {
                           let kegPagu = BigInt(0);
                           let kegSisa = BigInt(0);
@@ -573,8 +573,8 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                           });
                           return (
                             <>
-                              <div className="text-sm text-slate-500">Pagu: Rp {Number(kegPagu).toLocaleString("id-ID")}</div>
-                              <div className="text-sm font-bold text-slate-800">Sisa: Rp {Number(kegSisa).toLocaleString("id-ID")}</div>
+                              <div className="text-[10px] sm:text-sm text-slate-500">Pagu: Rp {Number(kegPagu).toLocaleString("id-ID")}</div>
+                              <div className="text-xs sm:text-sm font-bold text-slate-800">Sisa: Rp {Number(kegSisa).toLocaleString("id-ID")}</div>
                             </>
                           );
                         })()}
@@ -612,7 +612,7 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                       keg.subKegiatan.map((sub) => (
                         <div key={sub.id} className="flex flex-col border-t border-slate-100">
                           {/* Sub-Kegiatan row */}
-                          <div className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between bg-white gap-4 ml-4 sm:ml-8 border-l-2 border-slate-200 pl-4`}>
+                          <div className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between bg-white gap-3 sm:gap-4 ml-2 sm:ml-8 border-l-2 border-slate-200 pl-3 sm:pl-4`}>
                             <div className="flex-1">
                               {isEditMode && hasSubAccess(sub) ? (
                                 <div className="flex flex-col gap-2 w-full">
@@ -656,14 +656,14 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                                 </div>
                               ) : (
                                 <>
-                                  <div className="text-xs text-slate-500 font-mono mb-1">{sub.kodeSub}</div>
-                                  <div className="font-medium text-slate-800 text-sm">{sub.judulSub}</div>
+                                  <div className="text-[10px] sm:text-xs text-slate-500 font-mono mb-0.5 sm:mb-1">{sub.kodeSub}</div>
+                                  <div className="font-medium text-slate-800 text-xs sm:text-sm">{sub.judulSub}</div>
                                 </>
                               )}
                             </div>
                             
                             {!isEditMode && (
-                              <div className="flex flex-col items-end mr-4">
+                              <div className="flex flex-col items-start sm:items-end mt-2 sm:mt-0 mr-0 sm:mr-4">
                                 {(() => {
                                   let subPagu = BigInt(0);
                                   let subSisa = BigInt(0);
@@ -673,8 +673,8 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                                   });
                                   return (
                                     <>
-                                      <div className="text-sm text-slate-500">Pagu: Rp {Number(subPagu).toLocaleString("id-ID")}</div>
-                                      <div className="text-sm font-bold text-slate-700">Sisa: Rp {Number(subSisa).toLocaleString("id-ID")}</div>
+                                      <div className="text-[10px] sm:text-sm text-slate-500">Pagu: Rp {Number(subPagu).toLocaleString("id-ID")}</div>
+                                      <div className="text-xs sm:text-sm font-bold text-slate-700">Sisa: Rp {Number(subSisa).toLocaleString("id-ID")}</div>
                                     </>
                                   );
                                 })()}
@@ -708,18 +708,18 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                           </div>
 
                           {/* Rekening rows */}
-                          <div className={`px-5 pb-5 space-y-3 ml-4 sm:ml-8 pl-4`}>
+                          <div className={`px-3 sm:px-5 pb-3 sm:pb-5 space-y-2 sm:space-y-3 ml-2 sm:ml-8 pl-3 sm:pl-4`}>
                             {sub.rekening.length === 0 ? (
-                              <div className="p-3 bg-slate-50/50 rounded-md text-sm text-slate-400 text-center border border-dashed border-slate-200">
+                              <div className="p-3 bg-slate-50/50 rounded-md text-xs sm:text-sm text-slate-400 text-center border border-dashed border-slate-200">
                                 Belum ada Kode Rekening yang dianggarkan.
                               </div>
                             ) : (
                               sub.rekening.map((rek) => (
                                 <div
                                   key={rek.id}
-                                  className="flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-lg border border-slate-100 bg-white gap-4"
+                                  className="flex flex-col lg:flex-row lg:items-center justify-between p-3 sm:p-4 rounded-lg border border-slate-100 bg-white gap-3 sm:gap-4"
                                 >
-                                  <div className="flex-1 min-w-[200px]">
+                                  <div className="flex-1 min-w-0 sm:min-w-[200px]">
                                     {isEditMode && hasSubAccess(sub) ? (
                                       <div className="flex flex-col gap-2">
                                         <div className="flex gap-2">
@@ -742,16 +742,16 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-mono text-slate-500">{rek.kodeRekening}</span>
-                                        <span className="text-sm font-medium text-slate-700">{rek.judulRekening}</span>
+                                      <div className="flex flex-col gap-0.5 sm:gap-1">
+                                        <span className="text-[10px] sm:text-xs font-mono text-slate-500">{rek.kodeRekening}</span>
+                                        <span className="text-xs sm:text-sm font-medium text-slate-700">{rek.judulRekening}</span>
                                       </div>
                                     )}
                                   </div>
 
-                                  <div className="text-right">
+                                  <div className="text-left sm:text-right mt-1 sm:mt-0">
                                     {isEditMode && hasSubAccess(sub) ? (
-                                      <div className="relative w-32">
+                                      <div className="relative w-full sm:w-32">
                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">
                                           Rp
                                         </span>
@@ -766,11 +766,11 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                                         />
                                       </div>
                                     ) : (
-                                      <div className="flex flex-col items-end gap-0.5">
-                                        <div className="text-sm text-slate-500">
+                                      <div className="flex flex-col items-start sm:items-end gap-0.5">
+                                        <div className="text-[10px] sm:text-sm text-slate-500">
                                           Pagu: Rp {Number(rek.saldoAwal).toLocaleString("id-ID")}
                                         </div>
-                                        <div className="text-sm font-bold text-slate-900">
+                                        <div className="text-xs sm:text-sm font-bold text-slate-900">
                                           Sisa: Rp {Number(rek.sisaSaldo).toLocaleString("id-ID")}
                                         </div>
                                       </div>

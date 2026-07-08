@@ -232,18 +232,18 @@ export default function SpjDetailTabs({
         {/* TAB RINGKASAN */}
         <TabsContent value="ringkasan" className="space-y-6">
 
-          <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle>Informasi Master SPJ</CardTitle>
-              <div className="flex gap-2">
+          <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+            <CardHeader className="flex flex-row items-center justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+              <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Master SPJ</CardTitle>
+              <div className="flex gap-1.5 sm:gap-2">
                 <Dialog open={openDelete} onOpenChange={setOpenDelete}>
                   <DialogTrigger
                     render={
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive">
-                        <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
+                        className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive">
+                        <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5" /> Hapus
                       </Button>
                     }
                   />
@@ -280,8 +280,8 @@ export default function SpjDetailTabs({
                 <Dialog open={openEdit} onOpenChange={setOpenEdit}>
                   <DialogTrigger
                     render={
-                      <Button variant="outline" size="sm">
-                        <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit Master
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm">
+                        <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5" /> Edit Master
                       </Button>
                     }
                   />
@@ -443,41 +443,41 @@ export default function SpjDetailTabs({
                 </Dialog>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-50 p-4 rounded-md border">
-                <div className="space-y-1 col-span-2 md:col-span-4 flex items-center justify-between border-b pb-3 mb-1">
+            <CardContent className="px-3 pb-3 sm:p-6 sm:pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 text-xs sm:text-sm bg-slate-50 p-4 sm:p-5 rounded-md border">
+                <div className="space-y-1 sm:space-y-1.5 col-span-2 md:col-span-4 flex items-center justify-between border-b pb-3 sm:pb-4 mb-1 sm:mb-2">
                   <div>
-                    <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-1">Status Pembayaran</p>
+                    <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold mb-1">Status Pembayaran</p>
                     {spj.terbayar ? (
-                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
-                        <CheckCircle2 className="w-4 h-4 mr-1" /> Sudah Terbayar Lunas
+                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200 text-[10px] sm:text-xs">
+                        <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Sudah Terbayar Lunas
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">
-                        <AlertCircle className="w-4 h-4 mr-1" /> Belum Terbayar
+                      <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 text-[10px] sm:text-xs">
+                        <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Belum Terbayar
                       </Badge>
                     )}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Tanggal SPJ</p>
-                  <p className="font-semibold text-slate-900">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Tanggal SPJ</p>
+                  <p className="font-semibold text-slate-900 leading-relaxed">
                     {formatWita(spj.tanggalSpj, 'dd MMMM yyyy')}
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Tanggal Pelaksanaan</p>
-                  <p className="font-semibold text-slate-900">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Tanggal Pelaksanaan</p>
+                  <p className="font-semibold text-slate-900 leading-relaxed">
                     {spj.tanggalPelaksanaan ? formatWita(spj.tanggalPelaksanaan, 'dd MMMM yyyy') : '-'}
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Nomor BKU</p>
-                  <p className="font-semibold text-slate-900">{spj.nomorBku || '-'}</p>
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Nomor BKU</p>
+                  <p className="font-semibold text-slate-900 leading-relaxed">{spj.nomorBku || '-'}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-slate-500 uppercase tracking-widest text-xs font-bold">Link Drive</p>
-                  <p className="font-semibold text-blue-600 truncate">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Link Drive</p>
+                  <p className="font-semibold text-blue-600 truncate leading-relaxed">
                     {spj.metaDokumen?.driveUrl ? (
                       <a href={spj.metaDokumen.driveUrl} target="_blank" rel="noreferrer" className="hover:underline">
                         {spj.metaDokumen.driveUrl}
@@ -491,50 +491,50 @@ export default function SpjDetailTabs({
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-            <CardHeader>
-              <CardTitle>Informasi Anggaran</CardTitle>
+          <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+            <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b mb-3 sm:mb-5">
+              <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Informasi Anggaran</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">Tahun Anggaran</p>
-                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.kegiatan?.tahunAnggaran?.tahun}</p>
+            <CardContent className="px-3 pb-3 sm:p-6 sm:pt-0">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 text-[10px] sm:text-sm">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest font-bold">Tahun Anggaran</p>
+                  <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.kodeRekening?.subKegiatan?.kegiatan?.tahunAnggaran?.tahun}</p>
                 </div>
-                <div>
-                  <p className="text-slate-500">Kegiatan</p>
-                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.kegiatan?.judulKegiatan}</p>
+                <div className="space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest font-bold">Kegiatan</p>
+                  <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.kodeRekening?.subKegiatan?.kegiatan?.judulKegiatan}</p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-slate-500">Sub-Kegiatan</p>
-                  <p className="font-medium">{spj.kodeRekening?.subKegiatan?.judulSub}</p>
+                <div className="col-span-2 space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest font-bold">Sub-Kegiatan</p>
+                  <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.kodeRekening?.subKegiatan?.judulSub}</p>
                 </div>
-                <div>
-                  <p className="text-slate-500">Kode Rekening</p>
-                  <p className="font-medium">{spj.kodeRekening?.judulRekening}</p>
+                <div className="col-span-2 space-y-1 sm:space-y-1.5">
+                  <p className="text-slate-500 uppercase tracking-widest font-bold">Kode Rekening</p>
+                  <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.kodeRekening?.judulRekening}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {spj.jenisSpj === 'MAKAN_MINUM' && spj.maminDetail && (
-            <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-              <CardHeader>
-                <CardTitle>Informasi Penyedia (Pihak Ketiga)</CardTitle>
+            <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+              <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b mb-3 sm:mb-5">
+                <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Informasi Penyedia (Pihak Ketiga)</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-500">Nama Badan Usaha / Vendor</p>
-                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.namaVendor || "-"}</p>
+              <CardContent className="px-3 pb-3 sm:p-6 sm:pt-0">
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 text-[10px] sm:text-sm">
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Nama Badan Usaha / Vendor</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.maminDetail.vendor?.namaVendor || "-"}</p>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Nama Pemilik / Direktur</p>
-                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.namaPemilik || "-"}</p>
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Nama Pemilik / Direktur</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.maminDetail.vendor?.namaPemilik || "-"}</p>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-slate-500">Alamat Usaha</p>
-                    <p className="font-medium text-slate-900">{spj.maminDetail.vendor?.alamat || "-"}</p>
+                  <div className="col-span-2 space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Alamat Usaha</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.maminDetail.vendor?.alamat || "-"}</p>
                   </div>
                 </div>
               </CardContent>
@@ -542,30 +542,30 @@ export default function SpjDetailTabs({
           )}
 
           {spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail && (
-            <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-              <CardHeader>
-                <CardTitle>Rute Perjalanan Dinas</CardTitle>
+            <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+              <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b mb-3 sm:mb-5">
+                <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rute Perjalanan Dinas</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-500">Tempat Berangkat</p>
-                    <p className="font-medium">{spj.perjadinDetail.tempatBerangkat}</p>
+              <CardContent className="px-3 pb-3 sm:p-6 sm:pt-0">
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 text-[10px] sm:text-sm">
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Tempat Berangkat</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.perjadinDetail.tempatBerangkat}</p>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Tempat Tujuan</p>
-                    <p className="font-medium">{spj.perjadinDetail.tempatTujuan}</p>
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Tempat Tujuan</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.perjadinDetail.tempatTujuan}</p>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Tanggal Perjalanan</p>
-                    <p className="font-medium">
+                  <div className="col-span-2 sm:col-span-1 space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Tanggal Perjalanan</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">
                       {fmtDateId(spj.perjadinDetail.tglBerangkat)} s.d.{' '}
                       {fmtDateId(spj.perjadinDetail.tglKembali)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Lama Perjalanan</p>
-                    <p className="font-medium">{spj.perjadinDetail.lamaPerjalanan} Hari</p>
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold">Lama Perjalanan</p>
+                    <p className="font-semibold sm:font-medium text-slate-900 leading-relaxed">{spj.perjadinDetail.lamaPerjalanan} Hari</p>
                   </div>
                 </div>
               </CardContent>

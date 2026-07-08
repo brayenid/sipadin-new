@@ -49,7 +49,7 @@ export default async function BuatSpjPage() {
       <div className="flex items-center justify-between">
         <div>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
             <Link
               href="/dashboard/spj"
               className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -60,8 +60,8 @@ export default async function BuatSpjPage() {
             <span>/</span>
             <span className="font-medium text-slate-900">Buat Baru</span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Buat SPJ Baru</h2>
-          <p className="text-slate-500 mt-1">Formulir terpadu untuk perekaman transaksi Surat Pertanggungjawaban.</p>
+          <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Buat SPJ Baru</h2>
+          <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Formulir terpadu untuk perekaman transaksi Surat Pertanggungjawaban.</p>
         </div>
       </div>
       

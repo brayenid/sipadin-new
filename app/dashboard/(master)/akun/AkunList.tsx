@@ -127,19 +127,21 @@ export default function AkunList({ initialData }: { initialData: Akun[] }) {
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
 
   const renderPagination = () => {
+    if (filteredData.length <= itemsPerPage) return null;
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-xl border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <p className="text-sm text-slate-500">
-          Menampilkan <span className="font-medium text-slate-900">{filteredData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> dari <span className="font-medium text-slate-900">{filteredData.length}</span> data
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white sm:rounded-b-xl mt-4 sm:border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <p className="text-[10px] sm:text-sm text-slate-500 text-center sm:text-left w-full sm:w-auto">
+          Menampilkan <span className="font-medium text-slate-900">{filteredData.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> dari <span className="font-medium text-slate-900">{filteredData.length}</span>
         </p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">Sebelumnya</Button>
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:gap-2 mt-3 sm:mt-0 w-full sm:w-auto justify-center">
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">«</Button>
+          <span className="text-xs font-medium text-slate-600 sm:hidden">{currentPage} / {totalPages}</span>
+          <div className="hidden sm:flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">Selanjutnya</Button>
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">»</Button>
         </div>
       </div>
     );
@@ -147,11 +149,11 @@ export default function AkunList({ initialData }: { initialData: Akun[] }) {
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
-      <div className="flex justify-between items-center">
-        <div className="relative w-72">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="relative w-full sm:w-72">
           <Input 
             placeholder="Cari akun..." 
-            className="h-9" 
+            className="h-9 w-full" 
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);

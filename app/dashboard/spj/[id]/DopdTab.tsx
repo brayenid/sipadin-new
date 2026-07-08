@@ -202,19 +202,19 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     <div className="space-y-6">
       
       {/* HEADER DOPD */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <div>
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Pengeluaran</p>
-          <p className="text-lg font-black text-slate-900 mt-0.5">{formatRupiah(totalDopdAll)}</p>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <div className="text-center md:text-left w-full md:w-auto">
+          <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Total Pengeluaran</p>
+          <p className="text-base sm:text-lg font-black text-slate-900 mt-0.5">{formatRupiah(totalDopdAll)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
-            <FileText className="w-4 h-4 mr-2" />
-            Preview PDF
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button variant="outline" className="flex-1 md:flex-none h-8 px-2 text-[10px] sm:h-9 sm:px-4 sm:text-sm" onClick={() => setShowPreview(true)}>
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            Preview
           </Button>
-          <Button onClick={handleSaveDopd} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan DOPD
+          <Button className="flex-1 md:flex-none h-8 px-2 text-[10px] sm:h-9 sm:px-4 sm:text-sm" onClick={handleSaveDopd} disabled={loading}>
+            {loading ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> : <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />}
+            Simpan
           </Button>
         </div>
       </div>
@@ -226,27 +226,29 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       )}
 
       {/* PERSONEL NAVIGATOR */}
-      <Card>
-        <CardHeader className="py-4 border-b flex flex-row items-center justify-between">
-          <div className="flex items-center gap-4 w-full">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader className="py-2.5 sm:py-4 bg-slate-50/30 border-b flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4 w-full">
             <Button 
               variant="outline" 
               size="icon" 
+              className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0"
               onClick={() => setActivePersonIdx(Math.max(0, activePersonIdx - 1))}
               disabled={activePersonIdx === 0}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
             
-            <div className="flex-1 text-center">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel {activePersonIdx + 1} / {rosterList.length}</p>
-              <h3 className="font-extrabold text-lg text-slate-900">{activePerson.nama}</h3>
-              <p className="text-sm text-slate-500">{activePerson.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"} - {activePerson.jabatan}</p>
+            <div className="flex-1 text-center min-w-0">
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel {activePersonIdx + 1} / {rosterList.length}</p>
+              <h3 className="font-extrabold text-sm sm:text-lg text-slate-900 leading-tight truncate px-1">{activePerson.nama}</h3>
+              <p className="text-[10px] sm:text-sm text-slate-500 truncate">{activePerson.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"} - {activePerson.jabatan}</p>
             </div>
 
             <Button 
               variant="outline" 
               size="icon" 
+              className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0"
               onClick={() => setActivePersonIdx(Math.min(rosterList.length - 1, activePersonIdx + 1))}
               disabled={activePersonIdx === rosterList.length - 1}
             >
@@ -256,14 +258,14 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
         </CardHeader>
         
         <CardContent className="p-0">
-          <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center justify-between p-3 sm:p-6 border-b">
             <div>
-              <p className="text-slate-500">Subtotal Personel Ini</p>
-              <p className="font-extrabold text-slate-900 mt-0.5">{formatRupiah(activePersonSubtotal)}</p>
+              <p className="text-[10px] sm:text-sm text-slate-500">Subtotal Personel Ini</p>
+              <p className="font-extrabold text-sm sm:text-lg text-slate-900 mt-0.5 leading-none">{formatRupiah(activePersonSubtotal)}</p>
             </div>
             
             <div>
-              <Button variant="outline" size={"sm"} onClick={() => {
+              <Button variant="outline" size={"sm"} className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm" onClick={() => {
                 setEditingItem(null);
                 setNewItem({
                   kategori: "Uang Harian",
@@ -273,7 +275,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 });
                 setIsDialogOpen(true);
               }}>
-                <Plus className="w-4 h-4 mr-2" /> Tambah Biaya
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Tambah Biaya
               </Button>
             </div>
             
@@ -391,36 +393,58 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 {activePersonItems.map((item, index) => {
                   const itemTotal = calculateItemTotal(item);
                   return (
-                    <div key={item.id || `item-${index}`} className="flex items-center px-6 py-4 gap-6 hover:bg-slate-50 transition-colors group">
+                    <div key={item.id || `item-${index}`} className="flex flex-col sm:flex-row sm:items-center p-3 sm:px-6 sm:py-4 gap-2 sm:gap-6 hover:bg-slate-50 transition-colors group">
                       
-                      <div className="w-32 flex-shrink-0">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      <div className="flex items-start sm:items-center justify-between sm:w-32 flex-shrink-0">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-700">
                           {item.kategori}
                         </span>
+                        
+                        {/* Mobile Actions */}
+                        <div className="flex justify-end sm:hidden gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setEditingItem(item.id);
+                            setNewItem({
+                              kategori: item.kategori,
+                              uraian: item.uraian || "",
+                              hargaSatuan: item.hargaSatuan,
+                              faktorPengali: item.faktorPengali.map((f: any) => ({...f}))
+                            });
+                            setIsDialogOpen(true);
+                          }} className="h-6 w-6 text-slate-400 hover:text-primary">
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="h-6 w-6 text-slate-400 hover:text-red-700">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{item.uraian || "Tanpa uraian detail..."}</p>
-                        <div className="flex gap-2 mt-1.5">
+                      <div className="flex-1 min-w-0 mt-1 sm:mt-0">
+                        <p className="text-xs sm:text-sm font-medium text-slate-900 leading-tight">{item.uraian || "Tanpa uraian detail..."}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5 sm:mt-1.5">
                           {item.faktorPengali.map((f: any, i: number) => (
-                            <span key={i} className="inline-flex items-center rounded-full border border-slate-200/60 px-2 py-0.5 text-[10px] text-slate-500 bg-white">
+                            <span key={i} className="inline-flex items-center rounded-full border border-slate-200/60 px-1.5 py-0 sm:px-2 sm:py-0.5 text-[9px] sm:text-[10px] text-slate-500 bg-white">
                               <span className="font-semibold text-slate-700 mr-1">{f.value}</span> {f.label}
                             </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="w-28 text-right flex-shrink-0">
-                        <p className="text-[10px] text-slate-500 mb-0.5">Harga Satuan</p>
-                        <p className="font-extrabold text-slate-700">{new Intl.NumberFormat("id-ID").format(Number(item.hargaSatuan))}</p>
+                      <div className="flex items-center sm:items-end justify-between mt-2 sm:mt-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                        <div className="text-left sm:text-right sm:w-28 flex-shrink-0">
+                          <p className="text-[9px] sm:text-[10px] text-slate-500 mb-0.5">Harga Satuan</p>
+                          <p className="font-extrabold text-xs sm:text-sm text-slate-700">{new Intl.NumberFormat("id-ID").format(Number(item.hargaSatuan))}</p>
+                        </div>
+
+                        <div className="text-right sm:w-36 flex-shrink-0 ml-auto sm:ml-0">
+                          <p className="text-[9px] sm:text-[10px] text-slate-500 mb-0.5">Total Akhir</p>
+                          <p className="font-extrabold text-sm sm:text-base text-slate-900">{formatRupiah(itemTotal)}</p>
+                        </div>
                       </div>
 
-                      <div className="w-36 text-right flex-shrink-0">
-                        <p className="text-[10px] text-slate-500 mb-0.5">Total Akhir</p>
-                        <p className="font-extrabold text-slate-900">{formatRupiah(itemTotal)}</p>
-                      </div>
-
-                      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity gap-1 w-20 flex-shrink-0">
+                      {/* Desktop Actions */}
+                      <div className="hidden sm:flex justify-end opacity-0 group-hover:opacity-100 transition-opacity gap-1 w-16 flex-shrink-0">
                         <Button variant="ghost" size="icon" onClick={() => {
                           setEditingItem(item.id);
                           setNewItem({
@@ -430,10 +454,10 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                             faktorPengali: item.faktorPengali.map((f: any) => ({...f}))
                           });
                           setIsDialogOpen(true);
-                        }} className="text-slate-400 hover:text-primary hover:bg-primary/10">
+                        }} className="text-slate-400 hover:text-primary hover:bg-primary/10 h-8 w-8">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-slate-400 hover:text-red-700 hover:bg-red-50">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-slate-400 hover:text-red-700 hover:bg-red-50 h-8 w-8">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -447,11 +471,11 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Pengaturan Cetak DOPD</CardTitle>
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Pengaturan Cetak DOPD</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Kuasa Pengguna Anggaran (KPA)</Label>

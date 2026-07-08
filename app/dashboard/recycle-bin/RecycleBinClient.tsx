@@ -87,7 +87,7 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
   return (
     <div className="p-4 sm:p-8 space-y-6">
       <div>
-        <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
           <Link href="/dashboard" className="hover:text-slate-900 transition-colors flex items-center gap-1">
             <ChevronLeft className="w-3.5 h-3.5" />
             Dashboard
@@ -95,8 +95,8 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
           <span>/</span>
           <span className="font-medium text-slate-900">Recycle Bin</span>
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Recycle Bin</h2>
-        <p className="text-slate-500 mt-1">Kelola data SPJ dan Naskah Dinas yang telah dihapus sementara.</p>
+        <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Recycle Bin</h2>
+        <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola data SPJ dan Naskah Dinas yang telah dihapus sementara.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -106,20 +106,20 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
         </TabsList>
 
         <TabsContent value="spj" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>SPJ Terhapus</CardTitle>
-              <CardDescription>Daftar SPJ yang dihapus. Memulihkan SPJ akan memotong kembali pagu anggaran.</CardDescription>
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+            <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+              <CardTitle className="text-base sm:text-lg font-bold text-slate-800">SPJ Terhapus</CardTitle>
+              <CardDescription className="text-[10px] sm:text-sm">Daftar SPJ yang dihapus. Memulihkan SPJ akan memotong kembali pagu anggaran.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead>Tanggal Dihapus</TableHead>
-                      <TableHead>Jenis / Perihal</TableHead>
-                      <TableHead>Total Pengeluaran</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead className="min-w-[150px]">Tanggal Dihapus</TableHead>
+                      <TableHead className="min-w-[200px]">Jenis / Perihal</TableHead>
+                      <TableHead className="min-w-[150px]">Total Pengeluaran</TableHead>
+                      <TableHead className="text-right min-w-[220px]">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -146,20 +146,22 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
                                 <DialogTrigger render={<Button variant="outline" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" disabled={loading !== null} />}>
                                   {loading === `restore-${spj.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />} Pulihkan
                                 </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle className="text-emerald-600 flex items-center gap-2">
-                                      <RotateCcw className="w-5 h-5" /> Konfirmasi Pemulihan SPJ
+                                <DialogContent className="sm:max-w-sm text-center p-6 sm:p-8">
+                                  <DialogHeader className="flex flex-col items-center">
+                                    <DialogTitle className="text-lg font-medium text-slate-900 mb-2">
+                                      Pulihkan SPJ ini?
                                     </DialogTitle>
-                                    <DialogDescription>
-                                      Apakah Anda yakin ingin memulihkan SPJ ini? Saldo pagu anggaran akan dipotong kembali sesuai dengan total pengeluaran.
+                                    <DialogDescription className="text-sm text-slate-500 text-center leading-relaxed">
+                                      SPJ akan dipulihkan dan <strong className="text-slate-700">saldo pagu anggaran akan dipotong kembali</strong> sesuai dengan total pengeluaran.
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="flex justify-end gap-2 mt-4">
-                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} />}>Batal</DialogClose>
-                                    <Button onClick={() => handleRestoreSpj(spj.id)} disabled={loading !== null} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                      {loading === `restore-${spj.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Ya, Pulihkan"}
+                                  <div className="flex flex-col gap-3 mt-6">
+                                    <Button onClick={() => handleRestoreSpj(spj.id)} disabled={loading !== null} className="w-full bg-emerald-600 hover:bg-emerald-700 h-11 text-base font-medium text-white">
+                                      {loading === `restore-${spj.id}` ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <RotateCcw className="w-5 h-5 mr-2" />} Ya, Pulihkan
                                     </Button>
+                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} className="w-full h-11 text-base font-medium text-slate-700" />}>
+                                      Batal
+                                    </DialogClose>
                                   </div>
                                 </DialogContent>
                               </Dialog>
@@ -167,20 +169,22 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
                                 <DialogTrigger render={<Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" disabled={loading !== null} />}>
                                   <Trash2 className="w-4 h-4 mr-2" /> Hapus Permanen
                                 </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle className="text-red-600 flex items-center gap-2">
-                                      <AlertCircle className="w-5 h-5" /> Peringatan Hapus Permanen
+                                <DialogContent className="sm:max-w-sm text-center p-6 sm:p-8">
+                                  <DialogHeader className="flex flex-col items-center">
+                                    <DialogTitle className="text-lg font-medium text-slate-900 mb-2">
+                                      Hapus permanen SPJ ini?
                                     </DialogTitle>
-                                    <DialogDescription>
-                                      Tindakan ini tidak dapat dibatalkan. Semua data terkait SPJ ini akan dihapus dari sistem selamanya.
+                                    <DialogDescription className="text-sm text-slate-500 text-center leading-relaxed">
+                                      Tindakan ini tidak dapat dibatalkan. <br/>Semua data terkait SPJ ini akan <strong className="text-slate-700">dihapus secara permanen</strong> dari sistem.
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="flex justify-end gap-2 mt-4">
-                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} />}>Batal</DialogClose>
-                                    <Button variant="destructive" onClick={() => handlePermanentDeleteSpj(spj.id)} disabled={loading !== null}>
-                                      {loading === `delete-${spj.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Ya, Hapus Permanen"}
+                                  <div className="flex flex-col gap-3 mt-6">
+                                    <Button variant="destructive" onClick={() => handlePermanentDeleteSpj(spj.id)} disabled={loading !== null} className="w-full bg-[#E50000] hover:bg-[#CC0000] h-11 text-base font-medium text-white">
+                                      {loading === `delete-${spj.id}` ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Trash2 className="w-5 h-5 mr-2" />} Hapus Permanen
                                     </Button>
+                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} className="w-full h-11 text-base font-medium text-slate-700" />}>
+                                      Batal
+                                    </DialogClose>
                                   </div>
                                 </DialogContent>
                               </Dialog>
@@ -197,20 +201,20 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
         </TabsContent>
 
         <TabsContent value="naskah" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Naskah Dinas Terhapus</CardTitle>
-              <CardDescription>Daftar Naskah Dinas yang dihapus sementara.</CardDescription>
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+            <CardHeader className="pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+              <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Naskah Dinas Terhapus</CardTitle>
+              <CardDescription className="text-[10px] sm:text-sm">Daftar Naskah Dinas yang dihapus sementara.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead>Tanggal Dihapus</TableHead>
-                      <TableHead>Jenis Naskah</TableHead>
-                      <TableHead>Nomor / Perihal</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead className="min-w-[150px]">Tanggal Dihapus</TableHead>
+                      <TableHead className="min-w-[150px]">Jenis Naskah</TableHead>
+                      <TableHead className="min-w-[200px]">Nomor / Perihal</TableHead>
+                      <TableHead className="text-right min-w-[220px]">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -239,20 +243,22 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
                                 <DialogTrigger render={<Button variant="outline" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" disabled={loading !== null} />}>
                                   {loading === `restore-${naskah.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />} Pulihkan
                                 </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle className="text-emerald-600 flex items-center gap-2">
-                                      <RotateCcw className="w-5 h-5" /> Konfirmasi Pemulihan
+                                <DialogContent className="sm:max-w-sm text-center p-6 sm:p-8">
+                                  <DialogHeader className="flex flex-col items-center">
+                                    <DialogTitle className="text-lg font-medium text-slate-900 mb-2">
+                                      Pulihkan Naskah ini?
                                     </DialogTitle>
-                                    <DialogDescription>
-                                      Apakah Anda yakin ingin memulihkan Naskah Dinas ini kembali ke daftar aktif?
+                                    <DialogDescription className="text-sm text-slate-500 text-center leading-relaxed">
+                                      Naskah Dinas ini akan dikembalikan ke daftar aktif dan dapat dikelola kembali.
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="flex justify-end gap-2 mt-4">
-                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} />}>Batal</DialogClose>
-                                    <Button onClick={() => handleRestoreNaskah(naskah.id)} disabled={loading !== null} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                      {loading === `restore-${naskah.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Ya, Pulihkan"}
+                                  <div className="flex flex-col gap-3 mt-6">
+                                    <Button onClick={() => handleRestoreNaskah(naskah.id)} disabled={loading !== null} className="w-full bg-emerald-600 hover:bg-emerald-700 h-11 text-base font-medium text-white">
+                                      {loading === `restore-${naskah.id}` ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <RotateCcw className="w-5 h-5 mr-2" />} Ya, Pulihkan
                                     </Button>
+                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} className="w-full h-11 text-base font-medium text-slate-700" />}>
+                                      Batal
+                                    </DialogClose>
                                   </div>
                                 </DialogContent>
                               </Dialog>
@@ -260,20 +266,22 @@ export default function RecycleBinClient({ deletedSpj, deletedNaskah }: { delete
                                 <DialogTrigger render={<Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" disabled={loading !== null} />}>
                                   <Trash2 className="w-4 h-4 mr-2" /> Hapus Permanen
                                 </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle className="text-red-600 flex items-center gap-2">
-                                      <AlertCircle className="w-5 h-5" /> Peringatan Hapus Permanen
+                                <DialogContent className="sm:max-w-sm text-center p-6 sm:p-8">
+                                  <DialogHeader className="flex flex-col items-center">
+                                    <DialogTitle className="text-lg font-medium text-slate-900 mb-2">
+                                      Hapus permanen Naskah ini?
                                     </DialogTitle>
-                                    <DialogDescription>
-                                      Tindakan ini tidak dapat dibatalkan. Naskah Dinas ini akan dihapus secara permanen.
+                                    <DialogDescription className="text-sm text-slate-500 text-center leading-relaxed">
+                                      Tindakan ini tidak dapat dibatalkan. <br/>Naskah Dinas ini akan <strong className="text-slate-700">dihapus secara permanen</strong> dari sistem.
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="flex justify-end gap-2 mt-4">
-                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} />}>Batal</DialogClose>
-                                    <Button variant="destructive" onClick={() => handlePermanentDeleteNaskah(naskah.id)} disabled={loading !== null}>
-                                      {loading === `delete-${naskah.id}` ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Ya, Hapus Permanen"}
+                                  <div className="flex flex-col gap-3 mt-6">
+                                    <Button variant="destructive" onClick={() => handlePermanentDeleteNaskah(naskah.id)} disabled={loading !== null} className="w-full bg-[#E50000] hover:bg-[#CC0000] h-11 text-base font-medium text-white">
+                                      {loading === `delete-${naskah.id}` ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Trash2 className="w-5 h-5 mr-2" />} Hapus Permanen
                                     </Button>
+                                    <DialogClose render={<Button variant="outline" disabled={loading !== null} className="w-full h-11 text-base font-medium text-slate-700" />}>
+                                      Batal
+                                    </DialogClose>
                                   </div>
                                 </DialogContent>
                               </Dialog>

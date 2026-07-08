@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import NextTopLoader from 'nextjs-toploader';
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full font-sans bg-background text-foreground">
+        <NextTopLoader color="#3b82f6" height={5} showSpinner={false} />
         {children}
         <OfflineIndicator />
         <Toaster position="top-center" />

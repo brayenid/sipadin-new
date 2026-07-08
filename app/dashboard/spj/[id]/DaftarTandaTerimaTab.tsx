@@ -129,39 +129,39 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
   });
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-start justify-between">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="flex flex-row items-start justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
-          <CardTitle>Daftar Tanda Terima Honorarium</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Daftar Tanda Terima Honorarium</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">
             Penerbitan daftar tanda terima narasumber dalam rangka {spj.perihal || "—"}.
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
 
         {/* SECTION: INFORMASI DOKUMEN & PENANDATANGAN */}
-        <div className="space-y-4 border p-4 rounded-lg bg-slate-50">
+        <div className="space-y-4 border p-3 sm:p-4 rounded-lg bg-slate-50">
           <div>
             <p className="text-sm font-semibold text-slate-800">Informasi Dokumen & Bendahara</p>
-            <p className="text-xs text-slate-500 mt-0.5">KPA dan PPTK otomatis disamakan dengan Daftar Hadir Narasumber.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">KPA dan PPTK otomatis disamakan dengan Daftar Hadir Narasumber.</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
             
-            <div className="space-y-3">
-              <Label>Tanggal Tanda Terima</Label>
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-[10px] sm:text-sm">Tanggal Tanda Terima</Label>
               <Input 
                 type="date"
                 value={form.tanggalTandaTerima}
                 onChange={(e) => setForm({ ...form, tanggalTandaTerima: e.target.value })}
                 className="bg-white"
               />
-              <p className="text-xs text-slate-500">Tanggal akan dikosongkan pada PDF (space kosong) dan hanya mencetak bulan serta tahunnya saja untuk diisi manual (tulis tangan).</p>
+              <p className="text-[10px] sm:text-xs text-slate-500">Tanggal akan dikosongkan pada PDF (space kosong) dan hanya mencetak bulan serta tahunnya saja untuk diisi manual (tulis tangan).</p>
             </div>
 
-            <div className="space-y-3">
-              <Label>Bendahara Pengeluaran Pembantu (BPP)</Label>
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-[10px] sm:text-sm">Bendahara Pengeluaran Pembantu (BPP)</Label>
               <Popover open={openKanan} onOpenChange={setOpenKanan}>
                 <PopoverTrigger>
                   <div
@@ -198,7 +198,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                 </PopoverContent>
               </Popover>
               {bpp && (
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-[10px] sm:text-xs text-slate-500">
                   Akan ditandatangani oleh: <span className="font-bold text-slate-900">{bpp.nama}</span>
                 </div>
               )}
@@ -211,37 +211,37 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
         <div>
           <div className="mb-4">
             <p className="text-sm font-semibold text-slate-800">Rincian Nominal</p>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
               Data nama narasumber diambil dari Daftar Hadir Narasumber. Silakan lengkapi angka-angkanya.
             </p>
           </div>
 
           <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-8">No</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 min-w-[150px]">Nama</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-[150px]">Harga Satuan (Rp)</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-[80px]">Kuantitas</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-[100px]">Satuan</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-[80px]">PPh (%)</th>
-                  <th className="text-right px-3 py-2 font-medium text-slate-600 w-[120px]">Bersih (Rp)</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 w-8">No</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[150px]">Nama</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[150px]">Harga Satuan (Rp)</th>
+                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">Kuantitas</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[70px] sm:min-w-[100px]">Satuan</th>
+                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">PPh (%)</th>
+                  <th className="text-right px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[120px]">Bersih (Rp)</th>
                 </tr>
               </thead>
               <tbody>
                 {narasumberList.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-slate-400">
+                    <td colSpan={7} className="text-center py-6 sm:py-8 text-[10px] sm:text-sm text-slate-400">
                       Belum ada narasumber di Daftar Hadir Narasumber.
                     </td>
                   </tr>
                 ) : (
                   combinedData.map((row: any, idx: number) => (
                     <tr key={row.id || `row-${idx}`} className="border-b last:border-0">
-                      <td className="px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
-                      <td className="px-3 py-2 font-medium">{row.nama}</td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-2 sm:px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
+                      <td className="px-2 sm:px-3 py-2 font-medium text-[10px] sm:text-sm">{row.nama}</td>
+                      <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="text"
                           value={tandaTerimaData[row.id]?.hargaSatuan === 0 ? "" : new Intl.NumberFormat('id-ID').format(tandaTerimaData[row.id]?.hargaSatuan || 0)}
@@ -249,34 +249,34 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                             const rawValue = e.target.value.replace(/\D/g, "");
                             updateRow(row.id, "hargaSatuan", Number(rawValue));
                           }}
-                          className="h-8 text-sm text-right"
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm text-right px-2"
                         />
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="number"
                           value={tandaTerimaData[row.id]?.kuantitas || 0}
                           onChange={(e) => updateRow(row.id, "kuantitas", Number(e.target.value))}
-                          className="h-8 text-sm text-center"
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm text-center px-1"
                         />
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="text"
                           value={tandaTerimaData[row.id]?.satuan || ""}
                           onChange={(e) => updateRow(row.id, "satuan", e.target.value)}
-                          className="h-8 text-sm text-center"
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm text-center px-2"
                         />
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="number"
                           value={tandaTerimaData[row.id]?.persenPph || 0}
                           onChange={(e) => updateRow(row.id, "persenPph", Number(e.target.value))}
-                          className="h-8 text-sm text-center"
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm text-center px-1"
                         />
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold text-emerald-600">
+                      <td className="px-2 sm:px-3 py-2 text-right font-semibold text-emerald-600 text-[10px] sm:text-sm">
                         {new Intl.NumberFormat('id-ID').format(row.bersih)}
                       </td>
                     </tr>
@@ -288,14 +288,14 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
         </div>
 
         {/* ACTIONS */}
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)} disabled={narasumberList.length === 0}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 sm:pt-4">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)} disabled={narasumberList.length === 0}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading || narasumberList.length === 0}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading || narasumberList.length === 0}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Tanda Terima
+            Simpan
           </Button>
         </div>
       </CardContent>

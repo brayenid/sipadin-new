@@ -144,20 +144,20 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
   };
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="flex flex-row items-center justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
-          <CardTitle>Telaahan Staf</CardTitle>
-          <CardDescription>Dokumen narasi pendukung yang merinci fakta, analisis, dan pra anggapan terkait penugasan.</CardDescription>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Telaahan Staf</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Dokumen narasi pendukung yang merinci fakta, analisis, dan pra anggapan terkait penugasan.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
         
         {/* BAGIAN KOP / HEADER TELAHS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-lg bg-slate-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-6 border rounded-lg bg-slate-50">
           <div className="space-y-2">
             <div className="relative flex items-center">
-              <Label>Tanggal</Label>
+              <Label className="text-xs sm:text-sm">Tanggal</Label>
               <Button type="button" variant="ghost" size="sm" onClick={setTodayDate} className="absolute right-0 -top-1 h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2">
                 Hari Ini
               </Button>
@@ -166,11 +166,11 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             {isWeekend(form.tanggal) ? (
               <p className="text-xs font-medium text-amber-600 mt-1">Peringatan: Tanggal yang dipilih bukan hari kerja (Sabtu/Minggu).</p>
             ) : (
-              <p className="text-xs text-slate-500 mt-1">Tanggal surat telaahan dibuat.</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tanggal surat telaahan dibuat.</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label>Nomor Telaahan</Label>
+            <Label className="text-xs sm:text-sm">Nomor Telaahan</Label>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 
@@ -194,30 +194,30 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 placeholder={getDefaultNomorSuffix(" /Org-TU.P")}
               />
             </div>
-            <p className="text-xs text-slate-500 mt-1">Isi bagian tengah dengan nomor urut surat, bagian lainnya bisa disesuaikan.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Isi bagian tengah dengan nomor urut surat, bagian lainnya bisa disesuaikan.</p>
           </div>
           <div className="space-y-2">
-            <Label>Kepada</Label>
+            <Label className="text-xs sm:text-sm">Kepada</Label>
             <Input name="kepada" value={form.kepada} onChange={handleChange} placeholder="Contoh: Bupati Kutai Barat" className={checkDirty("kepada") ? dirtyClass : ""} />
-            <p className="text-xs text-slate-500 mt-1">Tujuan surat telaahan (misal: Sekda, Bupati).</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tujuan surat telaahan (misal: Sekda, Bupati).</p>
           </div>
           <div className="space-y-2">
-            <Label>Sifat</Label>
+            <Label className="text-xs sm:text-sm">Sifat</Label>
             <Input name="sifat" value={form.sifat} onChange={handleChange} placeholder="Contoh: Penting" className={checkDirty("sifat") ? dirtyClass : ""} />
-            <p className="text-xs text-slate-500 mt-1">Sifat surat (Penting, Biasa, dsb).</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Sifat surat (Penting, Biasa, dsb).</p>
           </div>
           <div className="space-y-2">
-            <Label>Lampiran</Label>
+            <Label className="text-xs sm:text-sm">Lampiran</Label>
             <Input name="lampiran" value={form.lampiran} onChange={handleChange} placeholder="Contoh: 1 (satu) berkas" className={checkDirty("lampiran") ? dirtyClass : ""} />
-            <p className="text-xs text-slate-500 mt-1">Jumlah lampiran (jika ada).</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Jumlah lampiran (jika ada).</p>
           </div>
           <div className="space-y-2">
-            <Label>Perihal</Label>
+            <Label className="text-xs sm:text-sm">Perihal</Label>
             <Input name="perihal" value={form.perihal} onChange={handleChange} placeholder="Contoh: Permohonan Penugasan Dinas ke Samarinda" className={checkDirty("perihal") ? dirtyClass : ""} />
-            <p className="text-xs text-slate-500 mt-1">Perihal spesifik untuk dokumen Telaahan Staf (kepada pimpinan).</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Perihal spesifik untuk dokumen Telaahan Staf (kepada pimpinan).</p>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label>Penandatangan Telaahan Staf</Label>
+            <Label className="text-xs sm:text-sm">Penandatangan Telaahan Staf</Label>
             <Combobox 
               options={pegawaiOptions}
               value={form.penandatanganId}
@@ -225,14 +225,14 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
               placeholder="Cari Pejabat Penandatangan..."
               emptyText="Pegawai tidak ditemukan."
             />
-            <p className="text-xs text-slate-500 mt-1">Pilih pegawai yang akan menandatangani dokumen ini.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Pilih pegawai yang akan menandatangani dokumen ini.</p>
           </div>
         </div>
 
         {/* BAGIAN ISI TELAHS */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>I. Dasar</Label>
+            <Label className="text-xs sm:text-sm">I. Dasar</Label>
             <PresetDialog 
               title="Preset Dasar" 
               options={telaahanPresets.dasar} 
@@ -240,12 +240,12 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             />
           </div>
           <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Surat Undangan / DPA SKPD..." className={checkDirty("dasar") ? dirtyClass : ""} />
-          <p className="text-xs text-slate-500 mt-1">Landasan hukum atau surat yang mendasari perjalanan dinas ini.</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Landasan hukum atau surat yang mendasari perjalanan dinas ini.</p>
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>II. Pra Anggapan</Label>
+            <Label className="text-xs sm:text-sm">II. Pra Anggapan</Label>
             <div className="flex items-center gap-2">
               <PresetDialog 
                 title="Preset Pra Anggapan" 
@@ -260,7 +260,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
           <div className="space-y-3 pl-4 border-l-2 border-slate-200/60">
             {form.praAnggapan.map((item: string, index: number) => (
               <div key={index} className="flex gap-2 items-start">
-                <span className="text-sm font-bold text-slate-400 mt-2">{index + 1}.</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-400 mt-2 sm:mt-2.5">{index + 1}.</span>
                 <Textarea 
                   value={item} 
                   onChange={(e) => handleListChange("praAnggapan", index, e.target.value)} 
@@ -268,7 +268,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                   className={`resize-none ${checkDirty("praAnggapan") ? dirtyClass : ""}`}
                   placeholder="Masukkan asumsi atau pra anggapan..."
                 />
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("praAnggapan", index)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("praAnggapan", index)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -278,7 +278,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>III. Fakta yang Memengaruhi</Label>
+            <Label className="text-xs sm:text-sm">III. Fakta yang Memengaruhi</Label>
             <div className="flex items-center gap-2">
               <PresetDialog 
                 title="Preset Fakta" 
@@ -293,7 +293,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
           <div className="space-y-3 pl-4 border-l-2 border-slate-200/60">
             {form.fakta.map((item: string, index: number) => (
               <div key={index} className="flex gap-2 items-start">
-                <span className="text-sm font-bold text-slate-400 mt-2">{index + 1}.</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-400 mt-2 sm:mt-2.5">{index + 1}.</span>
                 <Textarea 
                   value={item} 
                   onChange={(e) => handleListChange("fakta", index, e.target.value)} 
@@ -301,7 +301,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                   className={`resize-none ${checkDirty("fakta") ? dirtyClass : ""}`}
                   placeholder="Fakta-fakta di lapangan..."
                 />
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("fakta", index)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400 hover:text-red-500" onClick={() => handleRemoveListItem("fakta", index)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -311,7 +311,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>IV. Analisis</Label>
+            <Label className="text-xs sm:text-sm">IV. Analisis</Label>
             <PresetDialog 
               title="Preset Analisis" 
               options={telaahanPresets.analisis} 
@@ -319,12 +319,12 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             />
           </div>
           <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={4} placeholder="Analisa terhadap fakta dan pra anggapan..." className={checkDirty("analisis") ? dirtyClass : ""} />
-          <p className="text-xs text-slate-500 mt-1">Analisa mendalam mengenai kegiatan yang akan dilakukan.</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Analisa mendalam mengenai kegiatan yang akan dilakukan.</p>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>V. Kesimpulan</Label>
+            <Label className="text-xs sm:text-sm">V. Kesimpulan</Label>
             <PresetDialog 
               title="Preset Kesimpulan" 
               options={telaahanPresets.kesimpulan} 
@@ -332,12 +332,12 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             />
           </div>
           <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} placeholder="Kesimpulan dari analisis..." className={checkDirty("kesimpulan") ? dirtyClass : ""} />
-          <p className="text-xs text-slate-500 mt-1">Intisari dari analisa telaahan staf.</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Intisari dari analisa telaahan staf.</p>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>VI. Saran</Label>
+            <Label className="text-xs sm:text-sm">VI. Saran</Label>
             <PresetDialog 
               title="Preset Saran" 
               options={telaahanPresets.saran} 
@@ -345,17 +345,17 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             />
           </div>
           <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} placeholder="Saran tindakan..." className={checkDirty("saran") ? dirtyClass : ""} />
-          <p className="text-xs text-slate-500 mt-1">Rekomendasi yang diajukan kepada pimpinan berdasarkan kesimpulan.</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Rekomendasi yang diajukan kepada pimpinan berdasarkan kesimpulan.</p>
         </div>
 
-        <div className="flex gap-2 mt-6">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Telaahan Staf
+            Simpan
           </Button>
         </div>
       </CardContent>

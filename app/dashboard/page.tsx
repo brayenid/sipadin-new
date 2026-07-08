@@ -172,37 +172,41 @@ export default async function DashboardPage() {
     <div className="p-4 sm:p-8 space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Ikhtisar Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Ikhtisar Dashboard</h1>
+        <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
           Pantau ringkasan anggaran dan progres penyelesaian Surat Pertanggungjawaban (SPJ).
         </p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="flex overflow-x-auto flex-nowrap gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <StatCard
           title="Total SPJ"
           value={totalSpjCount.toString()}
           description={`TA ${activeTahunString}`}
           icon={<ClipboardList className="w-4 h-4 text-indigo-500" />}
+          className="min-w-[65vw] max-w-[280px] sm:min-w-0 sm:max-w-none flex-shrink-0 snap-center"
         />
         <StatCard
           title="Total Pagu"
           value={`${formatCurrency(totalPagu.toString())}`}
           description={`TA ${activeTahunString}`}
           icon={<FileText className="w-4 h-4 text-indigo-500" />}
+          className="min-w-[65vw] max-w-[280px] sm:min-w-0 sm:max-w-none flex-shrink-0 snap-center"
         />
         <StatCard
           title="Total Pengeluaran"
           value={`${formatCurrency(totalPengeluaran.toString())}`}
           description={`TA ${activeTahunString}`}
           icon={<TrendingDown className="w-4 h-4 text-rose-500" />}
+          className="min-w-[65vw] max-w-[280px] sm:min-w-0 sm:max-w-none flex-shrink-0 snap-center"
         />
         <StatCard
           title="Sisa Saldo"
           value={`${formatCurrency(totalSisaSaldo.toString())}`}
           description={`TA ${activeTahunString}`}
           icon={<Wallet className="w-4 h-4 text-emerald-500" />}
+          className="min-w-[65vw] max-w-[280px] sm:min-w-0 sm:max-w-none flex-shrink-0 snap-center"
         />
       </div>
 
@@ -211,11 +215,11 @@ export default async function DashboardPage() {
         
         {/* Grafik SPJ Per Jenis (2 Kolom) */}
         <Card className="border-slate-200/60 lg:col-span-2 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-          <CardHeader className="pt-4 pb-2">
-            <CardTitle className="text-base">Distribusi Pengeluaran</CardTitle>
-            <CardDescription className="text-xs">Berdasarkan jenis SPJ sepanjang TA {activeTahunString}.</CardDescription>
+          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Distribusi Pengeluaran</CardTitle>
+            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Berdasarkan jenis SPJ sepanjang TA {activeTahunString}.</CardDescription>
           </CardHeader>
-          <CardContent className="pb-4">
+          <CardContent className="pb-3 sm:pb-4">
             <div className="space-y-2">
               {spjPerJenis.length === 0 && <p className="text-xs text-slate-400">Belum ada data pengeluaran.</p>}
               {spjPerJenis.map((item, i) => {
@@ -246,11 +250,11 @@ export default async function DashboardPage() {
 
         {/* Naskah Dinas Summary (1 Kolom) */}
         <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-          <CardHeader className="pt-4 pb-2">
-            <CardTitle className="text-base">Naskah Dinas</CardTitle>
-            <CardDescription className="text-xs">Dokumen yang telah dibuat.</CardDescription>
+          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Naskah Dinas</CardTitle>
+            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Dokumen yang telah dibuat.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col pb-4">
+          <CardContent className="flex-1 flex flex-col pb-3 sm:pb-4">
             <div className="mb-4">
               <p className="text-3xl font-bold text-slate-900 tracking-tight">{totalNaskah}</p>
               <p className="text-xs font-medium text-slate-500">Total Keseluruhan</p>
@@ -285,11 +289,11 @@ export default async function DashboardPage() {
 
         {/* Rekap Perjadin Summary (1 Kolom) */}
         <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-          <CardHeader className="pt-4 pb-2">
-            <CardTitle className="text-base">Rekap Perjadin</CardTitle>
-            <CardDescription className="text-xs">Pegawai paling sering bertugas.</CardDescription>
+          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rekap Perjadin</CardTitle>
+            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Pegawai paling sering bertugas.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col pb-4">
+          <CardContent className="flex-1 flex flex-col pb-3 sm:pb-4">
             <div className="space-y-1.5 flex-1">
               {rekapPerjadin.length === 0 ? (
                 <p className="text-xs text-slate-400">Belum ada rekap perjalanan dinas.</p>
@@ -320,9 +324,9 @@ export default async function DashboardPage() {
 
       {/* Recent SPJs */}
       <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-        <CardHeader>
-          <CardTitle>SPJ Terbaru</CardTitle>
-          <CardDescription>Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
+        <CardHeader className="pt-4 pb-3 sm:p-6">
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">SPJ Terbaru</CardTitle>
+          <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -381,9 +385,9 @@ export default async function DashboardPage() {
             </Table>
           </div>
           {recentSpjs.length > 0 && (
-            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+            <div className="p-4 border-t border-slate-100 flex justify-center">
               <Link href="/dashboard/spj">
-                <Button variant="outline" size="sm" className="text-slate-500 shadow-sm">Lihat Semua SPJ</Button>
+                <Button variant="outline" size="sm" className="text-slate-500">Lihat Semua SPJ</Button>
               </Link>
             </div>
           )}
@@ -398,24 +402,26 @@ function StatCard({
   value,
   description,
   icon,
+  className,
 }: {
   title: string;
   value: string;
   description: string;
   icon: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-      <CardContent className="pt-4 pb-4">
+    <Card className={`border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] ${className || ""}`}>
+      <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+          <p className="text-xs sm:text-sm font-medium text-slate-500">{title}</p>
+          <div className="p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
             {icon}
           </div>
         </div>
-        <div className="mt-4">
-          <p className="text-2xl font-bold text-slate-900 tracking-tight">{value}</p>
-          <p className="text-xs text-slate-500 mt-1">{description}</p>
+        <div className="mt-3 sm:mt-4">
+          <p className="text-xl font-extrabold sm:text-2xl sm:font-bold text-slate-900 tracking-tight">{value}</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">{description}</p>
         </div>
       </CardContent>
     </Card>

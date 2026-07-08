@@ -91,15 +91,15 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Daftar Personel</CardTitle>
+    <Card className="p-0 overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Daftar Personel</CardTitle>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger render={
-            <Button>
-              <UserPlus className="w-4 h-4 mr-2" /> Tambah Personel
+          <DialogTrigger asChild>
+            <Button size="sm" className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm">
+              <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Tambah Personel
             </Button>
-          } />
+          </DialogTrigger>
           <DialogContent className="sm:max-w-[550px] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Tambah Personel ke SPJ</DialogTitle>
@@ -139,39 +139,39 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
         </Dialog>
       </CardHeader>
       
-      <CardContent className="pt-6">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6">
         {spj.roster.length === 0 ? (
-          <p className="text-slate-500 text-center py-6">Tidak ada personel yang ditugaskan pada SPJ ini.</p>
+          <p className="text-slate-500 text-center py-6 text-[10px] sm:text-sm">Tidak ada personel yang ditugaskan pada SPJ ini.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {spj.roster.map((r: any, idx: number) => {
               const dopdAmount = r.pengeluaranDetails ? r.pengeluaranDetails.reduce((acc: any, curr: any) => acc + BigInt(curr.total), BigInt(0)) : BigInt(0);
               
               return (
-                <div key={r.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg bg-white">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                      <p className="font-bold text-slate-900">{r.nama}</p>
-                      <Badge variant="outline" className={r.role === "KEPALA_JALAN" ? "bg-amber-50 text-amber-700 border-amber-200" : ""}>
+                <div key={r.id} className="flex flex-row items-start justify-between p-3 sm:p-4 border rounded-lg bg-white">
+                  <div className="flex-1 pr-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400">#{idx + 1}</span>
+                      <p className="font-semibold sm:font-bold text-xs sm:text-sm text-slate-900 leading-tight">{r.nama}</p>
+                      <Badge variant="outline" className={`text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 ${r.role === "KEPALA_JALAN" ? "bg-amber-50 text-amber-700 border-amber-200" : ""}`}>
                         {r.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">NIP: {r.nip || "-"} • {r.jabatan}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 mt-1">NIP: {r.nip || "-"} • {r.jabatan}</p>
                     
                     {dopdAmount > BigInt(0) && (
-                      <p className="text-xs text-green-600 font-semibold mt-2 bg-green-50 px-2 py-1 rounded inline-block">
+                      <p className="text-[10px] sm:text-xs text-green-600 font-semibold mt-1.5 sm:mt-2 bg-green-50 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded inline-block">
                         Biaya DOPD Tersemat: Rp {new Intl.NumberFormat("id-ID").format(Number(dopdAmount))}
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-4 md:mt-0">
+                  <div className="-mt-1 -mr-1 sm:mt-0 sm:mr-0 flex-shrink-0">
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <div className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-9 w-9">
-                          <MoreVertical className="w-4 h-4" />
-                        </div>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-9 sm:w-9 hover:bg-slate-100">
+                          <MoreVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem onClick={() => handleUpdateRole(r.id, "KEPALA_JALAN")} disabled={r.role === "KEPALA_JALAN"}>

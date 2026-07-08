@@ -184,18 +184,19 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
   const renderPagination = () => {
     if (totalItems <= itemsPerPage) return null;
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-xl mt-4 border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <p className="text-sm text-slate-500">
-          Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span> data
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white sm:rounded-b-xl mt-4 sm:border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <p className="text-[10px] sm:text-sm text-slate-500 text-center sm:text-left w-full sm:w-auto">
+          Menampilkan <span className="font-medium text-slate-900">{totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
         </p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">Sebelumnya</Button>
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:gap-2 mt-3 sm:mt-0 w-full sm:w-auto justify-center">
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">«</Button>
+          <span className="text-xs font-medium text-slate-600 sm:hidden">{currentPage} / {totalPages}</span>
+          <div className="hidden sm:flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">Selanjutnya</Button>
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">»</Button>
         </div>
       </div>
     );
@@ -204,9 +205,9 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-72">
-          <Input placeholder="Cari vendor..." className="h-9" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative w-full sm:w-72">
+          <Input placeholder="Cari vendor..." className="h-9 w-full" />
         </div>
       </div>
 
@@ -306,10 +307,10 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
 
         {/* ================= MODE TABEL (BULK) ================= */}
         <TabsContent value="tabel">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <CardTitle className="text-base">Data Vendor (Input Tabular)</CardTitle>
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
+              <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Data Vendor</CardTitle>
                 {totalChanges > 0 && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
@@ -317,7 +318,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                   </Badge>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="hidden lg:flex gap-2">
                 {isSuperAdmin && (
                   <>
                     <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
@@ -336,13 +337,13 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead className="w-[200px]">Nama Vendor</TableHead>
-                      <TableHead className="w-[150px]">Nama Pemilik</TableHead>
-                      <TableHead className="w-[200px]">Alamat</TableHead>
-                      <TableHead className="w-[150px]">NPWP</TableHead>
-                      <TableHead className="w-[150px]">NPWPD</TableHead>
-                      <TableHead className="w-[150px]">No. Rekening</TableHead>
-                      {isSuperAdmin && <TableHead className="w-[60px] text-center">Aksi</TableHead>}
+                      <TableHead className="min-w-[200px]">Nama Vendor</TableHead>
+                      <TableHead className="min-w-[150px]">Nama Pemilik</TableHead>
+                      <TableHead className="min-w-[250px]">Alamat</TableHead>
+                      <TableHead className="min-w-[170px]">NPWP</TableHead>
+                      <TableHead className="min-w-[150px]">NPWPD</TableHead>
+                      <TableHead className="min-w-[170px]">No. Rekening</TableHead>
+                      {isSuperAdmin && <TableHead className="min-w-[60px] text-center">Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>

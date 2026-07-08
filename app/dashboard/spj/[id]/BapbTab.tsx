@@ -59,23 +59,23 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
   const pptk = pegawaiList.find((p) => p.id === form.pptkId);
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-start justify-between">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="flex flex-row items-start justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
-          <CardTitle>Berita Acara Pemeriksaan Barang</CardTitle>
-          <CardDescription>Penerbitan BAPB untuk SPJ Makan Minum.</CardDescription>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Berita Acara Pemeriksaan Barang</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Penerbitan BAPB untuk SPJ Makan Minum.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
         
         {/* PEJABAT PEMERIKSA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 border rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-4 bg-slate-50 border rounded-lg">
           <div className="md:col-span-2">
-            <p className="font-semibold text-sm mb-2 text-slate-800">Pejabat Pemeriksa</p>
+            <p className="font-semibold text-sm mb-0 sm:mb-2 text-slate-800">Pejabat Pemeriksa</p>
           </div>
           
-          <div className="space-y-3">
-            <Label>Kuasa Pengguna Anggaran (KPA)</Label>
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[10px] sm:text-sm">Kuasa Pengguna Anggaran (KPA)</Label>
             <Popover open={openKpa} onOpenChange={setOpenKpa}>
               <PopoverTrigger>
                 <div
@@ -113,8 +113,8 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
             </Popover>
           </div>
 
-          <div className="space-y-3">
-            <Label>Pejabat Pelaksana Teknis Kegiatan (PPTK)</Label>
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[10px] sm:text-sm">Pejabat Pelaksana Teknis Kegiatan (PPTK)</Label>
             <Popover open={openPptk} onOpenChange={setOpenPptk}>
               <PopoverTrigger>
                 <div
@@ -154,80 +154,83 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
         </div>
 
         {/* BAGIAN NOMOR & TANGGAL */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-2">
-            <Label>Nomor BAPB</Label>
+            <Label className="text-[10px] sm:text-sm">Nomor BAPB</Label>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 
                 value={form.nomorPrefix} 
                 onChange={handleChange} 
-                className="w-1/3 rounded-r-none border-r-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center" 
+                className="w-1/3 rounded-r-none border-r-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-[10px] sm:text-sm h-9" 
                 placeholder="0003 /"
               />
               <Input 
                 name="nomorTengah" 
                 value={form.nomorTengah} 
                 onChange={handleChange} 
-                className="rounded-none font-bold text-center flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-400"
+                className="rounded-none font-bold text-center flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-400 text-[10px] sm:text-sm h-9"
                 placeholder="2415"
               />
               <Input 
                 name="nomorSuffix" 
                 value={form.nomorSuffix} 
                 onChange={handleChange} 
-                className="w-1/3 rounded-l-none border-l-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-xs" 
+                className="w-1/3 rounded-l-none border-l-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-[8px] sm:text-xs h-9" 
                 placeholder={defaultSuffix}
               />
             </div>
-            <p className="text-xs text-slate-500 mt-1">Kosongkan bagian tengah untuk jeda tulis tangan.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Kosongkan bagian tengah untuk jeda tulis tangan.</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Tanggal BAPB</Label>
+            <Label className="text-[10px] sm:text-sm">Tanggal BAPB</Label>
             <Input 
               type="date" 
               name="tanggalBapb" 
               value={form.tanggalBapb} 
               onChange={handleChange} 
+              className="h-9 text-[10px] sm:text-sm px-2"
             />
-            <p className="text-xs text-slate-500 mt-1">Tanggal ini akan dikonversi ke format terbilang (huruf).</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tanggal ini akan dikonversi ke format terbilang (huruf).</p>
           </div>
         </div>
 
         {/* REFERENSI SURAT PESANAN */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 border-t pt-4 sm:pt-6">
           <div className="md:col-span-2">
-            <p className="font-semibold text-sm mb-2 text-slate-800">Referensi Surat Pesanan Barang (SPB)</p>
+            <p className="font-semibold text-sm mb-0 sm:mb-2 text-slate-800">Referensi Surat Pesanan Barang (SPB)</p>
           </div>
           <div className="space-y-2">
-            <Label>Nomor Surat Pesanan</Label>
+            <Label className="text-[10px] sm:text-sm">Nomor Surat Pesanan</Label>
             <Input 
               name="nomorSpb" 
               value={form.nomorSpb} 
               onChange={handleChange} 
               placeholder="Contoh: 027 / 123 / ORG-TU.P / V / 2026"
+              className="h-9 text-[10px] sm:text-sm px-2"
             />
           </div>
           <div className="space-y-2">
-            <Label>Tanggal Surat Pesanan</Label>
+            <Label className="text-[10px] sm:text-sm">Tanggal Surat Pesanan</Label>
             <Input 
               type="date" 
               name="tanggalSpb" 
               value={form.tanggalSpb} 
               onChange={handleChange} 
+              className="h-9 text-[10px] sm:text-sm px-2"
             />
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 sm:pt-4">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="md:w-auto">
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan BAPB
+            Simpan
           </Button>
         </div>
       </CardContent>

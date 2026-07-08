@@ -56,14 +56,14 @@ export function CurrencyInput({
 
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">Rp</span>
+      <span className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] sm:text-sm font-medium">Rp</span>
       <Input
         type="text"
         placeholder={placeholder}
         value={displayValue}
         onChange={handleChange}
         disabled={disabled}
-        className={`pl-9 text-right font-mono text-slate-900 font-medium ${className || ""}`}
+        className={`pl-6 sm:pl-9 text-right font-mono text-slate-900 font-medium ${className || ""}`}
       />
     </div>
   )

@@ -219,8 +219,8 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
 
   return (
     <Card className="w-full">
-      <CardHeader className="border-b">
-        <CardTitle>Form Wizard SPJ</CardTitle>
+      <CardHeader className="pt-4 pb-3 sm:p-6 border-b">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Form Wizard SPJ</CardTitle>
       </CardHeader>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -249,7 +249,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
               <div className="space-y-2 md:col-span-2">
                 <Label>Pilih Tim Kerja (Khusus Super Admin) <span className="text-red-500">*</span></Label>
                 <select
-                  className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors"
+                  className="flex h-9 sm:h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors"
                   value={selectedUserId || ""}
                   onChange={(e) => {
                     setSelectedUserId(e.target.value);
@@ -261,13 +261,13 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
-                <p className="text-xs text-amber-600">Anda harus memilih Tim Kerja terlebih dahulu sebelum memilih Sumber Dana.</p>
+                <p className="text-[10px] sm:text-xs text-amber-600">Anda harus memilih Tim Kerja terlebih dahulu sebelum memilih Sumber Dana.</p>
               </div>
             )}
             <div className="space-y-2">
               <Label>Jenis SPJ</Label>
               <select 
-                className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors disabled:opacity-50"
+                className="flex h-9 sm:h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/15 focus-visible:border-indigo-600 transition-colors disabled:opacity-50"
                 value={jenisSpj}
                 onChange={(e) => setJenisSpj(e.target.value)}
               >
@@ -301,7 +301,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
             <div className="space-y-2 md:col-span-2">
               <Label>Perihal Kegiatan <span className="text-red-500">*</span></Label>
               <Input placeholder="Contoh: Perjalanan Dinas dalam rangka Koordinasi Anggaran ke Provinsi..." value={perihal} onChange={(e) => setPerihal(e.target.value)} />
-              <p className="text-xs text-slate-500">Perihal ini akan digunakan secara otomatis pada dokumen Surat Tugas, Telaahan, dll.</p>
+              <p className="text-[10px] sm:text-xs text-slate-500">Perihal ini akan digunakan secara otomatis pada dokumen Surat Tugas, Telaahan, dll.</p>
             </div>
           </div>
           

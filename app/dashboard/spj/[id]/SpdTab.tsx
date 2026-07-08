@@ -55,19 +55,19 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
   const selectedPegawai = pegawaiList?.find((p) => p.id === form.penandatanganId);
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-start justify-between">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="flex flex-row items-start justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
-          <CardTitle>Surat Perjalanan Dinas (SPD)</CardTitle>
-          <CardDescription>Dokumen resmi perjalanan dinas yang disahkan oleh PPK.</CardDescription>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Surat Perjalanan Dinas (SPD)</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Dokumen resmi perjalanan dinas yang disahkan oleh PPK.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
         
         {/* BAGIAN PENANDATANGAN (DIAMBIL DARI DATABASE) */}
-        <div className="space-y-4 border p-4 rounded-lg bg-slate-50">
-          <div className="space-y-3">
-            <Label>Pejabat Penandatangan</Label>
+        <div className="space-y-4 border p-3 sm:p-4 rounded-lg bg-slate-50">
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-xs sm:text-sm">Pejabat Penandatangan</Label>
             
             <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
               <PopoverTrigger>
@@ -113,17 +113,17 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
             </Popover>
 
             {selectedPegawai && (
-              <div className="mt-2 text-sm text-slate-500">
+              <div className="mt-2 text-[10px] sm:text-sm text-slate-500">
                 Akan ditandatangani oleh: <span className="font-bold text-slate-900">{selectedPegawai.nama}</span> ({selectedPegawai.jabatan})
               </div>
             )}
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* BAGIAN NOMOR SPD */}
           <div className="space-y-2">
-            <Label>Nomor Surat Perjalanan Dinas</Label>
+            <Label className="text-xs sm:text-sm">Nomor Surat Perjalanan Dinas</Label>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 
@@ -147,48 +147,48 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
                 placeholder={getDefaultNomorSuffix()}
               />
             </div>
-            <p className="text-xs text-slate-500 mt-1">Isi prefix, nomor urut, dan suffix surat. Kosongkan urut jika belum terbit.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Isi prefix, nomor urut, dan suffix surat. Kosongkan urut jika belum terbit.</p>
           </div>
 
           {/* BAGIAN TANGGAL SURAT */}
           <div className="space-y-2">
-            <Label>Tanggal Dikeluarkan</Label>
+            <Label className="text-xs sm:text-sm">Tanggal Dikeluarkan</Label>
             <Input 
               type="date" 
               name="tanggalSpd" 
               value={form.tanggalSpd} 
               onChange={handleChange} 
             />
-            <p className="text-xs text-slate-500 mt-1">Tanggal penetapan/penandatanganan SPD.</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tanggal penetapan/penandatanganan SPD.</p>
           </div>
         </div>
 
         {/* BAGIAN DAFTAR PERSONEL (INFORMASIONAL) */}
-        <div className="space-y-4">
-          <Label>Personel yang Ditugaskan</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-3 sm:space-y-4">
+          <Label className="text-xs sm:text-sm">Personel yang Ditugaskan</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             {spj.roster && spj.roster.length > 0 ? (
               spj.roster.map((r: any, idx: number) => (
-                <div key={r.id} className="p-3 bg-slate-50 border rounded-md text-sm text-slate-700">
-                  <span className="font-medium mr-2">{idx + 1}.</span> {r.nama} 
-                  <span className="text-xs text-slate-400 ml-2">({r.role === 'KEPALA_JALAN' ? 'Kepala' : 'Pengikut'})</span>
+                <div key={r.id} className="p-2 sm:p-3 bg-slate-50 border rounded-md text-[11px] sm:text-sm text-slate-700">
+                  <span className="font-medium mr-1.5 sm:mr-2">{idx + 1}.</span> {r.nama} 
+                  <span className="text-[10px] sm:text-xs text-slate-400 ml-1.5 sm:ml-2">({r.role === 'KEPALA_JALAN' ? 'Kepala' : 'Pengikut'})</span>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-400 italic">Belum ada personel yang ditambahkan di SPJ ini.</p>
+              <p className="text-[10px] sm:text-sm text-slate-400 italic">Belum ada personel yang ditambahkan di SPJ ini.</p>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-1">Untuk menambah, menghapus, atau mengatur urutan pengikut, silakan menuju tab <strong>Personel</strong>.</p>
+          <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Untuk menambah, menghapus, atau mengatur urutan pengikut, silakan menuju tab <strong>Personel</strong>.</p>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4 sm:mt-6">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan SPD
+            Simpan
           </Button>
         </div>
       </CardContent>

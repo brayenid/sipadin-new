@@ -98,24 +98,24 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         <span className="font-medium text-slate-900">Rincian</span>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-lg border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white p-3 sm:p-5 rounded-lg border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-slate-800">Detail Surat Pertanggungjawaban</h2>
-            <Badge variant="outline" className="text-slate-500 bg-slate-50">{spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan Minum' : (spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj)}</Badge>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h2 className="text-sm font-extrabold sm:text-lg sm:font-semibold text-slate-800">Detail SPJ</h2>
+            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 text-slate-500 bg-slate-50">{spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan Minum' : (spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj)}</Badge>
           </div>
           {spj.perihal && (
-            <p className="text-sm font-medium text-slate-700 mt-1">Perihal: {spj.perihal}</p>
+            <p className="text-[10px] font-medium sm:text-sm text-slate-700 mt-0.5 sm:mt-1">Perihal: {spj.perihal}</p>
           )}
-          <p className="text-xs text-slate-500 mt-1.5">
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1.5">
             {new Intl.DateTimeFormat("id-ID", {
               day: "numeric", month: "long", year: "numeric"
             }).format(spj.tanggalSpj)}
           </p>
         </div>
-        <div className="text-right bg-slate-50 py-2 px-4 rounded-md border border-slate-200/60">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Total Pengajuan</p>
-          <p className="text-lg font-bold text-slate-900">
+        <div className="text-left sm:text-right bg-slate-50 py-1.5 px-3 sm:py-2 sm:px-4 rounded-md border border-slate-200/60 w-full md:w-auto flex justify-between sm:block items-center">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0 sm:mb-0.5">Total Pengajuan</p>
+          <p className="text-base font-extrabold sm:text-lg sm:font-bold text-slate-900">
             {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(spj.totalPengeluaran))}
           </p>
         </div>

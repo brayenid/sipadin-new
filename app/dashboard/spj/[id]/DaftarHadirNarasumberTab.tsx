@@ -84,24 +84,24 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
     : "";
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-start justify-between">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="flex flex-row items-start justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
-          <CardTitle>Daftar Hadir Narasumber</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Daftar Hadir Narasumber</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">
             Penerbitan daftar hadir narasumber dalam rangka {spj.perihal || "—"}.
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
 
         {/* SECTION: PENANDATANGAN */}
-        <div className="space-y-4 border p-4 rounded-lg bg-slate-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4 border p-3 sm:p-4 rounded-lg bg-slate-50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
             {/* KPA (Kiri) */}
-            <div className="space-y-3">
-              <Label>Kuasa Pengguna Anggaran (KPA)</Label>
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-[10px] sm:text-sm">Kuasa Pengguna Anggaran (KPA)</Label>
               <Popover open={openKiri} onOpenChange={setOpenKiri}>
                 <PopoverTrigger>
                   <div
@@ -138,15 +138,15 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
                 </PopoverContent>
               </Popover>
               {kpa && (
-                <div className="mt-2 text-sm text-slate-500">
+                <div className="mt-2 text-[10px] sm:text-sm text-slate-500">
                   Akan ditandatangani oleh: <span className="font-bold text-slate-900">{kpa.nama}</span>
                 </div>
               )}
             </div>
 
             {/* PPTK (Kanan) */}
-            <div className="space-y-3">
-              <Label>Pejabat Pelaksana Teknis Kegiatan (PPTK)</Label>
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-[10px] sm:text-sm">Pejabat Pelaksana Teknis Kegiatan (PPTK)</Label>
               <Popover open={openKanan} onOpenChange={setOpenKanan}>
                 <PopoverTrigger>
                   <div
@@ -183,7 +183,7 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
                 </PopoverContent>
               </Popover>
               {pptk && (
-                <div className="mt-2 text-sm text-slate-500">
+                <div className="mt-2 text-[10px] sm:text-sm text-slate-500">
                   Akan ditandatangani oleh: <span className="font-bold text-slate-900">{pptk.nama}</span>
                 </div>
               )}
@@ -193,64 +193,64 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
 
         {/* SECTION: DAFTAR NARASUMBER */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4">
             <div>
               <p className="text-sm font-semibold text-slate-800">Daftar Narasumber</p>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
                 Kolom kegiatan akan otomatis mengikuti perihal SPJ
                 {tanggalLabel ? ` tanggal ${tanggalLabel}` : ""}.
               </p>
             </div>
-            <Button size="sm" variant="secondary" onClick={addRow}>
-              <Plus className="w-4 h-4 mr-1.5" /> Tambah Baris
+            <Button size="sm" variant="secondary" onClick={addRow} className="w-full sm:w-auto h-8 text-[10px] sm:text-xs">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5" /> Tambah Baris
             </Button>
           </div>
 
           <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-10">No</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600 w-[40%]">Nama</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-600">Jabatan Sebagai</th>
-                  <th className="w-10"></th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 w-8 sm:w-10">No</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 w-[40%]">Nama</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600">Jabatan Sebagai</th>
+                  <th className="w-8 sm:w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {narasumber.map((row, idx) => (
                   <tr key={row.id} className="border-b last:border-0">
-                    <td className="px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 sm:px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
+                    <td className="px-1.5 sm:px-2 py-1.5">
                       <Input
                         value={row.nama}
                         onChange={(e) => updateRow(idx, "nama", e.target.value)}
                         placeholder="Nama narasumber"
-                        className="h-8 text-sm"
+                        className="h-7 sm:h-8 text-[10px] sm:text-sm px-2"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1.5 sm:px-2 py-1.5">
                       <Input
                         value={row.jabatanSebagai}
                         onChange={(e) => updateRow(idx, "jabatanSebagai", e.target.value)}
-                        placeholder="Jabatan dalam kegiatan ini"
-                        className="h-8 text-sm"
+                        placeholder="Jabatan"
+                        className="h-7 sm:h-8 text-[10px] sm:text-sm px-2"
                       />
                     </td>
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-1.5 sm:px-2 py-1.5 text-center">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                        className="h-7 w-7 sm:h-8 sm:w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
                         onClick={() => removeRow(idx)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </Button>
                     </td>
                   </tr>
                 ))}
                 {narasumber.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="text-center py-8 text-slate-400">
+                    <td colSpan={4} className="text-center py-6 sm:py-8 text-[10px] sm:text-sm text-slate-400">
                       Belum ada narasumber. Klik "Tambah Baris" untuk memulai.
                     </td>
                   </tr>
@@ -261,14 +261,14 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
         </div>
 
         {/* ACTIONS */}
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 sm:pt-4">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Daftar Hadir
+            Simpan
           </Button>
         </div>
       </CardContent>

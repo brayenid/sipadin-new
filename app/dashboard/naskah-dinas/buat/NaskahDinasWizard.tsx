@@ -51,67 +51,71 @@ export default function NaskahDinasWizard() {
   }
 
   return (
-    <Card className="shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] border-slate-200/60 transition-shadow">
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
       <form onSubmit={handleSubmit}>
-        <CardHeader className="border-b pb-4">
-          <CardTitle className="text-xl">Naskah Dinas Baru</CardTitle>
-          <CardDescription>
-            Pilih jenis dokumen dan isi informasi dasar. Anda akan dapat melengkapi isian secara detail di halaman selanjutnya.
-          </CardDescription>
+        <CardHeader className="flex flex-col items-start justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+          <div>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Naskah Dinas Baru</CardTitle>
+            <CardDescription className="text-[10px] sm:text-xs mt-1 text-slate-500">
+              Pilih jenis dokumen dan isi informasi dasar. Anda akan dapat melengkapi isian secara detail di halaman selanjutnya.
+            </CardDescription>
+          </div>
         </CardHeader>
         
-        <CardContent className="space-y-6 pt-6">
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Jenis Naskah</Label>
+        <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wider">Jenis Naskah</Label>
             <Select 
               value={formData.jenisNaskah} 
               onValueChange={(val) => setFormData({ ...formData, jenisNaskah: val || "SURAT_TUGAS" })}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full h-9 sm:h-10 text-xs sm:text-sm">
                 <SelectValue placeholder="Pilih Jenis Naskah">
                   {getJenisNaskahLabel(formData.jenisNaskah)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="SURAT_TUGAS">Surat Tugas</SelectItem>
-                <SelectItem value="SURAT_PERINTAH">Surat Perintah</SelectItem>
-                <SelectItem value="TELAAHAN_STAF">Telaahan Staf</SelectItem>
-                <SelectItem value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
-                <SelectItem value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_TUGAS">Surat Tugas</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_PERINTAH">Surat Perintah</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="TELAAHAN_STAF">Telaahan Staf</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Tanggal Pembuatan</Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wider">Tanggal Pembuatan</Label>
             <Input 
               type="date" 
               name="tanggal"
               value={formData.tanggal} 
               onChange={handleChange}
               required
+              className="h-9 sm:h-10 text-xs sm:text-sm"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Perihal / Keterangan Dasar</Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wider">Perihal / Keterangan Dasar</Label>
             <Textarea 
               name="perihal"
               value={formData.perihal}
               onChange={handleChange}
               placeholder="Contoh: Mengikuti Bimbingan Teknis..."
               rows={3}
+              className="text-xs sm:text-sm resize-none"
             />
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-end pt-4 mt-6 bg-white">
-          <Button type="button" variant="outline" onClick={() => router.back()} className="mr-2">
+        <CardFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-6 bg-slate-50/50 border-t border-slate-100 mt-2">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
             Batal
           </Button>
-          <Button type="submit" disabled={loading} className="gap-2">
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Lanjutkan ke Form Detail <ArrowRight className="w-4 h-4" />
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto h-10 sm:h-9 text-xs sm:text-sm">
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Lanjutkan ke Form Detail <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5 sm:ml-2" />
           </Button>
         </CardFooter>
       </form>

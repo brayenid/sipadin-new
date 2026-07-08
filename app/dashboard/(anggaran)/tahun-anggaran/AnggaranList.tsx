@@ -156,7 +156,7 @@ export default function AnggaranList({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             {/* Breadcrumb */}
-            <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
               <Link
                 href="/dashboard"
                 className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -167,8 +167,8 @@ export default function AnggaranList({
               <span>/</span>
               <span className="font-medium text-slate-900">Tahun Anggaran</span>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Manajemen Anggaran</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Manajemen Anggaran</h2>
+            <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
               Kelola Tahun Anggaran dan alokasi pagu dana.
             </p>
           </div>
@@ -207,10 +207,10 @@ export default function AnggaranList({
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>TAHUN</TableHead>
-                    <TableHead className="text-right">TOTAL PAGU</TableHead>
-                    <TableHead className="text-right">SISA PAGU</TableHead>
-                    <TableHead className="text-center w-[120px]">AKSI</TableHead>
+                    <TableHead className="min-w-[100px]">TAHUN</TableHead>
+                    <TableHead className="text-right min-w-[150px]">TOTAL PAGU</TableHead>
+                    <TableHead className="text-right min-w-[150px]">SISA PAGU</TableHead>
+                    <TableHead className="text-center w-[80px] sm:w-[120px]">AKSI</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -260,18 +260,17 @@ export default function AnggaranList({
             {/* Pagination inside card footer style */}
             {totalData > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
-                <p className="text-sm text-slate-500">
-                  Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * 12 + 1}</span> hingga{' '}
-                  <span className="font-medium text-slate-900">{Math.min(currentPage * 12, totalData)}</span> dari{' '}
-                  <span className="font-medium text-slate-900">{totalData}</span> data
+                <p className="text-[10px] sm:text-sm text-slate-500 text-center sm:text-left w-full sm:w-auto">
+                  Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * 12 + 1}-{Math.min(currentPage * 12, totalData)}</span> dari <span className="font-medium text-slate-900">{totalData}</span>
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 sm:gap-2 w-full sm:w-auto justify-center">
                   <Link href={createPageUrl(currentPage > 1 ? currentPage - 1 : 1)}>
-                    <Button variant="outline" size="sm" disabled={currentPage <= 1} className="h-8 text-slate-600">
-                      Sebelumnya
+                    <Button variant="outline" size="sm" disabled={currentPage <= 1} className="h-8 px-2 sm:px-3 text-slate-600">
+                      <span className="hidden sm:inline">Sebelumnya</span>
+                      <span className="sm:hidden">&laquo;</span>
                     </Button>
                   </Link>
-                  <div className="flex items-center gap-1">
+                  <div className="hidden sm:flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                       <Link key={p} href={createPageUrl(p)}>
                         <Button
@@ -283,9 +282,13 @@ export default function AnggaranList({
                       </Link>
                     ))}
                   </div>
+                  <div className="flex sm:hidden items-center justify-center px-2 text-xs font-medium text-slate-600">
+                    {currentPage} / {totalPages}
+                  </div>
                   <Link href={createPageUrl(currentPage < totalPages ? currentPage + 1 : totalPages)}>
-                    <Button variant="outline" size="sm" disabled={currentPage >= totalPages} className="h-8 text-slate-600">
-                      Selanjutnya
+                    <Button variant="outline" size="sm" disabled={currentPage >= totalPages} className="h-8 px-2 sm:px-3 text-slate-600">
+                      <span className="hidden sm:inline">Selanjutnya</span>
+                      <span className="sm:hidden">&raquo;</span>
                     </Button>
                   </Link>
                 </div>

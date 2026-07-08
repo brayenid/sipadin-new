@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import SetupSuperadminModal from './SetupSuperadminModal'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username wajib diisi'),
@@ -45,6 +46,9 @@ export default function LoginPage() {
     if (result?.error) {
       setErrorMsg('Username atau password salah. Silakan coba lagi.')
     } else {
+      toast.success('Login Berhasil', {
+        description: 'Selamat datang kembali!',
+      })
       router.push('/dashboard')
       router.refresh()
     }

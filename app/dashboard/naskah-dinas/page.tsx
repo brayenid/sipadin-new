@@ -70,7 +70,7 @@ export default async function NaskahDinasListPage(props: {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
             <Link
               href="/dashboard"
               className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -81,8 +81,8 @@ export default async function NaskahDinasListPage(props: {
             <span>/</span>
             <span className="font-medium text-slate-900">Naskah Dinas</span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Naskah Dinas</h2>
-          <p className="text-slate-500 mt-1">Kelola pembuatan naskah dinas.</p>
+          <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Naskah Dinas</h2>
+          <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola pembuatan naskah dinas.</p>
         </div>
         <Link href="/dashboard/naskah-dinas/buat" className="shrink-0">
           <Button className="hidden lg:flex">
@@ -94,11 +94,7 @@ export default async function NaskahDinasListPage(props: {
 
       <NaskahDinasSearch />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Daftar Dokumen</CardTitle>
-          <CardDescription>Menampilkan seluruh dokumen tata naskah dinas yang dibuat oleh tim Anda.</CardDescription>
-        </CardHeader>
+      <Card className="p-0 overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

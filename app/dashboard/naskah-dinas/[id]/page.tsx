@@ -41,7 +41,7 @@ export default async function NaskahDinasDetailPage({
     <div className="p-4 sm:p-8 space-y-6 pb-24 lg:pb-0">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
             <Link
               href="/dashboard/naskah-dinas"
               className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -52,7 +52,7 @@ export default async function NaskahDinasDetailPage({
             <span>/</span>
             <span className="font-medium text-slate-900">Edit</span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">
             Edit {naskah.jenisNaskah
               .replace(/[^a-zA-Z]/g, ' ')
               .split(' ')
@@ -60,7 +60,7 @@ export default async function NaskahDinasDetailPage({
               .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
               .join(' ')}
           </h2>
-          <p className="text-slate-500 mt-1">Lengkapi data untuk menghasilkan dokumen PDF yang sesuai.</p>
+          <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Lengkapi data untuk menghasilkan dokumen PDF yang sesuai.</p>
         </div>
         <NaskahDinasDeleteButton id={naskah.id} />
       </div>

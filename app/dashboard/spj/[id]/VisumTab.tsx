@@ -42,43 +42,43 @@ export default function VisumTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
   const selectedPegawai = pegawaiList?.find((p) => p.id === dataSuratTugas.penandatanganId);
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader>
-        <CardTitle>Visum</CardTitle>
-        <CardDescription>Pengesahan kedatangan dan keberangkatan di tempat tujuan.</CardDescription>
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Visum</CardTitle>
+        <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Pengesahan kedatangan dan keberangkatan di tempat tujuan.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6">
         
-        <div className="flex items-start p-4 rounded-md bg-blue-50 border border-blue-200">
-          <Info className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800 leading-relaxed">
+        <div className="flex items-start p-3 sm:p-4 rounded-md bg-blue-50 border border-blue-200">
+          <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2 sm:mr-3 flex-shrink-0 mt-0.5" />
+          <p className="text-[10px] sm:text-sm text-blue-800 leading-relaxed">
             Penandatangan (&quot;Pejabat yang Memberi Perintah&quot;) pada halaman awal dan akhir visum ini <strong>secara otomatis disinkronkan dengan penandatangan pada tab Surat Tugas</strong>. Pastikan Anda telah mengisi penandatangan di sana dengan benar.
           </p>
         </div>
 
         {/* INPUT STAGE COUNT */}
         <div className="space-y-2">
-          <Label>Jumlah Kolom Kotak Visum</Label>
+          <Label className="text-xs sm:text-sm">Jumlah Kolom Kotak Visum</Label>
           <Input 
             type="number" 
             name="stageCount" 
             value={form.stageCount} 
             onChange={handleChange} 
-            className="w-32"
+            className="w-24 sm:w-32 h-9 sm:h-10 text-center"
             min={1}
             max={6}
           />
-          <p className="text-xs text-slate-500 mt-1">Berkaitan dengan berapa tempat/tujuan yang bisa ditandatangani dan distempel pada lembar cetak. (Bawaan: 3)</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Berkaitan dengan berapa tempat/tujuan yang bisa ditandatangani dan distempel pada lembar cetak. (Bawaan: 3)</p>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4 sm:mt-6">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="md:w-auto">
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Visum
+            Simpan
           </Button>
         </div>
       </CardContent>

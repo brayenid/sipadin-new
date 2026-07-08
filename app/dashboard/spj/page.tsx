@@ -144,7 +144,7 @@ export default async function SpjListPage({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
             <Link
               href="/dashboard"
               className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -155,8 +155,8 @@ export default async function SpjListPage({
             <span>/</span>
             <span className="font-medium text-slate-900">Daftar SPJ</span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Daftar SPJ</h2>
-          <p className="text-slate-500 mt-1">Kelola dan pantau seluruh Surat Pertanggungjawaban.</p>
+          <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Daftar SPJ</h2>
+          <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola dan pantau seluruh Surat Pertanggungjawaban.</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <div className="hidden lg:block">
@@ -173,11 +173,8 @@ export default async function SpjListPage({
 
       <SpjFilters />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat SPJ</CardTitle>
-          <CardDescription>Semua data SPJ yang telah direkam ke dalam sistem.</CardDescription>
-        </CardHeader>
+      <Card className="p-0 overflow-hidden">
+
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -265,18 +262,17 @@ export default async function SpjListPage({
           {/* Pagination */}
           {totalData > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
-              <p className="text-sm text-slate-500">
-                Menampilkan <span className="font-medium text-slate-900">{skip + 1}</span> hingga{' '}
-                <span className="font-medium text-slate-900">{Math.min(skip + limit, totalData)}</span> dari{' '}
-                <span className="font-medium text-slate-900">{totalData}</span> data
+              <p className="text-[10px] sm:text-sm text-slate-500">
+                Menampilkan <span className="font-medium text-slate-900">{skip + 1}</span>-<span className="font-medium text-slate-900">{Math.min(skip + limit, totalData)}</span> dari <span className="font-medium text-slate-900">{totalData}</span>
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link href={createPageUrl(page > 1 ? page - 1 : 1)}>
-                  <Button variant="outline" size="sm" disabled={page <= 1} className="h-8">
-                    Sebelumnya
+                  <Button variant="outline" size="sm" disabled={page <= 1} className="h-8 px-2 sm:px-3">
+                    <span className="hidden sm:inline">Sebelumnya</span>
+                    <span className="sm:hidden">&laquo;</span>
                   </Button>
                 </Link>
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <Link key={p} href={createPageUrl(p)}>
                       <Button
@@ -288,9 +284,13 @@ export default async function SpjListPage({
                     </Link>
                   ))}
                 </div>
+                <div className="flex sm:hidden items-center justify-center px-2 text-xs font-medium text-slate-600">
+                  {page} / {totalPages}
+                </div>
                 <Link href={createPageUrl(page < totalPages ? page + 1 : totalPages)}>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages} className="h-8">
-                    Selanjutnya
+                  <Button variant="outline" size="sm" disabled={page >= totalPages} className="h-8 px-2 sm:px-3">
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <span className="sm:hidden">&raquo;</span>
                   </Button>
                 </Link>
               </div>

@@ -55,27 +55,27 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
   };
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader>
-        <CardTitle>Kuitansi Pembayaran</CardTitle>
-        <CardDescription>Buku register kuitansi fisik terkait SPJ ini.</CardDescription>
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Kuitansi Pembayaran</CardTitle>
+        <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Buku register kuitansi fisik terkait SPJ ini.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6">
         {/* REFERENSI NOMINAL */}
-        <div className="bg-blue-50 border border-blue-200 text-blue-900 p-4 rounded-lg flex items-center justify-between">
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 p-3 sm:p-4 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-700 mb-1">Rujukan Nominal Pembayaran</p>
-            <p className="text-sm">Nilai kuitansi ini disesuaikan dengan total biaya dari <strong>{spj.jenisSpj === 'PERJADIN' ? 'DOPD' : spj.jenisSpj === 'HONORARIUM' ? 'Daftar Tanda Terima' : 'Pengeluaran'}</strong>. Penandatangan kuitansi disesuaikan dengan data induk.</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-700 mb-1">Rujukan Nominal Pembayaran</p>
+            <p className="text-[10px] sm:text-sm leading-relaxed">Nilai kuitansi ini disesuaikan dengan total biaya dari <strong>{spj.jenisSpj === 'PERJADIN' ? 'DOPD' : spj.jenisSpj === 'HONORARIUM' ? 'Daftar Tanda Terima' : 'Pengeluaran'}</strong>. Penandatangan kuitansi disesuaikan dengan data induk.</p>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-black">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(spj.totalPengeluaran))}</p>
+          <div className="text-left sm:text-right">
+            <p className="text-lg sm:text-xl font-black">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(spj.totalPengeluaran))}</p>
           </div>
         </div>
 
         <div className="space-y-2 max-w-sm">
-          <Label>Tanggal Kuitansi</Label>
+          <Label className="text-xs sm:text-sm">Tanggal Kuitansi</Label>
           <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
-          <p className="text-xs text-slate-500 mt-1">Tanggal pembayaran/penerbitan kuitansi.</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tanggal pembayaran/penerbitan kuitansi.</p>
         </div>
 
         {spj.jenisSpj === 'MAKAN_MINUM' && (
@@ -119,27 +119,27 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 mt-4 sm:mt-6">
           {spj.jenisSpj === 'HONORARIUM' ? (
             <>
-              <Button variant="outline" onClick={() => { setKuitansiType('HONOR'); setShowPreview(true); }}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setKuitansiType('HONOR'); setShowPreview(true); }}>
                 <FileText className="w-4 h-4 mr-2" />
                 Kuitansi Honorarium
               </Button>
-              <Button variant="outline" onClick={() => { setKuitansiType('DOPD'); setShowPreview(true); }}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setKuitansiType('DOPD'); setShowPreview(true); }}>
                 <FileText className="w-4 h-4 mr-2" />
                 Kuitansi Perjalanan
               </Button>
             </>
           ) : (
-            <Button variant="outline" onClick={() => { setKuitansiType('ALL'); setShowPreview(true); }}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setKuitansiType('ALL'); setShowPreview(true); }}>
               <FileText className="w-4 h-4 mr-2" />
               Preview Kuitansi
             </Button>
           )}
-          <Button onClick={handleSave} disabled={loading}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Kuitansi
+            Simpan
           </Button>
         </div>
       </CardContent>

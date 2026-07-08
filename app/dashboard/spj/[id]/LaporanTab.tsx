@@ -158,19 +158,19 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
   const selectedPegawai = pegawaiList?.find((p) => p.id === dataSuratTugas.penandatanganId);
 
   return (
-    <Card className="bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader>
-        <CardTitle>Rincian Laporan</CardTitle>
-        <CardDescription>Uraian hasil yang dicapai dari kegiatan perjalanan dinas.</CardDescription>
+    <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rincian Laporan</CardTitle>
+        <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Uraian hasil yang dicapai dari kegiatan perjalanan dinas.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* DASAR LAPORAN */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-baseline gap-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dasar Laporan</Label>
-              <button type="button" className="text-[10px] font-bold text-primary hover:underline" onClick={syncDasar}>
+              <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Dasar Laporan</Label>
+              <button type="button" className="text-[9px] sm:text-[10px] font-bold text-primary hover:underline" onClick={syncDasar}>
                 (Sinkron)
               </button>
             </div>
@@ -178,18 +178,18 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           </div>
 
           {/* WAKTU */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-baseline gap-2 h-[15px]">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Waktu</Label>
+              <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Waktu</Label>
             </div>
             <Input type="date" name="waktu" value={form.waktu} onChange={handleChange} className={isChanged("waktu") ? changedInputClass : ""} />
           </div>
 
           {/* LOKASI */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-baseline gap-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lokasi</Label>
-              <button type="button" className="text-[10px] font-bold text-primary hover:underline" onClick={syncLokasi}>
+              <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Lokasi</Label>
+              <button type="button" className="text-[9px] sm:text-[10px] font-bold text-primary hover:underline" onClick={syncLokasi}>
                 (Sinkron)
               </button>
             </div>
@@ -197,10 +197,10 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           </div>
 
           {/* TUJUAN */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-baseline gap-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tujuan</Label>
-              <button type="button" className="text-[10px] font-bold text-primary hover:underline" onClick={syncTujuan}>
+              <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Tujuan</Label>
+              <button type="button" className="text-[9px] sm:text-[10px] font-bold text-primary hover:underline" onClick={syncTujuan}>
                 (Sinkron)
               </button>
             </div>
@@ -209,10 +209,10 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
         </div>
 
         {/* KEGIATAN */}
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           <div className="flex items-baseline gap-2">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kegiatan</Label>
-            <button type="button" className="text-[10px] font-bold text-primary hover:underline" onClick={syncKegiatan}>
+            <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Kegiatan</Label>
+            <button type="button" className="text-[9px] sm:text-[10px] font-bold text-primary hover:underline" onClick={syncKegiatan}>
               (Sinkron)
             </button>
           </div>
@@ -220,10 +220,10 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
         </div>
 
         {/* HASIL LAPORAN SECTION */}
-        <div className="pt-6 border-t mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hasil Laporan</Label>
-            <div className="flex items-center p-1 bg-slate-100 rounded-lg border">
+        <div className="pt-4 sm:pt-6 border-t mt-6 sm:mt-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+            <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Hasil Laporan</Label>
+            <div className="flex items-center p-1 bg-slate-100 rounded-lg border w-fit">
               <button
                 type="button"
                 className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${
@@ -252,9 +252,9 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           </div>
 
           {/* PEMBUKA (Umum) */}
-          <div className="space-y-2 mb-6">
+          <div className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pembuka</Label>
+              <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Pembuka</Label>
               <PresetDialog 
                 title="Preset Pembuka" 
                 options={laporanPresets.hasilPembuka} 
@@ -273,10 +273,10 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
 
           {/* MODE POIN */}
           {form.hasilMode === "POINTS" && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Butir Hasil</Label>
+                  <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Butir Hasil</Label>
                   <PresetDialog 
                     title="Preset Butir Hasil" 
                     options={laporanPresets.hasilPoin} 
@@ -288,25 +288,25 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
                 </Button>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {hasilPoin.map((poin, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
-                    <div className="mt-2.5 text-xs font-medium text-slate-400 w-6 text-right shrink-0">#{idx + 1}</div>
+                  <div key={idx} className="flex gap-1.5 sm:gap-2 items-start">
+                    <div className="mt-2 sm:mt-2.5 text-[10px] sm:text-xs font-medium text-slate-400 w-5 sm:w-6 text-right shrink-0">#{idx + 1}</div>
                     <Textarea 
                       value={poin}
                       onChange={(e) => handlePointChange(idx, e.target.value)}
                       rows={2}
-                      className={`resize-y min-h-[60px] ${isPoinChanged ? changedInputClass : ""}`}
+                      className={`resize-y min-h-[50px] sm:min-h-[60px] ${isPoinChanged ? changedInputClass : ""}`}
                       placeholder="Uraian butir hasil..."
                     />
                     <Button 
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className="text-slate-400 hover:text-red-600 shrink-0 mt-1"
+                      className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-red-600 shrink-0 mt-0.5 sm:mt-1"
                       onClick={() => handleRemovePoint(idx)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 ))}
@@ -316,9 +316,9 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
 
           {/* MODE NARASI */}
           {form.hasilMode === "NARRATIVE" && (
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Isi Narasi</Label>
+                <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Isi Narasi</Label>
                 <PresetDialog 
                   title="Preset Narasi" 
                   options={laporanPresets.hasilNarasi} 
@@ -337,14 +337,14 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           )}
         </div>
 
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 sm:pt-4">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowPreview(true)}>
             <FileText className="w-4 h-4 mr-2" />
             Preview PDF
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="md:w-auto">
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Laporan
+            Simpan
           </Button>
         </div>
       </CardContent>

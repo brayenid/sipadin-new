@@ -77,15 +77,15 @@ export default function PengeluaranTab({ spj, onDirtyChange }: { spj: any; onDir
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <div>
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Daftar Pengeluaran</p>
-          <p className="text-xl font-bold text-slate-900">{formatRupiah(totalPengeluaran)}</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <div className="text-center md:text-left w-full md:w-auto">
+          <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Total Daftar Pengeluaran</p>
+          <p className="text-lg sm:text-xl font-bold text-slate-900">{formatRupiah(totalPengeluaran)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleSave} disabled={loading}>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button onClick={handleSave} disabled={loading} className="w-full md:w-auto">
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Simpan Pengeluaran
+            Simpan
           </Button>
         </div>
       </div>
@@ -96,58 +96,58 @@ export default function PengeluaranTab({ spj, onDirtyChange }: { spj: any; onDir
         </div>
       )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
           <div>
-            <CardTitle>Rincian Biaya</CardTitle>
-            <p className="text-sm text-slate-500 mt-1">Daftar item belanja untuk SPJ {spj.jenisSpj === "MAKAN_MINUM" ? "Makan Minum" : "Lainnya"}.</p>
+            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rincian Biaya</CardTitle>
+            <p className="text-[10px] sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Daftar item belanja untuk SPJ {spj.jenisSpj === "MAKAN_MINUM" ? "Makan Minum" : "Lainnya"}.</p>
           </div>
-          <Button size="sm" onClick={addRincian} variant="secondary">
-            <Plus className="w-4 h-4 mr-2" /> Tambah Item
+          <Button size="sm" onClick={addRincian} variant="secondary" className="w-full sm:w-auto text-[10px] sm:text-xs h-8">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Tambah Item
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="border-t overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50">
+          <div className="overflow-x-auto">
+            <Table className="text-xs sm:text-sm">
+              <TableHeader className="bg-slate-50 border-b">
                 <TableRow>
-                  <TableHead className="w-[300px]">Uraian</TableHead>
-                  <TableHead className="w-[200px]">Harga Satuan</TableHead>
-                  <TableHead className="w-[100px]">Qty</TableHead>
-                  <TableHead className="w-[120px]">Satuan</TableHead>
-                  <TableHead className="w-[200px]">Total</TableHead>
-                  <TableHead className="w-[60px] text-center">Aksi</TableHead>
+                  <TableHead className="min-w-[150px] sm:w-[300px] px-2 sm:px-4 py-2">Uraian</TableHead>
+                  <TableHead className="min-w-[120px] sm:w-[200px] px-2 sm:px-4 py-2">Harga Satuan</TableHead>
+                  <TableHead className="min-w-[60px] sm:w-[100px] px-2 sm:px-4 py-2 text-center">Qty</TableHead>
+                  <TableHead className="min-w-[80px] sm:w-[120px] px-2 sm:px-4 py-2">Satuan</TableHead>
+                  <TableHead className="min-w-[120px] sm:w-[200px] px-2 sm:px-4 py-2 text-right">Total</TableHead>
+                  <TableHead className="min-w-[50px] sm:w-[60px] text-center px-2 py-2">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rincian.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
-                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <TableCell colSpan={6} className="h-24 sm:h-32 text-center text-[10px] sm:text-sm text-slate-500">
+                      <FileText className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-20" />
                       Belum ada rincian biaya.
                     </TableCell>
                   </TableRow>
                 ) : (
                   rincian.map((item, idx) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="p-2">
-                        <Input value={item.uraian} onChange={(e) => updateRincian(idx, "uraian", e.target.value)} placeholder="Misal: Nasi Kotak..." />
+                    <TableRow key={item.id} className="border-b last:border-0">
+                      <TableCell className="p-1 sm:p-2">
+                        <Input value={item.uraian} onChange={(e) => updateRincian(idx, "uraian", e.target.value)} placeholder="Misal: Nasi Kotak..." className="h-7 sm:h-9 text-[10px] sm:text-sm px-2" />
                       </TableCell>
-                      <TableCell className="p-2">
-                        <CurrencyInput value={item.hargaSatuan} onChange={(v) => updateRincian(idx, "hargaSatuan", v)} />
+                      <TableCell className="p-1 sm:p-2">
+                        <CurrencyInput value={item.hargaSatuan} onChange={(v) => updateRincian(idx, "hargaSatuan", v)} className="h-7 sm:h-9 text-[10px] sm:text-sm px-2" />
                       </TableCell>
-                      <TableCell className="p-2">
-                        <Input type="number" min="1" value={item.qty} onChange={(e) => updateRincian(idx, "qty", e.target.value)} />
+                      <TableCell className="p-1 sm:p-2">
+                        <Input type="number" min="1" value={item.qty} onChange={(e) => updateRincian(idx, "qty", e.target.value)} className="h-7 sm:h-9 text-[10px] sm:text-sm px-1 text-center" />
                       </TableCell>
-                      <TableCell className="p-2">
-                        <Input value={item.satuan} onChange={(e) => updateRincian(idx, "satuan", e.target.value)} placeholder="Kotak, Dus, dll" />
+                      <TableCell className="p-1 sm:p-2">
+                        <Input value={item.satuan} onChange={(e) => updateRincian(idx, "satuan", e.target.value)} placeholder="Kotak, dll" className="h-7 sm:h-9 text-[10px] sm:text-sm px-2" />
                       </TableCell>
-                      <TableCell className="p-2">
-                        <CurrencyInput value={item.total} onChange={(v) => updateRincian(idx, "total", v)} disabled className="bg-slate-50 text-slate-500 font-bold" />
+                      <TableCell className="p-1 sm:p-2">
+                        <CurrencyInput value={item.total} onChange={(v) => updateRincian(idx, "total", v)} disabled className="h-7 sm:h-9 text-[10px] sm:text-sm px-2 bg-slate-50 text-slate-500 font-bold text-right" />
                       </TableCell>
-                      <TableCell className="p-2 text-center">
-                        <Button variant="ghost" size="icon" onClick={() => removeRincian(idx)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                          <Trash2 className="w-4 h-4" />
+                      <TableCell className="p-1 sm:p-2 text-center">
+                        <Button variant="ghost" size="icon" onClick={() => removeRincian(idx)} className="h-7 w-7 sm:h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
