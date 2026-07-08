@@ -95,11 +95,11 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
       <CardHeader className="flex flex-row items-center justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Daftar Personel</CardTitle>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={
             <Button size="sm" className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm">
               <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Tambah Personel
             </Button>
-          </DialogTrigger>
+          } />
           <DialogContent className="sm:max-w-[550px] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Tambah Personel ke SPJ</DialogTitle>
@@ -168,11 +168,11 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
 
                   <div className="-mt-1 -mr-1 sm:mt-0 sm:mr-0 flex-shrink-0">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger render={
                         <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-9 sm:w-9 hover:bg-slate-100">
                           <MoreVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
-                      </DropdownMenuTrigger>
+                      } />
                       <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem onClick={() => handleUpdateRole(r.id, "KEPALA_JALAN")} disabled={r.role === "KEPALA_JALAN"}>
                           <ShieldAlert className="w-4 h-4 mr-2" /> Jadikan Kepala Jalan
