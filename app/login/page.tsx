@@ -59,9 +59,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white from-60% to-blue-100 p-4">
       <motion.div 
         className="w-full max-w-sm"
-        initial={{ opacity: 0, scale: 0.85, filter: "blur(8px)" }}
-        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-        transition={{ type: "spring", bounce: 0.2, duration: 0.6, opacity: { duration: 0.4 } }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
         <div className="overflow-hidden">
           <div className="pb-6 pt-10 px-8">
