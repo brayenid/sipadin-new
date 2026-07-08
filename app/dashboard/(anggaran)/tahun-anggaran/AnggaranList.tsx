@@ -156,7 +156,7 @@ export default function AnggaranList({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             {/* Breadcrumb */}
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
               <Link
                 href="/dashboard"
                 className="hover:text-slate-900 transition-colors flex items-center gap-1"

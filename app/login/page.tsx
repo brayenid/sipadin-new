@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,17 +56,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-95">
-        <Card className="shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] border-slate-200/60 overflow-hidden">
-          <CardHeader className="pb-6 text-center pt-8">
-            <div className="mx-auto inline-flex items-center justify-center w-28 mb-3">
-              <img src="/sipadin.png" alt="SIPADIN Logo" className="w-full h-full object-contain drop-shadow-sm" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white from-60% to-blue-100 p-4">
+      <motion.div 
+        className="w-full max-w-sm"
+        initial={{ opacity: 0, scale: 0.85, filter: "blur(8px)" }}
+        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+        transition={{ type: "spring", bounce: 0.2, duration: 0.6, opacity: { duration: 0.4 } }}
+      >
+        <div className="overflow-hidden">
+          <div className="pb-6 pt-10 px-8">
+            <div className="flex justify-center mb-8">
+              <div className="w-32">
+                <img src="/sipadin.png" alt="SIPADIN Logo" className="w-full h-full object-contain drop-shadow-sm" />
+              </div>
             </div>
-            <CardTitle className="text-xl font-bold tracking-tight text-slate-900">Masuk ke SIPADIN</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-800 text-center">Masuk ke Sipadin</h1>
+          </div>
+          <div className="px-8 pb-10">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Error message */}
               {errorMsg && (
                 <div className="flex items-start gap-3 rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -74,12 +82,11 @@ export default function LoginPage() {
               )}
 
               {/* Username */}
-              <div className="space-y-2.5">
-                <Label htmlFor="username">Username</Label>
+              <div className="space-y-1">
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Masukkan username Anda"
+                  placeholder="Username"
                   autoComplete="username"
                   className="h-10"
                   {...register('username')}
@@ -88,13 +95,12 @@ export default function LoginPage() {
               </div>
 
               {/* Password */}
-              <div className="space-y-2.5">
-                <Label htmlFor="password">Password</Label>
+              <div className="space-y-1">
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Masukkan password Anda"
+                    placeholder="Password"
                     autoComplete="current-password"
                     className="h-10 pr-10"
                     {...register('password')}
@@ -118,20 +124,17 @@ export default function LoginPage() {
                     Memverifikasi...
                   </>
                 ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Masuk
-                  </>
+                  'Masuk'
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <p className="text-center text-slate-500 text-xs mt-6">
-          © {new Date().getFullYear()} Sekretariat Daerah Kab. Kutai Barat
+        <p className="text-center text-slate-500 text-xs mt-8">
+          Dikembangkan Tim PPTL
         </p>
-      </div>
+      </motion.div>
       <SetupSuperadminModal />
     </div>
   )

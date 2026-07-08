@@ -17,7 +17,7 @@ export default async function NaskahDinasBuatPage() {
     <div className="p-4 sm:p-8 space-y-6 pb-24 lg:pb-0">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
             <Link
               href="/dashboard/naskah-dinas"
               className="hover:text-slate-900 transition-colors flex items-center gap-1"
