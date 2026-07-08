@@ -218,8 +218,8 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pt-4 pb-3 sm:p-6 border-b">
+    <Card className="w-full py-0">
+      <CardHeader className="pt-4 pb-3 sm:p-4 border-b">
         <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Form Wizard SPJ</CardTitle>
       </CardHeader>
       

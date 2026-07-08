@@ -214,12 +214,12 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         
         {/* Grafik SPJ Per Jenis (2 Kolom) */}
-        <Card className="border-slate-200/60 lg:col-span-2 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+        <Card className="border-slate-200/60 lg:col-span-2 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0">
+          <CardHeader className="pt-3 pb-3 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100">
             <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Distribusi Pengeluaran</CardTitle>
             <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Berdasarkan jenis SPJ sepanjang TA {activeTahunString}.</CardDescription>
           </CardHeader>
-          <CardContent className="pb-3 sm:pb-4">
+          <CardContent className="pt-4 pb-3 sm:pt-5 sm:pb-4">
             <div className="space-y-2">
               {spjPerJenis.length === 0 && <p className="text-xs text-slate-400">Belum ada data pengeluaran.</p>}
               {spjPerJenis.map((item, i) => {
@@ -249,12 +249,12 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Naskah Dinas Summary (1 Kolom) */}
-        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden py-0 gap-0">
+          <CardHeader className="pt-3 pb-3 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100">
             <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Naskah Dinas</CardTitle>
             <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Dokumen yang telah dibuat.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col pb-3 sm:pb-4">
+          <CardContent className="flex-1 flex flex-col pt-4 pb-3 sm:pt-5 sm:pb-4">
             <div className="mb-4">
               <p className="text-3xl font-bold text-slate-900 tracking-tight">{totalNaskah}</p>
               <p className="text-xs font-medium text-slate-500">Total Keseluruhan</p>
@@ -288,12 +288,12 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Rekap Perjadin Summary (1 Kolom) */}
-        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-          <CardHeader className="pt-3 pb-2 sm:pt-4 sm:pb-2">
+        <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden py-0 gap-0">
+          <CardHeader className="pt-3 pb-3 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100">
             <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rekap Perjadin</CardTitle>
             <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Pegawai paling sering bertugas.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col pb-3 sm:pb-4">
+          <CardContent className="flex-1 flex flex-col pt-4 pb-3 sm:pt-5 sm:pb-4">
             <div className="space-y-1.5 flex-1">
               {rekapPerjadin.length === 0 ? (
                 <p className="text-xs text-slate-400">Belum ada rekap perjalanan dinas.</p>
@@ -323,15 +323,15 @@ export default async function DashboardPage() {
       </div>
 
       {/* Recent SPJs */}
-      <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-        <CardHeader className="pt-4 pb-3 sm:p-6">
+      <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0">
+        <CardHeader className="pt-4 pb-4 sm:pt-5 sm:pb-5 bg-slate-50 border-b border-slate-100">
           <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">SPJ Terbaru</CardTitle>
           <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50">
+              <TableHeader className="bg-slate-50 border-t border-slate-200/60">
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Jenis</TableHead>
@@ -411,7 +411,7 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <Card className={`border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] ${className || ""}`}>
+    <Card className={`border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] py-0 ${className || ""}`}>
       <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
         <div className="flex items-center justify-between">
           <p className="text-xs sm:text-sm font-medium text-slate-500">{title}</p>

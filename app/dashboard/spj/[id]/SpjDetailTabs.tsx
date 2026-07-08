@@ -443,9 +443,9 @@ export default function SpjDetailTabs({
                 </Dialog>
               </div>
             </CardHeader>
-            <CardContent className="px-3 pb-3 sm:p-6 sm:pt-0">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 text-xs sm:text-sm bg-slate-50 p-4 sm:p-5 rounded-md border">
-                <div className="col-span-2 md:col-span-4 flex flex-row items-center justify-between border-b pb-3 sm:pb-4 mb-1 sm:mb-2 gap-4">
+            <CardContent className="px-4 pb-4 sm:p-6 sm:pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-xs sm:text-sm">
+                <div className="col-span-2 md:col-span-4 flex flex-row items-center justify-between border-b border-slate-100 pb-3 sm:pb-4 mb-2 sm:mb-3 gap-4">
                   <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold m-0">Status Pembayaran</p>
                   <div>
                     {spj.terbayar ? (
