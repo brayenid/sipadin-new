@@ -13,6 +13,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   createKegiatan,
   createSubKegiatan,
   createKodeRekening,
@@ -23,7 +29,7 @@ import {
   updateSubKegiatan,
   updateKodeRekening,
 } from "@/app/actions/anggaran";
-import { Loader2, Plus, Trash2, Save, Edit, X, ChevronLeft, FileDown, FileText } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, Edit, X, ChevronLeft, FileDown, FileText, MoreVertical } from "lucide-react";
 import { formatCurrency, parseCurrency } from "@/lib/utils";
 import Link from "next/link";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
@@ -457,7 +463,7 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
       </Dialog>
 
       {/* ── Main Content ─────────────────────────────────────── */}
-      <div className="space-y-6 pb-24 lg:pb-0">
+      <div className="space-y-6 pb-16 lg:pb-0">
 
         {/* Header — mirip AnggaranList */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -815,37 +821,45 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
               </Button>
             </div>
           ) : (
-            <>
-              <div className="flex gap-2 w-full">
-                <Button variant="outline" className="flex-1 bg-white" onClick={exportToExcel}>
-                  <FileDown className="w-4 h-4 mr-1" /> Excel
+            <div className="flex gap-2 w-full">
+              {isSuperAdmin && (
+                <Button className="flex-1" onClick={() => setIsKegiatanOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Kegiatan Baru
                 </Button>
-                {mounted && (
-                  <PDFDownloadLink
-                    document={<ReportPDF data={data} />}
-                    fileName={`Laporan_Anggaran_${data.tahun}.pdf`}
-                    className={buttonVariants({ variant: "outline", className: "flex-1 bg-white !border !border-slate-200" })}
-                  >
-                    {({ loading }) => (
-                      <>
-                        {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileText className="w-4 h-4 mr-1" />}
-                        PDF
-                      </>
-                    )}
-                  </PDFDownloadLink>
-                )}
-              </div>
-              <div className="flex gap-2 w-full">
-                <Button variant="secondary" className="flex-1" onClick={toggleEditMode}>
-                  <Edit className="w-4 h-4 mr-1" /> Bulk Edit
-                </Button>
-                {isSuperAdmin && (
-                  <Button className="flex-1" onClick={() => setIsKegiatanOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" /> Kegiatan Baru
-                  </Button>
-                )}
-              </div>
-            </>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger className={buttonVariants({ variant: "outline", className: isSuperAdmin ? "shrink-0 bg-white px-3" : "w-full bg-white font-medium" })}>
+                  <MoreVertical className={isSuperAdmin ? "w-5 h-5 text-slate-700" : "w-4 h-4 mr-2 text-slate-700"} />
+                  {!isSuperAdmin && "Opsi Anggaran"}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 mb-2">
+                  <DropdownMenuItem onClick={toggleEditMode} className="cursor-pointer py-2.5">
+                    <Edit className="w-4 h-4 mr-2 text-slate-500" /> 
+                    <span>Bulk Edit</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer py-2.5">
+                    <FileDown className="w-4 h-4 mr-2 text-slate-500" /> 
+                    <span>Export Excel</span>
+                  </DropdownMenuItem>
+                  {mounted && (
+                    <DropdownMenuItem className="p-0">
+                      <PDFDownloadLink
+                        document={<ReportPDF data={data} />}
+                        fileName={`Laporan_Anggaran_${data.tahun}.pdf`}
+                        className="flex items-center w-full cursor-pointer py-2.5 px-2 text-sm text-slate-700 hover:bg-slate-100/50 rounded-sm"
+                      >
+                        {({ loading }) => (
+                          <>
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-slate-500" /> : <FileText className="w-4 h-4 mr-2 text-slate-500" />}
+                            <span>Export PDF</span>
+                          </>
+                        )}
+                      </PDFDownloadLink>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </MobileActionBar>
       </div>

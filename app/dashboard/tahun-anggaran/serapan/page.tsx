@@ -47,7 +47,7 @@ export default async function SerapanAnggaranPage({
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 pb-24 lg:pb-0">
+    <div className="p-4 sm:p-8 space-y-6 pb-8 lg:pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           {/* Breadcrumb */}
