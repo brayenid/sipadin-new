@@ -133,6 +133,9 @@ export async function bulkUpsertPegawai(
         });
       }
     }
+  }, {
+    maxWait: 5000,
+    timeout: 30000
   });
 
   revalidatePath("/dashboard/pegawai");
@@ -218,6 +221,9 @@ export async function importPegawaiExcel(
         inserted++;
       }
     }
+  }, {
+    maxWait: 5000,
+    timeout: 60000
   });
 
   revalidatePath("/dashboard/pegawai");
