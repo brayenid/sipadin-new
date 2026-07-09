@@ -175,7 +175,7 @@ export default function AnggaranList({
 
           <div className="flex items-center gap-2">
             <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`}>
-              <Button variant="outline" className="hidden lg:flex border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+              <Button variant="outline" className="hidden lg:flex bg-white">
                 <PieChart className="w-4 h-4 mr-2" />
                 Serapan Anggaran
               </Button>
@@ -304,7 +304,7 @@ export default function AnggaranList({
         <MobileActionBar>
           <div className="flex gap-2 w-full">
             <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`} className="flex-1">
-              <Button variant="outline" className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold bg-white">
+              <Button variant="outline" className="w-full bg-white font-medium">
                 <PieChart className="w-4 h-4 mr-2" />
                 Serapan Anggaran
               </Button>
