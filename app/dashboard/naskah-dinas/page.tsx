@@ -133,9 +133,9 @@ export default async function NaskahDinasListPage(props: {
                           {item.jenisNaskah.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[300px] sm:max-w-[400px]">
                         <div className="font-medium text-slate-900">{item.nomorSurat || '-'}</div>
-                        <div className="text-sm text-slate-500 mt-1 line-clamp-2">{item.perihal || '-'}</div>
+                        <div className="text-sm text-slate-500 mt-1 truncate" title={item.perihal || ''}>{item.perihal || '-'}</div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm font-medium">
