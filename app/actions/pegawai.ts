@@ -11,6 +11,15 @@ export async function getPegawais() {
   return prisma.pegawai.findMany({
     where: { teamId: session.user.teamId },
     orderBy: { nama: "asc" },
+    select: {
+      id: true,
+      nip: true,
+      nama: true,
+      pangkat: true,
+      golongan: true,
+      jabatan: true,
+      instansi: true,
+    }
   });
 }
 
