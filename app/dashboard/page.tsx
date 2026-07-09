@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import SerapanAnggaranCard from "./SerapanAnggaranCard";
+import { getTahunAnggaranDetail } from "@/app/actions/anggaran";
 
 export const metadata = {
   title: "Dashboard - SIPADIN",
@@ -26,12 +28,24 @@ export default async function DashboardPage() {
   const teamId = session.user.teamId;
 
   // 1. Cari Tahun Anggaran terbaru
-  const latestTahun = await prisma.tahunAnggaran.findFirst({
+  const recentTahunRows = await prisma.tahunAnggaran.findMany({
     orderBy: { tahun: 'desc' },
+    take: 4,
+    select: { tahun: true }
   });
+  const recentTahunList = recentTahunRows.map(r => r.tahun);
   
-  const activeTahunAnggaranId = latestTahun?.id;
-  const activeTahunString = latestTahun?.tahun || "Semua Tahun";
+  const activeTahunAnggaranId = recentTahunRows.length > 0 ? (await prisma.tahunAnggaran.findFirst({ where: { tahun: recentTahunList[0] } }))?.id : undefined;
+  const activeTahunString = recentTahunList[0] || "Semua Tahun";
+
+  let initialSerapanData = null;
+  if (recentTahunList.length > 0) {
+    try {
+      initialSerapanData = await getTahunAnggaranDetail(recentTahunList[0]);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
 
@@ -322,12 +336,20 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent SPJs */}
-      <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0">
-        <CardHeader className="pt-4 pb-4 sm:pt-5 sm:pb-5 bg-slate-50 border-b border-slate-100">
-          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">SPJ Terbaru</CardTitle>
-          <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
-        </CardHeader>
+      {/* Baris Ketiga: Serapan Anggaran & SPJ Terbaru */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Serapan Anggaran */}
+        <SerapanAnggaranCard 
+          tahunList={recentTahunList}
+          initialData={initialSerapanData}
+        />
+
+        {/* Recent SPJs */}
+        <Card className="border-slate-200/60 lg:col-span-2 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0">
+          <CardHeader className="pt-4 pb-4 sm:pt-5 sm:pb-5 bg-slate-50 border-b border-slate-100">
+            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">SPJ Terbaru</CardTitle>
+            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Daftar Surat Pertanggungjawaban yang terakhir kali dibuat.</CardDescription>
+          </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -392,7 +414,8 @@ export default async function DashboardPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

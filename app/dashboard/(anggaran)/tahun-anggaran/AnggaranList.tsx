@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTahunAnggaran, deleteTahunAnggaran } from "@/app/actions/anggaran";
-import { Loader2, Plus, Trash2, ChevronLeft, Search, Eye, Settings2 } from "lucide-react";
+import { Loader2, Plus, Trash2, ChevronLeft, Search, Eye, Settings2, PieChart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
@@ -173,12 +173,20 @@ export default function AnggaranList({
             </p>
           </div>
 
-          {isSuperAdmin && (
-            <Button className="hidden lg:flex" onClick={() => setIsTahunOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Buat Tahun Anggaran
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`}>
+              <Button variant="outline" className="hidden lg:flex border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                <PieChart className="w-4 h-4 mr-2" />
+                Serapan Anggaran
+              </Button>
+            </Link>
+            {isSuperAdmin && (
+              <Button className="hidden lg:flex" onClick={() => setIsTahunOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Buat Tahun Anggaran
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Search Bar - styled like SPJFilters */}
@@ -197,11 +205,7 @@ export default function AnggaranList({
           </div>
         </div>
 
-        <Card className="shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] border-slate-200/60">
-          <CardHeader>
-            <CardTitle>Daftar Tahun Anggaran</CardTitle>
-            <CardDescription>Semua tahun anggaran yang telah didaftarkan ke dalam sistem.</CardDescription>
-          </CardHeader>
+        <Card className="shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] border-slate-200/60 overflow-hidden rounded-xl py-0">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
@@ -297,14 +301,22 @@ export default function AnggaranList({
           </CardContent>
         </Card>
 
-        {isSuperAdmin && (
-          <MobileActionBar>
-            <Button onClick={() => setIsTahunOpen(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Tahun Anggaran Baru
-            </Button>
-          </MobileActionBar>
-        )}
+        <MobileActionBar>
+          <div className="flex gap-2 w-full">
+            <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`} className="flex-1">
+              <Button variant="outline" className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold bg-white">
+                <PieChart className="w-4 h-4 mr-2" />
+                Serapan Anggaran
+              </Button>
+            </Link>
+            {isSuperAdmin && (
+              <Button onClick={() => setIsTahunOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Tahun Baru
+              </Button>
+            )}
+          </div>
+        </MobileActionBar>
       </div>
     </>
   );

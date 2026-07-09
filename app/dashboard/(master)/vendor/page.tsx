@@ -28,7 +28,7 @@ export default async function VendorPage() {
           <span>/</span>
           <span className="font-medium text-slate-900">Master Vendor</span>
         </div>
-        <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Master Vendor (Pihak Ketiga)</h1>
+        <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Master Vendor</h1>
         <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
           Kelola data vendor, rumah makan, atau katering untuk SPJ Makan Minum.
         </p>

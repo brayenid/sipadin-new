@@ -402,8 +402,8 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
 
         {/* ================= MODE TABEL (BULK) ================= */}
         <TabsContent value="tabel">
-          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] sm:rounded-xl rounded-none border-x-0 sm:border-x">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
+          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+            <CardHeader className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
               <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
                 <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Data Pegawai</CardTitle>
                 {totalChanges > 0 && (

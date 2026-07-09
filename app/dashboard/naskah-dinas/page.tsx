@@ -11,6 +11,17 @@ import { formatWita } from '@/lib/date-utils'
 import NaskahDinasDeleteButton from './NaskahDinasDeleteButton'
 import NaskahDinasSearch from './NaskahDinasSearch'
 
+function getBadgeColor(jenis: string) {
+  switch (jenis) {
+    case 'SURAT_TUGAS': return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    case 'TELAAHAN_STAF': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'SURAT_PERINTAH': return 'bg-rose-50 text-rose-700 border-rose-200'
+    case 'SURAT_EDARAN_SEKDA': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    case 'SURAT_EDARAN_BUPATI': return 'bg-purple-50 text-purple-700 border-purple-200'
+    default: return 'bg-slate-50 text-slate-700 border-slate-200'
+  }
+}
+
 export const metadata = {
   title: 'Tata Naskah Dinas - SIPADIN'
 }
@@ -39,7 +50,7 @@ export default async function NaskahDinasListPage(props: {
   }
 
   if (jenis && jenis !== 'all') {
-    whereClause.jenis = jenis
+    whereClause.jenisNaskah = jenis
   }
 
   const [list, totalData] = await Promise.all([
@@ -118,7 +129,7 @@ export default async function NaskahDinasListPage(props: {
                   list.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/80">
                       <TableCell>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className={getBadgeColor(item.jenisNaskah)}>
                           {item.jenisNaskah.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
