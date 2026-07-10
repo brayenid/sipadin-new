@@ -153,17 +153,20 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     setCurrentPage(1);
   };
 
-  const updateBulkRow = (index: number, field: keyof Pegawai, value: string) => {
+  const updateBulkRow = (id: string, field: keyof Pegawai, value: string) => {
     const newData = [...bulkData];
-    newData[index] = { ...newData[index], [field]: value };
-    setBulkData(newData);
+    const index = newData.findIndex(r => r.id === id);
+    if (index !== -1) {
+      newData[index] = { ...newData[index], [field]: value };
+      setBulkData(newData);
+    }
   };
 
-  const removeBulkRow = (index: number, id: string) => {
+  const removeBulkRow = (id: string) => {
     if (!id.startsWith("temp-")) {
       setDeleteIds([...deleteIds, id]);
     }
-    const newData = bulkData.filter((_, i) => i !== index);
+    const newData = bulkData.filter(r => r.id !== id);
     setBulkData(newData);
   };
 
@@ -251,48 +254,6 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
   const sortedKartuData = sortData(filteredData);
   const sortedBulkData = sortData(filteredBulkData);
 
-  const paginatedKartuData = sortedKartuData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedBulkData = sortedBulkData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalItems = activeTab === "kartu" ? filteredData.length : filteredBulkData.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-
-  const renderPagination = () => {
-    if (totalItems <= itemsPerPage) return null;
-    return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white sm:rounded-b-xl mt-4 sm:border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <p className="text-[10px] sm:text-sm text-slate-500 text-center sm:text-left w-full sm:w-auto">
-            Menampilkan <span className="font-medium text-slate-900">{totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
-          </p>
-          <div className="hidden sm:flex items-center gap-2 border-l pl-3 border-slate-200">
-            <span className="text-sm text-slate-500">Tampilkan</span>
-            <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}>
-              <SelectTrigger className="h-8 w-16 text-xs bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="12">12</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2 mt-3 sm:mt-0 w-full sm:w-auto justify-center">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">«</Button>
-          <span className="text-xs font-medium text-slate-600 sm:hidden">{currentPage} / {totalPages}</span>
-          <div className="hidden sm:flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
-            ))}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">»</Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
       {/* Header */}
@@ -365,7 +326,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {paginatedKartuData.map((pegawai) => (
+              {sortedKartuData.map((pegawai) => (
                 <Card key={pegawai.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <CardContent className="p-5 flex justify-between items-start">
                     <div>
@@ -397,7 +358,6 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
               ))}
             </div>
           )}
-          {renderPagination()}
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
@@ -473,15 +433,14 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedBulkData.map((row, pageIdx) => {
-                      const idx = (currentPage - 1) * itemsPerPage + pageIdx;
+                    {sortedBulkData.map((row) => {
                       const rowIsNew = row.id.startsWith("temp-");
                       return (
                       <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
                         <TableCell className="p-2">
                           <Input 
                             value={row.nip || ""} 
-                            onChange={(e) => updateBulkRow(idx, "nip", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "nip", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
@@ -490,7 +449,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <TableCell className="p-2">
                           <Input 
                             value={row.nama} 
-                            onChange={(e) => updateBulkRow(idx, "nama", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "nama", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
@@ -499,7 +458,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <TableCell className="p-2">
                           <Input 
                             value={row.pangkat || ""} 
-                            onChange={(e) => updateBulkRow(idx, "pangkat", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "pangkat", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
@@ -508,7 +467,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <TableCell className="p-2">
                           <Input 
                             value={row.golongan || ""} 
-                            onChange={(e) => updateBulkRow(idx, "golongan", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "golongan", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
@@ -517,7 +476,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <TableCell className="p-2">
                           <Input 
                             value={row.jabatan} 
-                            onChange={(e) => updateBulkRow(idx, "jabatan", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "jabatan", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
@@ -529,7 +488,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                               variant="ghost" 
                               size="sm" 
                               className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => removeBulkRow(idx, row.id)}
+                              onClick={() => removeBulkRow(row.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -549,7 +508,6 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
               </div>
             </CardContent>
           </Card>
-          {renderPagination()}
         </TabsContent>
       </Tabs>
 

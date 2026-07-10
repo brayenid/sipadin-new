@@ -151,17 +151,20 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
     setCurrentPage(1);
   };
 
-  const updateBulkRow = (index: number, field: keyof Vendor, value: string) => {
+  const updateBulkRow = (id: string, field: keyof Vendor, value: string) => {
     const newData = [...bulkData];
-    newData[index] = { ...newData[index], [field]: value };
-    setBulkData(newData);
+    const index = newData.findIndex(r => r.id === id);
+    if (index !== -1) {
+      newData[index] = { ...newData[index], [field]: value };
+      setBulkData(newData);
+    }
   };
 
-  const removeBulkRow = (index: number, id: string) => {
+  const removeBulkRow = (id: string) => {
     if (!id.startsWith("temp-")) {
       setDeleteIds([...deleteIds, id]);
     }
-    const newData = bulkData.filter((_, i) => i !== index);
+    const newData = bulkData.filter(r => r.id !== id);
     setBulkData(newData);
   };
 
@@ -176,31 +179,6 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
     setBulkLoading(false);
   };
 
-  const paginatedKartuData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedBulkData = bulkData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalItems = activeTab === "kartu" ? data.length : bulkData.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-
-  const renderPagination = () => {
-    if (totalItems <= itemsPerPage) return null;
-    return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white sm:rounded-b-xl mt-4 sm:border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <p className="text-[10px] sm:text-sm text-slate-500 text-center sm:text-left w-full sm:w-auto">
-          Menampilkan <span className="font-medium text-slate-900">{totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
-        </p>
-        <div className="flex items-center gap-1 sm:gap-2 mt-3 sm:mt-0 w-full sm:w-auto justify-center">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8">«</Button>
-          <span className="text-xs font-medium text-slate-600 sm:hidden">{currentPage} / {totalPages}</span>
-          <div className="hidden sm:flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className={`h-8 w-8 p-0 ${p !== currentPage ? 'text-slate-600 hover:text-slate-900' : ''}`}>{p}</Button>
-            ))}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8">»</Button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -272,7 +250,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {paginatedKartuData.map((vendor) => (
+              {data.map((vendor) => (
                 <Card key={vendor.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <CardContent className="p-5 flex justify-between items-start">
                     <div>
@@ -302,7 +280,6 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
               ))}
             </div>
           )}
-          {renderPagination()}
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
@@ -347,15 +324,14 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedBulkData.map((row, pageIdx) => {
-                      const idx = (currentPage - 1) * itemsPerPage + pageIdx;
+                    {bulkData.map((row) => {
                       const rowIsNew = row.id.startsWith("temp-");
                       return (
                       <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
                         <TableCell className="p-2">
                           <Input 
                             value={row.namaVendor} 
-                            onChange={(e) => updateBulkRow(idx, "namaVendor", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "namaVendor", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaVendor') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
                             placeholder="Nama Vendor"
@@ -364,7 +340,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                         <TableCell className="p-2">
                           <Input 
                             value={row.namaPemilik || ""} 
-                            onChange={(e) => updateBulkRow(idx, "namaPemilik", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "namaPemilik", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaPemilik') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="Pemilik"
@@ -373,7 +349,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                         <TableCell className="p-2">
                           <Input 
                             value={row.alamat || ""} 
-                            onChange={(e) => updateBulkRow(idx, "alamat", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "alamat", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'alamat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="Alamat"
@@ -382,7 +358,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                         <TableCell className="p-2">
                           <Input 
                             value={row.npwp || ""} 
-                            onChange={(e) => updateBulkRow(idx, "npwp", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "npwp", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwp') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="00.000..."
@@ -391,7 +367,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                         <TableCell className="p-2">
                           <Input 
                             value={row.npwpd || ""} 
-                            onChange={(e) => updateBulkRow(idx, "npwpd", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "npwpd", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwpd') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="NPWPD..."
@@ -400,7 +376,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                         <TableCell className="p-2">
                           <Input 
                             value={row.rekeningBank || ""} 
-                            onChange={(e) => updateBulkRow(idx, "rekeningBank", e.target.value)} 
+                            onChange={(e) => updateBulkRow(row.id, "rekeningBank", e.target.value)} 
                             readOnly={!isSuperAdmin}
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'rekeningBank') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder="No. Rekening"
@@ -412,7 +388,7 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
                               variant="ghost" 
                               size="sm" 
                               className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => removeBulkRow(idx, row.id)}
+                              onClick={() => removeBulkRow(row.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -432,7 +408,6 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
               </div>
             </CardContent>
           </Card>
-          {renderPagination()}
         </TabsContent>
       </Tabs>
 
