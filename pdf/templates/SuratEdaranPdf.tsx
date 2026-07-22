@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   parafBox: {
-    width: 300,
+    width: 270,
   },
   ttdBox: {
     width: 200,
@@ -128,29 +128,33 @@ const styles = StyleSheet.create({
   },
   // Paraf Table
   parafTable: {
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: '#000',
     flexDirection: 'column',
   },
   parafRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#000',
   },
   parafColHeader: {
-    padding: 4,
-    fontSize: 8,
+    paddingVertical: 2.5,
+    paddingHorizontal: 3,
+    fontSize: 7,
     fontWeight: 'bold',
     textAlign: 'center',
-    borderRightWidth: 1,
+    borderRightWidth: 0.5,
     borderRightColor: '#000',
   },
   parafCol: {
-    padding: 4,
-    fontSize: 8,
-    borderRightWidth: 1,
+    paddingVertical: 2.5,
+    paddingHorizontal: 3,
+    fontSize: 7,
+    lineHeight: 1.15,
+    borderRightWidth: 0.5,
     borderRightColor: '#000',
     justifyContent: 'center',
+    minHeight: 17,
   }
 })
 
@@ -371,17 +375,17 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
             {data.parafTampilkan && parafList.length > 0 && (
               <View style={styles.parafTable}>
                 <View style={styles.parafRow}>
-                  <View style={[styles.parafColHeader, { width: 30 }]}><Text>NO</Text></View>
-                  <View style={[styles.parafColHeader, { flex: 1 }]}><Text>NAMA</Text></View>
-                  <View style={[styles.parafColHeader, { width: 80 }]}><Text>JABATAN</Text></View>
-                  <View style={[styles.parafColHeader, { width: 50, borderRightWidth: 0 }]}><Text>PARAF</Text></View>
+                  <View style={[styles.parafColHeader, { width: 18 }]}><Text>NO</Text></View>
+                  <View style={[styles.parafColHeader, { flex: 1.1 }]}><Text>NAMA</Text></View>
+                  <View style={[styles.parafColHeader, { flex: 1.2 }]}><Text>JABATAN</Text></View>
+                  <View style={[styles.parafColHeader, { width: 40, borderRightWidth: 0 }]}><Text>PARAF</Text></View>
                 </View>
                 {parafList.map((p, idx) => (
                   <View key={idx} style={[styles.parafRow, idx === parafList.length - 1 ? { borderBottomWidth: 0 } : {}]}>
-                    <View style={[styles.parafCol, { width: 30, alignItems: 'center' }]}><Text>{idx + 1}</Text></View>
-                    <View style={[styles.parafCol, { flex: 1 }]}><Text>{p.nama}</Text></View>
-                    <View style={[styles.parafCol, { width: 80 }]}><Text>{p.jabatan}</Text></View>
-                    <View style={[styles.parafCol, { width: 50, borderRightWidth: 0 }]}><Text></Text></View>
+                    <View style={[styles.parafCol, { width: 18, alignItems: 'center' }]}><Text>{idx + 1}</Text></View>
+                    <View style={[styles.parafCol, { flex: 1.1 }]}><Text>{p.nama}</Text></View>
+                    <View style={[styles.parafCol, { flex: 1.2 }]}><Text>{p.jabatan}</Text></View>
+                    <View style={[styles.parafCol, { width: 40, borderRightWidth: 0 }]}><Text></Text></View>
                   </View>
                 ))}
               </View>
