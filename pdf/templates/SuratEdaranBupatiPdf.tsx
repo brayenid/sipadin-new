@@ -423,7 +423,7 @@ export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], lay
               <Text style={{ marginTop: 2, fontWeight: 'bold' }}>BUPATI KUTAI BARAT,</Text>
             )}
             
-            <Text style={styles.ttdNama}>
+            <Text style={[styles.ttdNama, data.sembunyikanGelar ? { textDecoration: 'none' } : {}]}>
               {signer?.nama ? (data.sembunyikanGelar ? stripGelar(signer.nama) : signer.nama) : 'NAMA PENANDATANGAN'}
             </Text>
             {!data.sembunyikanPangkat && signer?.pangkat && (

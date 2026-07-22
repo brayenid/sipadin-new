@@ -417,7 +417,9 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
               <Text>{signer?.jabatan || 'PEJABAT PENANDATANGAN'}</Text>
             )}
             
-            <Text style={styles.ttdNama}>{signerNama}</Text>
+            <Text style={[styles.ttdNama, data.sembunyikanGelar ? { textDecoration: 'none' } : { textDecoration: 'underline' }]}>
+              {signerNama}
+            </Text>
             {!data.sembunyikanPangkat && signer?.pangkat && (
               <Text>{signer.pangkat} {signer.golongan ? `(${signer.golongan})` : ''}</Text>
             )}
