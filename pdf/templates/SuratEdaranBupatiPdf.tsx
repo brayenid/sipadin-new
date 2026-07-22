@@ -201,6 +201,39 @@ const renderMarkdownLite = (text: string) => {
   const paragraphs = normalizedText.split(/\n\n+/);
 
   return paragraphs.map((para, index) => {
+    // Check for [:table] block
+    if (para.trimStart().startsWith('[:table]')) {
+      const tableLines = para.split('\n').slice(1).filter(l => l.trim().length > 0);
+      const rows = tableLines.map(line => {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx === -1) {
+          return { key: line.trim(), value: '' };
+        }
+        return {
+          key: line.substring(0, colonIdx).trim(),
+          value: line.substring(colonIdx + 1).trim()
+        };
+      });
+
+      return (
+        <View key={index} style={{ marginTop: 4, marginBottom: 8, paddingLeft: 15 }}>
+          {rows.map((row, rIdx) => (
+            <View key={rIdx} style={{ flexDirection: 'row', marginBottom: 3 }}>
+              <View style={{ width: 110 }}>
+                <Text>{renderInlineStyles(row.key)}</Text>
+              </View>
+              <View style={{ width: 15, alignItems: 'center' }}>
+                <Text>:</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ textAlign: 'justify' }}>{renderInlineStyles(row.value)}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
     const lines = para.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     // Check if paragraph contains any list items or custom syntax (excluding the no-indent marker)
     const hasListItems = lines.some(l => l.match(/^\[.*?\]\s/) && !l.trimStart().startsWith('[_]'));
