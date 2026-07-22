@@ -27,6 +27,10 @@ export type SuratEdaranBupatiPdfProps = {
     isiSurat: string
     tembusan: string[]
     parafTampilkan: boolean
+    sembunyikanGelar?: boolean
+    sembunyikanJabatan?: boolean
+    sembunyikanPangkat?: boolean
+    sembunyikanNip?: boolean
   }
   signer?: Pegawai
   parafList?: Pegawai[]
@@ -415,10 +419,19 @@ export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], lay
 
           <View style={styles.ttdBox}>
             <Text>Sendawar,               {fmtDateId(data.tanggal)}</Text>
-            <Text style={{ marginTop: 2, fontWeight: 'bold' }}>BUPATI KUTAI BARAT,</Text>
+            {!data.sembunyikanJabatan && (
+              <Text style={{ marginTop: 2, fontWeight: 'bold' }}>BUPATI KUTAI BARAT,</Text>
+            )}
             
-            <Text style={styles.ttdNama}>{stripGelar(signer?.nama || 'NAMA PENANDATANGAN')}</Text>
-            {/* NO NIP AND PANGKAT FOR BUPATI */}
+            <Text style={styles.ttdNama}>
+              {signer?.nama ? (data.sembunyikanGelar ? stripGelar(signer.nama) : signer.nama) : 'NAMA PENANDATANGAN'}
+            </Text>
+            {!data.sembunyikanPangkat && signer?.pangkat && (
+              <Text>{signer.pangkat} {signer.golongan ? `(${signer.golongan})` : ''}</Text>
+            )}
+            {!data.sembunyikanNip && signer?.nip && (
+              <Text>NIP. {signer.nip}</Text>
+            )}
           </View>
         </View>
 

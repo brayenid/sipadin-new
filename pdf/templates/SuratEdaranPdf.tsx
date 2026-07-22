@@ -27,6 +27,10 @@ export type SuratEdaranPdfProps = {
     isiSurat: string
     tembusan: string[]
     parafTampilkan: boolean
+    sembunyikanGelar?: boolean
+    sembunyikanJabatan?: boolean
+    sembunyikanPangkat?: boolean
+    sembunyikanNip?: boolean
   }
   signer?: Pegawai
   parafList?: Pegawai[]
@@ -295,6 +299,13 @@ function fmtDateId(date: string) {
   return formatWita(new Date(date), 'MMMM yyyy')
 }
 
+function stripGelar(nama: string) {
+  if (!nama) return ''
+  let bersih = nama.split(',')[0].trim()
+  bersih = bersih.split(' ').filter(kata => !kata.endsWith('.')).join(' ').trim()
+  return bersih || nama
+}
+
 export default function SuratEdaranPdf({ data, signer, parafList = [], layout }: SuratEdaranPdfProps) {
   const fullNomor = `${data.nomorPrefix}${data.nomorTengah || '          '}${data.nomorSuffix}`
 
@@ -305,6 +316,10 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
     fontSize: layout?.fontSize ?? 11,
     lineHeight: layout?.lineHeight ?? 1.35,
   }
+
+  const signerNama = signer?.nama
+    ? (data.sembunyikanGelar ? stripGelar(signer.nama) : signer.nama)
+    : 'NAMA PENANDATANGAN'
 
   return (
     <Document>
@@ -398,11 +413,17 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
           </View>
 
           <View style={styles.ttdBox}>
-            <Text>{signer?.jabatan || 'PEJABAT PENANDATANGAN'}</Text>
+            {!data.sembunyikanJabatan && (
+              <Text>{signer?.jabatan || 'PEJABAT PENANDATANGAN'}</Text>
+            )}
             
-            <Text style={styles.ttdNama}>{signer?.nama || 'NAMA PENANDATANGAN'}</Text>
-            {signer?.pangkat && <Text>{signer.pangkat} {signer.golongan ? `(${signer.golongan})` : ''}</Text>}
-            <Text>NIP. {signer?.nip || '-'}</Text>
+            <Text style={styles.ttdNama}>{signerNama}</Text>
+            {!data.sembunyikanPangkat && signer?.pangkat && (
+              <Text>{signer.pangkat} {signer.golongan ? `(${signer.golongan})` : ''}</Text>
+            )}
+            {!data.sembunyikanNip && (
+              <Text>NIP. {signer?.nip || '-'}</Text>
+            )}
           </View>
         </View>
 

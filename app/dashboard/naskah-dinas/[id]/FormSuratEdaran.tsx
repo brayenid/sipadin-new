@@ -117,6 +117,10 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
     isiSurat: meta.isiSurat ?? "",
     tembusan: Array.isArray(meta.tembusan) && meta.tembusan.length > 0 ? meta.tembusan : [""],
     penandatanganId: meta.penandatanganId || "",
+    sembunyikanGelar: meta.sembunyikanGelar ?? false,
+    sembunyikanJabatan: meta.sembunyikanJabatan ?? false,
+    sembunyikanPangkat: meta.sembunyikanPangkat ?? false,
+    sembunyikanNip: meta.sembunyikanNip ?? false,
     parafTampilkan: meta.parafTampilkan ?? false,
     parafDaftar: Array.isArray(meta.parafDaftar) && meta.parafDaftar.length > 0 ? meta.parafDaftar : [""],
   })
@@ -291,6 +295,44 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
               placeholder="Cari pejabat penandatangan..."
               className="w-full bg-white"
             />
+          </div>
+
+          <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg space-y-2">
+            <Label className="text-xs font-semibold text-slate-700">Opsi Atribut Penandatangan (PDF):</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="sembunyikanGelar" 
+                  checked={form.sembunyikanGelar} 
+                  onCheckedChange={(checked) => setForm({ ...form, sembunyikanGelar: checked === true })} 
+                />
+                <Label htmlFor="sembunyikanGelar" className="cursor-pointer text-xs font-normal">Hapus Gelar</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="sembunyikanJabatan" 
+                  checked={form.sembunyikanJabatan} 
+                  onCheckedChange={(checked) => setForm({ ...form, sembunyikanJabatan: checked === true })} 
+                />
+                <Label htmlFor="sembunyikanJabatan" className="cursor-pointer text-xs font-normal">Hapus Jabatan</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="sembunyikanPangkat" 
+                  checked={form.sembunyikanPangkat} 
+                  onCheckedChange={(checked) => setForm({ ...form, sembunyikanPangkat: checked === true })} 
+                />
+                <Label htmlFor="sembunyikanPangkat" className="cursor-pointer text-xs font-normal">Hapus Pangkat</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="sembunyikanNip" 
+                  checked={form.sembunyikanNip} 
+                  onCheckedChange={(checked) => setForm({ ...form, sembunyikanNip: checked === true })} 
+                />
+                <Label htmlFor="sembunyikanNip" className="cursor-pointer text-xs font-normal">Hapus NIP</Label>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 border-t space-y-4">
