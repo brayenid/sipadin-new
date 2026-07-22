@@ -245,9 +245,14 @@ const renderMarkdownLite = (text: string) => {
     if (!hasListItems) {
       if (para.trimStart().startsWith('[_]')) {
         const cleanPara = para.trimStart().substring(3).trimStart();
-        return <Text key={index} style={[styles.paragraph, { textIndent: 0 }]}>{renderInlineStyles(cleanPara)}</Text>
+        return <Text key={index} style={styles.paragraph}>{renderInlineStyles(cleanPara)}</Text>
       }
-      return <Text key={index} style={styles.paragraph}>{renderInlineStyles(para)}</Text>
+      return (
+        <Text key={index} style={styles.paragraph}>
+          <Text>{'\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'}</Text>
+          {renderInlineStyles(para)}
+        </Text>
+      )
     }
 
     let currentIndent = 0; 
