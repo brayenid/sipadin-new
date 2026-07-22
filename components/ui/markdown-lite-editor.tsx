@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Indent, AlignLeft, GripVertical, Plus, Trash2, ChevronDown, Bold, Italic, Underline, Table } from 'lucide-react'
+import { Indent, AlignLeft, GripVertical, Plus, Trash2, ChevronDown, Bold, Italic, Underline, Table, TableProperties } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-export type BlockType = 'indent' | 'no-indent' | 'list-1' | 'list-2' | 'list-3' | 'table-kv'
+export type BlockType = 'indent' | 'no-indent' | 'list-1' | 'list-2' | 'list-3' | 'table-kv' | 'table-grid'
 
 export type KeyValueItem = {
   id: string
@@ -27,6 +27,9 @@ export type Block = {
   prefix: string // for lists, e.g., '1.', 'a.', '1)', '-'
   content: string
   tableRows?: KeyValueItem[]
+  gridHeaders?: string[]
+  gridColWidths?: number[]
+  gridRows?: string[][]
 }
 
 function generateId() {
@@ -40,6 +43,39 @@ function parseMarkdownLite(text: string): Block[] {
   const paragraphs = normalizedText.split(/\n\n+/)
 
   return paragraphs.map(para => {
+    // Check for table-grid block
+    if (para.trimStart().startsWith('[:grid]')) {
+      const lines = para.split('\n').slice(1).map(l => l.trim()).filter(l => l.length > 0)
+      let colWidths: number[] = []
+      let tableLines = lines
+
+      if (lines[0] && lines[0].startsWith('[widths:')) {
+        const widthStr = lines[0].replace('[widths:', '').replace(']', '').trim()
+        colWidths = widthStr.split(',').map(w => parseFloat(w.trim()) || 1)
+        tableLines = lines.slice(1)
+      }
+
+      const parseRow = (line: string) => {
+        const parts = line.split('|').map(p => p.trim())
+        if (parts.length > 1 && parts[0] === '') parts.shift()
+        if (parts.length > 0 && parts[parts.length - 1] === '') parts.pop()
+        return parts
+      }
+
+      const gridHeaders = tableLines.length > 0 ? parseRow(tableLines[0]) : ['No', 'Uraian', 'Keterangan']
+      const gridRows = tableLines.length > 1 ? tableLines.slice(1).map(parseRow) : [['1', 'Contoh data', '-']]
+
+      return {
+        id: generateId(),
+        type: 'table-grid',
+        prefix: '',
+        content: '',
+        gridHeaders,
+        gridColWidths: colWidths.length === gridHeaders.length ? colWidths : gridHeaders.map(() => 1),
+        gridRows
+      }
+    }
+
     // Check for table-kv block
     if (para.trimStart().startsWith('[:table]')) {
       const tableLines = para.split('\n').slice(1)
@@ -98,6 +134,17 @@ function parseMarkdownLite(text: string): Block[] {
 
 function stringifyMarkdownLite(blocks: Block[]): string {
   return blocks.map(block => {
+    if (block.type === 'table-grid') {
+      const headers = block.gridHeaders || ['No', 'Uraian', 'Keterangan']
+      const widths = block.gridColWidths || headers.map(() => 1)
+      const rows = block.gridRows || []
+      
+      const widthLine = `[widths: ${widths.join(',')}]`
+      const headerLine = `| ${headers.join(' | ')} |`
+      const rowLines = rows.map(r => `| ${r.join(' | ')} |`).join('\n')
+      
+      return `[:grid]\n${widthLine}\n${headerLine}\n${rowLines}`
+    }
     if (block.type === 'table-kv') {
       const rows = block.tableRows || []
       if (rows.length === 0) return '[:table]\n : '
@@ -157,7 +204,15 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
     const block = blocksRef.current.find(b => b.id === blockId)
     if (!block) return
 
-    if (newType === 'table-kv' && block.type !== 'table-kv') {
+    if (newType === 'table-grid' && block.type !== 'table-grid') {
+      const gridHeaders = ['No', 'Uraian Kegiatan', 'Jumlah', 'Keterangan']
+      const gridColWidths = [1, 4, 2, 2]
+      const gridRows = [
+        ['1', 'Pelaksanaan Rapat Koordinasi', '1 Berkas', 'Lengkap'],
+        ['2', 'Penyusunan Laporan Akhir', '1 Paket', 'Selesai']
+      ]
+      updateBlock(blockId, { type: newType, gridHeaders, gridColWidths, gridRows })
+    } else if (newType === 'table-kv' && block.type !== 'table-kv') {
       let tableRows: KeyValueItem[] = []
       if (block.content) {
         const lines = block.content.split('\n')
@@ -184,6 +239,83 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
     } else {
       updateBlock(blockId, { type: newType })
     }
+  }
+
+  const addGridColumn = (blockId: string) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const headers = [...(block.gridHeaders || ['No', 'Uraian'])]
+    const widths = [...(block.gridColWidths || headers.map(() => 1))]
+    const rows = (block.gridRows || []).map(r => [...r, ''])
+    
+    headers.push(`Kolom ${headers.length + 1}`)
+    widths.push(1)
+    
+    updateBlock(blockId, { gridHeaders: headers, gridColWidths: widths, gridRows: rows })
+  }
+
+  const removeGridColumn = (blockId: string, colIdx: number) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const headers = [...(block.gridHeaders || [])]
+    if (headers.length <= 1) return
+    const widths = [...(block.gridColWidths || [])]
+    const rows = (block.gridRows || []).map(r => r.filter((_, i) => i !== colIdx))
+
+    headers.splice(colIdx, 1)
+    widths.splice(colIdx, 1)
+
+    updateBlock(blockId, { gridHeaders: headers, gridColWidths: widths, gridRows: rows })
+  }
+
+  const updateGridHeader = (blockId: string, colIdx: number, val: string) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const headers = [...(block.gridHeaders || [])]
+    headers[colIdx] = val
+    updateBlock(blockId, { gridHeaders: headers })
+  }
+
+  const updateGridWidth = (blockId: string, colIdx: number, val: number) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const widths = [...(block.gridColWidths || [])]
+    widths[colIdx] = Math.max(0.1, val)
+    updateBlock(blockId, { gridColWidths: widths })
+  }
+
+  const addGridRow = (blockId: string) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const headers = block.gridHeaders || ['No', 'Uraian']
+    const rows = [...(block.gridRows || [])]
+    const newRow = Array(headers.length).fill('')
+    newRow[0] = String(rows.length + 1)
+    rows.push(newRow)
+    updateBlock(blockId, { gridRows: rows })
+  }
+
+  const removeGridRow = (blockId: string, rowIdx: number) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const rows = [...(block.gridRows || [])]
+    if (rows.length <= 1) return
+    rows.splice(rowIdx, 1)
+    updateBlock(blockId, { gridRows: rows })
+  }
+
+  const updateGridCell = (blockId: string, rowIdx: number, colIdx: number, val: string) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    if (!block) return
+    const rows = (block.gridRows || []).map((r, rI) => {
+      if (rI === rowIdx) {
+        const newR = [...r]
+        newR[colIdx] = val
+        return newR
+      }
+      return r
+    })
+    updateBlock(blockId, { gridRows: rows })
   }
 
   const addTableRow = (blockId: string) => {
@@ -321,6 +453,7 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
                 {block.type === 'list-2' && <span className="font-mono font-bold text-[10px]">a.</span>}
                 {block.type === 'list-3' && <span className="font-mono font-bold text-[10px]">1)</span>}
                 {block.type === 'table-kv' && <Table className="w-3.5 h-3.5 text-blue-600" />}
+                {block.type === 'table-grid' && <TableProperties className="w-3.5 h-3.5 text-emerald-600" />}
                 <ChevronDown className="w-2.5 h-2.5 ml-1 opacity-50" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
@@ -342,6 +475,9 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
                 <DropdownMenuItem onClick={() => handleTypeChange(block.id, 'table-kv')}>
                   <Table className="w-4 h-4 mr-2 text-blue-600" /> Tabel Rincian (Rata Titik Dua)
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleTypeChange(block.id, 'table-grid')}>
+                  <TableProperties className="w-4 h-4 mr-2 text-emerald-600" /> Tabel Grid Data (Bisa Atur Ukuran)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -359,7 +495,102 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
                 />
               )}
 
-              {block.type === 'table-kv' ? (
+              {block.type === 'table-grid' ? (
+                <div className="flex-1 space-y-3 bg-emerald-50/40 p-3 rounded-lg border border-emerald-200/80 overflow-x-auto">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200/80 text-[11px] font-semibold text-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <TableProperties className="w-4 h-4 text-emerald-600" />
+                      <span>Tabel Grid Data (Bisa Atur Ukuran Kolom)</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                      onClick={() => addGridColumn(block.id)}
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kolom
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Header & Width Controls */}
+                    <div className="flex items-center gap-1.5 bg-slate-100/90 p-2 rounded-md font-medium text-xs text-slate-700">
+                      {(block.gridHeaders || []).map((header, cIdx) => (
+                        <div key={cIdx} style={{ flex: block.gridColWidths?.[cIdx] || 1 }} className="min-w-[80px] space-y-1 relative group/colheader">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={header}
+                              onChange={(e) => updateGridHeader(block.id, cIdx, e.target.value)}
+                              placeholder={`Judul Kolom ${cIdx + 1}`}
+                              className="h-7 text-xs font-bold bg-white text-slate-800"
+                            />
+                            {(block.gridHeaders || []).length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeGridColumn(block.id, cIdx)}
+                                className="p-1 text-slate-400 hover:text-red-600 rounded opacity-0 group-hover/colheader:opacity-100 transition-opacity"
+                                title="Hapus Kolom"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                            <span>Lebar:</span>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0.5"
+                              max="20"
+                              value={block.gridColWidths?.[cIdx] ?? 1}
+                              onChange={(e) => updateGridWidth(block.id, cIdx, parseFloat(e.target.value) || 1)}
+                              className="h-5 w-12 px-1 text-[10px] bg-white text-center"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Row Cells */}
+                    {(block.gridRows || []).map((row, rIdx) => (
+                      <div key={rIdx} className="flex items-center gap-1.5 group/gridrow">
+                        {(block.gridHeaders || []).map((_, cIdx) => (
+                          <div key={cIdx} style={{ flex: block.gridColWidths?.[cIdx] || 1 }} className="min-w-[80px]">
+                            <Input
+                              value={row[cIdx] || ''}
+                              onChange={(e) => updateGridCell(block.id, rIdx, cIdx, e.target.value)}
+                              placeholder="Isi sel..."
+                              className="h-8 text-xs bg-white"
+                            />
+                          </div>
+                        ))}
+                        {(block.gridRows || []).length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                            onClick={() => removeGridRow(block.id, rIdx)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1 h-7 text-xs bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                    onClick={() => addGridRow(block.id)}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Baris Data
+                  </Button>
+                </div>
+              ) : block.type === 'table-kv' ? (
                 <div className="flex-1 space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-200/80 text-[11px] font-semibold text-slate-600">
                     <span>Tabel Rincian (Format Rata Titik Dua)</span>

@@ -114,6 +114,8 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
     penerimaTipe: meta.penerimaTipe ?? "SEMUA", // SEMUA, TERLAMPIR, LANGSUNG
     penerimaTeksSemua: meta.penerimaTeksSemua ?? "Seluruh Kepala Perangkat Daerah",
     penerimaDaftar: Array.isArray(meta.penerimaDaftar) && meta.penerimaDaftar.length > 0 ? meta.penerimaDaftar : [""],
+    penerimaDiTampilkan: meta.penerimaDiTampilkan ?? true,
+    penerimaLokasi: meta.penerimaLokasi ?? "",
     isiSurat: meta.isiSurat ?? "",
     tembusan: Array.isArray(meta.tembusan) && meta.tembusan.length > 0 ? meta.tembusan : [""],
     penandatanganId: meta.penandatanganId || "",
@@ -249,6 +251,36 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
               />
             </div>
           )}
+
+          {/* Opsi Lokasi/Tempat Tujuan (di - TEMPAT) */}
+          <div className="pt-4 border-t space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="penerimaDiTampilkan" 
+                checked={form.penerimaDiTampilkan} 
+                onCheckedChange={(checked) => setForm({ ...form, penerimaDiTampilkan: checked === true })} 
+              />
+              <Label htmlFor="penerimaDiTampilkan" className="cursor-pointer font-semibold text-xs sm:text-sm">
+                Tampilkan Alamat / Lokasi Tujuan (&quot;di - TEMPAT&quot;)
+              </Label>
+            </div>
+
+            {form.penerimaDiTampilkan && (
+              <div className="space-y-1.5 pl-6">
+                <Label className="text-xs font-medium text-slate-700">Kustomisasi Teks Tempat / Lokasi</Label>
+                <Input 
+                  name="penerimaLokasi" 
+                  value={form.penerimaLokasi} 
+                  onChange={handleChange} 
+                  placeholder="Default: T E M P A T (Kosongkan jika ingin 'T E M P A T')" 
+                  className="bg-white text-xs"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Jika dikosongkan, otomatis akan dicetak <b>T E M P A T</b>. Jika diisi (contoh: <i>Sendawar</i> atau <i>Jakarta</i>), akan dicetak sesuai isian.
+                </p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

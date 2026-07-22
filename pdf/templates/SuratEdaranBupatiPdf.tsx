@@ -24,6 +24,8 @@ export type SuratEdaranBupatiPdfProps = {
     penerimaTipe: string
     penerimaTeksSemua: string
     penerimaDaftar: string[]
+    penerimaDiTampilkan?: boolean
+    penerimaLokasi?: string
     isiSurat: string
     tembusan: string[]
     parafTampilkan: boolean
@@ -209,6 +211,91 @@ const renderMarkdownLite = (text: string) => {
   const paragraphs = normalizedText.split(/\n\n+/);
 
   return paragraphs.map((para, index) => {
+    // Check for [:grid] block
+    if (para.trimStart().startsWith('[:grid]')) {
+      const lines = para.split('\n').slice(1).map(l => l.trim()).filter(l => l.length > 0);
+      let colWidths: number[] = [];
+      let tableLines = lines;
+
+      if (lines[0] && lines[0].startsWith('[widths:')) {
+        const widthStr = lines[0].replace('[widths:', '').replace(']', '').trim();
+        colWidths = widthStr.split(',').map(w => parseFloat(w.trim()) || 1);
+        tableLines = lines.slice(1);
+      }
+
+      const parseRow = (line: string) => {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length > 1 && parts[0] === '') parts.shift();
+        if (parts.length > 0 && parts[parts.length - 1] === '') parts.pop();
+        return parts;
+      };
+
+      const gridHeaders = tableLines.length > 0 ? parseRow(tableLines[0]) : ['No', 'Uraian'];
+      const gridRows = tableLines.length > 1 ? tableLines.slice(1).map(parseRow) : [];
+
+      const widths = colWidths.length === gridHeaders.length ? colWidths : gridHeaders.map(() => 1);
+      const totalWidth = widths.reduce((a, b) => a + b, 0) || 1;
+      const colPcts = widths.map(w => `${(w / totalWidth) * 100}%`);
+
+      return (
+        <View key={index} style={{ marginTop: 6, marginBottom: 8, borderWidth: 0.5, borderColor: '#000', flexDirection: 'column' }}>
+          {/* Header Row */}
+          <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#000' }}>
+            {gridHeaders.map((header, hIdx) => (
+              <View 
+                key={hIdx} 
+                style={{ 
+                  width: colPcts[hIdx], 
+                  paddingTop: 3,
+                  paddingBottom: 2, 
+                  paddingHorizontal: 4, 
+                  borderRightWidth: hIdx === gridHeaders.length - 1 ? 0 : 0.5, 
+                  borderRightColor: '#000',
+                  justifyContent: 'center',
+                  alignItems: hIdx === 0 ? 'center' : 'flex-start'
+                }}
+              >
+                <Text style={{ fontSize: 8, fontWeight: 'bold', textAlign: hIdx === 0 ? 'center' : 'left' }}>
+                  {renderInlineStyles(header)}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Data Rows */}
+          {gridRows.map((row, rIdx) => (
+            <View 
+              key={rIdx} 
+              style={{ 
+                flexDirection: 'row', 
+                borderBottomWidth: rIdx === gridRows.length - 1 ? 0 : 0.5, 
+                borderBottomColor: '#000',
+                minHeight: 16
+              }}
+            >
+              {gridHeaders.map((_, cIdx) => (
+                <View 
+                  key={cIdx} 
+                  style={{ 
+                    width: colPcts[cIdx], 
+                    paddingVertical: 2.5, 
+                    paddingHorizontal: 4, 
+                    borderRightWidth: cIdx === gridHeaders.length - 1 ? 0 : 0.5, 
+                    borderRightColor: '#000',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 8, lineHeight: 1.15, textAlign: cIdx === 0 ? 'center' : 'left' }}>
+                    {renderInlineStyles(row[cIdx] || '')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      );
+    }
+
     // Check for [:table] block
     if (para.trimStart().startsWith('[:table]')) {
       const tableLines = para.split('\n').slice(1).filter(l => l.trim().length > 0);
@@ -377,10 +464,12 @@ export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], lay
                 </View>
               ))}
 
-              <View style={{ marginTop: 10, marginLeft: 15 }}>
-                <Text>di -</Text>
-                <Text style={{ marginLeft: 15 }}>T E M P A T</Text>
-              </View>
+              {data.penerimaDiTampilkan !== false && (
+                <View style={{ marginTop: 10, marginLeft: 15 }}>
+                  <Text>di -</Text>
+                  <Text style={{ marginLeft: 15 }}>{data.penerimaLokasi?.trim() ? data.penerimaLokasi.trim() : 'T E M P A T'}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
