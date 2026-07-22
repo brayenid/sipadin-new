@@ -376,12 +376,10 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
                 </View>
               ))}
               
-              {data.penerimaTipe !== 'LANGSUNG' && (
-                <View style={{ marginTop: 10, marginLeft: 15 }}>
-                  <Text>di -</Text>
-                  <Text style={{ marginLeft: 15 }}>T E M P A T</Text>
-                </View>
-              )}
+              <View style={{ marginTop: 10, marginLeft: 15 }}>
+                <Text>di -</Text>
+                <Text style={{ marginLeft: 15 }}>T E M P A T</Text>
+              </View>
             </View>
           </View>
         </View>

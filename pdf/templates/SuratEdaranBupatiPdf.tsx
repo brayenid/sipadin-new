@@ -376,6 +376,11 @@ export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], lay
                   <View style={{ flex: 1 }}><Text>{p}</Text></View>
                 </View>
               ))}
+
+              <View style={{ marginTop: 10, marginLeft: 15 }}>
+                <Text>di -</Text>
+                <Text style={{ marginLeft: 15 }}>T E M P A T</Text>
+              </View>
             </View>
           </View>
         </View>
