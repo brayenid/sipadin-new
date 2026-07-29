@@ -414,6 +414,10 @@ function stripGelar(nama: string) {
 export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], layout }: SuratEdaranBupatiPdfProps) {
   const fullNomor = `${data.nomorPrefix}${data.nomorTengah || '          '}${data.nomorSuffix}`
 
+  const hasPangkat = !data.sembunyikanPangkat && Boolean(signer?.pangkat || signer?.golongan)
+  const hasNip = !data.sembunyikanNip && Boolean(signer?.nip && signer.nip.trim() !== '' && signer.nip !== '-')
+  const showUnderline = signer ? (hasPangkat || hasNip) : (!data.sembunyikanPangkat || !data.sembunyikanNip)
+
   const dynamicPageStyle = {
     paddingTop: layout?.marginTop ?? 30,
     paddingBottom: layout?.marginBottom ?? 30,
@@ -517,7 +521,7 @@ export default function SuratEdaranBupatiPdf({ data, signer, parafList = [], lay
               <Text style={{ marginTop: 2, fontWeight: 'bold' }}>BUPATI KUTAI BARAT,</Text>
             )}
             
-            <Text style={[styles.ttdNama, data.sembunyikanGelar ? { textDecoration: 'none' } : {}]}>
+            <Text style={[styles.ttdNama, showUnderline ? { textDecoration: 'underline' } : { textDecoration: 'none' }]}>
               {signer?.nama ? (data.sembunyikanGelar ? stripGelar(signer.nama) : signer.nama) : 'NAMA PENANDATANGAN'}
             </Text>
             {!data.sembunyikanPangkat && signer?.pangkat && (

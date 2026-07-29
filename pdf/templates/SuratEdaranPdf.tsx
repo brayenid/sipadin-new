@@ -408,6 +408,10 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
     ? (data.sembunyikanGelar ? stripGelar(signer.nama) : signer.nama)
     : 'NAMA PENANDATANGAN'
 
+  const hasPangkat = !data.sembunyikanPangkat && Boolean(signer?.pangkat || signer?.golongan)
+  const hasNip = !data.sembunyikanNip && Boolean(signer?.nip && signer.nip.trim() !== '' && signer.nip !== '-')
+  const showUnderline = signer ? (hasPangkat || hasNip) : (!data.sembunyikanPangkat || !data.sembunyikanNip)
+
   return (
     <Document>
       <Page size="A4" style={[styles.page, dynamicPageStyle]}>
@@ -504,7 +508,7 @@ export default function SuratEdaranPdf({ data, signer, parafList = [], layout }:
               <Text>{signer?.jabatan || 'PEJABAT PENANDATANGAN'}</Text>
             )}
             
-            <Text style={[styles.ttdNama, data.sembunyikanGelar ? { textDecoration: 'none' } : { textDecoration: 'underline' }]}>
+            <Text style={[styles.ttdNama, showUnderline ? { textDecoration: 'underline' } : { textDecoration: 'none' }]}>
               {signerNama}
             </Text>
             {!data.sembunyikanPangkat && signer?.pangkat && (
