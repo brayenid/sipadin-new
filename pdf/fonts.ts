@@ -1,5 +1,8 @@
 import { Font } from '@react-pdf/renderer'
 
+// Disable auto-hyphenation across all PDF documents so words are not broken with hyphens (e.g. den-gan)
+Font.registerHyphenationCallback(word => [word])
+
 // Daftarkan font yang dibutuhkan untuk PDF
 Font.register({
   family: 'Bookman',

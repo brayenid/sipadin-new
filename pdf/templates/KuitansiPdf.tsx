@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
+import '@/pdf/fonts';
 
 export type KuitansiSpj = {
   tahunAnggaran: string | null;

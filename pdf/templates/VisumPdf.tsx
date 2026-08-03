@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
+import '@/pdf/fonts'
 
 export type Signer = {
   nama: string

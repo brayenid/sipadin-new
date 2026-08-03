@@ -2,6 +2,7 @@ import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import '@/pdf/fonts'
 
 export type LaporanHasilMode = 'POINTS' | 'NARRATIVE'
 

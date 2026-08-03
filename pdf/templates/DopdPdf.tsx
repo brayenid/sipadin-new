@@ -3,6 +3,7 @@
 import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
 import { formatWita } from '@/lib/date-utils'
+import '@/pdf/fonts'
 
 type RosterRole = 'KEPALA_JALAN' | 'PENGIKUT'
 
