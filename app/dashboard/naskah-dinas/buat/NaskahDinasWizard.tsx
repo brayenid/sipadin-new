@@ -46,6 +46,7 @@ export default function NaskahDinasWizard() {
       case 'TELAAHAN_STAF': return 'Telaahan Staf'
       case 'SURAT_EDARAN_SEKDA': return 'Surat Edaran Sekda'
       case 'SURAT_EDARAN_BUPATI': return 'Surat Edaran Bupati'
+      case 'SURAT_UMUM': return 'Surat Umum (Kustom Fleksibel)'
       default: return val
     }
   }
@@ -75,11 +76,12 @@ export default function NaskahDinasWizard() {
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_UMUM">Surat Umum (Kustom Fleksibel)</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
+                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="SURAT_TUGAS">Surat Tugas</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="SURAT_PERINTAH">Surat Perintah</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="TELAAHAN_STAF">Telaahan Staf</SelectItem>
-                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
-                <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
               </SelectContent>
             </Select>
           </div>

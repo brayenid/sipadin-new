@@ -55,6 +55,7 @@ export default function NaskahDinasSearch() {
       case "TELAAHAN_STAF": return "Telaahan Staf"
       case "SURAT_EDARAN_SEKDA": return "Surat Edaran Sekda"
       case "SURAT_EDARAN_BUPATI": return "Surat Edaran Bupati"
+      case "SURAT_UMUM": return "Surat Umum"
       case "all": 
       default: 
         return "Semua Jenis Naskah"
@@ -81,11 +82,12 @@ export default function NaskahDinasSearch() {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Semua Jenis Naskah</SelectItem>
+          <SelectItem value="SURAT_UMUM">Surat Umum</SelectItem>
+          <SelectItem value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
+          <SelectItem value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
           <SelectItem value="SURAT_TUGAS">Surat Tugas</SelectItem>
           <SelectItem value="SURAT_PERINTAH">Surat Perintah</SelectItem>
           <SelectItem value="TELAAHAN_STAF">Telaahan Staf</SelectItem>
-          <SelectItem value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
-          <SelectItem value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>
         </SelectContent>
       </Select>
     </div>

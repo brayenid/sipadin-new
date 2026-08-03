@@ -18,6 +18,7 @@ function getBadgeColor(jenis: string) {
     case 'SURAT_PERINTAH': return 'bg-rose-50 text-rose-700 border-rose-200'
     case 'SURAT_EDARAN_SEKDA': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     case 'SURAT_EDARAN_BUPATI': return 'bg-purple-50 text-purple-700 border-purple-200'
+    case 'SURAT_UMUM': return 'bg-blue-50 text-blue-700 border-blue-200'
     default: return 'bg-slate-50 text-slate-700 border-slate-200'
   }
 }

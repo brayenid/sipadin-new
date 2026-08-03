@@ -9,6 +9,7 @@ import FormTelaahanStaf from './FormTelaahanStaf'
 import FormSuratPerintah from './FormSuratPerintah'
 import FormSuratEdaran from './FormSuratEdaran'
 import FormSuratEdaranBupati from './FormSuratEdaranBupati'
+import FormSuratUmum from './FormSuratUmum'
 
 export const metadata = {
   title: 'Edit Naskah Dinas - SIPADIN'
@@ -77,6 +78,8 @@ export default async function NaskahDinasDetailPage({
             return <FormSuratEdaran naskah={naskah} pegawaiList={pegawais} />
           case 'SURAT_EDARAN_BUPATI':
             return <FormSuratEdaranBupati naskah={naskah} pegawaiList={pegawais} />
+          case 'SURAT_UMUM':
+            return <FormSuratUmum naskah={naskah} pegawaiList={pegawais} />
           default:
             return null
         }

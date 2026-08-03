@@ -32,6 +32,7 @@ enum JenisNaskah {
   TELAAHAN_STAF
   SURAT_EDARAN_SEKDA
   SURAT_EDARAN_BUPATI
+  SURAT_UMUM
 }
 
 // ==========================================
