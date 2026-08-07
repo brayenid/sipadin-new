@@ -272,7 +272,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
                 onChange={(e) => setJenisSpj(e.target.value)}
               >
                 <option value="PERJADIN">Perjalanan Dinas (Perjadin)</option>
-                <option value="MAKAN_MINUM">Makan & Minum Rapat</option>
+                <option value="MAKAN_MINUM">Makan/Minum Rapat & ATK</option>
                 <option value="HONORARIUM">Honorarium</option>
                 <option value="OPERASIONAL">Operasional Kantor</option>
               </select>

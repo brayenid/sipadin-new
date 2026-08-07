@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -148,8 +148,19 @@ export default async function NaskahDinasListPage(props: {
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
+                          {typeof item.data === 'object' && item.data !== null && (item.data as any).tautanNaskahAsli && (
+                            <a 
+                              href={(item.data as any).tautanNaskahAsli} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                              title="Buka Tautan Naskah Asli"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
                           <Link href={`/dashboard/naskah-dinas/${item.id}`}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5" title="Lihat Detail">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5" title="Lihat Detail / Edit">
                               <Eye className="w-4 h-4" />
                             </Button>
                           </Link>

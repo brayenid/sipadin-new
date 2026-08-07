@@ -500,12 +500,18 @@ export default function SuratUmumPdf({ data, signer, parafList = [], layout }: S
                 {data.penerimaTipe === 'TERLAMPIR' && (
                   <Text>(Daftar undangan terlampir)</Text>
                 )}
-                {data.penerimaTipe === 'LANGSUNG' && (data.penerimaDaftar || []).filter(x => x.trim()).map((p, idx) => (
-                  <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }}>
-                    <View style={{ width: 15 }}><Text>{idx + 1}.</Text></View>
-                    <View style={{ flex: 1 }}><Text>{p}</Text></View>
-                  </View>
-                ))}
+                {data.penerimaTipe === 'LANGSUNG' && (() => {
+                  const filtered = (data.penerimaDaftar || []).filter(x => x.trim())
+                  if (filtered.length === 1) {
+                    return <Text>{filtered[0]}</Text>
+                  }
+                  return filtered.map((p, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                      <View style={{ width: 15 }}><Text>{idx + 1}.</Text></View>
+                      <View style={{ flex: 1 }}><Text>{p}</Text></View>
+                    </View>
+                  ))
+                })()}
                 
                 {data.penerimaDiTampilkan !== false && (
                   <View style={{ marginTop: 10, marginLeft: 15 }}>

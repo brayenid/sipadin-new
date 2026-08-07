@@ -92,7 +92,7 @@ export default function SpjExportModal() {
           row["Nama Personel"] = spj.roster && spj.roster.length > 0 ? spj.roster.map((r: any) => r.nama.split(" ")[0]).join(", ") : "-";
         }
         if (columns.jenisSpj) {
-          row["Jenis SPJ"] = spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj === 'MAMIN' ? 'Makan Minum' : spj.jenisSpj;
+          row["Jenis SPJ"] = spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : (spj.jenisSpj === 'MAKAN_MINUM' || spj.jenisSpj === 'MAMIN') ? 'Makan/Minum Rapat & ATK' : spj.jenisSpj;
         }
         if (columns.totalBiaya) {
           row["Total Biaya"] = formatRupiah(spj.totalPengeluaran);
@@ -153,7 +153,7 @@ export default function SpjExportModal() {
             <SelectContent>
               <SelectItem value="SEMUA">Semua Jenis</SelectItem>
               <SelectItem value="PERJADIN">Perjalanan Dinas (Perjadin)</SelectItem>
-              <SelectItem value="MAMIN">Makan Minum</SelectItem>
+              <SelectItem value="MAKAN_MINUM">Makan/Minum Rapat & ATK</SelectItem>
               <SelectItem value="HONORARIUM">Honorarium</SelectItem>
             </SelectContent>
           </Select>

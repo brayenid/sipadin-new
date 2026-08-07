@@ -100,7 +100,7 @@ export default function PengeluaranTab({ spj, onDirtyChange }: { spj: any; onDir
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
           <div>
             <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rincian Biaya</CardTitle>
-            <p className="text-[10px] sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Daftar item belanja untuk SPJ {spj.jenisSpj === "MAKAN_MINUM" ? "Makan Minum" : "Lainnya"}.</p>
+            <p className="text-[10px] sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Daftar item belanja untuk SPJ {spj.jenisSpj === "MAKAN_MINUM" ? "Makan/Minum Rapat & ATK" : "Lainnya"}.</p>
           </div>
           <Button size="sm" onClick={addRincian} variant="secondary" className="w-full sm:w-auto text-[10px] sm:text-xs h-8">
             <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Tambah Item

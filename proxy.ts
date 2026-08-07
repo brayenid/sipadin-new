@@ -1,13 +1,19 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-export async function proxy(request: NextRequest) {
-  const session = await auth();
-  const { pathname } = request.nextUrl;
+const { auth } = NextAuth({
+  ...authConfig,
+  secret: process.env.AUTH_SECRET,
+  session: { strategy: "jwt" },
+});
+
+export default auth((req) => {
+  const session = req.auth;
+  const { pathname } = req.nextUrl;
 
   if (pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   const isAuthPage = pathname.startsWith("/login");
@@ -16,17 +22,17 @@ export async function proxy(request: NextRequest) {
   if (isApiAuth) return NextResponse.next();
 
   if (!session && !isAuthPage) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login", req.url);
     return NextResponse.redirect(loginUrl);
   }
 
   if (session && isAuthPage) {
-    const dashboardUrl = new URL("/dashboard", request.url);
+    const dashboardUrl = new URL("/dashboard", req.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

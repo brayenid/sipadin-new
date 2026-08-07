@@ -64,7 +64,7 @@ export default function SpjFilters() {
         >
           <option value="">Semua Jenis SPJ</option>
           <option value="PERJADIN">Perjalanan Dinas</option>
-          <option value="MAKAN_MINUM">Makan Minum</option>
+          <option value="MAKAN_MINUM">Makan/Minum Rapat & ATK</option>
           <option value="HONORARIUM">Honorarium</option>
         </select>
       </div>

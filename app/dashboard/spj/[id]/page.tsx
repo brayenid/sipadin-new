@@ -102,7 +102,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         <div>
           <div className="flex items-center gap-2 sm:gap-3">
             <h2 className="text-sm font-extrabold sm:text-lg sm:font-semibold text-slate-800">Detail SPJ</h2>
-            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 text-slate-500 bg-slate-50">{spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan Minum' : (spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj)}</Badge>
+            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 text-slate-500 bg-slate-50">{spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan/Minum Rapat & ATK' : (spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : spj.jenisSpj)}</Badge>
           </div>
           {spj.perihal && (
             <p className="text-[10px] font-medium sm:text-sm text-slate-700 mt-0.5 sm:mt-1">Perihal: {spj.perihal}</p>

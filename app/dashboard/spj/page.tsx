@@ -113,7 +113,7 @@ export default async function SpjListPage({
       case 'MAKAN_MINUM':
         return (
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/60 font-medium">
-            Makan Minum
+            Makan/Minum Rapat & ATK
           </Badge>
         )
       case 'HONORARIUM':

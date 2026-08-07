@@ -256,7 +256,7 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
           // Jika belum ada rincian yang diinput sama sekali
           if (rincian.length === 0) {
             rincian = [
-              { label: spj.jenisSpj === "PERJADIN" ? "Biaya Perjalanan Dinas" : (isMamin ? "Biaya Makan Minum Rapat" : kuitansiType === 'HONOR' ? "Honorarium Narasumber" : kuitansiType === 'DOPD' ? "Biaya Perjalanan Dinas" : "Biaya Pengeluaran"), jumlah: Number(spj.totalPengeluaran) || 0 }
+              { label: spj.jenisSpj === "PERJADIN" ? "Biaya Perjalanan Dinas" : (isMamin ? "Biaya Makan/Minum Rapat & ATK" : kuitansiType === 'HONOR' ? "Honorarium Narasumber" : kuitansiType === 'DOPD' ? "Biaya Perjalanan Dinas" : "Biaya Pengeluaran"), jumlah: Number(spj.totalPengeluaran) || 0 }
             ];
           }
 

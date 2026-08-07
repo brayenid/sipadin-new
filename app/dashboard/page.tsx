@@ -384,7 +384,7 @@ export default async function DashboardPage() {
                           'bg-purple-50 text-purple-700 border-purple-200/60'
                         }>
                           {spj.jenisSpj === 'PERJADIN' ? 'Perjalanan Dinas' : 
-                           spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan Minum' : 'Honorarium'}
+                           spj.jenisSpj === 'MAKAN_MINUM' ? 'Makan/Minum Rapat & ATK' : 'Honorarium'}
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate" title={spj.perihal || "-"}>

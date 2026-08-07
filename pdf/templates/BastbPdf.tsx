@@ -258,8 +258,8 @@ const styles = StyleSheet.create({
   },
   titleWrap: { 
     alignItems: 'center', 
-    marginTop: 15,
-    marginBottom: 20 
+    marginTop: 6,
+    marginBottom: 12 
   },
   title: { 
     fontSize: 12, 

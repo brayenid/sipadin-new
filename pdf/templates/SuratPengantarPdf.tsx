@@ -155,9 +155,9 @@ const styles = StyleSheet.create({
   },
   tujuanWrap: {
     alignSelf: 'flex-end',
-    width: 250,
-    marginTop: 15,
-    marginBottom: 20
+    width: 175,
+    marginTop: 10,
+    marginBottom: 15
   },
   ythWrap: {
     flexDirection: 'row',
@@ -213,8 +213,10 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     borderTopWidth: 0,
     borderLeftWidth: 0,
-    padding: 4,
-    textAlign: 'center'
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 10.5,
   },
   tdCell: {
     borderStyle: 'solid',
@@ -222,9 +224,12 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     borderTopWidth: 0,
     borderLeftWidth: 0,
-    padding: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    fontSize: 10,
+    lineHeight: 1.2,
   },
-  colNo: { width: '8%' },
+  colNo: { width: '8%', textAlign: 'center' },
   colJenis: { width: '38%' },
   colJumlah: { width: '22%' },
   colKeterangan: { width: '32%' },

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Save, FileText, Trash2, Plus, Settings2, LayoutGrid, FileType } from "lucide-react"
+import { Loader2, Save, FileText, Trash2, Plus, Settings2, LayoutGrid, FileType, Link as LinkIcon } from "lucide-react"
 import { updateNaskahDinas } from "@/app/actions/naskah-dinas"
 import { toast } from "sonner"
 import NaskahDinasPdfPreview, { PdfLayoutOptions } from "./NaskahDinasPdfPreview"
@@ -146,6 +146,7 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
     parafTampilkan: meta.parafTampilkan ?? false,
     parafDaftar: Array.isArray(meta.parafDaftar) && meta.parafDaftar.length > 0 ? meta.parafDaftar : [""],
     tembusan: Array.isArray(meta.tembusan) && meta.tembusan.length > 0 ? meta.tembusan : [""],
+    tautanNaskahAsli: meta.tautanNaskahAsli ?? "",
   })
 
   const handleChange = (e: any) => {
@@ -568,6 +569,29 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
               items={form.tembusan} 
               onChange={(items) => setForm({ ...form, tembusan: items })} 
               placeholder="Contoh: Bupati Kutai Barat (sebagai laporan)..." 
+            />
+          </CardContent>
+        </Card>
+
+        {/* CARD: TAUTAN NASKAH DINAS ASLI */}
+        <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+          <CardHeader className="pt-4 pb-3 sm:pt-5 sm:pb-4 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-indigo-600" />
+              Tautan Naskah Dinas Asli (PDF / Cloud)
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Opsional: Masukkan tautan / URL berkas fisik asli (seperti Google Drive, Cloud Storage, atau arsip digital) untuk naskah dinas ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <Input
+              type="text"
+              name="tautanNaskahAsli"
+              value={form.tautanNaskahAsli}
+              onChange={handleChange}
+              placeholder="https://drive.google.com/file/d/..."
+              className="bg-white border-slate-200 text-xs sm:text-sm"
             />
           </CardContent>
         </Card>
