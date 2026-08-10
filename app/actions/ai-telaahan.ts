@@ -116,7 +116,19 @@ async function callGroq(prompt: string, systemInstruction?: string) {
     }
   }
 
-  throw lastError || new Error("Gagal menghubungkan ke seluruh model Groq.");
+  const finalError = lastError || new Error("Gagal menghubungkan ke Groq.");
+  let userFriendlyMsg = "Gagal memproses permintaan dengan AI Groq. Silakan coba beberapa saat lagi.";
+  const errStr = finalError.message.toLowerCase();
+
+  if (errStr.includes("limit") || errStr.includes("429") || errStr.includes("rate_limit") || errStr.includes("quota")) {
+    userFriendlyMsg = "Batas penggunaan harian atau menit AI Groq telah habis. Harap tunggu beberapa saat sebelum mencoba lagi.";
+  } else if (errStr.includes("401") || errStr.includes("unauthorized") || errStr.includes("api key")) {
+    userFriendlyMsg = "Kunci API (API Key) Groq tidak valid atau tidak memiliki akses.";
+  } else if (errStr.includes("abort") || errStr.includes("timeout")) {
+    userFriendlyMsg = "Koneksi ke server AI Groq terlalu lambat atau terputus. Harap coba beberapa saat lagi.";
+  }
+
+  throw new Error(userFriendlyMsg);
 }
 
 async function callGemini(prompt: string, systemInstruction?: string) {
