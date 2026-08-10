@@ -230,7 +230,7 @@ export default async function SpjListPage({
                         <div>{getJenisBadge(spj.jenisSpj)}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm text-slate-600">
+                        <div className="text-sm text-slate-600 flex flex-col gap-1">
                           {spj.jenisSpj === 'MAKAN_MINUM' ? (
                             <div className="flex flex-col gap-0.5 max-w-[250px]">
                               <span className="font-medium text-slate-700 truncate" title={spj.perihal || ''}>{spj.perihal || '-'}</span>
@@ -261,6 +261,14 @@ export default async function SpjListPage({
                                 </span>
                               )}
                             </div>
+                          )}
+                          {spj.kodeRekening && (
+                            <span 
+                              className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100/60 rounded px-1.5 py-0.5 font-semibold w-fit block truncate max-w-[250px]" 
+                              title={`${spj.kodeRekening.kodeRekening} - ${spj.kodeRekening.judulRekening}`}
+                            >
+                              Rek: {spj.kodeRekening.kodeRekening}
+                            </span>
                           )}
                         </div>
                       </TableCell>
