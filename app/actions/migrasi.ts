@@ -440,6 +440,7 @@ export async function executeImportMigration(payload: {
         skippedCount,
         errorCount,
         logs,
+        error: null as string | null,
       };
     });
 
