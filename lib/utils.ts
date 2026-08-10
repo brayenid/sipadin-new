@@ -25,3 +25,22 @@ export function fmtDateId(d: Date | null) {
   if (!d) return ''
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(d)
 }
+
+export function serializeBigInt<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data === "bigint") return Number(data) as any;
+  if (data instanceof Date) return data;
+  if (Array.isArray(data)) {
+    return data.map(item => serializeBigInt(item)) as any;
+  }
+  if (typeof data === "object") {
+    const obj: any = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        obj[key] = serializeBigInt(data[key]);
+      }
+    }
+    return obj as T;
+  }
+  return data;
+}

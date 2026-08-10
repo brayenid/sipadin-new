@@ -18,6 +18,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { PresetDialog } from "@/components/ui/preset-dialog";
 import telaahanPresets from "@/lib/presets/telaahan.json";
 import { getDefaultNomorSuffix } from "@/lib/utils";
+import InitTelaahanAiModal from "./InitTelaahanAiModal";
+import RefineFieldAiButton from "./RefineFieldAiButton";
 
 export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: any, pegawaiList: any[], onDirtyChange?: (dirty: boolean) => void }) {
   const [loading, setLoading] = useState(false);
@@ -43,6 +45,16 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
     kesimpulan: data.kesimpulan || "",
     saran: data.saran || "",
     penandatanganId: data.penandatanganId || "",
+    aiInitData: data.aiInitData || null,
+    isAiInitialized: data.isAiInitialized || false,
+    refineQuota: data.refineQuota || {
+      dasar: 3,
+      praAnggapan: 3,
+      fakta: 3,
+      analisis: 3,
+      kesimpulan: 3,
+      saran: 3
+    }
   });
 
   const [initialForm, setInitialForm] = useState(form);
@@ -101,7 +113,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
     const lastItem = currentList[currentList.length - 1];
     if (lastItem.trim() === "") {
       const newList = [...currentList];
-      newList[newList.length - 1] = text;
+      newList[currentList.length - 1] = text;
       setForm({ ...form, [key]: newList });
     } else {
       setForm({ ...form, [key]: [...currentList, text] });
@@ -145,10 +157,26 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
 
   return (
     <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="flex flex-row items-center justify-between pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
         <div>
           <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Telaahan Staf</CardTitle>
           <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Dokumen narasi pendukung yang merinci fakta, analisis, dan pra anggapan terkait penugasan.</CardDescription>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <InitTelaahanAiModal
+            spj={spj}
+            currentPerihal={form.perihal}
+            initialAiData={form.aiInitData}
+            isAiInitialized={form.isAiInitialized}
+            onApply={(aiInitData) => {
+              setForm((prev) => ({
+                ...prev,
+                perihal: aiInitData.perihal,
+                aiInitData: aiInitData,
+                isAiInitialized: true,
+              }));
+            }}
+          />
         </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
@@ -233,11 +261,26 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">I. Dasar</Label>
-            <PresetDialog 
-              title="Preset Dasar" 
-              options={telaahanPresets.dasar} 
-              onSelect={(text) => handleSelectPresetString("dasar", text)} 
-            />
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="dasar"
+                fieldLabel="Dasar"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.dasar}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, dasar: Math.max(0, prev.refineQuota.dasar - 1) }
+                }))}
+                onApplyText={(text) => setForm({ ...form, dasar: text })}
+              />
+              <PresetDialog 
+                title="Preset Dasar" 
+                options={telaahanPresets.dasar} 
+                onSelect={(text) => handleSelectPresetString("dasar", text)} 
+              />
+            </div>
           </div>
           <Textarea name="dasar" value={form.dasar} onChange={handleChange} rows={3} placeholder="Contoh: Surat Undangan / DPA SKPD..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("dasar") ? dirtyClass : ""}`} />
           <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Landasan hukum atau surat yang mendasari perjalanan dinas ini.</p>
@@ -246,7 +289,20 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">II. Pra Anggapan</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="praAnggapan"
+                fieldLabel="Pra Anggapan"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.praAnggapan}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, praAnggapan: Math.max(0, prev.refineQuota.praAnggapan - 1) }
+                }))}
+                onApplyList={(items) => setForm({ ...form, praAnggapan: items.length > 0 ? items : [""] })}
+              />
               <PresetDialog 
                 title="Preset Pra Anggapan" 
                 options={telaahanPresets.praAnggapan} 
@@ -279,7 +335,20 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">III. Fakta yang Memengaruhi</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="fakta"
+                fieldLabel="Fakta yang Mempengaruhi"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.fakta}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, fakta: Math.max(0, prev.refineQuota.fakta - 1) }
+                }))}
+                onApplyList={(items) => setForm({ ...form, fakta: items.length > 0 ? items : [""] })}
+              />
               <PresetDialog 
                 title="Preset Fakta" 
                 options={telaahanPresets.fakta} 
@@ -312,11 +381,26 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">IV. Analisis</Label>
-            <PresetDialog 
-              title="Preset Analisis" 
-              options={telaahanPresets.analisis} 
-              onSelect={(text) => handleSelectPresetString("analisis", text)} 
-            />
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="analisis"
+                fieldLabel="Analisis"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.analisis}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, analisis: Math.max(0, prev.refineQuota.analisis - 1) }
+                }))}
+                onApplyText={(text) => setForm({ ...form, analisis: text })}
+              />
+              <PresetDialog 
+                title="Preset Analisis" 
+                options={telaahanPresets.analisis} 
+                onSelect={(text) => handleSelectPresetString("analisis", text)} 
+              />
+            </div>
           </div>
           <Textarea name="analisis" value={form.analisis} onChange={handleChange} rows={4} placeholder="Contoh: Berdasarkan fakta tersebut, dapat dianalisis bahwa..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("analisis") ? dirtyClass : ""}`} />
           <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Analisa mendalam mengenai kegiatan yang akan dilakukan.</p>
@@ -325,11 +409,26 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">V. Kesimpulan</Label>
-            <PresetDialog 
-              title="Preset Kesimpulan" 
-              options={telaahanPresets.kesimpulan} 
-              onSelect={(text) => handleSelectPresetString("kesimpulan", text)} 
-            />
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="kesimpulan"
+                fieldLabel="Kesimpulan"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.kesimpulan}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, kesimpulan: Math.max(0, prev.refineQuota.kesimpulan - 1) }
+                }))}
+                onApplyText={(text) => setForm({ ...form, kesimpulan: text })}
+              />
+              <PresetDialog 
+                title="Preset Kesimpulan" 
+                options={telaahanPresets.kesimpulan} 
+                onSelect={(text) => handleSelectPresetString("kesimpulan", text)} 
+              />
+            </div>
           </div>
           <Textarea name="kesimpulan" value={form.kesimpulan} onChange={handleChange} rows={3} placeholder="Contoh: Maka dapat ditarik kesimpulan perlunya..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("kesimpulan") ? dirtyClass : ""}`} />
           <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Intisari dari analisa telaahan staf.</p>
@@ -338,11 +437,26 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
         <div>
           <div className="flex items-center justify-between bg-slate-50 p-2 px-3 rounded-t-lg border border-b-0 border-slate-200">
             <Label className="font-bold text-slate-700">VI. Saran</Label>
-            <PresetDialog 
-              title="Preset Saran" 
-              options={telaahanPresets.saran} 
-              onSelect={(text) => handleSelectPresetString("saran", text)} 
-            />
+            <div className="flex items-center gap-1.5">
+              <RefineFieldAiButton
+                fieldName="saran"
+                fieldLabel="Saran"
+                currentDoc={form}
+                aiInitData={form.aiInitData}
+                isAiInitialized={form.isAiInitialized}
+                quotaRemaining={form.refineQuota.saran}
+                onUseQuota={() => setForm(prev => ({
+                  ...prev,
+                  refineQuota: { ...prev.refineQuota, saran: Math.max(0, prev.refineQuota.saran - 1) }
+                }))}
+                onApplyText={(text) => setForm({ ...form, saran: text })}
+              />
+              <PresetDialog 
+                title="Preset Saran" 
+                options={telaahanPresets.saran} 
+                onSelect={(text) => handleSelectPresetString("saran", text)} 
+              />
+            </div>
           </div>
           <Textarea name="saran" value={form.saran} onChange={handleChange} rows={3} placeholder="Contoh: Mohon arahan dan persetujuan Bapak/Ibu untuk tindak lanjut..." className={`rounded-t-none text-[13px] resize-none focus-visible:ring-1 ${checkDirty("saran") ? dirtyClass : ""}`} />
           <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5">Rekomendasi yang diajukan kepada pimpinan berdasarkan kesimpulan.</p>

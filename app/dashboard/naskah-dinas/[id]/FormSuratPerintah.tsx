@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Save, FileText, Trash2, Plus, Link as LinkIcon } from "lucide-react"
-import { updateNaskahDinas } from "@/app/actions/naskah-dinas"
+import { updateNaskahDinas, getAgendaOptions } from "@/app/actions/naskah-dinas"
 import { toast } from "sonner"
 import NaskahDinasPdfPreview from "./NaskahDinasPdfPreview"
 import SuratPerintahPdf from "@/pdf/templates/SuratPerintahPdf"
@@ -56,6 +56,13 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [agendaOptions, setAgendaOptions] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    getAgendaOptions().then((list) => {
+      setAgendaOptions(list.map((a) => ({ value: a, label: a })))
+    })
+  }, [])
 
   const meta = typeof naskah.data === 'object' && naskah.data !== null ? naskah.data : {}
 
@@ -64,6 +71,7 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
     nomorTengah: meta.nomorTengah ?? "",
     nomorSuffix: meta.nomorSuffix ?? getDefaultNomorSuffix(),
     tanggal: meta.tanggal || naskah.tanggal.toISOString().split("T")[0],
+    agenda: naskah.agenda || "",
     kepadaId: meta.kepadaId || "",
     menimbang: Array.isArray(meta.menimbang) ? meta.menimbang : (meta.menimbang ? [meta.menimbang] : [""]),
     dasar: Array.isArray(meta.dasar) ? meta.dasar : (meta.dasar ? [meta.dasar] : [""]),
@@ -82,6 +90,7 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
       await updateNaskahDinas(naskah.id, {
         nomorSurat: `${form.nomorPrefix}${form.nomorTengah}${form.nomorSuffix}`,
         tanggal: form.tanggal,
+        agenda: form.agenda,
         data: form
       })
       toast.success("Perubahan Surat Perintah berhasil disimpan")
@@ -135,6 +144,18 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
               />
             </div>
             <p className="text-xs text-slate-500 mt-1">Kosongkan nomor urut jika belum diterbitkan.</p>
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <div className="flex items-center justify-between">
+              <Label>Agenda Kegiatan (Opsional)</Label>
+            </div>
+            <CreatableCombobox
+              options={agendaOptions}
+              value={form.agenda}
+              onChange={(val) => setForm({ ...form, agenda: val })}
+              placeholder="Pilih agenda yang ada atau ketik nama agenda baru..."
+              emptyText="Ketik untuk menambahkan agenda baru."
+            />
           </div>
         </CardContent>
       </Card>

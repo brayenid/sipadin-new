@@ -350,10 +350,15 @@ export default async function SpjListPage({
       </Card>
 
       {/* Mobile bottom action bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex gap-2">
-        <SpjExportModal />
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Link href="/dashboard/rekap-perjadin">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Rekap Perjalanan Dinas">
+            <BarChart2 className="w-4 h-4 text-slate-700" />
+          </Button>
+        </Link>
+        <SpjExportModal iconOnly />
         <Link href="/dashboard/spj/buat" className="flex-1">
-          <Button className="w-full">
+          <Button className="w-full h-10">
             <Plus className="w-4 h-4 mr-2" />
             Buat SPJ Baru
           </Button>

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,9 +29,9 @@ export default async function DashboardLayout({
     <>
       {/* Logo */}
       <div className="flex items-center justify-center px-5 border-b border-border flex-shrink-0">
-        <div className="flex items-center justify-center w-24 h-16 shrink-0">
+        <Link href="/dashboard" className="flex items-center justify-center w-24 h-16 shrink-0 hover:opacity-80 transition-opacity">
           <img src="/sipadin.png" alt="SIPADIN Logo" className="w-full h-full object-contain drop-shadow-sm" />
-        </div>
+        </Link>
       </div>
 
       {/* Nav */}

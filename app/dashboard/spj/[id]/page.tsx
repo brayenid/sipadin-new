@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import SpjDetailTabs from "./SpjDetailTabs";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { serializeBigInt } from "@/lib/utils";
 
 export const metadata = {
   title: "Detail SPJ - SIPADIN",
@@ -83,6 +84,12 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
 
   if (!spj) notFound();
 
+  // Serialisasikan data yang memiliki tipe BigInt agar aman dikirim ke Client Components
+  const serializedSpj = serializeBigInt(spj);
+  const serializedPegawaiList = serializeBigInt(pegawaiList);
+  const serializedVendorList = serializeBigInt(vendorList);
+  const serializedTahunAnggarans = serializeBigInt(tahunAnggarans);
+
   return (
     <div className="p-4 sm:p-8 space-y-4">
       {/* Breadcrumb */}
@@ -121,7 +128,12 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <SpjDetailTabs spj={spj} pegawaiList={pegawaiList} vendorList={vendorList} tahunAnggarans={tahunAnggarans} />
+      <SpjDetailTabs 
+        spj={serializedSpj} 
+        pegawaiList={serializedPegawaiList} 
+        vendorList={serializedVendorList} 
+        tahunAnggarans={serializedTahunAnggarans} 
+      />
     </div>
   );
 }

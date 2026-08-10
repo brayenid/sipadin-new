@@ -19,7 +19,7 @@ import { Download, Loader2 } from "lucide-react";
 import { getSpjForExport } from "@/app/actions/spj";
 import { toast } from "sonner";
 
-export default function SpjExportModal() {
+export default function SpjExportModal({ iconOnly = false }: { iconOnly?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -131,8 +131,26 @@ export default function SpjExportModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger render={<Button variant="outline" className="bg-white"><Download className="w-4 h-4 mr-2" /> Ekspor Data</Button>}>
-        <Download className="w-4 h-4 mr-2" /> Ekspor Data
+      <DialogTrigger
+        render={
+          iconOnly ? (
+            <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Ekspor Data">
+              <Download className="w-4 h-4 text-slate-700" />
+            </Button>
+          ) : (
+            <Button variant="outline" className="bg-white">
+              <Download className="w-4 h-4 mr-2" /> Ekspor Data
+            </Button>
+          )
+        }
+      >
+        {iconOnly ? (
+          <Download className="w-4 h-4 text-slate-700" />
+        ) : (
+          <>
+            <Download className="w-4 h-4 mr-2" /> Ekspor Data
+          </>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>

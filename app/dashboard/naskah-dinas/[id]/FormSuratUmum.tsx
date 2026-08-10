@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { NaskahDinas, Pegawai } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Save, FileText, Trash2, Plus, Settings2, LayoutGrid, FileType, Link as LinkIcon } from "lucide-react"
-import { updateNaskahDinas } from "@/app/actions/naskah-dinas"
+import { updateNaskahDinas, getAgendaOptions } from "@/app/actions/naskah-dinas"
 import { toast } from "sonner"
 import NaskahDinasPdfPreview, { PdfLayoutOptions } from "./NaskahDinasPdfPreview"
 import SuratUmumPdf from "@/pdf/templates/SuratUmumPdf"
@@ -100,6 +101,13 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [agendaOptions, setAgendaOptions] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    getAgendaOptions().then((list) => {
+      setAgendaOptions(list.map((a) => ({ value: a, label: a })))
+    })
+  }, [])
 
   const meta = typeof naskah.data === 'object' && naskah.data !== null ? naskah.data : {}
 
@@ -130,6 +138,7 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
     sifat: meta.sifat ?? "Biasa",
     lampiran: meta.lampiran ?? "-",
     hal: meta.hal ?? naskah.perihal ?? "",
+    agenda: naskah.agenda || "",
     tanggal: meta.tanggal || naskah.tanggal.toISOString().split("T")[0],
 
     // Content
@@ -160,6 +169,7 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
         nomorSurat: `${form.nomorPrefix}${form.nomorTengah}${form.nomorSuffix}`,
         tanggal: form.tanggal,
         perihal: form.hal,
+        agenda: form.agenda,
         data: form,
       })
       toast.success("Surat Umum berhasil disimpan!")
@@ -364,6 +374,19 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
               <div className="space-y-2 sm:col-span-2">
                 <Label>Hal / Perihal</Label>
                 <Textarea name="hal" value={form.hal} onChange={handleChange} placeholder="Isikan hal atau perihal surat..." rows={2} className="text-xs sm:text-sm" />
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label>Agenda Kegiatan (Opsional)</Label>
+                </div>
+                <CreatableCombobox
+                  options={agendaOptions}
+                  value={form.agenda}
+                  onChange={(val) => setForm({ ...form, agenda: val })}
+                  placeholder="Pilih agenda yang ada atau ketik nama agenda baru..."
+                  emptyText="Ketik untuk menambahkan agenda baru."
+                />
               </div>
             </div>
           </CardContent>

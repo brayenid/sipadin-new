@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { NaskahDinas, Pegawai } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Plus, Trash2, Save, Loader2, FileText, Link as LinkIcon } from "lucide-react"
-import { updateNaskahDinas } from "@/app/actions/naskah-dinas"
+import { updateNaskahDinas, getAgendaOptions } from "@/app/actions/naskah-dinas"
 import { toast } from "sonner"
 import NaskahDinasPdfPreview from "./NaskahDinasPdfPreview"
 import TelaahanStafPdf from "@/pdf/templates/TelaahanStafPdf"
@@ -27,11 +27,19 @@ export default function FormTelaahanStaf({
   
   const [loading, setLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [agendaOptions, setAgendaOptions] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    getAgendaOptions().then((list) => {
+      setAgendaOptions(list.map((a) => ({ value: a, label: a })))
+    })
+  }, [])
 
   const [form, setForm] = useState({
     nomorSurat: naskah.nomorSurat || "",
     tanggal: naskah.tanggal ? new Date(naskah.tanggal).toISOString().split("T")[0] : "",
     perihal: naskah.perihal || "",
+    agenda: naskah.agenda || "",
     kepada: data.kepada || "",
     dari: data.dari || "",
     lampiran: data.lampiran || "-",
@@ -89,6 +97,7 @@ export default function FormTelaahanStaf({
         nomorSurat: form.nomorSurat,
         tanggal: form.tanggal,
         perihal: form.perihal,
+        agenda: form.agenda,
         data: {
           kepada: form.kepada,
           dari: form.dari,
@@ -140,9 +149,21 @@ export default function FormTelaahanStaf({
             <Label>Lampiran</Label>
             <Input name="lampiran" value={form.lampiran} onChange={handleChange} placeholder="Contoh: 1 (satu) Berkas" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <Label>Perihal</Label>
             <Input name="perihal" value={form.perihal} onChange={handleChange} placeholder="Contoh: Permohonan Arahan Terkait..." />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <div className="flex items-center justify-between">
+              <Label>Agenda Kegiatan (Opsional)</Label>
+            </div>
+            <CreatableCombobox
+              options={agendaOptions}
+              value={form.agenda}
+              onChange={(val) => setForm({ ...form, agenda: val })}
+              placeholder="Pilih agenda yang ada atau ketik nama agenda baru..."
+              emptyText="Ketik untuk menambahkan agenda baru."
+            />
           </div>
         </CardContent>
       </Card>

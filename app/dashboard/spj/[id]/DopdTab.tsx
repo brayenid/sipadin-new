@@ -74,9 +74,9 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [rosterList.length]);
 
-  // Auto-focus navigator on mount so arrow keys work immediately
+  // Auto-focus navigator on mount without scrolling
   useEffect(() => {
-    navigatorRef.current?.focus();
+    navigatorRef.current?.focus({ preventScroll: true });
   }, []);
 
   const pegawaiOptions = useMemo(() => {
@@ -261,8 +261,12 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
         </div>
       )}
 
-      {/* PERSONEL NAVIGATOR */}
-      <Card ref={navigatorRef} tabIndex={-1} className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none">
+      <Card 
+        ref={navigatorRef} 
+        tabIndex={-1} 
+        onClick={() => navigatorRef.current?.focus({ preventScroll: true })}
+        className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none"
+      >
         <CardHeader className="py-2.5 sm:py-4 bg-slate-50/30 border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 w-full">
             <Button 
