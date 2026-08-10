@@ -442,6 +442,9 @@ export async function executeImportMigration(payload: {
         logs,
         error: null as string | null,
       };
+    }, {
+      maxWait: 20000,
+      timeout: 60000,
     });
 
     revalidatePath("/dashboard/spj");
