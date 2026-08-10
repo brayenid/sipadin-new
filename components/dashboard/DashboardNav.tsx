@@ -35,10 +35,11 @@ const navMaster = [
   { href: "/dashboard/vendor", label: "Master Vendor", icon: Store },
 ];
 
-import { Trash2 } from "lucide-react";
+import { Trash2, RefreshCw } from "lucide-react";
 
 const navSuperAdmin = [
   { href: "/dashboard/akun", label: "Master Akun", icon: Users },
+  { href: "/dashboard/migrasi", label: "Migrasi Data V1", icon: RefreshCw },
   { href: "/dashboard/recycle-bin", label: "Recycle Bin", icon: Trash2 },
 ];
 
