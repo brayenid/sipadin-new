@@ -96,6 +96,7 @@ export default function RefineFieldAiButton({
       }
 
       // Buka modal resolusi untuk preview
+      onUseQuota(); // Kuota dikurangi saat AI berhasil menjawab, bukan saat "Gunakan" ditekan
       setShowResolution(true);
       setOpen(false); // Tutup popover
       setInstruction("");
@@ -114,7 +115,6 @@ export default function RefineFieldAiButton({
       onApplyText(proposedText);
     }
 
-    onUseQuota();
     setShowResolution(false);
     toast.success(`Bagian ${fieldLabel} berhasil diperbarui oleh ${aiSource}!`, {
       icon: "✨",
@@ -144,12 +144,12 @@ export default function RefineFieldAiButton({
               className="h-7 text-[10px] sm:text-xs text-indigo-700 bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100 hover:text-indigo-900 font-semibold px-2 gap-1"
             >
               <Sparkles className="w-3 h-3 text-indigo-500" />
-              <span>AI Refine ({quotaRemaining})</span>
+              <span>AI ({quotaRemaining})</span>
             </Button>
           }
         >
           <Sparkles className="w-3 h-3 text-indigo-500" />
-          <span>AI Refine ({quotaRemaining})</span>
+          <span>AI ({quotaRemaining})</span>
         </PopoverTrigger>
 
         <PopoverContent className="w-[280px] sm:w-[320px] p-3 text-xs space-y-2.5" align="end">

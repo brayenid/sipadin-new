@@ -263,13 +263,14 @@ async function callGemini(prompt: string, systemInstruction?: string) {
 const SYSTEM_PROMPT_TELAAHAN = `Anda adalah asisten birokrasi profesional untuk Pemerintah Kabupaten Kutai Barat.
 Tugas Anda adalah menyusun naskah dinas "Telaahan Staf" yang formal, lugas, baku, dan sesuai kaidah tata naskah dinas kedinasan Indonesia.
 Karakteristik tulisan:
-- Menggunakan bahasa Indonesia baku kedinasan (formal, tidak bertele-tele, kalimat efektif).
+- Secara default menggunakan bahasa Indonesia baku kedinasan (formal, tidak bertele-tele, kalimat efektif).
 - Dasar hukum/surat harus logis dan sesuai konteks.
 - "praAnggapan" berupa array/daftar poin pertimbangan awal/asumsi strategis.
 - "fakta" berupa array/daftar fakta-fakta objektif yang mempengaruhi persoalan (jadwal, lokasi, urgensi, peserta).
 - "analisis" berupa uraian logis mengenai dampak, keuntungan, dan analisis kepatuhan/urgensi.
 - "kesimpulan" berupa sintesis penegasan pentingnya tindak lanjut.
 - "saran" berupa usulan tindakan konkret yang diajukan kepada pimpinan (misal: mohon arahan/persetujuan penugasan).
+ATURAN TERPENTING: Jika pada prompt terdapat "INSTRUKSI KHUSUS PENGGUNA" yang terisi, INSTRUKSI TERSEBUT ADALAH PRIORITAS UTAMA DAN HARUS DIPATUHI SEPENUHNYA — mengesampingkan pedoman gaya default di atas jika bertentangan. Contoh: jika user meminta bahasa Inggris, gunakan bahasa Inggris. Jika user meminta ringkas, buat singkat.
 Wajib mengembalikan output dalam format JSON murni.`;
 
 export async function initTelaahanAi(
@@ -380,8 +381,13 @@ ${input.aiInitData.isUndangan ? `- Pengirim Undangan: ${input.aiInitData.pengiri
 - Urgensi/Catatan Tambahan: ${input.aiInitData.urgensiTambahan || "-"}`
     : "METADATA INISIALISASI AI: (Belum ada)";
 
+  const userInstruction = input.instruction?.trim();
+
   const prompt = `Anda diminta untuk menyusun atau menyempurnakan KHUSUS bagian "${input.targetField}" dari dokumen Telaahan Staf berikut:
 
+${userInstruction ? `⭐ INSTRUKSI KHUSUS PENGGUNA (PRIORITAS TERTINGGI — PATUHI SEPENUHNYA):
+${userInstruction}
+` : ""}
 ${initDataText}
 ${existingReferenceText}
 
@@ -394,16 +400,14 @@ KONTEKS TELAAHAN SAAT INI (FORM STATE):
 - Kesimpulan: ${input.currentDoc.kesimpulan || "-"}
 - Saran: ${input.currentDoc.saran || "-"}
 
-PEDOMAN GAYA PENULISAN (Sesuai Preset Daerah Kutai Barat):
-- Jika targetField = "dasar": Gunakan pola pembuka formal. Contoh: "Guna memelihara standar mutu pelayanan publik secara berkelanjutan..." atau "Menindaklanjuti surat undangan resmi dari [Pengirim] Nomor [Nomor] tanggal [Tanggal] perihal [Perihal]...".
-- Jika targetField = "praAnggapan": Berupa poin-poin asumsi logis. Contoh: "Bahwa rapat koordinasi ini sangat strategis...", "Bahwa keterbatasan pemahaman regulasi baru di daerah dapat menghambat...".
-- Jika targetField = "fakta": Berupa poin fakta objektif. Contoh: "Telah diterimanya undangan resmi untuk...", "Belum optimalnya implementasi sistem pelaporan baru...".
-- Jika targetField = "analisis": Uraian argumentatif/dampak. Contoh: "Berdasarkan fakta tersebut, dapat dianalisis bahwa koordinasi tatap muka diperlukan agar...".
-- Jika targetField = "kesimpulan": Padat dan tegas. Contoh: "Maka dapat ditarik kesimpulan perlunya pelaksanaan asistensi/konsultasi...".
-- Jika targetField = "saran": Rekomendasi konkret ke pimpinan. Contoh: "Disarankan kepada Bapak Sekretaris Daerah untuk berkenan menyetujui penugasan pegawai...".
-
-INSTRUKSI KHUSUS PENGGUNA:
-${input.instruction?.trim() ? input.instruction.trim() : "Tulis draf baru atau sempurnakan teks di atas agar formal, padat, lugas, dan sesuai Pedoman Gaya Penulisan di atas."}
+PEDOMAN GAYA PENULISAN DEFAULT (abaikan jika bertentangan dengan instruksi khusus di atas):
+- Jika targetField = "dasar": Gunakan pola pembuka formal. Contoh: "Guna memelihara standar mutu pelayanan publik secara berkelanjutan...".
+- Jika targetField = "praAnggapan": Berupa poin-poin asumsi logis.
+- Jika targetField = "fakta": Berupa poin fakta objektif.
+- Jika targetField = "analisis": Uraian argumentatif/dampak.
+- Jika targetField = "kesimpulan": Padat dan tegas.
+- Jika targetField = "saran": Rekomendasi konkret ke pimpinan.
+${!userInstruction ? "\nJika tidak ada instruksi khusus: tulis draf baru atau sempurnakan teks agar formal, padat, lugas sesuai pedoman di atas." : ""}
 
 ${
   isListField
@@ -416,7 +420,7 @@ ${
 }`
     : `KEMBALIKAN FORMAT JSON BERIKUT:
 {
-  "text": "Teks isi ${input.targetField} yang dihasilkan/disempurnakan secara formal kedinasan."
+  "text": "Teks isi ${input.targetField} yang dihasilkan/disempurnakan."
 }`
 }`;
 
