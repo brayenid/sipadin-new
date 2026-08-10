@@ -185,12 +185,13 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
         },
       });
 
+      setMigrationResult(res);
+      setMigrationLogs(res.logs);
+
       if (res.success) {
-        setMigrationResult(res);
-        setMigrationLogs(res.logs);
         toast.success("Migrasi selesai!");
       } else {
-        throw new Error("Gagal mengeksekusi migrasi di database.");
+        toast.error(`Migrasi gagal: ${res.error || "Terjadi kesalahan fatal"}`);
       }
     } catch (err: any) {
       console.error(err);
@@ -247,35 +248,48 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
 
   // RENDER RESULT SCREEN
   if (migrationResult) {
+    const isSuccess = migrationResult.success;
     return (
       <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white max-w-4xl mx-auto overflow-hidden">
-        <CardHeader className="bg-emerald-50 border-b border-emerald-100 p-5">
+        <CardHeader className={`${isSuccess ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} border-b p-5`}>
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+            {isSuccess ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-6 h-6 text-red-600 shrink-0" />
+            )}
             <div>
-              <CardTitle className="text-base font-bold text-emerald-950">Migrasi Selesai dengan Sukses</CardTitle>
-              <CardDescription className="text-emerald-700/80">Proses impor selesai. Seluruh transaksi berhasil di-commit secara aman.</CardDescription>
+              <CardTitle className={`text-base font-bold ${isSuccess ? 'text-emerald-950' : 'text-red-950'}`}>
+                {isSuccess ? 'Migrasi Selesai dengan Sukses' : 'Migrasi Gagal'}
+              </CardTitle>
+              <CardDescription className={isSuccess ? 'text-emerald-700/80' : 'text-red-700/80'}>
+                {isSuccess 
+                  ? 'Proses impor selesai. Seluruh transaksi berhasil di-commit secara aman.' 
+                  : 'Proses impor dihentikan karena kesalahan fatal. Seluruh perubahan telah di-rollback.'}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Sukses Diimpor</span>
-              <span className="text-3xl font-black text-slate-900 block mt-1">{migrationResult.successCount}</span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">SPJ Perjalanan Dinas</span>
+          {isSuccess && (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Sukses Diimpor</span>
+                <span className="text-3xl font-black text-slate-900 block mt-1">{migrationResult.successCount}</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">SPJ Perjalanan Dinas</span>
+              </div>
+              <div className="bg-amber-50/50 border border-amber-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Dilewati</span>
+                <span className="text-3xl font-black text-amber-700 block mt-1">{migrationResult.skippedCount}</span>
+                <span className="text-[10px] text-amber-600 block mt-0.5">BKU Duplikat</span>
+              </div>
+              <div className="bg-red-50/50 border border-red-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Gagal (Error)</span>
+                <span className="text-3xl font-black text-red-700 block mt-1">{migrationResult.errorCount}</span>
+                <span className="text-[10px] text-red-600 block mt-0.5">Batal Masuk</span>
+              </div>
             </div>
-            <div className="bg-amber-50/50 border border-amber-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Dilewati</span>
-              <span className="text-3xl font-black text-amber-700 block mt-1">{migrationResult.skippedCount}</span>
-              <span className="text-[10px] text-amber-600 block mt-0.5">BKU Duplikat</span>
-            </div>
-            <div className="bg-red-50/50 border border-red-200/60 p-4 rounded-lg text-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Gagal (Error)</span>
-              <span className="text-3xl font-black text-red-700 block mt-1">{migrationResult.errorCount}</span>
-              <span className="text-[10px] text-red-600 block mt-0.5">Batal Masuk</span>
-            </div>
-          </div>
+          )}
 
           <div className="border border-slate-200/60 rounded-lg overflow-hidden bg-slate-50 font-mono text-[11px] text-slate-700">
             <div className="bg-slate-100 px-4 py-2 border-b border-slate-200/60 flex items-center gap-2 text-slate-600 font-semibold">
@@ -291,9 +305,11 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
             <Button variant="outline" className="text-xs" onClick={handleReset}>
               Impor File Lain
             </Button>
-            <Button className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" onClick={() => window.location.href = "/dashboard/spj"}>
-              Buka Daftar SPJ V2
-            </Button>
+            {isSuccess && (
+              <Button className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" onClick={() => window.location.href = "/dashboard/spj"}>
+                Buka Daftar SPJ V2
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
