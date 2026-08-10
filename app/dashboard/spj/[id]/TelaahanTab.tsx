@@ -168,13 +168,27 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             currentPerihal={form.perihal}
             initialAiData={form.aiInitData}
             isAiInitialized={form.isAiInitialized}
-            onApply={(aiInitData) => {
-              setForm((prev) => ({
-                ...prev,
+            onApply={async (aiInitData) => {
+              const updatedForm = {
+                ...form,
                 perihal: aiInitData.perihal,
                 aiInitData: aiInitData,
                 isAiInitialized: true,
-              }));
+              };
+              setForm(updatedForm);
+              
+              try {
+                await updateMetaDokumen(spj.id, "telaahan", {
+                  ...updatedForm,
+                  praAnggapan: updatedForm.praAnggapan.filter((i: string) => i.trim() !== ""),
+                  fakta: updatedForm.fakta.filter((i: string) => i.trim() !== ""),
+                });
+                setInitialForm(updatedForm);
+                toast.success("Inisialisasi AI berhasil disimpan ke database.");
+              } catch (err: any) {
+                console.error("Auto-save AI init failed:", err);
+                toast.error("Gagal menyimpan inisialisasi AI ke database: " + err.message);
+              }
             }}
           />
         </div>
