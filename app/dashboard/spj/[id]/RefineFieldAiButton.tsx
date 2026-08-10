@@ -69,7 +69,7 @@ export default function RefineFieldAiButton({
 
   const handleRefine = async () => {
     if (!isAiInitialized) {
-      toast.warning("Harap lakukan inisialisasi AI terlebih dahulu dengan mengklik tombol 'Init Telaahan (AI)' di bagian atas.");
+      toast.warning("Harap lakukan inisialisasi AI terlebih dahulu dengan mengklik tombol 'Init AI' di bagian atas.");
       return;
     }
 
@@ -126,7 +126,7 @@ export default function RefineFieldAiButton({
     if (!isAiInitialized) {
       e.preventDefault();
       e.stopPropagation();
-      toast.warning("Harap lakukan inisialisasi AI terlebih dahulu dengan mengklik tombol 'Init Telaahan (AI)' di bagian atas.");
+      toast.warning("Harap lakukan inisialisasi AI terlebih dahulu dengan mengklik tombol 'Init AI' di bagian atas.");
     }
   };
 

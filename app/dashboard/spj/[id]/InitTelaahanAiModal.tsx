@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Sparkles, Mail, Compass, CheckCircle2, Check } from "lucide-react";
+import { Sparkles, Mail, Compass, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export type AiInitData = {
@@ -122,34 +122,18 @@ export default function InitTelaahanAiModal({
         Init AI
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-[560px] max-h-[85vh] overflow-x-hidden overflow-y-auto rounded-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Sparkles className="w-5 h-5 text-indigo-600" />
             Inisialisasi AI Telaahan Staf
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Masukkan data dasar di bawah ini. Setelah di-inisialisasi, tombol **AI Refine** akan muncul di setiap bagian kolom untuk mulai menyusun kalimat menggunakan AI.
+            Isi data konteks di bawah ini agar AI dapat menyusun kalimat yang lebih relevan dan sesuai dengan kegiatan perjalanan dinas ini. Tombol <strong>AI Refine</strong> sudah tersedia di setiap kolom, inisialisasi ini membantu AI memahami konteks sebelum menyempurnakan kalimat.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* Ringkasan Konteks SPJ Otomatis */}
-          <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg text-xs space-y-1">
-            <p className="font-semibold text-slate-700 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              Konteks Otomatis dari SPJ:
-            </p>
-            <p className="text-slate-600">
-              • <strong>Rute:</strong> {perjadin?.tempatBerangkat || "Sendawar"} →{" "}
-              {perjadin?.tempatTujuan || "Lokasi Tujuan"}
-            </p>
-            {rosterNames.length > 0 && (
-              <p className="text-slate-600 truncate" title={rosterNames.join(", ")}>
-                • <strong>Personel ({rosterNames.length}):</strong> {rosterNames.join(", ")}
-              </p>
-            )}
-          </div>
+        <div className="space-y-4 py-2 min-w-0 overflow-hidden">
 
           {/* Pertanyaan Kunci: Apakah Berdasarkan Undangan */}
           <div className="space-y-2">

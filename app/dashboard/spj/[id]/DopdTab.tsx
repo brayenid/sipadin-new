@@ -270,7 +270,14 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       <Card 
         ref={navigatorRef} 
         tabIndex={-1} 
-        onClick={() => navigatorRef.current?.focus({ preventScroll: true })}
+        onClick={(e) => {
+          const tag = (e.target as HTMLElement).tagName;
+          const isInteractive = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'LABEL'].includes(tag);
+          const isInsideInteractive = (e.target as HTMLElement).closest('button, a, input, textarea, select, [role="combobox"], [role="dialog"], [role="option"], [cmdk-item]');
+          if (!isInteractive && !isInsideInteractive) {
+            navigatorRef.current?.focus({ preventScroll: true });
+          }
+        }}
         className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none"
       >
         <CardHeader className="py-2.5 sm:py-4 bg-slate-50/30 border-b flex flex-row items-center justify-between">
