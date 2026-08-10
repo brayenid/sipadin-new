@@ -167,8 +167,7 @@ export default async function DashboardPage() {
     },
     orderBy: {
       _count: { spjId: 'desc' }
-    },
-    take: 3
+    }
   });
 
   const pegawaiIds = rosterPerjadin.map((r) => r.pegawaiId);
@@ -274,7 +273,7 @@ export default async function DashboardPage() {
               <p className="text-xs font-medium text-slate-500">Total Keseluruhan</p>
             </div>
             
-            <div className="space-y-1.5 flex-1">
+            <div className="overflow-y-auto max-h-48 space-y-1.5 flex-1 pr-0.5">
               {naskahDinasGrouped.length === 0 ? (
                 <p className="text-xs text-slate-400">Belum ada naskah dinas.</p>
               ) : (
@@ -305,10 +304,10 @@ export default async function DashboardPage() {
         <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden py-0 gap-0">
           <CardHeader className="pt-3 pb-3 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100">
             <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rekap Perjadin</CardTitle>
-            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Pegawai paling sering bertugas.</CardDescription>
+            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">Seluruh pegawai Perjadin TA {activeTahunString}.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col pt-4 pb-3 sm:pt-5 sm:pb-4">
-            <div className="space-y-1.5 flex-1">
+            <div className="overflow-y-auto max-h-48 space-y-1.5 flex-1 pr-0.5">
               {rekapPerjadin.length === 0 ? (
                 <p className="text-xs text-slate-400">Belum ada rekap perjalanan dinas.</p>
               ) : (
@@ -326,7 +325,7 @@ export default async function DashboardPage() {
             </div>
             
             <div className="mt-4 pt-3 border-t border-slate-100">
-               <Link href="/dashboard/spj?jenis=PERJADIN">
+               <Link href="/dashboard/rekap-perjadin">
                 <Button variant="outline" size="sm" className="w-full text-slate-600 h-8 text-xs">
                   Lihat Semua
                 </Button>

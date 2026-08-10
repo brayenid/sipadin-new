@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, BarChart2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -185,6 +185,12 @@ export default async function SpjListPage({
           <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola dan pantau seluruh Surat Pertanggungjawaban.</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <Link href="/dashboard/rekap-perjadin" className="hidden lg:block">
+            <Button variant="outline" className="text-slate-600">
+              <BarChart2 className="w-4 h-4 mr-2" />
+              Rekap Perjadin
+            </Button>
+          </Link>
           <div className="hidden lg:block">
             <SpjExportModal />
           </div>
