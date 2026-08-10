@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { executeImportMigration } from "@/app/actions/migrasi";
+import { importPegawaisAction, importStructureAction, importSpjChunkAction } from "@/app/actions/migrasi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -168,35 +168,136 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
   }, [jsonData, pegawais]);
 
   // 5. Eksekusi Impor
+  // 5. Eksekusi Impor secara Sekuensial (Periodik)
   const handleStartImport = async () => {
     setIsImporting(true);
-    setMigrationLogs(["Menghubungi server action SIPADIN V2...", "Mengirim payload konfigurasi..."]);
+    setMigrationLogs(["Memulai migrasi periodik (chunking)..."]);
     setMigrationResult(null);
 
+    let accumulatedLogs: string[] = ["🚀 Memulai proses migrasi data V1 ke V2..."];
+    let totalSuccess = 0;
+    let totalSkipped = 0;
+    let totalError = 0;
+
     try {
-      const res = await executeImportMigration({
-        jsonData,
-        mappings: {
-          teamId: targetTeamId,
-          userMapping,
-          pegawaiMapping,
-          rekeningPagu,
-          spjOverwrite,
-        },
+      // Langkah 1: Impor Pegawai
+      setMigrationLogs([...accumulatedLogs, "⏳ Mengimpor master pegawai (Langkah 1/3)..."]);
+      const pegRes = await importPegawaisAction({
+        teamId: targetTeamId,
+        pegawais: jsonData.pegawais || [],
+        pegawaiMapping,
       });
 
-      setMigrationResult(res);
-      setMigrationLogs(res.logs);
+      accumulatedLogs = [...accumulatedLogs, ...pegRes.logs];
+      setMigrationLogs(accumulatedLogs);
 
-      if (res.success) {
-        toast.success("Migrasi selesai!");
-      } else {
-        toast.error(`Migrasi gagal: ${res.error || "Terjadi kesalahan fatal"}`);
+      if (!pegRes.success) {
+        throw new Error(`Gagal mengimpor pegawai: ${pegRes.error}`);
       }
+
+      const pegawaiIdMap = pegRes.pegawaiIdMap;
+
+      // Langkah 2: Impor Struktur Anggaran
+      setMigrationLogs([...accumulatedLogs, "⏳ Mengimpor struktur anggaran & pagu (Langkah 2/3)..."]);
+      
+      const uniqueAnggaran: Record<string, any> = {};
+      for (const spj of jsonData.spjs || []) {
+        const rawRek = spj.kodeRekening ? spj.kodeRekening.trim() : "00.00.00";
+        if (!uniqueAnggaran[rawRek]) {
+          uniqueAnggaran[rawRek] = {
+            tahunAnggaran: spj.tahunAnggaran || new Date(spj.tglBerangkat).getFullYear().toString(),
+            kodeKegiatan: spj.kodeKegiatan || "0.00",
+            judulKegiatan: spj.judulKegiatan || "Kegiatan Hasil Migrasi",
+            kodeSubKegiatan: spj.kodeSubKegiatan || "0.00.00",
+            judulSubKegiatan: spj.judulSubKegiatan || "Sub Kegiatan Hasil Migrasi",
+            kodeRekening: rawRek,
+            judulRekening: spj.kodeRekening ? (spj.judulRekening || "Rekening Hasil Migrasi") : "Belanja Hasil Migrasi (Tanpa Kode Rekening)",
+          };
+        }
+      }
+
+      const structRes = await importStructureAction({
+        teamId: targetTeamId,
+        uniqueAnggaran,
+        rekeningPagu,
+      });
+
+      accumulatedLogs = [...accumulatedLogs, ...structRes.logs];
+      setMigrationLogs(accumulatedLogs);
+
+      if (!structRes.success) {
+        throw new Error(`Gagal mengimpor struktur anggaran: ${structRes.error}`);
+      }
+
+      const rekeningIdMap = structRes.rekeningIdMap;
+
+      // Langkah 3: Impor SPJ dalam Chunks (Masing-masing berisi 5 SPJ)
+      const spjsList = jsonData.spjs || [];
+      const chunkSize = 5;
+      const totalChunks = Math.ceil(spjsList.length / chunkSize);
+      
+      accumulatedLogs = [...accumulatedLogs, `⏳ Mengimpor ${spjsList.length} SPJ dalam ${totalChunks} batch (Langkah 3/3)...`];
+      setMigrationLogs(accumulatedLogs);
+
+      for (let i = 0; i < spjsList.length; i += chunkSize) {
+        const chunkIndex = Math.floor(i / chunkSize) + 1;
+        const chunk = spjsList.slice(i, i + chunkSize);
+        
+        accumulatedLogs = [
+          ...accumulatedLogs, 
+          `⏳ [Batch ${chunkIndex}/${totalChunks}] Memproses SPJ ke-${i + 1} s/d ke-${Math.min(i + chunkSize, spjsList.length)}...`
+        ];
+        setMigrationLogs(accumulatedLogs);
+
+        const chunkRes = await importSpjChunkAction({
+          teamId: targetTeamId,
+          spjs: chunk,
+          userMapping,
+          pegawaiIdMap,
+          rekeningIdMap,
+          spjOverwrite,
+        });
+
+        totalSuccess += chunkRes.successCount;
+        totalSkipped += chunkRes.skippedCount;
+        totalError += chunkRes.errorCount;
+
+        accumulatedLogs = [...accumulatedLogs, ...chunkRes.logs];
+        setMigrationLogs(accumulatedLogs);
+
+        if (!chunkRes.success) {
+          accumulatedLogs = [...accumulatedLogs, `❌ Batch ${chunkIndex} gagal secara fatal: ${chunkRes.error}`];
+          setMigrationLogs(accumulatedLogs);
+        }
+      }
+
+      // Selesai dengan Sukses
+      accumulatedLogs = [...accumulatedLogs, "🎉 Seluruh proses migrasi periodik selesai!"];
+      setMigrationLogs(accumulatedLogs);
+      
+      setMigrationResult({
+        success: true,
+        successCount: totalSuccess,
+        skippedCount: totalSkipped,
+        errorCount: totalError,
+        logs: accumulatedLogs,
+      });
+      toast.success("Migrasi selesai!");
+
     } catch (err: any) {
       console.error(err);
+      accumulatedLogs = [...accumulatedLogs, `❌ MIGRASI GAGAL SECARA FATAL: ${err.message || err}`];
+      setMigrationLogs(accumulatedLogs);
       toast.error(err.message || "Terjadi kesalahan fatal selama migrasi.");
-      setMigrationLogs((prev) => [...prev, `❌ ERROR FATAL: ${err.message || err}`]);
+      
+      setMigrationResult({
+        success: false,
+        successCount: totalSuccess,
+        skippedCount: totalSkipped,
+        errorCount: totalError,
+        logs: accumulatedLogs,
+        error: err.message || "Kesalahan Fatal",
+      });
     } finally {
       setIsImporting(false);
     }
