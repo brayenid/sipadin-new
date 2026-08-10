@@ -262,7 +262,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       )}
 
       {/* PERSONEL NAVIGATOR */}
-      <Card ref={navigatorRef} tabIndex={-1} className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none focus:ring-2 focus:ring-indigo-200 focus:ring-offset-1">
+      <Card ref={navigatorRef} tabIndex={-1} className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none">
         <CardHeader className="py-2.5 sm:py-4 bg-slate-50/30 border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 w-full">
             <Button 
