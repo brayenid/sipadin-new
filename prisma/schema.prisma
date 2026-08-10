@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  TIM_KERJA
+}
+
+enum SpjType {
+  PERJADIN
+  MAKAN_MINUM
+  HONORARIUM
+  OPERASIONAL
+}
+
+enum RosterRole {
+  KEPALA_JALAN
+  PENGIKUT
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  tahunAnggarans TahunAnggaran[]
+  kegiatans      Kegiatan[]
+  subKegiatans   SubKegiatan[]
+  spjs           Spj[]
+}
+
+model User {
+  id        String   @id // Supabase Auth user ID
+  email     String   @unique
+  name      String
+  role      Role     @default(TIM_KERJA)
+  teamId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team? @relation(fields: [teamId], references: [id])
+}
+
+model MasterPegawai {
+  id        String   @id @default(cuid())
+  nip       String   @unique
+  name      String
+  pangkat   String
+  golongan  String
+  jabatan   String
+  instansi  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rosterItems SpjRosterItem[]
+}
+
+model VendorPihakKetiga {
+  id          String   @id @default(cuid())
+  namaVendor  String
+  namaPemilik String
+  alamat      String
+  npwp        String
+  noRekening  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  spjMakanMinum SpjMakanMinum[]
+}
+
+model TahunAnggaran {
+  id        String   @id @default(cuid())
+  year      Int
+  teamId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team      Team       @relation(fields: [teamId], references: [id])
+  kegiatans Kegiatan[]
+
+  @@unique([year, teamId])
+}
+
+model Kegiatan {
+  id              String   @id @default(cuid())
+  name            String
+  tahunAnggaranId String
+  teamId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  team          Team          @relation(fields: [teamId], references: [id])
+  tahunAnggaran TahunAnggaran @relation(fields: [tahunAnggaranId], references: [id])
+  subKegiatans  SubKegiatan[]
+}
+
+model SubKegiatan {
+  id         String   @id @default(cuid())
+  name       String
+  kegiatanId String
+  teamId     String
+  saldoAwal  Float    @default(0)
+  sisaSaldo  Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  team     Team     @relation(fields: [teamId], references: [id])
+  kegiatan Kegiatan @relation(fields: [kegiatanId], references: [id])
+  spjs     Spj[]
+}
+
+model Spj {
+  id               String   @id @default(cuid())
+  nomorBku         String?  @unique
+  subKegiatanId    String
+  teamId           String
+  totalPengeluaran Float
+  type             SpjType
+  driveUrl         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  team        Team        @relation(fields: [teamId], references: [id])
+  subKegiatan SubKegiatan @relation(fields: [subKegiatanId], references: [id])
+
+  pengeluaranDetails SpjPengeluaranDetail[]
+  perjadin           SpjPerjadin?
+  makanMinum         SpjMakanMinum?
+}
+
+model SpjPengeluaranDetail {
+  id          String   @id @default(cuid())
+  spjId       String
+  itemName    String
+  qty         Float
+  hargaSatuan Float
+  pegawaiId   String? // Boleh kosong, diisi jika rincian ini melekat ke spesifik orang (e.g. DOPD)
+  createdAt   DateTime @default(now())
+
+  spj Spj @relation(fields: [spjId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------
+// EXTENSION: PERJADIN
+// -----------------------------------------
+model SpjPerjadin {
+  id                     String   @id @default(cuid())
+  spjId                  String   @unique
+  maksudDinas            String
+  tempatBerangkat        String   @default("Sendawar")
+  tempatTujuan           String
+  alatAngkut             String   @default("Darat")
+  tingkatPerjalanan      String
+  tglBerangkat           DateTime
+  tglKembali             DateTime
+  lamaPerjalanan         Int
+  noSuratTugas           String?
+  noSpd                  String?
+  noTelaahanStaf         String?
+  pejabatPenandatanganId String?
+  telaahanDasar          String?
+  telaahanAnalisis       String?
+  telaahanKesimpulan     String?
+  telaahanSaran          String?
+
+  spj         Spj             @relation(fields: [spjId], references: [id], onDelete: Cascade)
+  rosterItems SpjRosterItem[]
+}
+
+model SpjRosterItem {
+  id            String     @id @default(cuid())
+  spjPerjadinId String
+  pegawaiId     String
+  role          RosterRole
+  order         Int        @default(0) // 0: KEPALA_JALAN, 1+: PENGIKUT
+
+  // Snapshot jabatan & golongan pada saat SPJ dibuat
+  pangkatSnapshot  String
+  golonganSnapshot String
+  jabatanSnapshot  String
+
+  spjPerjadin SpjPerjadin   @relation(fields: [spjPerjadinId], references: [id], onDelete: Cascade)
+  pegawai     MasterPegawai @relation(fields: [pegawaiId], references: [id])
+}
+
+// -----------------------------------------
+// EXTENSION: MAKAN MINUM
+// -----------------------------------------
+model SpjMakanMinum {
+  id             String   @id @default(cuid())
+  spjId          String   @unique
+  namaRapat      String
+  tglPelaksanaan DateTime
+  jumlahPeserta  Int
+  vendorId       String
+
+  spj    Spj               @relation(fields: [spjId], references: [id], onDelete: Cascade)
+  vendor VendorPihakKetiga @relation(fields: [vendorId], references: [id])
+}
