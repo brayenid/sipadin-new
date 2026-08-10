@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Loader2, FileText } from "lucide-react";
-import { updateMetaDokumen } from "@/app/actions/dokumen";
+import { updateMetaDokumen } from "@/lib/actions-client";
 import { toast } from "sonner";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import KuitansiPdf from "@/pdf/templates/KuitansiPdf";

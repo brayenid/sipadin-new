@@ -122,6 +122,24 @@ export default function SpjDetailTabs({
             options.push({
               value: rek.id,
               label: `[${ta.tahun}] ${sk.judulSub} - ${rek.judulRekening} (Sisa: ${sisaFmt})`,
+              content: (
+                <div className="flex flex-col py-1 gap-1 border-b border-slate-50 last:border-0 w-full overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                      TA {ta.tahun}
+                    </span>
+                    <span className="text-xs font-medium text-slate-500 truncate" title={sk.judulSub}>
+                      {sk.judulSub}
+                    </span>
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 whitespace-normal leading-snug">
+                    {rek.judulRekening}
+                  </div>
+                  <div className="text-xs font-bold text-emerald-600 mt-0.5">
+                    Sisa Pagu: {sisaFmt}
+                  </div>
+                </div>
+              ),
               sisaSaldo: rek.sisaSaldo,
               tahun: ta.tahun
             })

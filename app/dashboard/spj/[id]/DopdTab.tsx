@@ -166,11 +166,17 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     }));
 
     try {
+      let res;
       if (isHonor) {
-        await saveDopdHonorarium(spj.id, payload, dopdMeta);
+        res = await saveDopdHonorarium(spj.id, payload, dopdMeta);
       } else {
-        await saveDopdTransaction(spj.id, payload, dopdMeta);
+        res = await saveDopdTransaction(spj.id, payload, dopdMeta);
       }
+
+      if (res && !res.success) {
+        throw new Error(res.error);
+      }
+
       onDirtyChange?.(false);
       router.refresh();
       toast.success("Rincian DOPD berhasil disimpan.");

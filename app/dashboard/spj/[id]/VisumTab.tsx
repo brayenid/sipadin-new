@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, Loader2, FileText, Info } from "lucide-react";
-import { updateMetaDokumen } from "@/app/actions/dokumen";
+import { updateMetaDokumen } from "@/lib/actions-client";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import VisumPdf from "@/pdf/templates/VisumPdf";
 import { toast } from "sonner";
