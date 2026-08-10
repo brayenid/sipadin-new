@@ -275,6 +275,7 @@ model NaskahDinas {
   nomorSurat  String?
   tanggal     DateTime    @default(now())
   perihal     String?     @db.Text
+  agenda      String?     @db.Text
   
   // Atribut Kepemilikan (Multi-Tenant)
   teamId      String

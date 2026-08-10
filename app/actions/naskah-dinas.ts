@@ -28,6 +28,26 @@ export async function getNaskahDinasById(id: string) {
   return naskah;
 }
 
+export async function getAgendaOptions() {
+  const session = await auth();
+  if (!session) return [];
+
+  const items = await prisma.naskahDinas.findMany({
+    where: {
+      teamId: session.user.teamId,
+      isDeleted: false,
+      agenda: { not: null },
+    },
+    select: { agenda: true },
+    distinct: ["agenda"],
+    orderBy: { agenda: "asc" },
+  });
+
+  return items
+    .map((i) => i.agenda?.trim())
+    .filter((a): a is string => Boolean(a));
+}
+
 export async function createNaskahDinas(payload: any) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -38,6 +58,7 @@ export async function createNaskahDinas(payload: any) {
       nomorSurat: payload.nomorSurat || null,
       tanggal: payload.tanggal ? new Date(payload.tanggal) : new Date(),
       perihal: payload.perihal || null,
+      agenda: payload.agenda ? payload.agenda.trim() : null,
       data: payload.data || {},
       teamId: session.user.teamId,
       createdById: session.user.id,
@@ -45,6 +66,7 @@ export async function createNaskahDinas(payload: any) {
   });
 
   revalidatePath("/dashboard/naskah-dinas");
+  revalidatePath("/dashboard/naskah-dinas/agenda");
   return naskah;
 }
 
@@ -64,12 +86,14 @@ export async function updateNaskahDinas(id: string, payload: any) {
       nomorSurat: payload.nomorSurat !== undefined ? payload.nomorSurat : naskah.nomorSurat,
       tanggal: payload.tanggal ? new Date(payload.tanggal) : naskah.tanggal,
       perihal: payload.perihal !== undefined ? payload.perihal : naskah.perihal,
+      agenda: payload.agenda !== undefined ? (payload.agenda ? payload.agenda.trim() : null) : naskah.agenda,
       data: payload.data !== undefined ? payload.data : naskah.data,
     }
   });
 
   revalidatePath(`/dashboard/naskah-dinas/${id}`);
   revalidatePath("/dashboard/naskah-dinas");
+  revalidatePath("/dashboard/naskah-dinas/agenda");
   return updated;
 }
 

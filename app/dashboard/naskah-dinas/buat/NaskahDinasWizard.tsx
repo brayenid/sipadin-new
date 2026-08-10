@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,17 +9,26 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, ArrowRight } from "lucide-react"
-import { createNaskahDinas } from "@/app/actions/naskah-dinas"
+import { createNaskahDinas, getAgendaOptions } from "@/app/actions/naskah-dinas"
+import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 import { toast } from "sonner"
 
 export default function NaskahDinasWizard() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [agendaOptions, setAgendaOptions] = useState<{ value: string; label: string }[]>([])
   const [formData, setFormData] = useState({
     jenisNaskah: "SURAT_TUGAS",
     tanggal: new Date().toISOString().split("T")[0],
     perihal: "",
+    agenda: "",
   })
+
+  useEffect(() => {
+    getAgendaOptions().then((list) => {
+      setAgendaOptions(list.map((a) => ({ value: a, label: a })))
+    })
+  }, [])
 
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -84,6 +93,23 @@ export default function NaskahDinasWizard() {
                 <SelectItem className="text-xs sm:text-sm" value="TELAAHAN_STAF">Telaahan Staf</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wider">Agenda Kegiatan</Label>
+              <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+            </div>
+            <CreatableCombobox
+              options={agendaOptions}
+              value={formData.agenda}
+              onChange={(val) => setFormData({ ...formData, agenda: val })}
+              placeholder="Pilih agenda yang ada atau ketik nama agenda baru..."
+              emptyText="Ketik untuk menambahkan agenda baru."
+            />
+            <p className="text-[10px] text-slate-400">
+              Kelompokkan beberapa berkas naskah dinas ke dalam satu rangkaian agenda kegiatan.
+            </p>
           </div>
 
           <div className="space-y-1.5 sm:space-y-2">

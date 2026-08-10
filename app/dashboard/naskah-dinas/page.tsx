@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft, ExternalLink } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, ExternalLink, FolderKanban, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -37,6 +37,7 @@ export default async function NaskahDinasListPage(props: {
   const page = Number(resolvedSearchParams?.page) || 1
   const q = typeof resolvedSearchParams?.q === 'string' ? resolvedSearchParams.q : ''
   const jenis = typeof resolvedSearchParams?.jenis === 'string' ? resolvedSearchParams.jenis : 'all'
+  const agenda = typeof resolvedSearchParams?.agenda === 'string' ? resolvedSearchParams.agenda : ''
 
   const limit = 10
   const skip = (page - 1) * limit
@@ -47,11 +48,16 @@ export default async function NaskahDinasListPage(props: {
     whereClause.OR = [
       { perihal: { contains: q, mode: 'insensitive' } },
       { id: { contains: q, mode: 'insensitive' } },
+      { agenda: { contains: q, mode: 'insensitive' } },
     ]
   }
 
   if (jenis && jenis !== 'all') {
     whereClause.jenisNaskah = jenis
+  }
+
+  if (agenda) {
+    whereClause.agenda = agenda
   }
 
   const [list, totalData] = await Promise.all([
@@ -74,6 +80,7 @@ export default async function NaskahDinasListPage(props: {
     if (targetPage > 1) params.set('page', targetPage.toString())
     if (q) params.set('q', q)
     if (jenis && jenis !== 'all') params.set('jenis', jenis)
+    if (agenda) params.set('agenda', agenda)
     return `/dashboard/naskah-dinas?${params.toString()}`
   }
 
@@ -96,13 +103,39 @@ export default async function NaskahDinasListPage(props: {
           <h2 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Naskah Dinas</h2>
           <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola pembuatan naskah dinas.</p>
         </div>
-        <Link href="/dashboard/naskah-dinas/buat" className="shrink-0">
-          <Button className="hidden lg:flex">
-            <Plus className="w-4 h-4 mr-2" />
-            Buat Naskah Baru
-          </Button>
-        </Link>
+        <div className="shrink-0 flex items-center gap-2">
+          <Link href="/dashboard/naskah-dinas/agenda" className="hidden lg:block">
+            <Button variant="outline" className="text-slate-600 bg-white">
+              <FolderKanban className="w-4 h-4 mr-2" />
+              Cari Berdasarkan Agenda
+            </Button>
+          </Link>
+          <Link href="/dashboard/naskah-dinas/buat">
+            <Button className="hidden lg:flex">
+              <Plus className="w-4 h-4 mr-2" />
+              Buat Naskah Baru
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* Banner filter aktif jika menyaring berdasarkan agenda */}
+      {agenda && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-indigo-50/80 border border-indigo-100 rounded-lg text-xs">
+          <div className="flex items-center gap-2 text-indigo-900">
+            <FolderKanban className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>
+              Menyaring berkas agenda: <strong className="font-bold">{agenda}</strong>
+            </span>
+          </div>
+          <Link
+            href="/dashboard/naskah-dinas"
+            className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-900 font-semibold text-[11px]"
+          >
+            <X className="w-3.5 h-3.5" /> Reset Filter
+          </Link>
+        </div>
+      )}
 
       <NaskahDinasSearch />
 
@@ -137,6 +170,16 @@ export default async function NaskahDinasListPage(props: {
                       <TableCell className="max-w-[300px] sm:max-w-[400px]">
                         <div className="font-medium text-slate-900">{item.nomorSurat || '-'}</div>
                         <div className="text-sm text-slate-500 mt-1 truncate" title={item.perihal || ''}>{item.perihal || '-'}</div>
+                        {item.agenda && (
+                          <div className="mt-1">
+                            <Link href={`/dashboard/naskah-dinas?agenda=${encodeURIComponent(item.agenda)}`}>
+                              <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-indigo-200/60 text-[10px] px-1.5 py-0 inline-flex items-center gap-1 hover:bg-indigo-100 transition-colors">
+                                <FolderKanban className="w-2.5 h-2.5" />
+                                {item.agenda}
+                              </Badge>
+                            </Link>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm font-medium">
@@ -215,9 +258,14 @@ export default async function NaskahDinasListPage(props: {
       </Card>
 
       {/* Mobile bottom action bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)]">
-        <Link href="/dashboard/naskah-dinas/buat">
-          <Button className="w-full">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Link href="/dashboard/naskah-dinas/agenda">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Cari Berdasarkan Agenda">
+            <FolderKanban className="w-4 h-4 text-slate-700" />
+          </Button>
+        </Link>
+        <Link href="/dashboard/naskah-dinas/buat" className="flex-1">
+          <Button className="w-full h-10">
             <Plus className="w-4 h-4 mr-2" />
             Buat Naskah Baru
           </Button>
@@ -226,3 +274,4 @@ export default async function NaskahDinasListPage(props: {
     </div>
   )
 }
+
