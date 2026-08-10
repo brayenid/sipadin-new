@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Save, Loader2, FileText, Edit } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Save, Loader2, FileText, Edit, Copy, ChevronDown } from "lucide-react";
 import { saveDopdTransaction, saveDopdHonorarium } from "@/app/actions/dopd";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
@@ -119,6 +119,11 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     faktorPengali: [{ label: "org", value: 1 }, { label: "hari", value: 1 }]
   });
 
+  // Duplicate from person state
+  const [duplicateFromIdx, setDuplicateFromIdx] = useState<number | null>(null);
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
+  const [showDuplicateDropdown, setShowDuplicateDropdown] = useState(false);
+
   // -- COMPUTATIONS --
   const activePerson = rosterList[activePersonIdx];
   const activePersonItems = dopdItems.filter(item => item.spjRosterItemId === activePerson?.id);
@@ -195,6 +200,30 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     updateDopdItems(dopdItems.filter(i => i.id !== id));
   };
 
+  // Personel lain yang sudah memiliki item DOPD (bukan personel aktif)
+  const otherPersonsWithItems = useMemo(() => {
+    return rosterList
+      .map((r: any, idx: number) => ({ ...r, idx }))
+      .filter((r: any) => r.idx !== activePersonIdx && dopdItems.some(i => i.spjRosterItemId === r.id));
+  }, [rosterList, activePersonIdx, dopdItems]);
+
+  const handleConfirmDuplicate = () => {
+    if (duplicateFromIdx === null) return;
+    const sourcePersonId = rosterList[duplicateFromIdx]?.id;
+    const sourceItems = dopdItems.filter(i => i.spjRosterItemId === sourcePersonId);
+    // Hapus item aktif personel ini dulu, lalu masukkan salinan dari sumber
+    const otherItems = dopdItems.filter(i => i.spjRosterItemId !== activePerson.id);
+    const duplicated = sourceItems.map(i => ({
+      ...i,
+      id: `temp-dup-${Date.now()}-${Math.random()}`,
+      spjRosterItemId: activePerson.id,
+    }));
+    updateDopdItems([...otherItems, ...duplicated]);
+    setShowDuplicateConfirm(false);
+    setDuplicateFromIdx(null);
+    toast.success(`Rincian biaya dari ${rosterList[duplicateFromIdx]?.nama} berhasil diduplikasi.`);
+  };
+
   // -- RENDER --
   if (!activePerson) return <div>Data Personel Kosong.</div>;
 
@@ -264,7 +293,48 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
               <p className="font-extrabold text-sm sm:text-lg text-slate-900 mt-0.5 leading-none">{formatRupiah(activePersonSubtotal)}</p>
             </div>
             
-            <div>
+            <div className="flex items-center gap-2">
+              {/* Dropdown Duplikasi dari Personel Lain */}
+              {otherPersonsWithItems.length > 0 && (
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                    onClick={() => setShowDuplicateDropdown(v => !v)}
+                  >
+                    <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    <span className="hidden sm:inline">Duplikasi dari</span>
+                    <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showDuplicateDropdown ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {showDuplicateDropdown && (
+                    <>
+                      {/* Overlay to close dropdown when clicking outside */}
+                      <div className="fixed inset-0 z-[9]" onClick={() => setShowDuplicateDropdown(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-10 flex flex-col bg-white border border-slate-200 rounded-lg shadow-lg min-w-[180px] py-1">
+                        {otherPersonsWithItems.map((person: any) => {
+                          const count = dopdItems.filter(i => i.spjRosterItemId === person.id).length;
+                          return (
+                            <button
+                              key={person.idx}
+                              className="flex flex-col px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+                              onClick={() => {
+                                setDuplicateFromIdx(person.idx);
+                                setShowDuplicateConfirm(true);
+                                setShowDuplicateDropdown(false);
+                              }}
+                            >
+                              <span className="text-xs font-semibold text-slate-800 truncate max-w-[160px]">{person.nama}</span>
+                              <span className="text-[10px] text-slate-400">{count} item biaya</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               <Button variant="outline" size={"sm"} className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm" onClick={() => {
                 setEditingItem(null);
                 setNewItem({
@@ -375,6 +445,37 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
                   <Button onClick={handleSaveItem}>{editingItem ? "Simpan Perubahan" : "Tambahkan ke List"}</Button>
+                </DialogFooter>
+              </DialogContent>
+              </Dialog>
+
+            {/* MODAL KONFIRMASI DUPLIKASI */}
+            <Dialog open={showDuplicateConfirm} onOpenChange={setShowDuplicateConfirm}>
+              <DialogContent className="sm:max-w-[380px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Copy className="w-4 h-4 text-indigo-600" />
+                    Duplikasi Isi DOPD
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="py-3 text-sm text-slate-600 leading-relaxed">
+                  Apakah Anda yakin ingin menduplikasi seluruh rincian biaya dari{" "}
+                  <span className="font-bold text-slate-900">
+                    {duplicateFromIdx !== null ? rosterList[duplicateFromIdx]?.nama : ""}
+                  </span>{" "}
+                  ke personel{" "}
+                  <span className="font-bold text-slate-900">{activePerson.nama}</span>?
+                  <p className="mt-2 text-xs text-red-500 font-medium">
+                    Seluruh rincian biaya personel ini yang sudah ada akan digantikan.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { setShowDuplicateConfirm(false); setDuplicateFromIdx(null); }}>
+                    Batal
+                  </Button>
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleConfirmDuplicate}>
+                    <Copy className="w-3.5 h-3.5 mr-2" /> Ya, Duplikasi
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
