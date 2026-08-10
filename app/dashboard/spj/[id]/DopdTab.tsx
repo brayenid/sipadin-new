@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+
+  const navigatorRef = useRef<HTMLDivElement>(null);
 
   const isHonor = spj.jenisSpj === 'HONORARIUM';
   const sourceMeta = isHonor ? spj.metaDokumen?.dopdHonorarium : spj.metaDokumen?.dopd;
@@ -71,6 +73,11 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [rosterList.length]);
+
+  // Auto-focus navigator on mount so arrow keys work immediately
+  useEffect(() => {
+    navigatorRef.current?.focus();
+  }, []);
 
   const pegawaiOptions = useMemo(() => {
     return pegawaiList.map((p) => ({
@@ -255,7 +262,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       )}
 
       {/* PERSONEL NAVIGATOR */}
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      <Card ref={navigatorRef} tabIndex={-1} className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] outline-none focus:ring-2 focus:ring-indigo-200 focus:ring-offset-1">
         <CardHeader className="py-2.5 sm:py-4 bg-slate-50/30 border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 w-full">
             <Button 
@@ -272,6 +279,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
               <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-widest">Personel {activePersonIdx + 1} / {rosterList.length}</p>
               <h3 className="font-extrabold text-sm sm:text-lg text-slate-900 leading-tight truncate px-1">{activePerson.nama}</h3>
               <p className="text-[10px] sm:text-sm text-slate-500 truncate">{activePerson.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"} - {activePerson.jabatan}</p>
+              <p className="text-[9px] text-slate-400 mt-1 hidden sm:block">Gunakan tombol ← → di keyboard untuk berpindah personel</p>
             </div>
 
             <Button 
