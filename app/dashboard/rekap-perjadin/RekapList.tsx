@@ -20,7 +20,8 @@ export type RekapItem = {
   jabatan?: string | null;
   nip?: string | null;
   count: number;
-  totalPengeluaran: string; // serialized as string (BigInt → string)
+  totalHari: number;
+  totalPengeluaran: string;
   trips: TripItem[];
 };
 
@@ -38,6 +39,13 @@ function formatDate(iso: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(iso));
+}
+
+function countDays(tglBerangkat: string, tglKembali: string) {
+  const start = new Date(tglBerangkat);
+  const end = new Date(tglKembali);
+  const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diff + 1; // inklusif hari berangkat
 }
 
 const rankColors = ["text-amber-500", "text-slate-400", "text-amber-700"];
@@ -96,17 +104,20 @@ export default function RekapList({ items }: { items: RekapItem[] }) {
                 </p>
               </div>
 
-              {/* Count badge */}
-              <Badge
-                variant="secondary"
-                className={`shrink-0 font-bold text-xs px-2 py-0.5 ${
-                  isTop3
-                    ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {item.count}×
-              </Badge>
+              {/* Count badge + total hari */}
+              <div className="shrink-0 flex flex-col items-end gap-0.5">
+                <Badge
+                  variant="secondary"
+                  className={`font-bold text-xs px-2 py-0.5 ${
+                    isTop3
+                      ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {item.count}×
+                </Badge>
+                <span className="text-[10px] text-slate-400 font-medium">{item.totalHari} hari</span>
+              </div>
 
               {/* Chevron */}
               <ChevronDown
@@ -152,6 +163,11 @@ export default function RekapList({ items }: { items: RekapItem[] }) {
                           {trip.perihal}
                         </span>
                       )}
+
+                      {/* Total Hari */}
+                      <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">
+                        {countDays(trip.tglBerangkat, trip.tglKembali)} hari
+                      </span>
                     </div>
                   ))}
                 </div>

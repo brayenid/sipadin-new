@@ -77,6 +77,7 @@ export default async function RekapPerjadinPage({
     string,
     {
       count: number;
+      totalHari: number;
       totalPengeluaran: bigint;
       trips: {
         spjId: string;
@@ -91,7 +92,7 @@ export default async function RekapPerjadinPage({
 
   for (const r of rosterRaw) {
     if (!pegawaiMap[r.pegawaiId]) {
-      pegawaiMap[r.pegawaiId] = { count: 0, totalPengeluaran: BigInt(0), trips: [] };
+      pegawaiMap[r.pegawaiId] = { count: 0, totalHari: 0, totalPengeluaran: BigInt(0), trips: [] };
     }
     pegawaiMap[r.pegawaiId].count += 1;
 
@@ -105,15 +106,19 @@ export default async function RekapPerjadinPage({
         BigInt(d.hargaSatuan.toString()) * BigInt(pengali);
     }
 
-    // Simpan trip
+    // Simpan trip + hitung hari
     if (r.spj.perjadinDetail) {
+      const tglB = r.spj.perjadinDetail.tglBerangkat;
+      const tglK = r.spj.perjadinDetail.tglKembali;
+      const hari = Math.round((tglK.getTime() - tglB.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      pegawaiMap[r.pegawaiId].totalHari += hari;
       pegawaiMap[r.pegawaiId].trips.push({
         spjId: r.spj.id,
         perihal: r.spj.perihal || "",
         tempatBerangkat: r.spj.perjadinDetail.tempatBerangkat || "",
         tempatTujuan: r.spj.perjadinDetail.tempatTujuan || "",
-        tglBerangkat: r.spj.perjadinDetail.tglBerangkat.toISOString(),
-        tglKembali: r.spj.perjadinDetail.tglKembali.toISOString(),
+        tglBerangkat: tglB.toISOString(),
+        tglKembali: tglK.toISOString(),
       });
     }
   }
@@ -135,6 +140,7 @@ export default async function RekapPerjadinPage({
         jabatan: peg?.jabatan,
         nip: peg?.nip,
         count: data.count,
+        totalHari: data.totalHari,
         totalPengeluaran: data.totalPengeluaran.toString(),
         trips: data.trips,
       };
@@ -218,7 +224,7 @@ export default async function RekapPerjadinPage({
             Leaderboard Pegawai
           </CardTitle>
           <CardDescription className="text-xs">
-            Klik baris untuk melihat riwayat perjalanan — TA {selectedTahun || "Semua"}.
+            Klik baris untuk melihat riwayat perjalanan - TA {selectedTahun || "Semua"}.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
