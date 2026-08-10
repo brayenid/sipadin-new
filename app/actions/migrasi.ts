@@ -452,3 +452,33 @@ export async function importSpjChunkAction(payload: {
     };
   }
 }
+
+export async function resetSpjAndBudgetDataAction() {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "SUPER_ADMIN") {
+      throw new Error("Unauthorized: Hanya Super Admin yang dapat mereset data.");
+    }
+
+    await prisma.$transaction([
+      prisma.spjPerjadinDetail.deleteMany(),
+      prisma.spjMaminDetail.deleteMany(),
+      prisma.spjPengeluaranDetail.deleteMany(),
+      prisma.spjRosterItem.deleteMany(),
+      prisma.spj.deleteMany(),
+      prisma.kodeRekening.deleteMany(),
+      prisma.subKegiatan.deleteMany(),
+      prisma.kegiatan.deleteMany(),
+      prisma.tahunAnggaran.deleteMany(),
+    ]);
+
+    revalidatePath("/dashboard/spj");
+    revalidatePath("/dashboard/tahun-anggaran");
+    revalidatePath("/dashboard/migrasi");
+
+    return { success: true, message: "Seluruh data SPJ dan Anggaran berhasil direset (dikosongkan) secara bersih." };
+  } catch (err: any) {
+    console.error("RESET_DATA_ERROR", err);
+    return { success: false, error: err.message || String(err) };
+  }
+}

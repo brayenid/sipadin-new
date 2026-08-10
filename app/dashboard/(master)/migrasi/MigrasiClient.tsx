@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { importPegawaisAction, importStructureAction, importSpjChunkAction } from "@/app/actions/migrasi";
+import { importPegawaisAction, importStructureAction, importSpjChunkAction, resetSpjAndBudgetDataAction } from "@/app/actions/migrasi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Terminal,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,6 +54,29 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
 
   // Tab state untuk resolution forms
   const [activeTab, setActiveTab] = useState<"umum" | "users" | "pegawai" | "anggaran" | "spj">("umum");
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetDatabase = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus seluruh data SPJ dan Anggaran di SIPADIN V2? Tindakan ini bersifat permanen dan tidak dapat dibatalkan!")) {
+      return;
+    }
+    
+    setIsResetting(true);
+    try {
+      const res = await resetSpjAndBudgetDataAction();
+      if (res.success) {
+        toast.success(res.message);
+        handleReset();
+      } else {
+        toast.error(`Gagal mereset data: ${res.error}`);
+      }
+    } catch (err: any) {
+      toast.error(`Terjadi kesalahan: ${err.message || err}`);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // 1. Handle File Upload & Parsing
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +338,7 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
   // RENDER LOADING SCREEN
   if (isImporting) {
     return (
-      <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white max-w-4xl mx-auto overflow-hidden">
+      <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white w-full overflow-hidden pt-0">
         <CardHeader className="bg-slate-50 border-b p-5">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
@@ -333,8 +357,8 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
             <div className="h-full bg-indigo-600 animate-pulse w-3/4 rounded-full" />
           </div>
 
-          <div className="border border-slate-900 rounded-lg overflow-hidden shadow-inner bg-slate-950 font-mono text-[11px] text-slate-300">
-            <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center gap-2 text-slate-400 font-semibold">
+          <div className="border border-slate-200/60 rounded-lg overflow-hidden bg-slate-50 font-mono text-[11px] text-slate-700">
+            <div className="bg-slate-100 px-4 py-2 border-b border-slate-200/60 flex items-center gap-2 text-slate-600 font-semibold">
               <Terminal className="w-3.5 h-3.5" />
               <span>Migration Logs Console</span>
             </div>
@@ -351,7 +375,7 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
   if (migrationResult) {
     const isSuccess = migrationResult.success;
     return (
-      <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white max-w-4xl mx-auto overflow-hidden">
+      <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white w-full overflow-hidden pt-0">
         <CardHeader className={`${isSuccess ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} border-b p-5`}>
           <div className="flex items-center gap-3">
             {isSuccess ? (
@@ -420,47 +444,80 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
   // RENDER UPLOAD ZONE
   if (!jsonData) {
     return (
-      <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white max-w-2xl mx-auto overflow-hidden">
-        <CardContent className="p-8">
-          <div className="flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 rounded-xl p-8 hover:bg-slate-50/50 hover:border-indigo-400 transition-all cursor-pointer relative">
-            <input
-              type="file"
-              accept=".json"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleFileChange}
-            />
-            <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-600">
-              <Upload className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-800">Unggah File Ekspor JSON V1</h3>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-sm leading-relaxed">
-              Pilih file berkas JSON terstruktur hasil dari export endpoint versi 1 (misal `spj_v1_export.json`).
-            </p>
-            <Badge variant="outline" className="mt-4 text-[10px] px-2 py-0.5 text-slate-500 bg-slate-50">
-              Maksimum 50MB
-            </Badge>
-          </div>
-
-          {parseError && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-xs">
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Error Membaca File:</p>
-                <p className="mt-0.5 text-red-700/90 leading-relaxed">{parseError}</p>
+      <div className="space-y-6 w-full">
+        <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white w-full overflow-hidden">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 rounded-xl p-8 hover:bg-slate-50/50 hover:border-indigo-400 transition-all cursor-pointer relative">
+              <input
+                type="file"
+                accept=".json"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={handleFileChange}
+              />
+              <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-600">
+                <Upload className="w-6 h-6" />
               </div>
+              <h3 className="text-sm font-bold text-slate-800">Unggah File Ekspor JSON V1</h3>
+              <p className="text-xs text-slate-500 mt-1.5 max-w-sm leading-relaxed">
+                Pilih file berkas JSON terstruktur hasil dari export endpoint versi 1 (misal `spj_v1_export.json`).
+              </p>
+              <Badge variant="outline" className="mt-4 text-[10px] px-2 py-0.5 text-slate-500 bg-slate-50">
+                Maksimum 50MB
+              </Badge>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {parseError && (
+              <div className="mt-4 bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-xs">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Error Membaca File:</p>
+                  <p className="mt-0.5 text-red-700/90 leading-relaxed">{parseError}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Warning / Clean Reset V2 Panel */}
+        <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">Pembersihan Data Sebelum Migrasi</h4>
+              <p className="text-xs text-amber-850/80 mt-1 max-w-2xl leading-relaxed">
+                Jika Anda ingin memulai migrasi dari kondisi kosong, Anda dapat menghapus seluruh data SPJ dan Anggaran (Tahun Anggaran, Kegiatan, Sub-Kegiatan, Kode Rekening) yang saat ini ada di SIPADIN V2. Master pegawai dan naskah dinas tidak akan dihapus.
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="destructive" 
+            className="text-xs font-semibold shrink-0 bg-red-600 hover:bg-red-700 text-white"
+            onClick={handleResetDatabase}
+            disabled={isResetting}
+          >
+            {isResetting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                Mereset...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                Reset Data V2
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
     );
   }
 
   // RENDER DATA SUMMARY & CONFLICT RESOLUTION WIZARD
   return (
-    <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+    <div className="w-full grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
       {/* Sidebar Summary */}
       <div className="lg:col-span-1 space-y-4">
-        <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
+        <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white overflow-hidden pt-0">
           <CardHeader className="bg-slate-50 border-b py-4 px-5">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Summary File V1</CardTitle>
           </CardHeader>
@@ -497,16 +554,27 @@ export default function MigrasiClient({ users, pegawais, teams, currentTeamId }:
                 </div>
               </div>
             )}
-            <Button variant="outline" className="w-full text-[10px] h-8 text-destructive border-destructive/20 hover:bg-destructive/5 hover:text-destructive flex gap-1" onClick={handleReset}>
-              <RefreshCw className="w-3 h-3" /> Ganti Berkas JSON
-            </Button>
+            
+            <div className="space-y-2 pt-2">
+              <Button variant="outline" className="w-full text-[10px] h-8 text-slate-600 border-slate-200 hover:bg-slate-50 flex gap-1 font-semibold" onClick={handleReset}>
+                <RefreshCw className="w-3 h-3" /> Ganti Berkas JSON
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full text-[10px] h-8 text-red-600 hover:bg-red-50 hover:text-red-700 flex gap-1 font-bold"
+                onClick={handleResetDatabase}
+                disabled={isResetting}
+              >
+                <Trash2 className="w-3 h-3" /> Reset Data V2
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Resolution Forms */}
       <div className="lg:col-span-3 space-y-6">
-        <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
+        <Card className="border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] bg-white overflow-hidden pt-0">
           {/* SCROLLABLE TABS */}
           <div className="border-b overflow-x-auto no-scrollbar bg-slate-50/50">
             <div className="flex h-11 px-3 items-center gap-5 text-xs font-semibold text-slate-500 border-none w-max">

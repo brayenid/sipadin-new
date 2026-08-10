@@ -13,6 +13,29 @@ import SpjDuplicateButton from './SpjDuplicateButton'
 import SpjExportModal from './SpjExportModal'
 import { Prisma } from '@prisma/client'
 
+function getVisiblePages(current: number, total: number) {
+  const pages: (number | string)[] = [];
+  const delta = 1;
+
+  for (let i = 1; i <= total; i++) {
+    if (
+      i === 1 ||
+      i === total ||
+      (i >= current - delta && i <= current + delta)
+    ) {
+      pages.push(i);
+    } else if (
+      (i === current - delta - 1 && i > 1) ||
+      (i === current + delta + 1 && i < total)
+    ) {
+      pages.push("...");
+    }
+  }
+
+  // Menghapus elipsis ganda berturut-turut jika ada
+  return pages.filter((item, index, arr) => item !== "..." || arr[index - 1] !== "...");
+}
+
 export const metadata = {
   title: 'Daftar SPJ - SIPADIN'
 }
@@ -59,7 +82,10 @@ export default async function SpjListPage({
         maminDetail: { include: { vendor: true } },
         roster: true
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { tanggalSpj: 'desc' },
+        { createdAt: 'desc' }
+      ],
       skip,
       take: limit
     }),
@@ -273,16 +299,26 @@ export default async function SpjListPage({
                   </Button>
                 </Link>
                 <div className="hidden sm:flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <Link key={p} href={createPageUrl(p)}>
-                      <Button
-                        variant={p === page ? 'default' : 'outline'}
-                        size="sm"
-                        className={`h-8 w-8 p-0 ${p !== page ? 'text-slate-600 hover:text-slate-900' : ''}`}>
-                        {p}
-                      </Button>
-                    </Link>
-                  ))}
+                  {getVisiblePages(page, totalPages).map((p, idx) => {
+                    if (p === '...') {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs font-bold">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <Link key={`page-${p}`} href={createPageUrl(p as number)}>
+                        <Button
+                          variant={p === page ? 'default' : 'outline'}
+                          size="sm"
+                          className={`h-8 w-8 p-0 ${p !== page ? 'text-slate-600 hover:text-slate-900' : ''}`}
+                        >
+                          {p}
+                        </Button>
+                      </Link>
+                    );
+                  })}
                 </div>
                 <div className="flex sm:hidden items-center justify-center px-2 text-xs font-medium text-slate-600">
                   {page} / {totalPages}
