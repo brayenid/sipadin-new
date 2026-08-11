@@ -88,9 +88,13 @@ export default function RekapList({ items }: { items: RekapItem[] }) {
                 {item.nip && (
                   <p className="text-[10px] text-slate-300 font-mono">{item.nip}</p>
                 )}
+                {/* Total Pengeluaran (Tampil di Mobile) */}
+                <p className="text-[11px] font-semibold text-indigo-600 mt-1 sm:hidden">
+                  {formatRupiah(item.totalPengeluaran)}
+                </p>
               </div>
 
-              {/* Total Pengeluaran */}
+              {/* Total Pengeluaran (Tampil di Desktop) */}
               <div className="hidden sm:block text-right shrink-0">
                 <p className="text-xs text-slate-400">Total Pengeluaran</p>
                 <p className="text-sm font-semibold text-slate-700">
@@ -159,9 +163,11 @@ export default function RekapList({ items }: { items: RekapItem[] }) {
                       )}
 
                       {/* Total Hari */}
-                      <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">
-                        {countDays(trip.tglBerangkat, trip.tglKembali)} hari
-                      </span>
+                      <div className="flex">
+                        <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">
+                          {countDays(trip.tglBerangkat, trip.tglKembali)} hari
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -518,7 +518,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <TableCell className="p-2">
                           <Select
                             value={row.eselon || "NON_ESELON"}
-                            onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : val)}
+                            onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : (val || ""))}
                             disabled={!isSuperAdmin}
                           >
                             <SelectTrigger className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'eselon') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}>

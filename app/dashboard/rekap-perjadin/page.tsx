@@ -221,10 +221,10 @@ export default async function RekapPerjadinPage({
         <CardHeader className="pt-4 pb-4 bg-slate-50 border-b border-slate-100">
           <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold flex items-center gap-2">
             <Users className="w-4 h-4 text-indigo-500" />
-            Leaderboard Pegawai
+            Distribusi Keaktifan Pegawai
           </CardTitle>
           <CardDescription className="text-xs">
-            Klik baris untuk melihat riwayat perjalanan - TA {selectedTahun || "Semua"}.
+            Klik baris untuk melihat riwayat perjalanan dinas pegawai - TA {selectedTahun || "Semua"}.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
