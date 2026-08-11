@@ -24,6 +24,7 @@ type Pegawai = {
   golongan: string | null;
   jabatan: string;
   instansi: string | null;
+  eselon: string | null;
 };
 
 export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
@@ -45,6 +46,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
       Golongan: item.golongan || "",
       Jabatan: item.jabatan,
       Instansi: item.instansi || "",
+      Eselon: item.eselon || "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -59,6 +61,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
       { wch: 10 }, // Golongan
       { wch: 25 }, // Jabatan
       { wch: 25 }, // Instansi
+      { wch: 12 }, // Eselon
     ];
 
     XLSX.writeFile(workbook, "Data_Pegawai_SIPADIN.xlsx");
@@ -75,6 +78,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
         Golongan: "III/d",
         Jabatan: "Kepala Bidang E-Gov",
         Instansi: "Sekretariat Daerah",
+        Eselon: "III.a",
       },
     ];
 
@@ -82,7 +86,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
 
-    worksheet["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 25 }];
+    worksheet["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 25 }, { wch: 12 }];
 
     XLSX.writeFile(workbook, "Template_Import_Pegawai.xlsx");
   };
@@ -114,6 +118,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
         golongan: row["Golongan"]?.toString() || null,
         jabatan: row["Jabatan"]?.toString() || "",
         instansi: row["Instansi"]?.toString() || null,
+        eselon: row["Eselon"]?.toString() || null,
       })).filter(item => item.nama && item.jabatan); // Hapus baris yang kosong
 
       if (formattedData.length === 0) {

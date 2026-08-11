@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, MapPin, Calendar } from "lucide-react";
+import { formatWita } from "@/lib/date-utils";
 
 export type TripItem = {
   spjId: string;
@@ -33,13 +34,6 @@ function formatRupiah(val: string) {
   }).format(Number(val));
 }
 
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
-}
 
 function countDays(tglBerangkat: string, tglKembali: string) {
   const start = new Date(tglBerangkat);
@@ -151,9 +145,9 @@ export default function RekapList({ items }: { items: RekapItem[] }) {
                       <div className="flex items-center gap-1.5 shrink-0 text-slate-500">
                         <Calendar className="w-3 h-3 text-slate-300 shrink-0" />
                         <span>
-                          {formatDate(trip.tglBerangkat)}
+                          {formatWita(trip.tglBerangkat, 'd MMM yyyy')}
                           {trip.tglBerangkat !== trip.tglKembali &&
-                            ` – ${formatDate(trip.tglKembali)}`}
+                            ` – ${formatWita(trip.tglKembali, 'd MMM yyyy')}`}
                         </span>
                       </div>
 

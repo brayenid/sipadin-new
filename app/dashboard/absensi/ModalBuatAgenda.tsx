@@ -1,0 +1,227 @@
+"use client";
+
+import { useState } from "react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { createAgendaAbsensi } from "@/app/actions/absensi";
+import { Loader2, CalendarPlus, Info, Users } from "lucide-react";
+import { formatWita } from "@/lib/date-utils";
+import Link from "next/link";
+
+export default function ModalBuatAgenda({
+  isOpen,
+  onClose,
+  totalPejabatTerdaftar = 0,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  totalPejabatTerdaftar?: number;
+}) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const [form, setForm] = useState({
+    namaKegiatan: "",
+    tanggal: todayStr,
+    hari: "Senin",
+    waktu: "09:00 WITA - Selesai",
+    tempat: "",
+    deskripsi: "",
+    targetPeserta: "Eselon II.b dan III.a",
+  });
+
+  const handleDateChange = (val: string) => {
+    try {
+      const d = new Date(val);
+      const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+      const computedDay = days[d.getDay()] || "Senin";
+      setForm((prev) => ({ ...prev, tanggal: val, hari: computedDay }));
+    } catch {
+      setForm((prev) => ({ ...prev, tanggal: val }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.namaKegiatan.trim() || !form.tempat.trim() || !form.tanggal) {
+      toast.error("Nama kegiatan, tanggal, dan tempat wajib diisi");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const created = await createAgendaAbsensi({
+        namaKegiatan: form.namaKegiatan,
+        tanggal: form.tanggal,
+        hari: form.hari,
+        waktu: form.waktu,
+        tempat: form.tempat,
+        deskripsi: form.deskripsi,
+        targetPeserta: form.targetPeserta,
+      });
+
+      toast.success("Agenda kegiatan berhasil dibuat dengan status BERLANGSUNG");
+      onClose();
+      router.push(`/dashboard/absensi/${created.id}`);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membuat agenda");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[92vh] overflow-y-auto" style={{ maxWidth: '850px' }}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <CalendarPlus className="w-5 h-5 text-indigo-600" />
+            Buat Agenda Absensi Baru
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Agenda baru akan otomatis berstatus <span className="font-semibold text-amber-600">BERLANGSUNG</span> dan memuat seluruh data pejabat Perangkat Daerah yang telah di-binding.
+          </DialogDescription>
+        </DialogHeader>
+
+        {totalPejabatTerdaftar === 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5 text-xs text-amber-800">
+            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Belum ada Pejabat yang di-binding!</p>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                Silakan lakukan binding data dari Master Pegawai terlebih dahulu agar nama pejabat OPD otomatis terisi pada agenda ini.
+              </p>
+              <Link
+                href="/dashboard/absensi/pejabat"
+                onClick={onClose}
+                className="inline-flex items-center gap-1 font-bold text-indigo-700 hover:underline mt-1.5"
+              >
+                <Users className="w-3.5 h-3.5" />
+                Kelola Binding Pejabat Sekarang &rarr;
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+          <div>
+            <Label className="text-xs font-semibold text-slate-700">
+              Nama / Perihal Kegiatan <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              required
+              placeholder="Contoh: Rapat Koordinasi Evaluasi Kinerja Triwulan II"
+              value={form.namaKegiatan}
+              onChange={(e) => setForm({ ...form, namaKegiatan: e.target.value })}
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">
+                Tanggal Pelaksanaan <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="date"
+                required
+                value={form.tanggal}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">Hari</Label>
+              <Input
+                value={form.hari}
+                onChange={(e) => setForm({ ...form, hari: e.target.value })}
+                placeholder="Contoh: Senin"
+                className="mt-1 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">
+                Tempat Pelaksanaan <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                required
+                placeholder="Contoh: Gedung Aji Tulur Jejangkat"
+                value={form.tempat}
+                onChange={(e) => setForm({ ...form, tempat: e.target.value })}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">Waktu Pelaksanaan</Label>
+              <Input
+                placeholder="Contoh: 09:00 WITA - Selesai"
+                value={form.waktu}
+                onChange={(e) => setForm({ ...form, waktu: e.target.value })}
+                className="mt-1 text-xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold text-slate-700">Target Peserta / Kop Judul</Label>
+            <Input
+              placeholder="Default: Eselon II.b dan III.a"
+              value={form.targetPeserta}
+              onChange={(e) => setForm({ ...form, targetPeserta: e.target.value })}
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold text-slate-700">Keterangan / Catatan Agenda (Opsional)</Label>
+            <Textarea
+              placeholder="Tambahkan catatan khusus untuk agenda ini jika diperlukan..."
+              value={form.deskripsi}
+              onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
+              rows={2}
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t">
+            <span className="text-[11px] text-slate-400">
+              {totalPejabatTerdaftar} pejabat akan dimasukkan ke agenda ini.
+            </span>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={loading}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CalendarPlus className="w-4 h-4 mr-1" />}
+                Buat Agenda
+              </Button>
+            </div>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -35,6 +35,19 @@ enum JenisNaskah {
   SURAT_UMUM
 }
 
+enum StatusAgendaAbsensi {
+  BERLANGSUNG
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusKehadiran {
+  HADIR
+  MEWAKILI
+  TIDAK_HADIR
+  IZIN
+}
+
 // ==========================================
 // AUTH & MULTI-TENANT
 // ==========================================
@@ -47,6 +60,7 @@ model Team {
   pegawais  Pegawai[]
   vendors   VendorPihakKetiga[]
   naskahDinas NaskahDinas[]
+  agendaAbsensi AgendaAbsensi[]
 }
 
 model User {
@@ -64,6 +78,7 @@ model User {
   spjsCreated  Spj[]
   subKegiatan  SubKegiatan[]
   naskahDinas  NaskahDinas[]
+  agendaAbsensi AgendaAbsensi[]
 }
 
 // ==========================================
@@ -78,13 +93,19 @@ model Pegawai {
   jabatan   String
   instansi  String   @default("Sekretariat Daerah Kabupaten Kutai Barat")
   
+  // Binding Khusus Eselon & Absensi OPD
+  eselon        String?  // misal: "II.b", "III.a"
+  wajibAbsenOpd Boolean  @default(false)
+  urutanOpd     Int?     @default(0)
+
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  rosterItems SpjRosterItem[]
+  rosterItems    SpjRosterItem[]
+  kehadiranItems KehadiranPeserta[]
 
   @@unique([nip, teamId])
 }
@@ -290,4 +311,64 @@ model NaskahDinas {
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+// ==========================================
+// ABSENSI PERANGKAT DAERAH (OPD)
+// ==========================================
+model AgendaAbsensi {
+  id              String               @id @default(uuid())
+  namaKegiatan    String
+  hari            String?              // misal: "Senin"
+  tanggal         DateTime             // Tanggal pelaksanaan kegiatan
+  waktu           String?              // misal: "09:00 WITA - Selesai"
+  tempat          String
+  deskripsi       String?              @db.Text
+  targetPeserta   String?              @default("Eselon II.b dan III.a")
+  
+  status          StatusAgendaAbsensi  @default(BERLANGSUNG)
+  driveUrl        String?              // Tautan Google Drive hasil scan absensi/foto
+  
+  teamId          String
+  team            Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User                 @relation(fields: [createdById], references: [id])
+  
+  isDeleted       Boolean              @default(false)
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  
+  peserta         KehadiranPeserta[]
+
+  @@index([teamId, tanggal])
+}
+
+model KehadiranPeserta {
+  id                String          @id @default(uuid())
+  agendaId          String
+  agenda            AgendaAbsensi   @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  
+  pegawaiId         String?
+  pegawai           Pegawai?        @relation(fields: [pegawaiId], references: [id], onDelete: SetNull)
+  
+  // Snapshot Data Pejabat / OPD
+  nama              String
+  nip               String?
+  jabatan           String
+  instansi          String          // Nama Perangkat Daerah
+  eselon            String?         // "II.b" | "III.a"
+  urutan            Int             @default(0)
+  
+  // Status dan Keterangan
+  status            StatusKehadiran @default(TIDAK_HADIR)
+  namaPerwakilan    String?         // Diisi jika status MEWAKILI
+  jabatanPerwakilan String?
+  keterangan        String?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([agendaId])
+  @@index([instansi])
 }

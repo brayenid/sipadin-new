@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
+import { formatWita } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,15 +60,6 @@ export default function SpjExportModal({ iconOnly = false }: { iconOnly?: boolea
         setLoading(false);
         return;
       }
-
-      const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat("id-ID", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        }).format(new Date(date));
-      };
-
       const formatRupiah = (val: bigint) => {
         return new Intl.NumberFormat("id-ID", {
           style: "currency",
@@ -83,10 +75,10 @@ export default function SpjExportModal({ iconOnly = false }: { iconOnly?: boolea
           row["Tujuan"] = spj.perjadinDetail?.tempatTujuan || "-";
         }
         if (columns.tglBerangkat) {
-          row["Tanggal Berangkat"] = spj.perjadinDetail?.tglBerangkat ? formatDate(spj.perjadinDetail.tglBerangkat) : formatDate(spj.tanggalSpj);
+          row["Tanggal Berangkat"] = spj.perjadinDetail?.tglBerangkat ? formatWita(spj.perjadinDetail.tglBerangkat, 'dd MMMM yyyy') : formatWita(spj.tanggalSpj, 'dd MMMM yyyy');
         }
         if (columns.tglKembali) {
-          row["Tanggal Kembali"] = spj.perjadinDetail?.tglKembali ? formatDate(spj.perjadinDetail.tglKembali) : "-";
+          row["Tanggal Kembali"] = spj.perjadinDetail?.tglKembali ? formatWita(spj.perjadinDetail.tglKembali, 'dd MMMM yyyy') : "-";
         }
         if (columns.namaPersonel) {
           row["Nama Personel"] = spj.roster && spj.roster.length > 0 ? spj.roster.map((r: any) => r.nama.split(" ")[0]).join(", ") : "-";

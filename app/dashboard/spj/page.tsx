@@ -12,6 +12,7 @@ import SpjDeleteButton from './SpjDeleteButton'
 import SpjDuplicateButton from './SpjDuplicateButton'
 import SpjExportModal from './SpjExportModal'
 import { Prisma } from '@prisma/client'
+import { formatWita } from '@/lib/date-utils'
 
 function getVisiblePages(current: number, total: number) {
   const pages: (number | string)[] = [];
@@ -102,18 +103,10 @@ export default async function SpjListPage({
     )
   }
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }).format(new Date(date));
-  }
-
   const renderTanggalRange = (spj: any) => {
     if (spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail) {
-      const start = formatDate(spj.perjadinDetail.tglBerangkat);
-      const end = formatDate(spj.perjadinDetail.tglKembali);
+      const start = formatWita(spj.perjadinDetail.tglBerangkat, 'dd MMM yyyy');
+      const end = formatWita(spj.perjadinDetail.tglKembali, 'dd MMM yyyy');
       
       // Jika bulannya sama, persingkat (misal: 12 - 15 Okt 2026)
       const startParts = start.split(' ');
@@ -125,7 +118,7 @@ export default async function SpjListPage({
       return `${start} - ${end}`;
     }
     
-    return formatDate(spj.tanggalSpj);
+    return formatWita(spj.tanggalSpj, 'dd MMM yyyy');
   }
 
   const getJenisBadge = (jenis: string) => {

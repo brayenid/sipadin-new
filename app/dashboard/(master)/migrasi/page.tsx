@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function MigrasiPage() {
   const session = await auth();
-  if (!session || session.user.role !== "SUPER_ADMIN") {
+  if (!session || session.user.role !== "SUPER_ADMIN" || process.env.NODE_ENV === "production") {
     redirect("/dashboard");
   }
 

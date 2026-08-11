@@ -10,6 +10,7 @@ import {
   Calendar,
   PlusCircle,
   PenBox,
+  ClipboardCheck,
   Info,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +24,7 @@ const navMain = [
 ];
 
 const navTambahan = [
+  { href: "/dashboard/absensi", label: "Absensi OPD", icon: ClipboardCheck },
   { href: "/dashboard/naskah-dinas", label: "Naskah Dinas", icon: PenBox },
 ];
 
@@ -39,7 +41,9 @@ import { Trash2, RefreshCw } from "lucide-react";
 
 const navSuperAdmin = [
   { href: "/dashboard/akun", label: "Master Akun", icon: Users },
-  { href: "/dashboard/migrasi", label: "Migrasi Data V1", icon: RefreshCw },
+  ...(process.env.NODE_ENV !== "production"
+    ? [{ href: "/dashboard/migrasi", label: "Migrasi Data V1", icon: RefreshCw }]
+    : []),
   { href: "/dashboard/recycle-bin", label: "Recycle Bin", icon: Trash2 },
 ];
 

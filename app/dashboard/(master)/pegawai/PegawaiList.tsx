@@ -42,6 +42,7 @@ type Pegawai = {
   golongan: string | null;
   jabatan: string;
   instansi: string | null;
+  eselon: string | null;
 };
 
 export default function PegawaiList({ initialData, isSuperAdmin = false }: { initialData: Pegawai[], isSuperAdmin?: boolean }) {
@@ -79,7 +80,8 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
       original.nama !== row.nama ||
       (original.pangkat || "") !== (row.pangkat || "") ||
       (original.golongan || "") !== (row.golongan || "") ||
-      original.jabatan !== row.jabatan
+      original.jabatan !== row.jabatan ||
+      (original.eselon || "") !== (row.eselon || "")
     );
   };
 
@@ -112,9 +114,10 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     const pangkat = formData.get("pangkat") as string;
     const golongan = formData.get("golongan") as string;
     const jabatan = formData.get("jabatan") as string;
+    const eselon = formData.get("eselon") as string;
     
     try {
-      await createPegawai({ nip, nama, pangkat, golongan, jabatan });
+      await createPegawai({ nip, nama, pangkat, golongan, jabatan, eselon });
       setIsOpen(false);
       window.location.reload();
     } catch (err: any) {
@@ -147,6 +150,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
         golongan: "",
         jabatan: "",
         instansi: "Sekretariat Daerah",
+        eselon: "",
       },
       ...bulkData
     ]);
@@ -304,9 +308,30 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         <Input name="golongan" placeholder="III/d" />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Jabatan</Label>
-                      <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Jabatan</Label>
+                        <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Eselon</Label>
+                        <Select name="eselon" defaultValue="NON_ESELON">
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih Eselon" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="I.a">I.a</SelectItem>
+                            <SelectItem value="I.b">I.b</SelectItem>
+                            <SelectItem value="II.a">II.a</SelectItem>
+                            <SelectItem value="II.b">II.b</SelectItem>
+                            <SelectItem value="III.a">III.a</SelectItem>
+                            <SelectItem value="III.b">III.b</SelectItem>
+                            <SelectItem value="IV.a">IV.a</SelectItem>
+                            <SelectItem value="IV.b">IV.b</SelectItem>
+                            <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <Button type="submit" disabled={loading} className="w-full mt-2">
                       {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
@@ -335,11 +360,18 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                       
                       <div className="mt-4 space-y-1">
                         <p className="text-sm text-slate-700"><span className="font-semibold">Jabatan:</span> {pegawai.jabatan}</p>
-                        {(pegawai.pangkat || pegawai.golongan) && (
-                          <p className="text-xs text-slate-500">
-                            Pangkat/Gol: {pegawai.pangkat || "-"} ({pegawai.golongan || "-"})
-                          </p>
-                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {(pegawai.pangkat || pegawai.golongan) && (
+                            <span className="text-xs text-slate-500">
+                              Pangkat/Gol: {pegawai.pangkat || "-"} ({pegawai.golongan || "-"})
+                            </span>
+                          )}
+                          {pegawai.eselon && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-300 font-medium">
+                              Eselon {pegawai.eselon}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -429,6 +461,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         </div>
                       </TableHead>
                       <TableHead className="min-w-[200px]">Jabatan</TableHead>
+                      <TableHead className="min-w-[100px]">Eselon</TableHead>
                       {isSuperAdmin && <TableHead className="min-w-[60px] text-center">Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -481,6 +514,28 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                             className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
                             placeholder=""
                           />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Select
+                            value={row.eselon || "NON_ESELON"}
+                            onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : val)}
+                            disabled={!isSuperAdmin}
+                          >
+                            <SelectTrigger className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'eselon') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}>
+                              <SelectValue placeholder="Pilih" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="I.a">I.a</SelectItem>
+                              <SelectItem value="I.b">I.b</SelectItem>
+                              <SelectItem value="II.a">II.a</SelectItem>
+                              <SelectItem value="II.b">II.b</SelectItem>
+                              <SelectItem value="III.a">III.a</SelectItem>
+                              <SelectItem value="III.b">III.b</SelectItem>
+                              <SelectItem value="IV.a">IV.a</SelectItem>
+                              <SelectItem value="IV.b">IV.b</SelectItem>
+                              <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         {isSuperAdmin && (
                           <TableCell className="p-2 text-center">

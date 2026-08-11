@@ -19,6 +19,7 @@ export async function getPegawais() {
       golongan: true,
       jabatan: true,
       instansi: true,
+      eselon: true,
     }
   });
 }
@@ -30,6 +31,7 @@ export async function createPegawai(data: {
   golongan?: string;
   jabatan: string;
   instansi?: string;
+  eselon?: string;
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -76,6 +78,7 @@ export async function bulkUpsertPegawai(
     golongan?: string | null;
     jabatan: string;
     instansi?: string | null;
+    eselon?: string | null;
   }[],
   deleteIds: string[]
 ) {
@@ -116,6 +119,7 @@ export async function bulkUpsertPegawai(
             golongan: item.golongan || null,
             jabatan: item.jabatan,
             instansi: item.instansi || "Sekretariat Daerah",
+            eselon: item.eselon || null,
           },
         });
       } else {
@@ -128,6 +132,7 @@ export async function bulkUpsertPegawai(
             golongan: item.golongan || null,
             jabatan: item.jabatan,
             instansi: item.instansi || "Sekretariat Daerah",
+            eselon: item.eselon || null,
             teamId: session.user.teamId,
           },
         });
@@ -149,6 +154,7 @@ export async function importPegawaiExcel(
     golongan?: string | null;
     jabatan: string;
     instansi?: string | null;
+    eselon?: string | null;
   }[]
 ) {
   const session = await auth();
@@ -187,6 +193,7 @@ export async function importPegawaiExcel(
               golongan: item.golongan || null,
               jabatan: item.jabatan,
               instansi: item.instansi || "Sekretariat Daerah",
+              eselon: item.eselon || null,
             },
           });
           updated++;
@@ -200,6 +207,7 @@ export async function importPegawaiExcel(
               golongan: item.golongan || null,
               jabatan: item.jabatan,
               instansi: item.instansi || "Sekretariat Daerah",
+              eselon: item.eselon || null,
               teamId: session.user.teamId,
             },
           });
@@ -215,6 +223,7 @@ export async function importPegawaiExcel(
             golongan: item.golongan || null,
             jabatan: item.jabatan,
             instansi: item.instansi || "Sekretariat Daerah",
+            eselon: item.eselon || null,
             teamId: session.user.teamId,
           },
         });
