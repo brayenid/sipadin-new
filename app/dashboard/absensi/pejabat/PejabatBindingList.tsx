@@ -232,7 +232,7 @@ export default function PejabatBindingList({
             <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
                 className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-44 font-medium"
               >
                 <option value="BINDING">Wajib Absen ({totalBound})</option>

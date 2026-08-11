@@ -109,12 +109,25 @@ export default function ChecklistForm({
     );
   };
 
+  // Deteksi perubahan data dibanding props asli
+  const isDirty = () => {
+    if (statusAgenda !== agenda.status || driveUrl !== (agenda.driveUrl || "")) return true;
+    if (pesertaList.length !== agenda.peserta.length) return true;
+    return pesertaList.some((p) => {
+      const orig = agenda.peserta.find((o) => o.id === p.id);
+      if (!orig) return true;
+      return (
+        orig.status !== p.status ||
+        (orig.namaPerwakilan || "") !== (p.namaPerwakilan || "") ||
+        (orig.jabatanPerwakilan || "") !== (p.jabatanPerwakilan || "") ||
+        (orig.keterangan || "") !== (p.keterangan || "")
+      );
+    });
+  };
+
   // Dipanggil saat input teks kehilangan fokus (onBlur)
   const handleInputBlur = () => {
-    // trigger auto save jika dirty
-    if (isDirty()) {
-      handleSave(true);
-    }
+    // Sisa event handler (autosave dinonaktifkan)
   };
 
   // Tandai semua hadir

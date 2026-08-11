@@ -151,7 +151,7 @@ export default function ModalTambahPeserta({
                 <Select
                   value={filterEselonGroup}
                   onValueChange={(val) => {
-                    setFilterEselonGroup(val);
+                    setFilterEselonGroup(val || "ALL");
                     setSelectedIds([]); // Reset seleksi saat ganti filter eselon
                   }}
                 >
