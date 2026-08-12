@@ -114,7 +114,7 @@ export default function SuratPengantarPdf({
             </View>
           </View>
           
-          <Text style={styles.outro}>Demikian kami sampaikan, atas kerja samanya di ucapkan terimakasih</Text>
+          <Text style={styles.outro}>Demikian kami sampaikan, atas kerja samanya diucapkan terima kasih.</Text>
         </View>
 
         {/* Signers bottom */}
