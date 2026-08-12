@@ -207,7 +207,7 @@ export default function ChecklistForm({
   return (
     <div className="space-y-6">
       {/* 1. Form Input Sederhana Berurutan dan Tombol Aksi Horizontal di Bawah Form */}
-      <Card className="border-slate-200 bg-white shadow-xs">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <CardContent className="p-4 sm:p-6 space-y-4">
           {/* Grid Input Data Agenda (Disabled) & Status Agenda */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -334,7 +334,7 @@ export default function ChecklistForm({
 
 
       {/* 3. Tabel Checklist Kehadiran */}
-      <Card className="border-slate-200 shadow-xs">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <CardHeader className="pb-3 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -375,7 +375,7 @@ export default function ChecklistForm({
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-44"
+              className="text-xs border border-slate-200/60 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-44"
             >
               <option value="ALL">Semua ({totalPeserta})</option>
               <option value="HADIR">Hadir ({countHadir})</option>
@@ -385,7 +385,7 @@ export default function ChecklistForm({
           </div>
 
           {/* Table */}
-          <div className="border border-slate-200 rounded-lg overflow-x-auto">
+          <div className="border border-slate-200/60 rounded-lg overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/70">
                 <TableRow>

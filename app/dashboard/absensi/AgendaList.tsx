@@ -107,7 +107,7 @@ export default function AgendaList({
     <div className="space-y-6">
       {/* 3 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="border-indigo-100 bg-indigo-50/40 shadow-xs">
+        <Card className="border-indigo-100/80 bg-indigo-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">
@@ -122,7 +122,7 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-amber-100 bg-amber-50/40 shadow-xs">
+        <Card className="border-amber-100/80 bg-amber-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
@@ -137,7 +137,7 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-100 bg-emerald-50/40 shadow-xs">
+        <Card className="border-emerald-100/80 bg-emerald-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
@@ -152,7 +152,7 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -174,7 +174,7 @@ export default function AgendaList({
       </div>
 
       {/* Main Content List */}
-      <Card className="border-slate-200 shadow-xs">
+      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <CardHeader className="pb-3 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -244,7 +244,7 @@ export default function AgendaList({
           </div>
 
           {/* Table */}
-          <div className="border border-slate-200 rounded-lg overflow-hidden">
+          <div className="border border-slate-200/60 rounded-lg overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50/70">
                 <TableRow>

@@ -97,7 +97,7 @@ export default function ModalBuatAgenda({
         </DialogHeader>
 
         {totalPejabatTerdaftar === 0 && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5 text-xs text-amber-800">
+          <div className="p-3 bg-amber-50/50 border border-amber-200/60 rounded-lg flex items-start gap-2.5 text-xs text-amber-800 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Belum ada Pejabat yang di-binding!</p>
