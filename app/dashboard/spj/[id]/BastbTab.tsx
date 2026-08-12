@@ -23,7 +23,7 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
   const data = meta.bastb || {};
 
   const romawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][new Date().getMonth()];
-  const defaultSuffix = `/ ORG-TU.P / ${romawi} / ${new Date().getFullYear()}`;
+  const defaultSuffix = `/ Org-TU.P / ${romawi} / ${new Date().getFullYear()}`;
 
   const defaultPptk = data.pptkId || spj.metaDokumen?.bapb?.pptkId || spj.metaDokumen?.suratPengantar?.penandatanganId || "";
 

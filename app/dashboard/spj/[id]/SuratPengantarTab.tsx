@@ -23,11 +23,11 @@ export default function SuratPengantarTab({ spj, pegawaiList }: { spj: any, pega
   const data = meta.suratPengantar || {};
 
   const romawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][new Date().getMonth()];
-  const defaultSuffix = `/ Org / ${romawi} / ${new Date().getFullYear()}`;
+  const defaultSuffix = `/ Org-TU.P / ${romawi} / ${new Date().getFullYear()}`;
 
   const [form, setForm] = useState({
     penandatanganId: data.penandatanganId || "",
-    nomorPrefix: data.nomorPrefix ?? "027 /",
+    nomorPrefix: data.nomorPrefix ?? "000.3.3 /",
     nomorTengah: data.nomorTengah ?? "",
     nomorSuffix: data.nomorSuffix ?? defaultSuffix,
     tanggalSurat: data.tanggalSurat || "",
@@ -133,7 +133,7 @@ export default function SuratPengantarTab({ spj, pegawaiList }: { spj: any, pega
                 value={form.nomorPrefix} 
                 onChange={handleChange} 
                 className="w-1/3 rounded-r-none border-r-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-[10px] sm:text-sm h-9" 
-                placeholder="027 /"
+                placeholder="000.3.3 /"
               />
               <Input 
                 name="nomorTengah" 

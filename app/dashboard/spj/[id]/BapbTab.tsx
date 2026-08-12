@@ -23,12 +23,12 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
   const data = meta.bapb || {};
 
   const romawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][new Date().getMonth()];
-  const defaultSuffix = `/ Org / ${romawi} / ${new Date().getFullYear()}`;
+  const defaultSuffix = `/ Org-TU.P / ${romawi} / ${new Date().getFullYear()}`;
 
   const [form, setForm] = useState({
     kpaId: data.kpaId || spj.metaDokumen?.dopd?.kpaId || "",
     pptkId: data.pptkId || spj.metaDokumen?.suratPengantar?.penandatanganId || "",
-    nomorPrefix: data.nomorPrefix ?? "0003 /",
+    nomorPrefix: data.nomorPrefix ?? "000.2.3.1 /",
     nomorTengah: data.nomorTengah ?? "",
     nomorSuffix: data.nomorSuffix ?? defaultSuffix,
     tanggalBapb: data.tanggalBapb || "",
@@ -163,7 +163,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
                 value={form.nomorPrefix} 
                 onChange={handleChange} 
                 className="w-1/3 rounded-r-none border-r-0 text-slate-500 bg-slate-50 focus-visible:ring-0 px-2 text-center text-[10px] sm:text-sm h-9" 
-                placeholder="0003 /"
+                placeholder="000.2.3.1 /"
               />
               <Input 
                 name="nomorTengah" 
@@ -209,7 +209,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
               size="sm"
               onClick={() => {
                 const sp = meta.suratPengantar || {};
-                const prefix = sp.nomorPrefix ?? "027 /";
+                const prefix = sp.nomorPrefix ?? "000.3.3 /";
                 const tengah = sp.nomorTengah ?? "";
                 const suffix = sp.nomorSuffix ?? defaultSuffix;
                 const spNomor = `${prefix}${tengah ? tengah : '               '}${suffix}`;
