@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Loader2, Save, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus, Loader2, Save, ArrowRight, ArrowLeft, CheckCircle2, ExternalLink } from "lucide-react";
 import { createSpjTransaction } from "@/app/actions/spj";
 
 // -- TYPES --
@@ -296,6 +296,22 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
             <div className="space-y-2">
               <Label>Nomor BKU (Opsional)</Label>
               <Input placeholder="001/BKU/2026" value={nomorBku} onChange={(e) => setNomorBku(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Tautan Bukti Fisik (Google Drive)</Label>
+                <a
+                  href="https://drive.google.com/drive/u/3/folders/10N-NmZSzQ8QYYWqwlmgfoqb5EP471snp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Folder Google Drive
+                </a>
+              </div>
+              <Input placeholder="https://drive.google.com/drive/folders/..." value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} />
             </div>
 
             <div className="space-y-2 md:col-span-2">

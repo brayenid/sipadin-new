@@ -205,7 +205,7 @@ export default function ChecklistForm({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 lg:pb-0">
       {/* 1. Form Input Sederhana Berurutan dan Tombol Aksi Horizontal di Bawah Form */}
       <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
         <CardContent className="p-4 sm:p-6 space-y-4">
@@ -304,7 +304,7 @@ export default function ChecklistForm({
           </div>
 
           {/* Tombol Aksi Horizontal di Bawah Form */}
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+          <div className="hidden lg:flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
@@ -335,7 +335,7 @@ export default function ChecklistForm({
 
       {/* 3. Tabel Checklist Kehadiran */}
       <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader className="pb-3 border-b border-slate-100">
+        <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-bold text-slate-900">
@@ -359,7 +359,7 @@ export default function ChecklistForm({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-4 space-y-4">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
           {/* Filter Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
@@ -507,7 +507,7 @@ export default function ChecklistForm({
               onClick={handleSave}
               disabled={saving}
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shrink-0"
+              className="hidden lg:inline-flex bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shrink-0"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
               Simpan Perubahan
@@ -531,6 +531,28 @@ export default function ChecklistForm({
         existingPegawaiIds={pesertaList.map((p) => p.pegawaiId).filter(Boolean) as string[]}
         onSuccess={() => router.refresh()}
       />
+
+      {/* Mobile Bottom Fixed Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setIsCetakOpen(true)}
+          className="h-10 w-10 shrink-0 border-slate-200 bg-white"
+          title="Cetak Format Absensi Fisik"
+        >
+          <Printer className="w-4 h-4 text-slate-700" />
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+        >
+          {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+          Simpan Perubahan
+        </Button>
+      </div>
     </div>
   );
 }

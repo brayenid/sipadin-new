@@ -92,7 +92,7 @@ export default function ModalBuatAgenda({
             Buat Agenda Absensi Baru
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Agenda baru akan otomatis berstatus <span className="font-semibold text-amber-600">BERLANGSUNG</span> dan memuat seluruh data pejabat Perangkat Daerah yang telah di-binding.
+            Agenda baru akan otomatis berstatus <span className="font-semibold text-amber-600">BERLANGSUNG</span> dan memuat seluruh data pejabat Perangkat Daerah yang telah ditetapkan.
           </DialogDescription>
         </DialogHeader>
 
@@ -100,17 +100,16 @@ export default function ModalBuatAgenda({
           <div className="p-3 bg-amber-50/50 border border-amber-200/60 rounded-lg flex items-start gap-2.5 text-xs text-amber-800 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Belum ada Pejabat yang di-binding!</p>
+              <p className="font-semibold">Belum ada Pejabat yang ditetapkan!</p>
               <p className="text-[11px] text-amber-700 mt-0.5">
-                Silakan lakukan binding data dari Master Pegawai terlebih dahulu agar nama pejabat OPD otomatis terisi pada agenda ini.
+                Silakan lakukan penetapan data dari Master Pegawai terlebih dahulu agar nama pejabat OPD otomatis terisi pada agenda ini.
               </p>
               <Link
                 href="/dashboard/absensi/pejabat"
                 onClick={onClose}
                 className="inline-flex items-center gap-1 font-bold text-indigo-700 hover:underline mt-1.5"
               >
-                <Users className="w-3.5 h-3.5" />
-                Kelola Binding Pejabat Sekarang &rarr;
+                Kelola Pejabat &rarr;
               </Link>
             </div>
           </div>

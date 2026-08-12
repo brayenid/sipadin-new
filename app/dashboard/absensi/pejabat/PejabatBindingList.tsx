@@ -137,11 +137,11 @@ export default function PejabatBindingList({
   const countEselon3 = internalList.filter((p) => p.wajibAbsenOpd && (p.eselon === "III.a" || p.eselon === "III.b")).length;
 
   return (
-    <div className="space-y-6">
-      {/* Statistik Ringkas */}
+    <div className="space-y-6 pb-20 lg:pb-0">
+      {/* Statistik Ringkas (All bg-white) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-indigo-100/80 bg-indigo-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
                 Total Pegawai Wajib Absen
@@ -149,14 +149,14 @@ export default function PejabatBindingList({
               <p className="text-2xl font-black text-indigo-950 mt-0.5">{totalBound}</p>
               <p className="text-[11px] text-indigo-600/80 mt-0.5">Otomatis masuk ke setiap daftar absen agenda baru</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
               <Users className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-100/80 bg-emerald-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
                 Eselon II (Kepala OPD)
@@ -164,14 +164,14 @@ export default function PejabatBindingList({
               <p className="text-2xl font-black text-emerald-950 mt-0.5">{countEselon2}</p>
               <p className="text-[11px] text-emerald-600/80 mt-0.5">Kadis / Kaban / Asisten / Staf Ahli</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
               <Building2 className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-100/80 bg-amber-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
                 Eselon III (Kabag / Camat)
@@ -179,7 +179,7 @@ export default function PejabatBindingList({
               <p className="text-2xl font-black text-amber-950 mt-0.5">{countEselon3}</p>
               <p className="text-[11px] text-amber-600/80 mt-0.5">Kabag Setda & Camat Se-Kabupaten</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
               <Building2 className="w-5 h-5" />
             </div>
           </CardContent>
@@ -188,7 +188,7 @@ export default function PejabatBindingList({
 
       {/* Kontrol & Filter */}
       <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader className="pb-3 border-b border-slate-100">
+        <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-bold text-slate-900">
@@ -199,23 +199,25 @@ export default function PejabatBindingList({
               </CardDescription>
             </div>
 
-            <Button
-              onClick={handleSaveBulk}
-              disabled={saving || dirtyCount === 0}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0 font-semibold"
-              size="sm"
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5 mr-1" />
-              )}
-              Simpan Perubahan ({dirtyCount})
-            </Button>
+            <div className="hidden lg:block">
+              <Button
+                onClick={handleSaveBulk}
+                disabled={saving || dirtyCount === 0}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0 font-semibold"
+                size="sm"
+              >
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5 mr-1" />
+                )}
+                Simpan Perubahan ({dirtyCount})
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="pt-4">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-4">
             {/* Search */}
             <div className="relative w-full md:w-80">
@@ -329,6 +331,22 @@ export default function PejabatBindingList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Bottom Fixed Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Button
+          onClick={handleSaveBulk}
+          disabled={saving || dirtyCount === 0}
+          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+        >
+          {saving ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
+          Simpan Perubahan ({dirtyCount})
+        </Button>
+      </div>
     </div>
   );
 }

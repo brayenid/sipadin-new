@@ -207,11 +207,11 @@ export default function RekapKehadiranView({
   };
 
   return (
-    <div className="space-y-6">
-      {/* 3 Summary KPI Cards */}
+    <div className="space-y-6 pb-20 lg:pb-0">
+      {/* 3 Summary KPI Cards (All bg-white) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-indigo-100/80 bg-indigo-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">
                 Total Agenda Dievaluasi
@@ -219,14 +219,14 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-indigo-950 mt-0.5">{initialData.totalAgenda}</p>
               <p className="text-[11px] text-indigo-600/80 mt-0.5">{totalOpd} Perangkat Daerah Terdata</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
               <Calendar className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-100/80 bg-emerald-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
                 Rata-rata Kehadiran OPD
@@ -234,14 +234,14 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-emerald-950 mt-0.5">{avgKehadiran}%</p>
               <p className="text-[11px] text-emerald-600/80 mt-0.5">Hadir Langsung + Mewakili</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
               <BarChart3 className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-100/80 bg-amber-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
                 Kepatuhan Tinggi (≥80%)
@@ -249,7 +249,7 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-amber-950 mt-0.5">{topAttendance} OPD</p>
               <p className="text-[11px] text-amber-600/80 mt-0.5">Tingkat Disiplin Kehadiran Baik</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
               <Award className="w-5 h-5" />
             </div>
           </CardContent>
@@ -295,7 +295,7 @@ export default function RekapKehadiranView({
         {/* 1. REKAP PER OPD */}
         <TabsContent value="opd">
           <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-            <CardHeader className="pb-3 border-b border-slate-100">
+            <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base font-bold text-slate-900">
@@ -306,7 +306,7 @@ export default function RekapKehadiranView({
                   </CardDescription>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   <Button
                     onClick={() => setIsCetakPdfOpen(true)}
                     size="sm"
@@ -329,7 +329,7 @@ export default function RekapKehadiranView({
               </div>
             </CardHeader>
 
-            <CardContent className="pt-4 space-y-4">
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
               <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <Input
@@ -519,7 +519,7 @@ export default function RekapKehadiranView({
         {/* 2. REKAP PER PEGAWAI */}
         <TabsContent value="pegawai">
           <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-            <CardHeader className="pb-3 border-b border-slate-100">
+            <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base font-bold text-slate-900">
@@ -530,7 +530,7 @@ export default function RekapKehadiranView({
                   </CardDescription>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   <Button
                     onClick={() => setIsCetakPegPdfOpen(true)}
                     size="sm"
@@ -553,7 +553,7 @@ export default function RekapKehadiranView({
               </div>
             </CardHeader>
 
-            <CardContent className="pt-4 space-y-4">
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
               <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <Input
@@ -735,6 +735,48 @@ export default function RekapKehadiranView({
           })),
         }}
       />
+      {/* Mobile Bottom Fixed Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        {activeTab === "opd" ? (
+          <>
+            <Button
+              onClick={() => setIsCetakPdfOpen(true)}
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0 border-red-200 text-red-700 bg-white"
+              title="Ekspor ke PDF"
+            >
+              <FileText className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleExportExcelOpd}
+              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              Ekspor ke Excel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => setIsCetakPegPdfOpen(true)}
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0 border-red-200 text-red-700 bg-white"
+              title="Ekspor ke PDF"
+            >
+              <FileText className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleExportExcelPegawai}
+              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              Ekspor ke Excel
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

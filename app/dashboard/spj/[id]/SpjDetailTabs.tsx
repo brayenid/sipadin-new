@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2, FileText } from 'lucide-react'
+import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2, FileText, AlertTriangle, FolderPlus, ExternalLink } from 'lucide-react'
 import { updateSpjMasterData, deleteSpjTransaction } from '@/app/actions/spj'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -51,6 +51,23 @@ export default function SpjDetailTabs({
   const [openDelete, setOpenDelete] = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
   const [loadingDelete, setLoadingDelete] = useState(false)
+  const [highlightDriveInput, setHighlightDriveInput] = useState(false)
+
+  const handleOpenEditDriveLink = () => {
+    setOpenEdit(true)
+    setHighlightDriveInput(true)
+    setTimeout(() => {
+      const inputEl = document.getElementById("edit-spj-drive-url-input")
+      if (inputEl) {
+        inputEl.scrollIntoView({ behavior: "smooth", block: "center" })
+        inputEl.focus()
+      }
+    }, 250)
+
+    setTimeout(() => {
+      setHighlightDriveInput(false)
+    }, 3500)
+  }
 
   // Unsaved changes guard — tab yang aktif mendeklarasikan isDirty-nya lewat ref ini
   const [isDirty, setIsDirty] = useState(false)
@@ -200,6 +217,34 @@ export default function SpjDetailTabs({
   return (
     <div className="space-y-6">
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeaveCallback} onCancel={cancelLeave} />
+
+      {/* Notasi Khusus jika Bukti Dukung (Google Drive Link) Belum Diunggah */}
+      {!editForm.driveUrl && (
+        <div className="bg-amber-50/80 border border-amber-200/90 rounded-lg p-3.5 sm:p-4 text-amber-900 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <AlertTriangle className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-amber-950 flex items-center gap-1.5">
+                Bukti Dukung Fisik (Google Drive) Belum Diunggah
+              </h4>
+              <p className="text-[11px] sm:text-xs text-amber-800/90 mt-0.5 leading-relaxed">
+                SPJ ini belum memiliki tautan Google Drive arsip bukti scan dokumen fisik, kuitansi, atau foto pelaksanaan. Silakan tautkan link Drive agar arsip tersimpan rapi.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleOpenEditDriveLink}
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 shadow-xs self-start sm:self-auto"
+          >
+            <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
+            Tautkan Link Drive
+          </Button>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* SCROLLABLE TABS */}
         <div className="border-b overflow-x-auto no-scrollbar mb-6">
@@ -357,8 +402,28 @@ export default function SpjDetailTabs({
                         </p>
                       </div>
                       <div className="space-y-2">
-                        <Label>Tautan Bukti Fisik (Google Drive)</Label>
-                        <Input name="driveUrl" value={editForm.driveUrl} onChange={handleEditChange} />
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="edit-spj-drive-url-input">
+                            Tautan Bukti Fisik (Google Drive)
+                          </Label>
+                          <a
+                            href="https://drive.google.com/drive/u/3/folders/10N-NmZSzQ8QYYWqwlmgfoqb5EP471snp"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 hover:underline"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Folder Google Drive
+                          </a>
+                        </div>
+                        <Input
+                          id="edit-spj-drive-url-input"
+                          name="driveUrl"
+                          placeholder="https://drive.google.com/drive/folders/..."
+                          value={editForm.driveUrl}
+                          onChange={handleEditChange}
+                          className={`transition-colors duration-500 ${highlightDriveInput ? "border-amber-500 focus:border-amber-500 ring-1 ring-amber-500" : ""}`}
+                        />
                         <p className="text-xs text-slate-500 mt-1">
                           Link penyimpanan cloud untuk hasil scan kuitansi/nota/tiket.
                         </p>
@@ -494,14 +559,15 @@ export default function SpjDetailTabs({
                   <p className="font-semibold text-slate-900 leading-relaxed">{spj.nomorBku || '-'}</p>
                 </div>
                 <div className="space-y-1 sm:space-y-1.5">
-                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Link Drive</p>
+                  <p className="text-slate-500 uppercase tracking-widest text-[10px] sm:text-xs font-bold">Link Drive (Bukti Dukung)</p>
                   <p className="font-semibold text-blue-600 truncate leading-relaxed">
-                    {spj.metaDokumen?.driveUrl ? (
-                      <a href={spj.metaDokumen.driveUrl} target="_blank" rel="noreferrer" className="hover:underline">
-                        {spj.metaDokumen.driveUrl}
+                    {editForm.driveUrl ? (
+                      <a href={editForm.driveUrl} target="_blank" rel="noreferrer" className="hover:underline inline-flex items-center gap-1">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {editForm.driveUrl}
                       </a>
                     ) : (
-                      '-'
+                      <span className="text-slate-400 font-normal italic">Belum diunggah</span>
                     )}
                   </p>
                 </div>

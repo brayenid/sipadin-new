@@ -104,11 +104,11 @@ export default function AgendaList({
   const countSelesai = data.filter((d) => d.status === "SELESAI").length;
 
   return (
-    <div className="space-y-6">
-      {/* 3 Summary Cards */}
+    <div className="space-y-6 pb-20 lg:pb-0">
+      {/* 4 Summary Cards (All bg-white) */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="border-indigo-100/80 bg-indigo-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">
                 Total Agenda
@@ -116,14 +116,14 @@ export default function AgendaList({
               <p className="text-2xl font-black text-indigo-950 mt-0.5">{totalAgenda}</p>
               <p className="text-[11px] text-indigo-600/80 mt-0.5">Kegiatan Tercatat</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
               <Calendar className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-100/80 bg-amber-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
                 Sedang Berlangsung
@@ -131,14 +131,14 @@ export default function AgendaList({
               <p className="text-2xl font-black text-amber-950 mt-0.5">{countBerlangsung}</p>
               <p className="text-[11px] text-amber-600/80 mt-0.5">Perlu Pengisian Hadir</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
               <Clock className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-100/80 bg-emerald-50/30 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
                 Selesai Dilaporkan
@@ -146,14 +146,14 @@ export default function AgendaList({
               <p className="text-2xl font-black text-emerald-950 mt-0.5">{countSelesai}</p>
               <p className="text-[11px] text-emerald-600/80 mt-0.5">Absensi Tuntas</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Pejabat Ter-binding
@@ -175,7 +175,7 @@ export default function AgendaList({
 
       {/* Main Content List */}
       <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader className="pb-3 border-b border-slate-100">
+        <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-bold text-slate-900">
@@ -186,7 +186,7 @@ export default function AgendaList({
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               <Link href="/dashboard/absensi/rekap">
                 <Button variant="outline" size="sm" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
                   <BarChart3 className="w-3.5 h-3.5 mr-1" />
@@ -213,7 +213,7 @@ export default function AgendaList({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-4">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
           {/* Filter Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
             <div className="relative w-full sm:w-80">
@@ -434,6 +434,27 @@ export default function AgendaList({
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile Bottom Fixed Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Link href="/dashboard/absensi/rekap">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Rekapitulasi Kehadiran">
+            <BarChart3 className="w-4 h-4 text-slate-700" />
+          </Button>
+        </Link>
+        <Link href="/dashboard/absensi/pejabat">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Master Pejabat Wajib Absen">
+            <Users className="w-4 h-4 text-slate-700" />
+          </Button>
+        </Link>
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+        >
+          <Plus className="w-4 h-4 mr-1.5" />
+          Buat Agenda
+        </Button>
+      </div>
 
       <ModalBuatAgenda
         isOpen={isModalOpen}

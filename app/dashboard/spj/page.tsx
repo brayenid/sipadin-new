@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft, BarChart2 } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, BarChart2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -208,6 +208,7 @@ export default async function SpjListPage({
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Jenis</TableHead>
                   <TableHead>Keterangan</TableHead>
+                  <TableHead className="text-center">ARSIP DRIVE</TableHead>
                   <TableHead className="text-right">Total Biaya</TableHead>
                   <TableHead className="text-center">Aksi</TableHead>
                 </TableRow>
@@ -215,7 +216,7 @@ export default async function SpjListPage({
               <TableBody>
                 {spjList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
                       Belum ada SPJ yang dibuat.
                     </TableCell>
                   </TableRow>
@@ -270,6 +271,26 @@ export default async function SpjListPage({
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(() => {
+                          const driveLink = spj.driveUrl || (spj.metaDokumen as any)?.driveUrl || null;
+                          return driveLink ? (
+                            <a
+                              href={driveLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/80 px-2.5 py-1 rounded-md transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Buka Drive
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">
+                              Belum ada link
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-slate-900 font-medium">
                         {formatRupiah(spj.totalPengeluaran)}
