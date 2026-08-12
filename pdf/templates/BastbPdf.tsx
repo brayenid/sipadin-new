@@ -195,28 +195,42 @@ export default function BastbPdf({
           </Text>
 
           {/* PASAL 2 */}
-          <Text style={styles.pasalTitle}>Pasal 2</Text>
-          <Text style={styles.paragraphZero}>
-            Penyerahan sebagaimana dimaksud di atas meliputi:
-          </Text>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.colNo, styles.bold, styles.center]}>No</Text>
-              <Text style={[styles.colJenis, styles.bold, styles.center]}>Jenis Barang</Text>
-              <Text style={[styles.colJumlah, styles.bold, styles.center]}>Jumlah Unit</Text>
-              <Text style={[styles.colKet, styles.bold, styles.center]}>Keterangan</Text>
-            </View>
-            {items.map((item, i) => (
-              <View style={styles.tableRow} key={i}>
-                <Text style={[styles.colNo, styles.center]}>{item.no}.</Text>
-                <Text style={[styles.colJenis, { paddingLeft: 5 }]}>{item.jenisBarang}</Text>
-                <View style={[styles.colJumlah, styles.jumlahRow]}>
-                  <Text style={styles.jumlahVal}>{item.qty}</Text>
-                  <Text style={styles.jumlahSatuan}>{item.satuan}</Text>
+          <View wrap={false}>
+            <Text style={styles.pasalTitle}>Pasal 2</Text>
+            <Text style={styles.paragraphZero}>
+              Penyerahan sebagaimana dimaksud di atas meliputi:
+            </Text>
+            
+            <View style={styles.table}>
+              {/* Left Section: No, Jenis Barang, Jumlah Unit */}
+              <View style={styles.tableLeftCol}>
+                <View style={styles.tableHeaderRow}>
+                  <View style={[styles.colNoSub, styles.thCell]}><Text>No</Text></View>
+                  <View style={[styles.colJenisSub, styles.thCell]}><Text>Jenis Barang</Text></View>
+                  <View style={[styles.colJumlahSub, styles.thCell]}><Text>Jumlah Unit</Text></View>
                 </View>
-                <Text style={[styles.colKet, styles.center]}>{item.keterangan}</Text>
+                
+                <View style={{ flexGrow: 1, flexDirection: 'column' }}>
+                  {items.map((item, idx) => (
+                    <View style={[styles.tableRow, { flexGrow: 1 }]} key={idx} wrap={false}>
+                      <View style={[styles.colNoSub, styles.tdCell]}><Text>{item.no}.</Text></View>
+                      <View style={[styles.colJenisSub, styles.tdCell]}><Text>{item.jenisBarang}</Text></View>
+                      <View style={[styles.colJumlahSub, styles.tdCell]}>
+                        <Text style={{ textAlign: 'center' }}>{item.qty}   {item.satuan}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
               </View>
-            ))}
+
+              {/* Right Section: Keterangan (vertical merge) */}
+              <View style={styles.tableRightCol}>
+                <View style={styles.thCell}><Text>Keterangan</Text></View>
+                <View style={[styles.tdCell, { flexGrow: 1 }]}>
+                  <Text>{Array.from(new Set(items.map((i) => i.keterangan).filter(Boolean))).join('\n') || items[0]?.keterangan || ''}</Text>
+                </View>
+              </View>
+            </View>
           </View>
 
           {/* PASAL 3 */}
@@ -227,7 +241,7 @@ export default function BastbPdf({
         </View>
 
         {/* Signatures */}
-        <View style={styles.signatureContainer}>
+        <View style={styles.signatureContainer} wrap={false}>
           <View style={styles.signatureCol}>
             <Text style={styles.bold}>PIHAK KEDUA</Text>
             <View style={styles.signerSpace} />
@@ -322,47 +336,55 @@ const styles = StyleSheet.create({
   // Table
   table: {
     width: '100%',
+    flexDirection: 'row',
     borderStyle: 'solid',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
+    borderWidth: 1,
     borderColor: '#000',
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
   },
-  tableHeader: {
+  tableLeftCol: {
+    width: '60%',
+    flexDirection: 'column',
+  },
+  tableRightCol: {
+    width: '40%',
+    flexDirection: 'column',
+  },
+  tableHeaderRow: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderColor: '#000',
+    fontWeight: 700,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#000',
   },
-  colNo: {
-    width: '8%',
-    borderRightWidth: 1,
+  thCell: {
+    borderStyle: 'solid',
+    borderWidth: 1,
     borderColor: '#000',
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
     paddingVertical: 3,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 10.5,
+    fontWeight: 700,
   },
-  colJenis: {
-    width: '35%',
-    borderRightWidth: 1,
+  tdCell: {
+    borderStyle: 'solid',
+    borderWidth: 1,
     borderColor: '#000',
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
     paddingVertical: 3,
+    paddingHorizontal: 4,
+    fontSize: 10,
+    lineHeight: 1.2,
   },
-  colJumlah: {
-    width: '17%',
-    borderRightWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 3,
-  },
-  colKet: {
-    width: '40%',
-    borderRightWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 3,
-    paddingHorizontal: 5
-  },
+  colNoSub: { width: '13.3333%', textAlign: 'center' },
+  colJenisSub: { width: '58.3333%' },
+  colJumlahSub: { width: '28.3334%', textAlign: 'center' },
   jumlahRow: {
     flexDirection: 'row',
     justifyContent: 'center',
