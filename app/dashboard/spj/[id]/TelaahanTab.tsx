@@ -190,6 +190,32 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 toast.error("Gagal menyimpan inisialisasi AI ke database: " + err.message);
               }
             }}
+            onReset={async () => {
+              const updatedForm = {
+                ...form,
+                aiInitData: null,
+                isAiInitialized: false,
+                refineQuota: {
+                  dasar: 3,
+                  praAnggapan: 3,
+                  fakta: 3,
+                  analisis: 3,
+                  kesimpulan: 3,
+                  saran: 3
+                }
+              };
+              setForm(updatedForm);
+              try {
+                await updateMetaDokumen(spj.id, "telaahan", {
+                  ...updatedForm,
+                  praAnggapan: updatedForm.praAnggapan.filter((i: string) => i.trim() !== ""),
+                  fakta: updatedForm.fakta.filter((i: string) => i.trim() !== ""),
+                });
+                setInitialForm(updatedForm);
+              } catch (err: any) {
+                console.error("Reset AI init failed:", err);
+              }
+            }}
           />
         </div>
       </CardHeader>

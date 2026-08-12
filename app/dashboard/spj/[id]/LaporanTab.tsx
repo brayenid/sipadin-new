@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { useEffect } from "react";
 import { PresetDialog } from "@/components/ui/preset-dialog";
 import laporanPresets from "@/lib/presets/laporan.json";
+import InitLaporanAiModal from "./InitLaporanAiModal";
+import RefineLaporanFieldAiButton from "./RefineLaporanFieldAiButton";
 
 export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: any, pegawaiList: any[], onDirtyChange?: (dirty: boolean) => void }) {
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,13 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
     hasilMode: (data.hasilMode as LaporanHasilMode) || "POINTS",
     hasilPembuka: data.hasilPembuka || "",
     hasilNarasi: data.hasilNarasi || "",
+    aiInitData: data.aiInitData || null,
+    isAiInitialized: data.isAiInitialized || false,
+    refineQuota: data.refineQuota || {
+      hasilPembuka: 3,
+      hasilPoin: 3,
+      hasilNarasi: 3,
+    },
   });
 
   const [hasilPoin, setHasilPoin] = useState<string[]>(data.hasilPoin && data.hasilPoin.length > 0 ? data.hasilPoin : [""]);
@@ -159,9 +168,61 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
 
   return (
     <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-      <CardHeader className="pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
-        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rincian Laporan</CardTitle>
-        <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Uraian hasil yang dicapai dari kegiatan perjalanan dinas.</CardDescription>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 pb-2 sm:p-5 bg-slate-50/30 border-b">
+        <div>
+          <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold">Rincian Laporan</CardTitle>
+          <CardDescription className="text-[10px] sm:text-sm mt-0.5 sm:mt-1">Uraian hasil yang dicapai dari kegiatan perjalanan dinas.</CardDescription>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <InitLaporanAiModal
+            spj={spj}
+            initialAiData={form.aiInitData}
+            isAiInitialized={form.isAiInitialized}
+            onApply={async (aiInitData) => {
+              const updatedForm = {
+                ...form,
+                aiInitData: aiInitData,
+                isAiInitialized: true,
+              };
+              setForm(updatedForm);
+              onDirtyChange?.(true);
+
+              try {
+                await updateMetaDokumen(spj.id, "laporan", {
+                  ...updatedForm,
+                  hasilPoin,
+                });
+                setInitialForm(updatedForm);
+                toast.success("Inisialisasi AI berhasil disimpan.");
+              } catch (err: any) {
+                console.error("Auto-save AI init laporan failed:", err);
+                toast.error("Gagal menyimpan inisialisasi AI: " + err.message);
+              }
+            }}
+            onReset={async () => {
+              const updatedForm = {
+                ...form,
+                aiInitData: null,
+                isAiInitialized: false,
+                refineQuota: {
+                  hasilPembuka: 3,
+                  hasilPoin: 3,
+                  hasilNarasi: 3,
+                },
+              };
+              setForm(updatedForm);
+              try {
+                await updateMetaDokumen(spj.id, "laporan", {
+                  ...updatedForm,
+                  hasilPoin,
+                });
+                setInitialForm(updatedForm);
+              } catch (err: any) {
+                console.error("Reset AI init laporan failed:", err);
+              }
+            }}
+          />
+        </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6">
         
@@ -255,11 +316,29 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           <div className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6">
             <div className="flex items-center justify-between">
               <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Pembuka</Label>
-              <PresetDialog 
-                title="Preset Pembuka" 
-                options={laporanPresets.hasilPembuka} 
-                onSelect={(text) => handleSelectPresetString("hasilPembuka", text)} 
-              />
+              <div className="flex items-center gap-1.5">
+                <RefineLaporanFieldAiButton
+                  fieldName="hasilPembuka"
+                  fieldLabel="Pembuka Laporan"
+                  currentDoc={{ ...form, hasilPoin }}
+                  aiInitData={form.aiInitData}
+                  isAiInitialized={form.isAiInitialized}
+                  quotaRemaining={form.refineQuota.hasilPembuka}
+                  onUseQuota={() => setForm(prev => ({
+                    ...prev,
+                    refineQuota: { ...prev.refineQuota, hasilPembuka: Math.max(0, prev.refineQuota.hasilPembuka - 1) }
+                  }))}
+                  onApplyText={(text) => {
+                    setForm({ ...form, hasilPembuka: text });
+                    onDirtyChange?.(true);
+                  }}
+                />
+                <PresetDialog 
+                  title="Preset Pembuka" 
+                  options={laporanPresets.hasilPembuka} 
+                  onSelect={(text) => handleSelectPresetString("hasilPembuka", text)} 
+                />
+              </div>
             </div>
             <Textarea 
               name="hasilPembuka" 
@@ -275,17 +354,33 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           {form.hasilMode === "POINTS" && (
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Butir Hasil</Label>
+                <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Butir Hasil</Label>
+                <div className="flex items-center gap-1.5">
+                  <RefineLaporanFieldAiButton
+                    fieldName="hasilPoin"
+                    fieldLabel="Butir Hasil Laporan"
+                    currentDoc={{ ...form, hasilPoin }}
+                    aiInitData={form.aiInitData}
+                    isAiInitialized={form.isAiInitialized}
+                    quotaRemaining={form.refineQuota.hasilPoin}
+                    onUseQuota={() => setForm(prev => ({
+                      ...prev,
+                      refineQuota: { ...prev.refineQuota, hasilPoin: Math.max(0, prev.refineQuota.hasilPoin - 1) }
+                    }))}
+                    onApplyList={(items) => {
+                      setHasilPoin(items.length > 0 ? items : [""]);
+                      onDirtyChange?.(true);
+                    }}
+                  />
                   <PresetDialog 
                     title="Preset Butir Hasil" 
                     options={laporanPresets.hasilPoin} 
                     onSelect={(text) => handleSelectPresetArray("hasilPoin", text)} 
                   />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddPoint} className="h-8">
+                    <Plus className="w-4 h-4 mr-1" /> Tambah
+                  </Button>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddPoint} className="h-8">
-                  <Plus className="w-4 h-4 mr-1" /> Tambah
-                </Button>
               </div>
               
               <div className="space-y-2 sm:space-y-3">
@@ -319,11 +414,29 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
             <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Isi Narasi</Label>
-                <PresetDialog 
-                  title="Preset Narasi" 
-                  options={laporanPresets.hasilNarasi} 
-                  onSelect={(text) => handleSelectPresetString("hasilNarasi", text)} 
-                />
+                <div className="flex items-center gap-1.5">
+                  <RefineLaporanFieldAiButton
+                    fieldName="hasilNarasi"
+                    fieldLabel="Narasi Hasil Laporan"
+                    currentDoc={{ ...form, hasilPoin }}
+                    aiInitData={form.aiInitData}
+                    isAiInitialized={form.isAiInitialized}
+                    quotaRemaining={form.refineQuota.hasilNarasi}
+                    onUseQuota={() => setForm(prev => ({
+                      ...prev,
+                      refineQuota: { ...prev.refineQuota, hasilNarasi: Math.max(0, prev.refineQuota.hasilNarasi - 1) }
+                    }))}
+                    onApplyText={(text) => {
+                      setForm({ ...form, hasilNarasi: text });
+                      onDirtyChange?.(true);
+                    }}
+                  />
+                  <PresetDialog 
+                    title="Preset Narasi" 
+                    options={laporanPresets.hasilNarasi} 
+                    onSelect={(text) => handleSelectPresetString("hasilNarasi", text)} 
+                  />
+                </div>
               </div>
               <Textarea 
                 name="hasilNarasi" 

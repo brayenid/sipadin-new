@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Sparkles, Mail, Compass, Check } from "lucide-react";
+import { Sparkles, Mail, Compass, Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export type AiInitData = {
@@ -33,12 +33,14 @@ export default function InitTelaahanAiModal({
   initialAiData,
   isAiInitialized,
   onApply,
+  onReset,
 }: {
   spj: any;
   currentPerihal?: string;
   initialAiData?: AiInitData | null;
   isAiInitialized: boolean;
   onApply: (data: AiInitData) => void;
+  onReset?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -95,6 +97,14 @@ export default function InitTelaahanAiModal({
     onApply(initData);
     toast.success("AI Berhasil Di-Inisialisasi! Gunakan tombol 'AI Refine' pada setiap kolom.");
     setOpen(false);
+  };
+
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+      toast.info("Inisialisasi AI telah dibatalkan / di-reset.");
+      setOpen(false);
+    }
   };
 
   return (
@@ -247,22 +257,35 @@ export default function InitTelaahanAiModal({
           </div>
         </div>
 
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            className="w-full sm:w-auto h-9 text-xs"
-          >
-            Batal
-          </Button>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="w-full sm:w-auto h-9 text-xs"
+            >
+              Batal
+            </Button>
+            {isAiInitialized && onReset && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleReset}
+                className="w-full sm:w-auto h-9 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                Reset AI
+              </Button>
+            )}
+          </div>
           <Button
             type="button"
             onClick={handleInit}
             className="w-full sm:w-auto h-9 text-xs bg-indigo-600 hover:bg-indigo-700"
           >
             <Sparkles className="w-3.5 h-3.5 mr-1.5 text-white" />
-            Inisialisasi AI
+            {isAiInitialized ? "Perbarui Inisialisasi AI" : "Inisialisasi AI"}
           </Button>
         </DialogFooter>
       </DialogContent>
