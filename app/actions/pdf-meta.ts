@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 export async function updateSpjMetaDokumen(spjId: string, metaDokumen: any) {
   const session = await auth();
@@ -28,6 +29,9 @@ export async function updateSpjMetaDokumen(spjId: string, metaDokumen: any) {
     where: { id: spjId },
     data: { metaDokumen: newMeta }
   });
+
+  revalidatePath(`/dashboard/spj/${spjId}`);
+  revalidatePath(`/dashboard/spj`);
 
   return updated.metaDokumen;
 }

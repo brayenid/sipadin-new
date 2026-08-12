@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Loader2, FileText, Check, ChevronsUpDown } from "lucide-react";
+import { Save, Loader2, FileText, Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { updateMetaDokumen } from "@/lib/actions-client";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import BapbPdf from "@/pdf/templates/BapbPdf";
@@ -198,8 +198,35 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
 
         {/* REFERENSI SURAT PESANAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 border-t pt-4 sm:pt-6">
-          <div className="md:col-span-2">
-            <p className="font-semibold text-sm mb-0 sm:mb-2 text-slate-800">Referensi Surat Pesanan Barang (SPB)</p>
+          <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <p className="font-semibold text-sm text-slate-800">Referensi Surat Pesanan Barang (SPB)</p>
+              <p className="text-[10px] sm:text-xs text-slate-500">Merujuk pada Surat Pengantar Permintaan Barang.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const sp = meta.suratPengantar || {};
+                const prefix = sp.nomorPrefix ?? "027 /";
+                const tengah = sp.nomorTengah ?? "";
+                const suffix = sp.nomorSuffix ?? defaultSuffix;
+                const spNomor = `${prefix}${tengah ? tengah : '               '}${suffix}`;
+                const spTanggal = sp.tanggalSurat || "";
+
+                setForm((prev) => ({
+                  ...prev,
+                  nomorSpb: spNomor,
+                  tanggalSpb: spTanggal,
+                }));
+                toast.success("Berhasil menyinkronkan Nomor & Tanggal dari Surat Pengantar.");
+              }}
+              className="h-8 text-[10px] sm:text-xs bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-700 shrink-0 self-start sm:self-auto"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1 text-slate-500" />
+              Ambil dari Surat Pengantar
+            </Button>
           </div>
           <div className="space-y-2">
             <Label className="text-[10px] sm:text-sm">Nomor Surat Pesanan</Label>

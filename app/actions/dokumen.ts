@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
 
 export async function updateMetaDokumen(
   spjId: string,
@@ -79,6 +80,9 @@ export async function updateMetaDokumen(
         },
       });
     });
+
+    revalidatePath(`/dashboard/spj/${spjId}`);
+    revalidatePath(`/dashboard/spj`);
 
     return { success: true };
   } catch (error: any) {

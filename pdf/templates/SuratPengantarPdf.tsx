@@ -84,25 +84,34 @@ export default function SuratPengantarPdf({
           <Text style={styles.intro}>Bersama ini kami sampaikan daftar pesanan barang antara lain:</Text>
           
           <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <View style={[styles.colNo, styles.thCell]}><Text>No</Text></View>
-              <View style={[styles.colJenis, styles.thCell]}><Text>Jenis Barang</Text></View>
-              <View style={[styles.colJumlah, styles.thCell]}><Text>Jumlah Unit</Text></View>
-              <View style={[styles.colKeterangan, styles.thCell]}><Text>Keterangan</Text></View>
-            </View>
-            
-            {items.map((item, idx) => (
-              <View style={styles.tableRow} key={idx}>
-                <View style={[styles.colNo, styles.tdCell]}><Text>{item.no}.</Text></View>
-                <View style={[styles.colJenis, styles.tdCell]}><Text>{item.jenisBarang}</Text></View>
-                <View style={[styles.colJumlah, styles.tdCell]}>
-                  <Text>{item.qty}   {item.satuan}</Text>
-                </View>
-                <View style={[styles.colKeterangan, styles.tdCell, idx !== items.length - 1 ? { borderBottomWidth: 0 } : {}]}>
-                  <Text>{idx === 0 ? item.keterangan : ''}</Text>
-                </View>
+            {/* Left Section: No, Jenis Barang, Jumlah Unit */}
+            <View style={styles.tableLeftCol}>
+              <View style={styles.tableHeaderRow}>
+                <View style={[styles.colNoSub, styles.thCell]}><Text>No</Text></View>
+                <View style={[styles.colJenisSub, styles.thCell]}><Text>Jenis Barang</Text></View>
+                <View style={[styles.colJumlahSub, styles.thCell]}><Text>Jumlah Unit</Text></View>
               </View>
-            ))}
+              
+              <View style={{ flexGrow: 1, flexDirection: 'column' }}>
+                {items.map((item, idx) => (
+                  <View style={[styles.tableRow, { flexGrow: 1 }]} key={idx}>
+                    <View style={[styles.colNoSub, styles.tdCell]}><Text>{item.no}.</Text></View>
+                    <View style={[styles.colJenisSub, styles.tdCell]}><Text>{item.jenisBarang}</Text></View>
+                    <View style={[styles.colJumlahSub, styles.tdCell]}>
+                      <Text>{item.qty}   {item.satuan}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Right Section: Keterangan (vertical merge) */}
+            <View style={styles.tableRightCol}>
+              <View style={styles.thCell}><Text>Keterangan</Text></View>
+              <View style={[styles.tdCell, { flexGrow: 1 }]}>
+                <Text>{Array.from(new Set(items.map((i) => i.keterangan).filter(Boolean))).join('\n') || items[0]?.keterangan || ''}</Text>
+              </View>
+            </View>
           </View>
           
           <Text style={styles.outro}>Demikian kami sampaikan, atas kerja samanya di ucapkan terimakasih</Text>
@@ -193,16 +202,25 @@ const styles = StyleSheet.create({
   },
   table: {
     width: '100%',
+    flexDirection: 'row',
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#000',
     borderBottomWidth: 0,
     borderRightWidth: 0,
   },
-  tableHeader: {
+  tableLeftCol: {
+    width: '68%',
+    flexDirection: 'column',
+  },
+  tableRightCol: {
+    width: '32%',
+    flexDirection: 'column',
+  },
+  tableHeaderRow: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    fontWeight: 700
+    fontWeight: 700,
   },
   tableRow: {
     flexDirection: 'row',
@@ -229,10 +247,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 1.2,
   },
-  colNo: { width: '8%', textAlign: 'center' },
-  colJenis: { width: '38%' },
-  colJumlah: { width: '22%' },
-  colKeterangan: { width: '32%' },
+  colNoSub: { width: '11.7647%', textAlign: 'center' },
+  colJenisSub: { width: '55.8824%' },
+  colJumlahSub: { width: '32.3529%' },
 
   signers2col: {
     flexDirection: 'row',
