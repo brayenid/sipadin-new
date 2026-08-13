@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -51,12 +51,36 @@ type AgendaItem = {
   };
 };
 
+const NAMA_BULAN = [
+  { value: "ALL", label: "Seluruh Bulan" },
+  { value: "1", label: "Januari" },
+  { value: "2", label: "Februari" },
+  { value: "3", label: "Maret" },
+  { value: "4", label: "April" },
+  { value: "5", label: "Mei" },
+  { value: "6", label: "Juni" },
+  { value: "7", label: "Juli" },
+  { value: "8", label: "Agustus" },
+  { value: "9", label: "September" },
+  { value: "10", label: "Oktober" },
+  { value: "11", label: "November" },
+  { value: "12", label: "Desember" },
+];
+
 export default function AgendaList({
   initialData,
   totalPejabatTerdaftar,
+  selectedYear = "",
+  selectedBulan = "ALL",
+  customStartDate = "",
+  customEndDate = "",
 }: {
   initialData: AgendaItem[];
   totalPejabatTerdaftar: number;
+  selectedYear?: string;
+  selectedBulan?: string;
+  customStartDate?: string;
+  customEndDate?: string;
 }) {
   const router = useRouter();
   const [data, setData] = useState<AgendaItem[]>(initialData);
@@ -64,6 +88,34 @@ export default function AgendaList({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Filter Waktu State
+  const [startDateInput, setStartDateInput] = useState(customStartDate);
+  const [endDateInput, setEndDateInput] = useState(customEndDate);
+  const [isCustomRange, setIsCustomRange] = useState(!!(customStartDate && customEndDate));
+
+  // Sync initialData when server props update
+  React.useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
+  const updateFilters = (newParams: { tahun?: string; bulan?: string; startDate?: string; endDate?: string }) => {
+    const params = new URLSearchParams();
+    const yr = newParams.tahun !== undefined ? newParams.tahun : selectedYear;
+    const bln = newParams.bulan !== undefined ? newParams.bulan : selectedBulan;
+    const sDate = newParams.startDate !== undefined ? newParams.startDate : startDateInput;
+    const eDate = newParams.endDate !== undefined ? newParams.endDate : endDateInput;
+
+    if (yr) params.set("tahun", yr);
+    if (sDate && eDate) {
+      params.set("startDate", sDate);
+      params.set("endDate", eDate);
+    } else if (bln && bln !== "ALL") {
+      params.set("bulan", bln);
+    }
+
+    router.push(`?${params.toString()}`);
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -215,32 +267,127 @@ export default function AgendaList({
 
         <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
           {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <Input
-                placeholder="Cari kegiatan atau tempat acara..."
-                value={search}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Input
+                  placeholder="Cari kegiatan atau tempat acara..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 text-xs h-9"
+                />
+              </div>
+
+              <select
+                value={filterStatus}
                 onChange={(e) => {
-                  setSearch(e.target.value);
+                  setFilterStatus(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="pl-9 text-xs h-9"
-              />
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-40"
+              >
+                <option value="ALL">Semua Status ({totalAgenda})</option>
+                <option value="BERLANGSUNG">Berlangsung ({countBerlangsung})</option>
+                <option value="SELESAI">Selesai ({countSelesai})</option>
+              </select>
             </div>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-44"
-            >
-              <option value="ALL">Semua Agenda ({totalAgenda})</option>
-              <option value="BERLANGSUNG">Berlangsung ({countBerlangsung})</option>
-              <option value="SELESAI">Selesai ({countSelesai})</option>
-            </select>
+            {/* Filter Waktu: Tahun, Bulan, Rentang Tanggal */}
+            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto self-end lg:self-auto">
+              {/* Selector Tahun */}
+              <select
+                value={selectedYear || new Date().getFullYear().toString()}
+                onChange={(e) => {
+                  updateFilters({ tahun: e.target.value });
+                }}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9"
+              >
+                <option value="">Semua Tahun</option>
+                {Array.from({ length: new Date().getFullYear() - 2024 + 2 }, (_, i) => 2024 + i)
+                  .reverse()
+                  .map((yr) => (
+                    <option key={yr} value={yr}>
+                      Tahun {yr}
+                    </option>
+                  ))}
+              </select>
+
+              {/* Selector Bulan */}
+              <select
+                value={isCustomRange ? "ALL" : selectedBulan}
+                disabled={isCustomRange}
+                onChange={(e) => {
+                  updateFilters({ bulan: e.target.value, startDate: "", endDate: "" });
+                }}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 disabled:opacity-50"
+              >
+                {NAMA_BULAN.map((b) => (
+                  <option key={b.value} value={b.value}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Toggle Custom Rentang Tanggal */}
+              <Button
+                type="button"
+                variant={isCustomRange ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (isCustomRange) {
+                    setIsCustomRange(false);
+                    setStartDateInput("");
+                    setEndDateInput("");
+                    updateFilters({ startDate: "", endDate: "" });
+                  } else {
+                    setIsCustomRange(true);
+                  }
+                }}
+                className={`text-xs! h-9 font-semibold ${
+                  isCustomRange
+                    ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 mr-1" />
+                Rentang
+              </Button>
+
+              {/* Input Tanggal jika Custom Range aktif */}
+              {isCustomRange && (
+                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-indigo-200 animate-in fade-in">
+                  <Input
+                    type="date"
+                    value={startDateInput}
+                    onChange={(e) => setStartDateInput(e.target.value)}
+                    className="text-xs h-7 w-28 bg-white"
+                  />
+                  <span className="text-xs text-slate-400 font-medium">-</span>
+                  <Input
+                    type="date"
+                    value={endDateInput}
+                    onChange={(e) => setEndDateInput(e.target.value)}
+                    className="text-xs h-7 w-28 bg-white"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (startDateInput && endDateInput) {
+                        updateFilters({ startDate: startDateInput, endDate: endDateInput });
+                      }
+                    }}
+                    className="text-xs h-7 px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shrink-0"
+                  >
+                    OK
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Table */}

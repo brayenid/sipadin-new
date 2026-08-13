@@ -110,7 +110,12 @@ export async function bulkUpdateBindingPejabat(
 // 2. AGENDA ABSENSI CRUD
 // ==========================================
 
-export async function getAgendaAbsensiList(filter?: { status?: StatusAgendaAbsensi; search?: string }) {
+export async function getAgendaAbsensiList(filter?: {
+  status?: StatusAgendaAbsensi;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -128,6 +133,16 @@ export async function getAgendaAbsensiList(filter?: { status?: StatusAgendaAbsen
       { namaKegiatan: { contains: filter.search, mode: "insensitive" } },
       { tempat: { contains: filter.search, mode: "insensitive" } },
     ];
+  }
+
+  if (filter?.startDate || filter?.endDate) {
+    whereClause.tanggal = {};
+    if (filter.startDate) {
+      whereClause.tanggal.gte = parseWitaInput(filter.startDate);
+    }
+    if (filter.endDate) {
+      whereClause.tanggal.lte = parseWitaInput(filter.endDate);
+    }
   }
 
   const agendas = await prisma.agendaAbsensi.findMany({

@@ -4,6 +4,7 @@ import "@/pdf/fonts";
 
 export type RekapKehadiranPdfData = {
   tahun: string;
+  periodeLabel?: string;
   totalAgenda: number;
   dataOpd: {
     instansi: string;
@@ -28,7 +29,7 @@ export default function LaporanRekapKehadiranPdf({
         {/* Judul Laporan */}
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>LAPORAN REKAPITULASI KEHADIRAN PERANGKAT DAERAH</Text>
-          <Text style={styles.subtitleText}>TAHUN ANGGARAN: {data.tahun}</Text>
+          <Text style={styles.subtitleText}>{data.periodeLabel ? `PERIODE: ${data.periodeLabel.toUpperCase()}` : `TAHUN ANGGARAN: ${data.tahun}`}</Text>
           <Text style={styles.descText}>
             Akumulasi tingkat kehadiran pejabat eselon pada seluruh agenda kegiatan resmi daerah (Total Evaluasi: {data.totalAgenda} Agenda)
           </Text>

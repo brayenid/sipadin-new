@@ -8,9 +8,44 @@ export const metadata = {
   title: "Absensi Perangkat Daerah - SIPADIN",
 };
 
-export default async function AbsensiPage() {
+export default async function AbsensiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    tahun?: string;
+    bulan?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
+}) {
+  const resolvedParams = await searchParams;
+  const selectedYear = resolvedParams.tahun || "";
+  const selectedBulan = resolvedParams.bulan || "ALL";
+  const customStartDate = resolvedParams.startDate || "";
+  const customEndDate = resolvedParams.endDate || "";
+
+  let startDate = "";
+  let endDate = "";
+
+  if (customStartDate && customEndDate) {
+    startDate = customStartDate;
+    endDate = customEndDate;
+  } else if (selectedYear && selectedBulan && selectedBulan !== "ALL") {
+    const monthNum = parseInt(selectedBulan, 10);
+    const paddedMonth = monthNum < 10 ? `0${monthNum}` : `${monthNum}`;
+    const lastDay = new Date(parseInt(selectedYear, 10), monthNum, 0).getDate();
+    startDate = `${selectedYear}-${paddedMonth}-01`;
+    endDate = `${selectedYear}-${paddedMonth}-${lastDay < 10 ? `0${lastDay}` : lastDay}`;
+  } else if (selectedYear) {
+    startDate = `${selectedYear}-01-01`;
+    endDate = `${selectedYear}-12-31`;
+  }
+
   const [agendas, pejabatList] = await Promise.all([
-    getAgendaAbsensiList(),
+    getAgendaAbsensiList({
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    }),
     getPejabatWajibAbsen(),
   ]);
 
@@ -36,7 +71,7 @@ export default async function AbsensiPage() {
               Absensi Perangkat Daerah
             </h1>
             <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
-              Pencatatan dan rekapitulasi kehadiran resmi Pejabat Eselon II.b dan III.a pada kegiatan Pemerintah Daerah.
+              Pencatatan dan rekapitulasi kehadiran resmi Pejabat pada seluruh kegiatan.
             </p>
           </div>
         </div>
@@ -45,6 +80,10 @@ export default async function AbsensiPage() {
       <AgendaList
         initialData={agendas as any}
         totalPejabatTerdaftar={pejabatList.length}
+        selectedYear={selectedYear}
+        selectedBulan={selectedBulan}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
       />
     </div>
   );

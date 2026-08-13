@@ -75,9 +75,28 @@ type PegawaiSummaryItem = {
   }[];
 };
 
+const NAMA_BULAN = [
+  { value: "ALL", label: "Seluruh Bulan" },
+  { value: "1", label: "Januari" },
+  { value: "2", label: "Februari" },
+  { value: "3", label: "Maret" },
+  { value: "4", label: "April" },
+  { value: "5", label: "Mei" },
+  { value: "6", label: "Juni" },
+  { value: "7", label: "Juli" },
+  { value: "8", label: "Agustus" },
+  { value: "9", label: "September" },
+  { value: "10", label: "Oktober" },
+  { value: "11", label: "November" },
+  { value: "12", label: "Desember" },
+];
+
 export default function RekapKehadiranView({
   initialData,
   selectedYear,
+  selectedBulan = "ALL",
+  customStartDate = "",
+  customEndDate = "",
 }: {
   initialData: {
     totalAgenda: number;
@@ -85,6 +104,9 @@ export default function RekapKehadiranView({
     pegawaiSummary: PegawaiSummaryItem[];
   };
   selectedYear: string;
+  selectedBulan?: string;
+  customStartDate?: string;
+  customEndDate?: string;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("opd");
@@ -93,6 +115,43 @@ export default function RekapKehadiranView({
   const [expandedPegawai, setExpandedPegawai] = useState<string | null>(null);
   const [isCetakPdfOpen, setIsCetakPdfOpen] = useState(false);
   const [isCetakPegPdfOpen, setIsCetakPegPdfOpen] = useState(false);
+
+  // Filter state untuk rentang tanggal opsional
+  const [startDateInput, setStartDateInput] = useState(customStartDate);
+  const [endDateInput, setEndDateInput] = useState(customEndDate);
+  const [isCustomRange, setIsCustomRange] = useState(!!(customStartDate && customEndDate));
+
+  const updateFilters = (newParams: { tahun?: string; bulan?: string; startDate?: string; endDate?: string }) => {
+    const params = new URLSearchParams();
+    const yr = newParams.tahun !== undefined ? newParams.tahun : selectedYear;
+    const bln = newParams.bulan !== undefined ? newParams.bulan : selectedBulan;
+    const sDate = newParams.startDate !== undefined ? newParams.startDate : startDateInput;
+    const eDate = newParams.endDate !== undefined ? newParams.endDate : endDateInput;
+
+    if (yr) params.set("tahun", yr);
+    if (sDate && eDate) {
+      params.set("startDate", sDate);
+      params.set("endDate", eDate);
+    } else if (bln && bln !== "ALL") {
+      params.set("bulan", bln);
+    }
+
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    router.push(`?${params.toString()}${hash}`);
+  };
+
+  const getPeriodeLabel = () => {
+    if (customStartDate && customEndDate) {
+      return `${customStartDate} s/d ${customEndDate}`;
+    }
+    if (selectedBulan && selectedBulan !== "ALL") {
+      const bObj = NAMA_BULAN.find((b) => b.value === selectedBulan);
+      return `${bObj ? bObj.label : ""} ${selectedYear}`;
+    }
+    return `Tahun ${selectedYear}`;
+  };
+
+  const periodeLabelText = getPeriodeLabel();
 
   // Sync state activeTab dengan Hash URL saat load
   React.useEffect(() => {
@@ -256,29 +315,30 @@ export default function RekapKehadiranView({
         </Card>
       </div>
 
-      {/* Tabs & Year Selector Layout */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full sm:w-auto">
+      {/* Tabs & Period Filter Layout */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full md:w-auto">
           <TabsList className="mb-0">
             <TabsTrigger value="opd" className="text-xs font-semibold">Rekap Per OPD</TabsTrigger>
             <TabsTrigger value="pegawai" className="text-xs font-semibold">Rekap Per Pegawai</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        {/* Year Filter Dropdown */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" />
-            Tahun Laporan:
-          </span>
+        {/* Filter Waktu: Tahun, Bulan, dan Rentang Tanggal */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+            <Filter className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Filter:</span>
+          </div>
+
+          {/* Selector Tahun */}
           <select
             value={selectedYear}
             onChange={(e) => {
-              router.push(`?tahun=${e.target.value}`);
+              updateFilters({ tahun: e.target.value });
             }}
-            className="text-xs border border-slate-200/60 rounded-md px-2.5 py-1.5 bg-white text-slate-700 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9"
+            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9"
           >
-            {/* Array dari 2024 sampai tahun berjalan + 1 */}
             {Array.from({ length: new Date().getFullYear() - 2024 + 2 }, (_, i) => 2024 + i)
               .reverse()
               .map((yr) => (
@@ -287,6 +347,78 @@ export default function RekapKehadiranView({
                 </option>
               ))}
           </select>
+
+          {/* Selector Bulan */}
+          <select
+            value={isCustomRange ? "ALL" : selectedBulan}
+            disabled={isCustomRange}
+            onChange={(e) => {
+              updateFilters({ bulan: e.target.value, startDate: "", endDate: "" });
+            }}
+            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 disabled:opacity-50"
+          >
+            {NAMA_BULAN.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Toggle Custom Rentang Tanggal */}
+          <Button
+            type="button"
+            variant={isCustomRange ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              if (isCustomRange) {
+                setIsCustomRange(false);
+                setStartDateInput("");
+                setEndDateInput("");
+                updateFilters({ startDate: "", endDate: "" });
+              } else {
+                setIsCustomRange(true);
+              }
+            }}
+            className={`text-xs! h-9 font-semibold ${
+              isCustomRange
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 mr-1" />
+            Rentang
+          </Button>
+
+          {/* Input Tanggal Mulai - Selesai jika Custom Range aktif */}
+          {isCustomRange && (
+            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-indigo-200 animate-in fade-in">
+              <Input
+                type="date"
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
+                className="text-xs h-7 w-32 bg-white"
+              />
+              <span className="text-xs text-slate-400 font-medium">s/d</span>
+              <Input
+                type="date"
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
+                className="text-xs h-7 w-32 bg-white"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  if (startDateInput && endDateInput) {
+                    updateFilters({ startDate: startDateInput, endDate: endDateInput });
+                  }
+                }}
+                className="text-xs h-7 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shrink-0"
+              >
+                Terapkan
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -702,6 +834,7 @@ export default function RekapKehadiranView({
         onClose={() => setIsCetakPdfOpen(false)}
         data={{
           tahun: selectedYear,
+          periodeLabel: periodeLabelText,
           totalAgenda: initialData.totalAgenda,
           dataOpd: filteredOpd.map((opd) => ({
             instansi: opd.instansi,
@@ -721,6 +854,7 @@ export default function RekapKehadiranView({
         onClose={() => setIsCetakPegPdfOpen(false)}
         data={{
           tahun: selectedYear,
+          periodeLabel: periodeLabelText,
           totalAgenda: initialData.totalAgenda,
           dataPegawai: filteredPegawai.map((peg) => ({
             nama: peg.nama,

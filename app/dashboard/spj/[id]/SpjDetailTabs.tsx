@@ -257,8 +257,8 @@ export default function SpjDetailTabs({
               </>
             )}
 
-            {/* Hanya tampilkan DOPD jika Perjadin atau Honorarium */}
-            {(spj.jenisSpj === 'PERJADIN' || spj.jenisSpj === 'HONORARIUM') && <TabsTrigger value="dopd">DOPD</TabsTrigger>}
+            {/* Hanya tampilkan DOPD jika Perjadin */}
+            {spj.jenisSpj === 'PERJADIN' && <TabsTrigger value="dopd">DOPD</TabsTrigger>}
             {spj.jenisSpj !== 'PERJADIN' && spj.jenisSpj !== 'HONORARIUM' && (
               <TabsTrigger value="pengeluaran">Pengeluaran</TabsTrigger>
             )}
@@ -669,8 +669,8 @@ export default function SpjDetailTabs({
           </>
         )}
 
-        {/* TAB DOPD (KHUSUS PERJADIN & HONORARIUM) */}
-        {(spj.jenisSpj === 'PERJADIN' || spj.jenisSpj === 'HONORARIUM') && (
+        {/* TAB DOPD (KHUSUS PERJADIN) */}
+        {spj.jenisSpj === 'PERJADIN' && (
           <TabsContent value="dopd">
             <DopdTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
           </TabsContent>

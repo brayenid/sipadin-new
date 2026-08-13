@@ -29,6 +29,7 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
 
   const [form, setForm] = useState({
     pptkId: defaultPptk,
+    alamatPptk: data.alamatPptk ?? "",
     nomorPrefix: data.nomorPrefix ?? "000.3.3 /",
     nomorTengah: data.nomorTengah ?? "",
     nomorSuffix: data.nomorSuffix ?? defaultSuffix,
@@ -108,6 +109,18 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
                 </Command>
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[10px] sm:text-sm">Alamat Pihak Kedua (PPTK)</Label>
+            <Input
+              name="alamatPptk"
+              value={form.alamatPptk}
+              onChange={handleChange}
+              placeholder="Jl. Komplek Perkantoran Bupati Kutai Barat"
+              className="h-9 text-[10px] sm:text-sm px-3 bg-white"
+            />
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Kosongkan jika menggunakan alamat default (Jl. Komplek Perkantoran Bupati Kutai Barat).</p>
           </div>
         </div>
 
@@ -210,7 +223,7 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
                 nama: pptk.nama, 
                 nip: pptk.nip, 
                 jabatan: "Pejabat Pelaksana Teknis Kegiatan", 
-                alamat: "Jl. Komplek Perkantoran Bupati Kutai Barat" 
+                alamat: form.alamatPptk ? form.alamatPptk : "Jl. Komplek Perkantoran Bupati Kutai Barat" 
               } : null}
               items={itemsData}
               layout={config.styles}

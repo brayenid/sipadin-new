@@ -151,7 +151,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             tanggalSpb: bapbMeta.tanggalSpb || null,
             tanggalSpbLabel: bapbMeta.tanggalSpbLabel || null,
             nomorSpb: bapbMeta.nomorSpb || '.............................',
-            bagianOrganisasiLabel: config.content?.bagianOrganisasiLabel || "Bagian Organisasi Setdakab Kutai Barat",
+            bagianOrganisasiLabel: config.content?.bagianOrganisasiLabel || bapbMeta.bagianOrganisasi || "Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat",
             vendorNama: spj.maminDetail?.vendor?.namaVendor || "......................................",
             vendorPemilik: spj.maminDetail?.vendor?.namaPemilik || "......................................",
           };
@@ -209,7 +209,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
                 nama: pptk.nama, 
                 nip: pptk.nip, 
                 jabatan: "Pejabat Pelaksana Teknis Kegiatan", 
-                alamat: "Jl. Komplek Perkantoran Bupati Kutai Barat" 
+                alamat: bastbMeta.alamatPptk ? bastbMeta.alamatPptk : "Jl. Komplek Perkantoran Bupati Kutai Barat" 
               } : null}
               items={itemsData}
               layout={config.styles}

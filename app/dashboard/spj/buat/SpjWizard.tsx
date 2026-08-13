@@ -227,14 +227,18 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
         {/* TAB LIST DISABLED POINTER EVENTS SO USER MUST USE BUTTONS */}
         <div className="px-6">
           <TabsList className="pointer-events-none mb-6">
-            <TabsTrigger value="step-1">1. Info Dasar</TabsTrigger>
-            <TabsTrigger value="step-2">2. Detail SPJ</TabsTrigger>
-            {jenisSpj !== "PERJADIN" && (
+            <TabsTrigger value="step-1">
+              {jenisSpj === "HONORARIUM" ? "1. Info Dasar & Final" : "1. Info Dasar"}
+            </TabsTrigger>
+            {jenisSpj !== "HONORARIUM" && (
+              <TabsTrigger value="step-2">2. Detail SPJ</TabsTrigger>
+            )}
+            {!["PERJADIN", "HONORARIUM"].includes(jenisSpj) && (
               <TabsTrigger value="step-3">
                 {jenisSpj === "MAKAN_MINUM" ? "3. Rincian Biaya & Final" : "3. Rincian Biaya"}
               </TabsTrigger>
             )}
-            {jenisSpj !== "MAKAN_MINUM" && (
+            {!["MAKAN_MINUM", "HONORARIUM"].includes(jenisSpj) && (
               <TabsTrigger value="step-4">
                 {jenisSpj === "PERJADIN" ? "3. Personil & Final" : "4. Personil & Final"}
               </TabsTrigger>
@@ -293,6 +297,18 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
               <Input type="date" value={tanggalSpj} onChange={(e) => setTanggalSpj(e.target.value)} />
             </div>
 
+            {["HONORARIUM", "MAKAN_MINUM", "OPERASIONAL"].includes(jenisSpj) && (
+              <div className="space-y-2">
+                <Label>Tanggal Pelaksanaan <span className="text-red-500">*</span></Label>
+                <Input
+                  type="date"
+                  value={tanggalPelaksanaan}
+                  onChange={(e) => setTanggalPelaksanaan(e.target.value)}
+                />
+                <p className="text-[10px] sm:text-xs text-slate-500">Tanggal pelaksanaan kegiatan wajib diisi untuk SPJ jenis ini.</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Nomor BKU (Opsional)</Label>
               <Input placeholder="001/BKU/2026" value={nomorBku} onChange={(e) => setNomorBku(e.target.value)} />
@@ -322,9 +338,28 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
           </div>
           
           <div className="flex justify-end pt-4">
-            <Button onClick={() => setActiveTab("step-2")} disabled={!kodeRekeningId || !tanggalSpj || !perihal}>
-              Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            {jenisSpj === "HONORARIUM" ? (
+              <Button 
+                onClick={handleSubmit} 
+                disabled={loading || !isValidSaldo || !kodeRekeningId || !tanggalSpj || !perihal || !tanggalPelaksanaan} 
+                className="bg-primary text-white"
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} 
+                Simpan & Rekam SPJ
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => setActiveTab("step-2")} 
+                disabled={
+                  !kodeRekeningId || 
+                  !tanggalSpj || 
+                  !perihal || 
+                  (["MAKAN_MINUM", "OPERASIONAL"].includes(jenisSpj) && !tanggalPelaksanaan)
+                }
+              >
+                Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
           </div>
         </TabsContent>
 
@@ -376,7 +411,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
             </div>
           )}
 
-          {["HONORARIUM", "OPERASIONAL"].includes(jenisSpj) && (
+          {jenisSpj === "OPERASIONAL" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-slate-50 border border-slate-200 p-8 rounded-xl">
               <div className="space-y-3">
                 <Label className="text-base font-semibold text-slate-900">Tanggal Pelaksanaan <span className="text-red-500">*</span></Label>
@@ -386,7 +421,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
                   onChange={(e) => setTanggalPelaksanaan(e.target.value)}
                   className="bg-white"
                 />
-                <p className="text-xs text-slate-500">Tanggal spesifik pelaksanaan kegiatan. Akan otomatis muncul di dokumen Daftar Hadir Narasumber.</p>
+                <p className="text-xs text-slate-500">Tanggal spesifik pelaksanaan kegiatan. Terhubung dengan dokumen SPJ.</p>
               </div>
             </div>
           )}
@@ -399,7 +434,8 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
               onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-4" : "step-3")}
               disabled={
                 (jenisSpj === "PERJADIN" && (!perjadin.tempatBerangkat || !perjadin.tempatTujuan || !perjadin.tglBerangkat || !perjadin.tglKembali)) ||
-                (jenisSpj === "MAKAN_MINUM" && (!mamin.vendorId || !mamin.jumlahPeserta))
+                (jenisSpj === "MAKAN_MINUM" && (!mamin.vendorId || !mamin.jumlahPeserta)) ||
+                (jenisSpj === "OPERASIONAL" && !tanggalPelaksanaan)
               }
             >
               Selanjutnya <ArrowRight className="w-4 h-4 ml-2" />
@@ -547,7 +583,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
           )}
 
           <div className="flex justify-between pt-8 border-t">
-            <Button variant="outline" onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-2" : "step-3")} disabled={loading}>
+            <Button variant="outline" onClick={() => setActiveTab(jenisSpj === "PERJADIN" || jenisSpj === "HONORARIUM" ? "step-2" : "step-3")} disabled={loading}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
             </Button>
             <Button onClick={handleSubmit} disabled={loading || !isValidSaldo || !kodeRekeningId || !tanggalSpj} className="bg-primary text-white">

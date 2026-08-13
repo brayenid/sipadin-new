@@ -10,15 +10,33 @@ export const metadata = {
 export default async function RekapAbsensiPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tahun?: string }>;
+  searchParams: Promise<{
+    tahun?: string;
+    bulan?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
 }) {
   const resolvedParams = await searchParams;
   const currentYear = new Date().getFullYear().toString();
   const selectedYear = resolvedParams.tahun || currentYear;
+  const selectedBulan = resolvedParams.bulan || "ALL";
+  const customStartDate = resolvedParams.startDate || "";
+  const customEndDate = resolvedParams.endDate || "";
 
-  // Query tanggal 1 Januari - 31 Desember dari tahun terpilih
-  const startDate = `${selectedYear}-01-01`;
-  const endDate = `${selectedYear}-12-31`;
+  let startDate = `${selectedYear}-01-01`;
+  let endDate = `${selectedYear}-12-31`;
+
+  if (customStartDate && customEndDate) {
+    startDate = customStartDate;
+    endDate = customEndDate;
+  } else if (selectedBulan && selectedBulan !== "ALL") {
+    const monthNum = parseInt(selectedBulan, 10);
+    const paddedMonth = monthNum < 10 ? `0${monthNum}` : `${monthNum}`;
+    const lastDay = new Date(parseInt(selectedYear, 10), monthNum, 0).getDate();
+    startDate = `${selectedYear}-${paddedMonth}-01`;
+    endDate = `${selectedYear}-${paddedMonth}-${lastDay < 10 ? `0${lastDay}` : lastDay}`;
+  }
 
   const data = await getRekapKehadiranOpd({
     startDate,
@@ -44,10 +62,10 @@ export default async function RekapAbsensiPage({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              Rekapitulasi Kehadiran Perangkat Daerah
+              Rekapitulasi Kehadiran Pejabat
             </h1>
             <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
-              Laporan akumulasi kedisiplinan dan tingkat kehadiran Pejabat Eselon II.b dan III.a pada seluruh kegiatan Pemerintah Daerah.
+              Laporan akumulasi tingkat kehadiran Pejabat pada seluruh kegiatan.
             </p>
           </div>
         </div>
@@ -56,6 +74,9 @@ export default async function RekapAbsensiPage({
       <RekapKehadiranView 
         initialData={data as any} 
         selectedYear={selectedYear}
+        selectedBulan={selectedBulan}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
       />
     </div>
   );

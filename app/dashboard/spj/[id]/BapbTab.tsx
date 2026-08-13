@@ -28,6 +28,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
   const [form, setForm] = useState({
     kpaId: data.kpaId || spj.metaDokumen?.dopd?.kpaId || "",
     pptkId: data.pptkId || spj.metaDokumen?.suratPengantar?.penandatanganId || "",
+    bagianOrganisasi: data.bagianOrganisasi ?? "",
     nomorPrefix: data.nomorPrefix ?? "000.2.3.1 /",
     nomorTengah: data.nomorTengah ?? "",
     nomorSuffix: data.nomorSuffix ?? defaultSuffix,
@@ -194,6 +195,18 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
             />
             <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Tanggal ini akan dikonversi ke format terbilang (huruf).</p>
           </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label className="text-[10px] sm:text-sm">Unit Kerja</Label>
+            <Input
+              name="bagianOrganisasi"
+              value={form.bagianOrganisasi}
+              onChange={handleChange}
+              placeholder="Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat"
+              className="h-9 text-[10px] sm:text-sm px-3"
+            />
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Kosongkan jika menggunakan default (Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat).</p>
+          </div>
         </div>
 
         {/* REFERENSI SURAT PESANAN */}
@@ -269,7 +282,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
         spjId={spj.id}
         docKey="bapbPdf"
         fields={[
-          { key: 'bagianOrganisasiOverride', label: 'Teks Bagian Organisasi', type: 'text', placeholder: 'Ketik untuk override default (Bagian Organisasi Setdakab Kutai Barat)' }
+          { key: 'bagianOrganisasiOverride', label: 'Teks Bagian Organisasi', type: 'text', placeholder: 'Ketik untuk override default (Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat)' }
         ]}
         renderDocument={(config) => {
           const spjData = {
@@ -279,7 +292,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
             tanggalSpbLabel: form.tanggalSpb ? formatWita(form.tanggalSpb, 'dd MMMM yyyy') : null,
             vendorNama: spj.maminDetail?.vendor?.namaVendor || "",
             vendorPemilik: spj.maminDetail?.vendor?.namaPemilik || "",
-            bagianOrganisasiLabel: config.content?.bagianOrganisasiOverride || "Bagian Organisasi Setdakab Kutai Barat"
+            bagianOrganisasiLabel: config.content?.bagianOrganisasiOverride || form.bagianOrganisasi || "Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat"
           };
 
           return (

@@ -148,7 +148,7 @@ export default function BapbPdf({
           </View>
 
           <Text style={[styles.paragraph, styles.indent]}>
-            Berdasarkan Surat Pesanan Barang Nomor {spj.nomorSpb || "......................."}, Tanggal {spj.tanggalSpbLabel || "......................."} dengan ini kami Memeriksa Pekerjaan Belanja Makan Minum Rapat Pada {spj.bagianOrganisasiLabel} Oleh {spj.vendorNama} telah sesuai dengan Surat Pesanan Barang dan Tepat Waktu serta dapat diterima oleh KPA dan PPTK, Sebagai Pejabat yang bertanggung jawab terhadap pelaksanaan pekerjaan tersebut.
+            Berdasarkan Surat Pesanan Barang Nomor {spj.nomorSpb || "......................."}, Tanggal {spj.tanggalSpbLabel || "......................."} dengan ini kami memeriksa Pekerjaan Belanja Makan Minum Rapat pada {spj.bagianOrganisasiLabel} oleh {spj.vendorNama} telah sesuai dengan Surat Pesanan Barang dan tepat waktu serta dapat diterima oleh KPA dan PPTK, sebagai pejabat yang bertanggung jawab terhadap pelaksanaan pekerjaan tersebut.
           </Text>
 
           <Text style={[styles.paragraph, styles.indent]}>
