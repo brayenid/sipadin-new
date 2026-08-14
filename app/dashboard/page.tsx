@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import { formatWita } from "@/lib/date-utils";
 import SerapanAnggaranCard from "./SerapanAnggaranCard";
 import { getTahunAnggaranDetail } from "@/app/actions/anggaran";
 
@@ -99,6 +100,10 @@ export default async function DashboardPage() {
     orderBy: { createdAt: 'desc' },
     take: 5,
     include: {
+      perjadinDetail: true,
+      maminDetail: {
+        include: { vendor: true }
+      },
       roster: true,
       kodeRekening: {
         include: {
@@ -180,6 +185,23 @@ export default async function DashboardPage() {
     pegawai: pegawaiList.find((p) => p.id === r.pegawaiId),
     count: r._count.spjId
   }));
+
+  const renderTanggalRange = (spj: any) => {
+    if (spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail) {
+      const start = formatWita(spj.perjadinDetail.tglBerangkat, 'dd MMM yyyy');
+      const end = formatWita(spj.perjadinDetail.tglKembali, 'dd MMM yyyy');
+      
+      const startParts = start.split(' ');
+      const endParts = end.split(' ');
+      
+      if (startParts[1] === endParts[1] && startParts[2] === endParts[2]) {
+        return `${startParts[0]} - ${end}`;
+      }
+      return `${start} - ${end}`;
+    }
+    
+    return formatWita(spj.tanggalSpj, 'dd MMMM yyyy');
+  };
 
   return (
     <div className="p-4 sm:p-8 space-y-4">
@@ -371,10 +393,8 @@ export default async function DashboardPage() {
                 ) : (
                   recentSpjs.map((spj) => (
                     <TableRow key={spj.id}>
-                      <TableCell className="font-medium">
-                        {new Intl.DateTimeFormat("id-ID", {
-                          day: "numeric", month: "long", year: "numeric"
-                        }).format(spj.tanggalSpj)}
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {renderTanggalRange(spj)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={

@@ -6,6 +6,7 @@ import SpjDetailTabs from "./SpjDetailTabs";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { serializeBigInt } from "@/lib/utils";
+import { formatWita } from "@/lib/date-utils";
 
 export const metadata = {
   title: "Detail SPJ - SIPADIN",
@@ -115,9 +116,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
             <p className="text-[10px] font-medium sm:text-sm text-slate-700 mt-0.5 sm:mt-1">Perihal: {spj.perihal}</p>
           )}
           <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1.5">
-            {new Intl.DateTimeFormat("id-ID", {
-              day: "numeric", month: "long", year: "numeric"
-            }).format(spj.tanggalSpj)}
+            {formatWita(spj.tanggalSpj, "dd MMMM yyyy")}
           </p>
         </div>
         <div className="text-left sm:text-right bg-slate-50 py-1.5 px-3 sm:py-2 sm:px-4 rounded-md border border-slate-200/60 w-full md:w-auto flex justify-between sm:block items-center">
