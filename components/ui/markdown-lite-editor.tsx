@@ -109,22 +109,28 @@ function parseMarkdownLite(text: string): Block[] {
 
     const firstLine = lines[0] || ''
     
-    // Check level 1: [1.], [2.], [1], etc
-    let match = firstLine.match(/^\[(\d+\.?)\]\s(.*)/)
+    // Check level 1: [1.], [I.], [A.], etc
+    let match = firstLine.match(/^\[([0-9A-ZIVXLCDM]+\.?)\]\s+(.*)/)
     if (match) {
       return { id: generateId(), type: 'list-1', prefix: match[1], content: [match[2], ...lines.slice(1)].join('\n') }
     }
 
-    // Check level 2: [a.], [b.], [a], etc
-    match = firstLine.match(/^\[([a-z]\.?)\]\s(.*)/i)
+    // Check level 2: [a.], [b.], [1.], etc
+    match = firstLine.match(/^\[([a-z0-9]+\.?)\]\s+(.*)/)
     if (match) {
       return { id: generateId(), type: 'list-2', prefix: match[1], content: [match[2], ...lines.slice(1)].join('\n') }
     }
 
-    // Check level 3: [1)], [a)], [-]
-    match = firstLine.match(/^\[(.*?)\]\s(.*)/)
+    // Check level 3: [1)], [a)], [-], [•]
+    match = firstLine.match(/^\[(.*?)\]\s+(.*)/)
     if (match && (match[1].endsWith(')') || match[1] === '-' || match[1] === '•')) {
       return { id: generateId(), type: 'list-3', prefix: match[1], content: [match[2], ...lines.slice(1)].join('\n') }
+    }
+
+    // Fallback check if firstLine has raw bracket prefix without space after ]
+    match = firstLine.match(/^\[([^\]]+)\]\s*(.*)/)
+    if (match) {
+      return { id: generateId(), type: 'list-1', prefix: match[1], content: [match[2], ...lines.slice(1)].join('\n') }
     }
 
     // Default: indented paragraph
@@ -377,24 +383,63 @@ export function MarkdownLiteEditor({ value, onChange }: MarkdownLiteEditorProps)
     const textarea = document.getElementById(`textarea-${blockId}`) as HTMLTextAreaElement
     if (!textarea) return
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    let start = textarea.selectionStart
+    let end = textarea.selectionEnd
     const block = blocks.find(b => b.id === blockId)
     if (!block) return
 
     const val = block.content
-    const selectedText = val.substring(start, end)
-    
     let wrapper = ''
     if (type === 'bold') wrapper = '**'
     if (type === 'italic') wrapper = '*'
     if (type === 'underline') wrapper = '__'
 
+    const wrapperLen = wrapper.length
+
+    // Case 1: Check if the text surrounding the selection already has the wrapper
+    const beforeSelection = val.substring(0, start)
+    const afterSelection = val.substring(end)
+
+    if (beforeSelection.endsWith(wrapper) && afterSelection.startsWith(wrapper)) {
+      // Toggle OFF: Remove existing wrapper around selection
+      const newValue =
+        val.substring(0, start - wrapperLen) +
+        val.substring(start, end) +
+        val.substring(end + wrapperLen)
+
+      updateBlock(blockId, { content: newValue })
+
+      const newStart = start - wrapperLen
+      const newEnd = end - wrapperLen
+      setTimeout(() => {
+        textarea.focus()
+        textarea.setSelectionRange(newStart, newEnd)
+      }, 0)
+      return
+    }
+
+    // Case 2: Check if the selected text ITSELF is wrapped (e.g. user selected "**Pembukaan**")
+    const selectedText = val.substring(start, end)
+    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper) && selectedText.length >= wrapperLen * 2) {
+      // Toggle OFF: Strip wrapper inside selection
+      const unwrappedText = selectedText.substring(wrapperLen, selectedText.length - wrapperLen)
+      const newValue = val.substring(0, start) + unwrappedText + val.substring(end)
+
+      updateBlock(blockId, { content: newValue })
+
+      setTimeout(() => {
+        textarea.focus()
+        textarea.setSelectionRange(start, start + unwrappedText.length)
+      }, 0)
+      return
+    }
+
+    // Case 3: Toggle ON (Add wrapper)
     const finalInsert = wrapper + selectedText + wrapper
     const newValue = val.substring(0, start) + finalInsert + val.substring(end)
-    
+
     updateBlock(blockId, { content: newValue })
-    
+
     setTimeout(() => {
       textarea.focus()
       textarea.setSelectionRange(start, start + finalInsert.length)

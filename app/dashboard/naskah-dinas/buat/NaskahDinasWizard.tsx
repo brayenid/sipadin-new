@@ -56,6 +56,7 @@ export default function NaskahDinasWizard() {
       case 'SURAT_EDARAN_SEKDA': return 'Surat Edaran Sekda'
       case 'SURAT_EDARAN_BUPATI': return 'Surat Edaran Bupati'
       case 'SURAT_UMUM': return 'Surat Umum (Kustom Fleksibel)'
+      case 'NOTULA': return 'Notula Rapat'
       default: return val
     }
   }
@@ -85,6 +86,7 @@ export default function NaskahDinasWizard() {
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
+                <SelectItem className="text-xs sm:text-sm" value="NOTULA">Notula Rapat</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="SURAT_UMUM">Surat Umum (Kustom Fleksibel)</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_SEKDA">Surat Edaran Sekda</SelectItem>
                 <SelectItem className="text-xs sm:text-sm" value="SURAT_EDARAN_BUPATI">Surat Edaran Bupati</SelectItem>

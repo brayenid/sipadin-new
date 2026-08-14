@@ -18,6 +18,7 @@ import BapbPdf from "@/pdf/templates/BapbPdf";
 import SuratPengantarPdf from "@/pdf/templates/SuratPengantarPdf";
 import BastbPdf from "@/pdf/templates/BastbPdf";
 import DaftarHadirPdf from "@/pdf/templates/DaftarHadirPdf";
+import NotulaPdf from "@/pdf/templates/NotulaPdf";
 import { formatWita } from "@/lib/date-utils";
 
 const PDFViewer = dynamic(
@@ -251,6 +252,80 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             />
           );
         }
+      });
+    }
+
+    // --- NOTULA (MAKAN MINUM & HONORARIUM) ---
+    if (spj.jenisSpj === 'MAKAN_MINUM' || spj.jenisSpj === 'HONORARIUM') {
+      const notulaMeta = meta.notula || {};
+      const defaultTanggal = spj.tanggalPelaksanaan
+        ? formatWita(spj.tanggalPelaksanaan, 'yyyy-MM-dd')
+        : spj.tanggalSpj
+        ? formatWita(spj.tanggalSpj, 'yyyy-MM-dd')
+        : "";
+      const defaultAcara = spj.perihal || spj.kodeRekening?.judulRekening || "";
+      const ketuaSigner = pegawaiList.find((p) => p.id === notulaMeta.ketuaPegawaiId);
+      const mainSigner = pegawaiList.find((p) => p.id === notulaMeta.penandatanganId) || ketuaSigner;
+
+      const formatHariTanggal = (dateStr: string) => {
+        if (!dateStr) return "";
+        try {
+          const d = new Date(dateStr + "T00:00:00");
+          return new Intl.DateTimeFormat("id-ID", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }).format(d);
+        } catch {
+          return dateStr;
+        }
+      };
+
+      const notulaData = {
+        hariTanggal: formatHariTanggal(notulaMeta.tanggalRapat || defaultTanggal),
+        pukul: notulaMeta.pukul || "09.00 – selesai",
+        suratUndangan: notulaMeta.suratUndangan || `Surat Undangan Pelaksanaan ${defaultAcara}`,
+        tempat: notulaMeta.tempat || "Ruang Rapat Bagian Organisasi Setda",
+        acara: notulaMeta.acara || defaultAcara,
+
+        ketuaJabatan: notulaMeta.ketuaJabatan || "Kepala Bagian Organisasi",
+        ketuaNama: notulaMeta.ketuaNama || "AGUNG SUGARA, SE.,M.Si",
+        ketuaNip: notulaMeta.ketuaNip || ketuaSigner?.nip || "",
+        ketuaPangkat: notulaMeta.ketuaPangkat || ketuaSigner?.pangkat || "",
+
+        sekretarisJabatan: notulaMeta.sekretarisJabatan || "",
+        sekretarisNama: notulaMeta.sekretarisNama || "",
+        sekretarisNip: notulaMeta.sekretarisNip || "",
+
+        pencatatJabatan: notulaMeta.pencatatJabatan || "",
+        pencatatNama: notulaMeta.pencatatNama || "",
+        pencatatNip: notulaMeta.pencatatNip || "",
+
+        pesertaRapat: notulaMeta.pesertaRapat || "",
+
+        headerTampilkanJabatan: notulaMeta.headerTampilkanJabatan ?? true,
+        headerTampilkanNama: notulaMeta.headerTampilkanNama ?? true,
+        headerTampilkanNip: notulaMeta.headerTampilkanNip ?? false,
+        headerTampilkanPangkat: notulaMeta.headerTampilkanPangkat ?? false,
+        ttdTampilkanJabatan: notulaMeta.ttdTampilkanJabatan ?? true,
+        ttdTampilkanPangkat: notulaMeta.ttdTampilkanPangkat ?? false,
+        ttdTampilkanNip: notulaMeta.ttdTampilkanNip ?? false,
+
+        isiSurat: notulaMeta.isiSurat || "",
+      };
+
+      docs.push({
+        id: "notula",
+        title: "Notula Rapat",
+        tabId: "notula",
+        render: () => (
+          <NotulaPdf
+            data={notulaData}
+            signer={mainSigner}
+            ketuaSigner={ketuaSigner}
+          />
+        ),
       });
     }
 

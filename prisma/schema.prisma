@@ -33,6 +33,7 @@ enum JenisNaskah {
   SURAT_EDARAN_SEKDA
   SURAT_EDARAN_BUPATI
   SURAT_UMUM
+  NOTULA
 }
 
 enum StatusAgendaAbsensi {

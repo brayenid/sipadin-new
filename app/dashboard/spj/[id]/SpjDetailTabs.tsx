@@ -14,7 +14,6 @@ import { updateSpjMasterData, deleteSpjTransaction } from '@/app/actions/spj'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog'
 import { Combobox } from '@/components/ui/combobox'
 import DopdTab from './DopdTab'
 import PersonelTab from './PersonelTab'
@@ -31,6 +30,7 @@ import VisumTab from './VisumTab'
 import LaporanTab from './LaporanTab'
 import DaftarHadirNarasumberTab from './DaftarHadirNarasumberTab'
 import DaftarTandaTerimaTab from './DaftarTandaTerimaTab'
+import NotulaTab from './NotulaTab'
 import { fmtDateId } from '@/lib/utils'
 import { formatWita } from '@/lib/date-utils'
 
@@ -216,8 +216,6 @@ export default function SpjDetailTabs({
 
   return (
     <div className="space-y-6">
-      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeaveCallback} onCancel={cancelLeave} />
-
       {/* Notasi Khusus jika Bukti Dukung (Google Drive Link) Belum Diunggah */}
       {!editForm.driveUrl && (
         <div className="bg-amber-50/80 border border-amber-200/90 rounded-lg p-3.5 sm:p-4 text-amber-900 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -267,6 +265,7 @@ export default function SpjDetailTabs({
               <>
                 <TabsTrigger value="daftar-hadir-narasumber">Daftar Hadir Narasumber</TabsTrigger>
                 <TabsTrigger value="daftar-tanda-terima">Daftar Tanda Terima</TabsTrigger>
+                <TabsTrigger value="notula">Notula</TabsTrigger>
               </>
             )}
 
@@ -274,6 +273,7 @@ export default function SpjDetailTabs({
               <>
                 <TabsTrigger value="surat-pengantar">SPPB</TabsTrigger>
                 <TabsTrigger value="daftar-hadir">Daftar Hadir</TabsTrigger>
+                <TabsTrigger value="notula">Notula</TabsTrigger>
                 <TabsTrigger value="bapb">BAPB</TabsTrigger>
                 <TabsTrigger value="bastb">BASTB</TabsTrigger>
               </>
@@ -710,6 +710,12 @@ export default function SpjDetailTabs({
               <DaftarTandaTerimaTab spj={spj} pegawaiList={pegawaiList} />
             </TabsContent>
           </>
+        )}
+
+        {(spj.jenisSpj === 'MAKAN_MINUM' || spj.jenisSpj === 'HONORARIUM') && (
+          <TabsContent value="notula">
+            <NotulaTab spj={spj} pegawaiList={pegawaiList} onDirtyChange={setIsDirty} />
+          </TabsContent>
         )}
 
         {spj.jenisSpj === 'MAKAN_MINUM' && (

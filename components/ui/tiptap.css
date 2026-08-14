@@ -1,0 +1,148 @@
+/* Tiptap / ProseMirror WYSIWYG Editor Styles */
+
+.tiptap-wrapper {
+  width: 100%;
+}
+
+.tiptap-wrapper .ProseMirror,
+.tiptap-wrapper .tiptap {
+  outline: none !important;
+  min-height: 280px;
+  padding: 1.25rem !important;
+  color: #1e293b;
+  font-size: 0.9375rem;
+  line-height: 1.625;
+}
+
+/* Paragraphs */
+.tiptap-wrapper .ProseMirror p,
+.tiptap-wrapper .tiptap p {
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Headings */
+.tiptap-wrapper .ProseMirror h1,
+.tiptap-wrapper .tiptap h1 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #0f172a !important;
+  line-height: 1.3 !important;
+}
+
+.tiptap-wrapper .ProseMirror h2,
+.tiptap-wrapper .tiptap h2 {
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.375rem !important;
+  color: #1e293b !important;
+  line-height: 1.35 !important;
+}
+
+.tiptap-wrapper .ProseMirror h3,
+.tiptap-wrapper .tiptap h3 {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+  color: #334155 !important;
+}
+
+/* Unordered Lists (Bullets) */
+.tiptap-wrapper .ProseMirror ul,
+.tiptap-wrapper .tiptap ul {
+  display: block !important;
+  list-style-type: disc !important;
+  list-style-position: outside !important;
+  padding-left: 2rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Ordered Lists (Numbered 1., 2., 3.) */
+.tiptap-wrapper .ProseMirror ol,
+.tiptap-wrapper .tiptap ol {
+  display: block !important;
+  list-style-type: decimal !important;
+  list-style-position: outside !important;
+  padding-left: 2rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* List Items */
+.tiptap-wrapper .ProseMirror li,
+.tiptap-wrapper .tiptap li {
+  display: list-item !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 0.25rem !important;
+}
+
+.tiptap-wrapper .ProseMirror li > p,
+.tiptap-wrapper .tiptap li > p {
+  margin: 0 !important;
+  display: inline !important;
+}
+
+/* Nested Lists */
+.tiptap-wrapper .ProseMirror ul ul,
+.tiptap-wrapper .tiptap ul ul,
+.tiptap-wrapper .ProseMirror ol ul,
+.tiptap-wrapper .tiptap ol ul {
+  list-style-type: circle !important;
+  padding-left: 1.75rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.tiptap-wrapper .ProseMirror ul ol,
+.tiptap-wrapper .tiptap ul ol,
+.tiptap-wrapper .ProseMirror ol ol,
+.tiptap-wrapper .tiptap ol ol {
+  list-style-type: lower-alpha !important;
+  padding-left: 1.75rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Tables */
+.tiptap-wrapper .ProseMirror table,
+.tiptap-wrapper .tiptap table {
+  border-collapse: collapse !important;
+  table-layout: fixed !important;
+  width: 100% !important;
+  margin: 1rem 0 !important;
+  overflow: hidden !important;
+}
+
+.tiptap-wrapper .ProseMirror td,
+.tiptap-wrapper .tiptap td,
+.tiptap-wrapper .ProseMirror th,
+.tiptap-wrapper .tiptap th {
+  min-width: 1em !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 0.5rem 0.75rem !important;
+  vertical-align: top !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+.tiptap-wrapper .ProseMirror th,
+.tiptap-wrapper .tiptap th {
+  font-weight: 700 !important;
+  text-align: left !important;
+  background-color: #f8fafc !important;
+}
+
+.tiptap-wrapper .ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
