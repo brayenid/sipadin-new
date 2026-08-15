@@ -3,12 +3,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FolderCheck, FileCheck2, ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface KelengkapanStatProps {
   title: string;
   description: string;
-  icon: React.ReactNode;
   percent: number;
   completedCount: number;
   pendingCount: number;
@@ -18,13 +17,11 @@ interface KelengkapanStatProps {
   pendingLabel: string;
   actionHref: string;
   actionText: string;
-  accentColor?: "indigo" | "emerald";
 }
 
 function ProgressCircleCard({
   title,
   description,
-  icon,
   percent,
   completedCount,
   pendingCount,
@@ -34,7 +31,6 @@ function ProgressCircleCard({
   pendingLabel,
   actionHref,
   actionText,
-  accentColor = "indigo",
 }: KelengkapanStatProps) {
   const safePercent = Math.min(Math.max(percent, 0), 100);
   const strokeColorClass =
@@ -57,27 +53,13 @@ function ProgressCircleCard({
 
   return (
     <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden py-0 gap-0">
-      <CardHeader className="pt-3.5 pb-3.5 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className={`p-2 rounded-lg border shrink-0 ${
-            accentColor === "indigo" 
-              ? "bg-indigo-50/70 border-indigo-100 text-indigo-600" 
-              : "bg-emerald-50/70 border-emerald-100 text-emerald-600"
-          }`}>
-            {icon}
-          </div>
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold text-slate-900 truncate">
-              {title}
-            </CardTitle>
-            <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal truncate">
-              {description}
-            </CardDescription>
-          </div>
-        </div>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 ${badgeBgClass}`}>
-          {safePercent.toFixed(1)}%
-        </span>
+      <CardHeader className="pt-3 pb-3 sm:pt-4 sm:pb-4 bg-slate-50 border-b border-slate-100">
+        <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold text-slate-900">
+          {title}
+        </CardTitle>
+        <CardDescription className="text-[10px] font-medium sm:text-xs sm:font-normal">
+          {description}
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col justify-between pt-4 pb-4 sm:pt-5 sm:pb-5 px-4 sm:px-6">
@@ -189,7 +171,6 @@ export default function KelengkapanBerkasCards({
       <ProgressCircleCard
         title="Data Dukung SPJ"
         description={`Kelengkapan tautan Google Drive TA ${activeTahun}.`}
-        icon={<FolderCheck className="w-4 h-4" />}
         percent={spjData.percent}
         completedCount={spjData.withDrive}
         pendingCount={spjData.withoutDrive}
@@ -199,13 +180,11 @@ export default function KelengkapanBerkasCards({
         pendingLabel="Belum Ada Tautan"
         actionHref="/dashboard/spj"
         actionText="Kelola Berkas SPJ"
-        accentColor="indigo"
       />
 
       <ProgressCircleCard
         title="Bukti Scan Naskah Dinas"
         description="Kelengkapan tautan berkas fisik / scan naskah dinas."
-        icon={<FileCheck2 className="w-4 h-4" />}
         percent={naskahData.percent}
         completedCount={naskahData.withScan}
         pendingCount={naskahData.withoutScan}
@@ -215,7 +194,6 @@ export default function KelengkapanBerkasCards({
         pendingLabel="Belum Ada Scan"
         actionHref="/dashboard/naskah-dinas"
         actionText="Kelola Naskah Dinas"
-        accentColor="emerald"
       />
     </div>
   );

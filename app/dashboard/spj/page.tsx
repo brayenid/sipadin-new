@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft, BarChart2, ExternalLink } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, BarChart2, ExternalLink, CheckCircle2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -262,14 +262,33 @@ export default async function SpjListPage({
                               )}
                             </div>
                           )}
-                          {spj.kodeRekening && (
-                            <span 
-                              className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100/60 rounded px-1.5 py-0.5 font-semibold w-fit block truncate max-w-[250px]" 
-                              title={`${spj.kodeRekening.kodeRekening} - ${spj.kodeRekening.judulRekening}`}
-                            >
-                              Rek: {spj.kodeRekening.kodeRekening}
-                            </span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            {spj.kodeRekening && (
+                              <span 
+                                className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100/60 rounded px-1.5 py-0.5 font-semibold w-fit inline-flex items-center truncate max-w-[200px]" 
+                                title={`${spj.kodeRekening.kodeRekening} - ${spj.kodeRekening.judulRekening}`}
+                              >
+                                Rek: {spj.kodeRekening.kodeRekening}
+                              </span>
+                            )}
+                            {spj.terbayar ? (
+                              <span 
+                                className="text-[10px] inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded px-1.5 py-0.5 font-semibold shrink-0" 
+                                title="Dana SPJ telah dicairkan / terbayar"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Terbayar
+                              </span>
+                            ) : (
+                              <span 
+                                className="text-[10px] inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200/80 rounded px-1.5 py-0.5 font-semibold shrink-0" 
+                                title="Status pembayaran masih pending / belum terbayar"
+                              >
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                Belum Terbayar
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
