@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import { formatWita } from "@/lib/date-utils";
 import SerapanAnggaranCard from "./SerapanAnggaranCard";
+import KelengkapanBerkasCards from "./KelengkapanBerkasCards";
 import { getTahunAnggaranDetail } from "@/app/actions/anggaran";
 
 export const metadata = {
@@ -186,6 +187,33 @@ export default async function DashboardPage() {
     count: r._count.spjId
   }));
 
+  // 10. Kelengkapan Berkas SPJ (Tautan Data Dukung Google Drive)
+  const spjsForDrive = await prisma.spj.findMany({
+    where: spjWhereFilter,
+    select: { driveUrl: true, metaDokumen: true }
+  });
+  const totalSpjDrive = spjsForDrive.length;
+  const spjWithDriveCount = spjsForDrive.filter(s => {
+    const url = s.driveUrl || (s.metaDokumen as any)?.driveUrl;
+    return typeof url === 'string' && url.trim().length > 0;
+  }).length;
+  const spjWithoutDriveCount = totalSpjDrive - spjWithDriveCount;
+  const spjDrivePercent = totalSpjDrive > 0 ? (spjWithDriveCount / totalSpjDrive) * 100 : 0;
+
+  // 11. Kelengkapan Bukti Scan Naskah Dinas (Tautan Berkas Fisik / Google Drive)
+  const naskahForScan = await prisma.naskahDinas.findMany({
+    where: naskahFilter,
+    select: { data: true }
+  });
+  const totalNaskahScan = naskahForScan.length;
+  const naskahWithScanCount = naskahForScan.filter(n => {
+    const data = n.data as any;
+    const url = data?.tautanNaskahAsli || data?.driveUrl;
+    return typeof url === 'string' && url.trim().length > 0;
+  }).length;
+  const naskahWithoutScanCount = totalNaskahScan - naskahWithScanCount;
+  const naskahScanPercent = totalNaskahScan > 0 ? (naskahWithScanCount / totalNaskahScan) * 100 : 0;
+
   const renderTanggalRange = (spj: any) => {
     if (spj.jenisSpj === 'PERJADIN' && spj.perjadinDetail) {
       const start = formatWita(spj.perjadinDetail.tglBerangkat, 'dd MMM yyyy');
@@ -244,6 +272,23 @@ export default async function DashboardPage() {
           className="min-w-[65vw] max-w-[280px] sm:min-w-0 sm:max-w-none flex-shrink-0 snap-center"
         />
       </div>
+
+      {/* Baris Kelengkapan Data Dukung & Bukti Scan (URL Drive) */}
+      <KelengkapanBerkasCards
+        spjData={{
+          total: totalSpjDrive,
+          withDrive: spjWithDriveCount,
+          withoutDrive: spjWithoutDriveCount,
+          percent: spjDrivePercent,
+        }}
+        naskahData={{
+          total: totalNaskahScan,
+          withScan: naskahWithScanCount,
+          withoutScan: naskahWithoutScanCount,
+          percent: naskahScanPercent,
+        }}
+        activeTahun={activeTahunString}
+      />
 
       {/* Baris Kedua: SPJ Per Jenis, Naskah Dinas & Rekap Perjadin */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
