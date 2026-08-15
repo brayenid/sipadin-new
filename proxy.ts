@@ -18,8 +18,9 @@ export default auth((req) => {
 
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
+  const isPublicApi = pathname.startsWith("/api/fonnte") || pathname.startsWith("/api/ai") || pathname.startsWith("/api/wa");
 
-  if (isApiAuth) return NextResponse.next();
+  if (isApiAuth || isPublicApi) return NextResponse.next();
 
   if (!session && !isAuthPage) {
     const loginUrl = new URL("/login", req.url);
