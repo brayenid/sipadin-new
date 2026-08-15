@@ -123,25 +123,25 @@ export default function SerapanDetailView({
                       };
 
                       return (
-                        <div key={sub.id} className="border border-slate-200 rounded-xl bg-white p-5 flex flex-col xl:flex-row gap-8">
+                        <div key={sub.id} className="border border-slate-200 rounded-xl bg-white p-4 sm:p-5 flex flex-col xl:flex-row gap-6">
                           {/* Kiri: Info & Chart */}
-                          <div className="flex flex-col w-full xl:w-1/3 shrink-0">
-                            <Badge variant="secondary" className="w-fit mb-3 text-[10px] bg-indigo-50 text-indigo-700 hover:bg-indigo-50 uppercase">
+                          <div className="flex flex-col w-full xl:w-80 shrink-0">
+                            <Badge variant="secondary" className="w-fit mb-3 text-[10px] bg-indigo-50 text-indigo-700 hover:bg-indigo-50 uppercase font-semibold">
                               Sub Kegiatan
                             </Badge>
-                            <div className="mb-5">
-                              <h4 className="font-semibold text-slate-800 text-sm leading-tight">
+                            <div className="mb-4">
+                              <h4 className="font-semibold text-slate-800 text-sm leading-snug">
                                 {sub.judulSub}
                               </h4>
                               <p className="text-xs font-mono text-slate-500 mt-1">{sub.kodeSub}</p>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-6">
-                              <div className="bg-slate-50 p-2 sm:p-3 rounded-lg border border-slate-100 overflow-hidden">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-5">
+                              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 overflow-hidden">
                                 <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">Total Pagu</p>
                                 <p className="text-xs sm:text-sm font-bold text-slate-700 truncate" title={formatCurrency(sPagu.toString())}>{formatCurrency(sPagu.toString())}</p>
                               </div>
-                              <div className="bg-indigo-50/50 p-2 sm:p-3 rounded-lg border border-indigo-100/50 overflow-hidden">
+                              <div className="bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/50 overflow-hidden">
                                 <p className="text-[10px] sm:text-[11px] text-indigo-500 font-medium">Realisasi</p>
                                 <p className="text-xs sm:text-sm font-bold text-indigo-700 truncate" title={formatCurrency(sRealisasi.toString())}>{formatCurrency(sRealisasi.toString())}</p>
                               </div>
@@ -178,14 +178,14 @@ export default function SerapanDetailView({
                           </div>
 
                           {/* Kanan: List Rekening */}
-                          <div className="flex-1 w-full flex flex-col">
-                            <h5 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                              <span className="w-1.5 h-4 bg-slate-300 rounded-full"></span>
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                              <span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
                               Rincian Rekening
                             </h5>
                             <div className="space-y-2 flex-1">
                               {sub.rekening.length === 0 ? (
-                                <div className="text-sm text-slate-400 italic py-4 text-center border border-dashed rounded-lg">Belum ada rekening.</div>
+                                <div className="text-sm text-slate-400 italic py-6 text-center border border-dashed rounded-lg">Belum ada rekening.</div>
                               ) : (
                                 sub.rekening.map((rek) => {
                                   const rPagu = BigInt(rek.saldoAwal);
@@ -194,26 +194,26 @@ export default function SerapanDetailView({
                                   const rPercent = rPagu > BigInt(0) ? Number((rRealisasi * BigInt(100)) / rPagu) : 0;
                                   
                                   return (
-                                    <div key={rek.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100/50 transition-colors gap-3 overflow-hidden">
+                                    <div key={rek.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100/60 transition-colors gap-3">
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-slate-800 truncate" title={rek.judulRekening}>{rek.judulRekening}</p>
-                                        <p className="text-[11px] font-mono text-slate-500 mt-0.5">{rek.kodeRekening}</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-slate-800 truncate" title={rek.judulRekening}>{rek.judulRekening}</p>
+                                        <p className="text-[10px] sm:text-[11px] font-mono text-slate-500 mt-0.5">{rek.kodeRekening}</p>
                                       </div>
-                                      <div className="flex items-center justify-between lg:justify-end gap-2 md:gap-4 mt-3 lg:mt-0 w-full lg:w-auto shrink-0 border-t lg:border-0 border-slate-100 pt-2 lg:pt-0">
-                                        <div className="hidden md:block text-right">
+                                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 border-t md:border-0 border-slate-200/60 pt-2.5 md:pt-0">
+                                        <div className="text-left sm:text-right shrink-0">
                                           <p className="text-[10px] text-slate-400 font-medium mb-0.5">Pagu Awal</p>
-                                          <p className="text-xs font-medium text-slate-600">{formatCurrency(rPagu.toString())}</p>
+                                          <p className="text-[11px] sm:text-xs font-semibold text-slate-600">{formatCurrency(rPagu.toString())}</p>
                                         </div>
-                                        <div className="flex-1 lg:flex-none text-left lg:text-right lg:w-24 overflow-hidden">
-                                          <p className="text-[10px] text-indigo-400 font-medium mb-0.5">Realisasi</p>
-                                          <p className="text-[11px] sm:text-xs font-bold text-indigo-600 truncate">{formatCurrency(rRealisasi.toString())}</p>
+                                        <div className="text-left sm:text-right shrink-0">
+                                          <p className="text-[10px] text-indigo-500 font-medium mb-0.5">Realisasi</p>
+                                          <p className="text-[11px] sm:text-xs font-bold text-indigo-600">{formatCurrency(rRealisasi.toString())}</p>
                                         </div>
-                                        <div className="flex-1 lg:flex-none text-center lg:text-right lg:w-24 overflow-hidden">
+                                        <div className="text-left sm:text-right shrink-0">
                                           <p className="text-[10px] text-emerald-500 font-medium mb-0.5">Sisa Saldo</p>
-                                          <p className="text-[11px] sm:text-xs font-bold text-emerald-600 truncate">{formatCurrency(rSisa.toString())}</p>
+                                          <p className="text-[11px] sm:text-xs font-bold text-emerald-600">{formatCurrency(rSisa.toString())}</p>
                                         </div>
-                                        <div className="flex-1 lg:flex-none w-auto lg:w-16 flex justify-end shrink-0">
-                                          <div className={`px-2 py-1 rounded text-[10px] sm:text-xs font-bold ${rPercent < 50 ? 'bg-red-100 text-red-700' : rPercent < 70 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                        <div className="shrink-0 flex items-center justify-end min-w-[36px] sm:min-w-[42px]">
+                                          <div className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold ${rPercent < 50 ? 'bg-red-100 text-red-700' : rPercent < 70 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                             {rPercent.toFixed(0)}%
                                           </div>
                                         </div>
