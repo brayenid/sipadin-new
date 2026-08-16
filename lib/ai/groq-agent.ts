@@ -247,10 +247,17 @@ export async function processUserMessageWithGroq(
     ...recentMessages,
   ];
 
-  // 1. TAHAP 1: Coba Engine Utama Groq Cloud (Prioritas Utama)
-  const groqKey = process.env.GROQ_API_KEY?.trim();
-  if (groqKey) {
-    console.log("[AI Dispatcher] Menggunakan Engine Utama: Groq Cloud...");
+  // 1. TAHAP 1: Coba Engine Utama Groq Cloud (Mendukung Multiple Keys: "key1,key2")
+  const rawGroqKey = process.env.GROQ_API_KEY?.trim() || "";
+  const groqKeys = rawGroqKey
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  for (let i = 0; i < groqKeys.length; i++) {
+    const groqKey = groqKeys[i];
+    console.log(`[AI Dispatcher] Mencoba Groq Key [${i + 1}/${groqKeys.length}] (...${groqKey.slice(-6)})...`);
+    
     const groqRes = await runOpenAICompatibleEngine(
       GROQ_API_URL,
       groqKey,
@@ -263,13 +270,25 @@ export async function processUserMessageWithGroq(
     if (groqRes.success && groqRes.result) {
       return groqRes.result;
     }
-    console.warn("[AI Dispatcher] Groq gagal/limit, beralih ke Fallback 1: OpenRouter...");
+    console.warn(`[AI Dispatcher] Groq Key (...${groqKey.slice(-6)}) limit (429) / gagal.`);
   }
 
-  // 2. TAHAP 2: Fallback 1 OpenRouter (Free Models)
+  // 2. TAHAP 2: Fallback 1 Google Gemini Flash Native (Respon Kilat < 1 detik)
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiKey) {
+    try {
+      console.log("[AI Dispatcher] Semua Groq limit, beralih ke Fallback 1: Google Gemini 2.5 Flash...");
+      const geminiRes = await callGeminiNativeFallback(userMessageText, contextTeamId);
+      return geminiRes;
+    } catch (geminiErr: any) {
+      console.warn("[AI Dispatcher] Gemini Flash gagal, beralih ke Fallback 2 OpenRouter...", geminiErr?.message);
+    }
+  }
+
+  // 3. TAHAP 3: Fallback 2 OpenRouter Free Models
   const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
   if (openRouterKey) {
-    console.log("[AI Dispatcher] Menggunakan Fallback 1: OpenRouter...");
+    console.log("[AI Dispatcher] Menggunakan Fallback 2: OpenRouter Free...");
     const orRes = await runOpenAICompatibleEngine(
       OPENROUTER_API_URL,
       openRouterKey,
@@ -286,10 +305,11 @@ export async function processUserMessageWithGroq(
     if (orRes.success && orRes.result) {
       return orRes.result;
     }
-    console.warn("[AI Dispatcher] OpenRouter gagal/limit, beralih ke Fallback 2: Direct Fallback...");
+    console.warn("[AI Dispatcher] OpenRouter gagal/limit.");
   }
 
-  // 3. TAHAP 3: Fallback 2 Direct Assistant Handler
-  console.log("[AI Dispatcher] Menggunakan Direct Fallback Response...");
-  return await callGeminiNativeFallback(userMessageText, contextTeamId);
+  return {
+    replyText: "Maaf, seluruh server AI sedang mengalami antrean padat. Mohon kirim ulang dalam beberapa saat ya.\n\n_system_",
+    toolCallsExecuted: [],
+  };
 }
