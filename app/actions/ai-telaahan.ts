@@ -52,126 +52,105 @@ function parseStructuredJson(rawText: string) {
   }
 }
 
-async function callOpenRouter(prompt: string, systemInstruction?: string) {
-  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not found");
+async function callDeepSeek(prompt: string, systemInstruction?: string) {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (!apiKey) throw new Error("DEEPSEEK_API_KEY not found");
 
-  const models = [
-    "google/gemma-4-31b-it:free",
-    "google/gemma-4-26b-a4b-it:free",
-    "openai/gpt-oss-20b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-  ];
+  const messages: any[] = [];
+  if (systemInstruction) {
+    messages.push({ role: "system", content: systemInstruction });
+  }
+  messages.push({ role: "user", content: prompt });
 
-  let lastError: any = null;
-  for (const model of models) {
-    try {
-      const messages: any[] = [];
-      if (systemInstruction) {
-        messages.push({ role: "system", content: systemInstruction });
-      }
-      messages.push({ role: "user", content: prompt });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+  const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages,
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+    signal: controller.signal,
+  });
 
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://sipadin.id",
-          "X-Title": "SIPADIN Web AI",
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          response_format: { type: "json_object" },
-          temperature: 0.3,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`OpenRouter Error (${res.status}): ${err}`);
-      }
-
-      const json = await res.json();
-      const rawText = json.choices?.[0]?.message?.content;
-      if (!rawText) throw new Error("Empty content");
-
-      return { data: parseStructuredJson(rawText), model };
-    } catch (e: any) {
-      lastError = e;
-      console.warn(`[OpenRouter AI Telaahan] Model ${model} gagal:`, e.message || e);
-      continue;
-    }
+  clearTimeout(timeoutId);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`DeepSeek Error (${res.status}): ${err}`);
   }
 
-  throw lastError || new Error("OpenRouter all models failed");
+  const json = await res.json();
+  const rawText = json.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error("Empty content from DeepSeek");
+
+  return { data: parseStructuredJson(rawText), model: "DeepSeek V3" };
 }
 
 async function callGroq(prompt: string, systemInstruction?: string) {
-  const apiKey = process.env.GROQ_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error(
-      "GROQ_API_KEY belum dikonfigurasi di file .env. Harap masukkan API key dari Groq Cloud."
-    );
+  const rawKey = process.env.GROQ_API_KEY?.trim() || "";
+  const keys = rawKey.split(",").map((k) => k.trim()).filter(Boolean);
+  if (keys.length === 0) {
+    throw new Error("GROQ_API_KEY belum dikonfigurasi di file .env.");
   }
 
   const models = [
+    "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile"
   ];
   let lastError: any = null;
 
-  for (const model of models) {
-    console.log(`[Groq AI] Mencoba model: ${model}...`);
-    try {
-      const messages: any[] = [];
-      if (systemInstruction) {
-        messages.push({ role: "system", content: systemInstruction });
+  for (const apiKey of keys) {
+    for (const model of models) {
+      try {
+        const messages: any[] = [];
+        if (systemInstruction) {
+          messages.push({ role: "system", content: systemInstruction });
+        }
+        messages.push({ role: "user", content: prompt });
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            response_format: { type: "json_object" },
+            temperature: 0.3,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Groq API Error (${res.status}): ${errText}`);
+        }
+
+        const json = await res.json();
+        const rawText = json.choices?.[0]?.message?.content;
+        if (!rawText) {
+          throw new Error("Groq tidak mengembalikan respon.");
+        }
+
+        return { data: parseStructuredJson(rawText), model };
+      } catch (e: any) {
+        lastError = e;
+        continue;
       }
-      messages.push({ role: "user", content: prompt });
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          response_format: { type: "json_object" },
-          temperature: 0.3
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Groq API Error (${res.status}): ${errText}`);
-      }
-
-      const json = await res.json();
-      const rawText = json.choices?.[0]?.message?.content;
-      if (!rawText) {
-        throw new Error("Groq tidak mengembalikan respon.");
-      }
-
-      return { data: parseStructuredJson(rawText), model };
-    } catch (e: any) {
-      lastError = e;
-      console.warn(`[Groq AI] Model ${model} gagal:`, e.message || e);
-      continue;
     }
   }
 
@@ -181,20 +160,19 @@ async function callGroq(prompt: string, systemInstruction?: string) {
 async function callGemini(prompt: string, systemInstruction?: string) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY belum dikonfigurasi di file .env. Harap masukkan API key dari Google AI Studio."
-    );
+    throw new Error("GEMINI_API_KEY belum dikonfigurasi di file .env.");
   }
 
   const candidateModels = [
-    "models/gemini-2.5-flash",
-    "models/gemini-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
   ];
 
   let lastError: Error | null = null;
 
   for (const modelPath of candidateModels) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
 
     const body: any = {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -210,11 +188,8 @@ async function callGemini(prompt: string, systemInstruction?: string) {
       };
     }
 
-    console.log(`[Gemini AI] Mencoba model: ${modelPath}...`);
-    const startTime = Date.now();
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
       const res = await fetch(url, {
@@ -225,7 +200,6 @@ async function callGemini(prompt: string, systemInstruction?: string) {
       });
 
       clearTimeout(timeoutId);
-      console.log(`[Gemini AI] Model ${modelPath} merespons dalam ${Date.now() - startTime}ms dengan status: ${res.status}`);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -238,11 +212,10 @@ async function callGemini(prompt: string, systemInstruction?: string) {
         throw new Error("Gemini tidak mengembalikan respons teks.");
       }
 
-      return { data: parseStructuredJson(rawText), model: modelPath.replace("models/", "") };
+      return { data: parseStructuredJson(rawText), model: modelPath };
     } catch (e: any) {
       clearTimeout(timeoutId);
       lastError = e;
-      console.warn(`[Gemini AI] Model ${modelPath} gagal:`, e.message || e);
       continue;
     }
   }
@@ -251,14 +224,13 @@ async function callGemini(prompt: string, systemInstruction?: string) {
 }
 
 async function callAiUnified(prompt: string, systemInstruction?: string): Promise<{ data: any; source: string }> {
-  // 1. Coba OpenRouter (Utama)
-  if (process.env.OPENROUTER_API_KEY) {
+  // 1. Coba DeepSeek Official (Utama - Kualitas Terbaik untuk Naskah Birokrasi)
+  if (process.env.DEEPSEEK_API_KEY) {
     try {
-      const res = await callOpenRouter(prompt, systemInstruction);
-      const cleanName = res.model.split("/").pop()?.replace(":free", "") || res.model;
-      return { data: res.data, source: `OpenRouter (${cleanName})` };
+      const res = await callDeepSeek(prompt, systemInstruction);
+      return { data: res.data, source: `DeepSeek (${res.model})` };
     } catch (err: any) {
-      console.warn("[AI Unified Telaahan] OpenRouter gagal, fallback ke Groq:", err.message);
+      console.warn("[AI Unified Telaahan] DeepSeek gagal, fallback ke Groq:", err.message);
     }
   }
 
