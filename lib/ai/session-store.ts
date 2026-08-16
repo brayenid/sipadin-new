@@ -86,16 +86,18 @@ export function getSession(key: string): UserSession {
 }
 
 /**
- * Tambah pesan ke riwayat chat user (maksimal 10 pesan terakhir untuk hemat token)
+ * Tambah pesan ke riwayat chat user (maksimal 4 pesan terakhir untuk hemat token ekstrem)
  */
 export function addMessageToSession(key: string, msg: ChatMessage) {
   const session = getSession(key);
   session.messages.push(msg);
-  if (session.messages.length > 10) {
-    session.messages = session.messages.slice(-10);
+  if (session.messages.length > 4) {
+    session.messages = session.messages.slice(-4);
   }
   session.lastActive = Date.now();
 }
+
+let globalLastDraft: PendingDraftSpj | null = null;
 
 /**
  * Set pending draft yang siap di-commit saat user balas "SIMPAN"
@@ -104,6 +106,20 @@ export function setPendingDraft(key: string, draft: PendingDraftSpj) {
   const session = getSession(key);
   session.pendingDraft = draft;
   session.lastActive = Date.now();
+  globalLastDraft = draft;
+  console.log(`[Session Store] Pending draft disimpan untuk key: ${key} (Draft ID: ${draft.id})`);
+}
+
+/**
+ * Ambil pending draft untuk user key, dengan fallback ke global last draft jika ada
+ */
+export function getPendingDraft(key: string): PendingDraftSpj | null {
+  const session = getSession(key);
+  if (session.pendingDraft) return session.pendingDraft;
+  if (globalLastDraft && Date.now() - globalLastDraft.createdAt < SESSION_TTL_MS) {
+    return globalLastDraft;
+  }
+  return null;
 }
 
 /**
@@ -112,6 +128,7 @@ export function setPendingDraft(key: string, draft: PendingDraftSpj) {
 export function clearPendingDraft(key: string) {
   const session = getSession(key);
   session.pendingDraft = null;
+  globalLastDraft = null;
 }
 
 /**

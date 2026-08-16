@@ -139,11 +139,64 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Fonnte Webhook] Memproses pesan dari ${actualSender} (${isGroup ? "Grup: " + sender : "Personal"}): "${cleanedMessage}"`);
 
-    // 4. Jalankan AI Agent Groq
-    const result = await processUserMessageWithGroq(sessionKey, cleanedMessage);
+    // 3.5 SHORTCUT CEPAT: Bantuan / Panduan Perintah (/help, help, bantuan, menu)
+    const lowerClean = cleanedMessage.toLowerCase().trim();
+    if (lowerClean === "/help" || lowerClean === "help" || lowerClean === "bantuan" || lowerClean === "/bantuan" || lowerClean === "menu") {
+      const helpMessage = `🤖 *SIPADIN Co-Pilot - Panduan Perintah*
+
+📌 *1. SPJ Belum Dibayar:*
+• _"SPJ belum dibayar"_
+• _"Bayar [ID / Nama]"_ (Ubah status lunas)
+
+📌 *2. Bukti Dukung (Google Drive):*
+• _"SPJ tanpa bukti dukung"_
+• _"Link drive [ID / Nama] [URL]"_
+
+📌 *3. Info NIP Instan:*
+• _"NIP [Nama Pegawai]"_
+
+📌 *4. Anggaran & Sisa Pagu:*
+• _"Beri data anggaran"_ (List sub-kegiatan)
+• _"Sisa saldo [Nama Sub-Kegiatan]"_
+• _"Saya perlu 5 juta untuk jalan dinas, cukup?"_
+
+📌 *5. Naskah Dinas & Surat:*
+• _"Daftar naskah dinas"_
+• _"Baca naskah [ID / No Surat]"_
+
+📌 *6. Absensi & Agenda OPD:*
+• _"Data absensi OPD terbaru"_
+• _"Daftar kegiatan rapat OPD"_
+
+📌 *7. Agenda Kegiatan Tim (Kalender):*
+• _"Agenda tim minggu ini"_
+• _"Buat agenda tanggal 17 Agustus 2026, kegiatan FKP, jam 10 pagi"_
+
+_Ketik perintah di atas secara langsung & santai!_`;
+
+      await sendFonnteMessage({
+        target: targetReply,
+        message: helpMessage,
+      });
+
+      return NextResponse.json({ status: "success", type: "help_message" }, { status: 200 });
+    }
+
+    // 4. Jalankan AI Agent Groq dengan 5 Fitur Terfokus
+    let result: any = null;
+    try {
+      result = await processUserMessageWithGroq(sessionKey, cleanedMessage);
+    } catch (agentErr: any) {
+      console.error("[Groq Agent Process Error]:", agentErr);
+      await sendFonnteMessage({
+        target: targetReply,
+        message: "Maaf, sistem sedang sibuk memproses data. Silakan coba kirim ulang perintah Anda dalam beberapa detik.",
+      });
+      return NextResponse.json({ status: "error", error: agentErr?.message || "Agent error" }, { status: 200 });
+    }
 
     // 5. Kirim Balasan ke WhatsApp via Fonnte
-    if (result.replyText) {
+    if (result && result.replyText) {
       await sendFonnteMessage({
         target: targetReply,
         message: result.replyText,
@@ -152,17 +205,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       status: "success",
-      tools: result.toolCallsExecuted,
+      tools: result?.toolCallsExecuted || [],
       message: "Pesan berhasil diproses dan dibalas.",
     });
   } catch (error: any) {
-    console.error("[Fonnte Webhook Error]:", error);
+    console.error("[Fonnte Webhook Fatal Error]:", error);
     return NextResponse.json(
       {
         status: "error",
         error: error?.message || "Terjadi kesalahan internal pada server.",
       },
-      { status: 500 }
+      { status: 200 } // Kembalikan 200 agar Fonnte tidak terus-menerus me-retry webhook
     );
   }
 }

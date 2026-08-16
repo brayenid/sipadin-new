@@ -62,6 +62,7 @@ model Team {
   vendors   VendorPihakKetiga[]
   naskahDinas NaskahDinas[]
   agendaAbsensi AgendaAbsensi[]
+  agendaTim   AgendaTim[]
 }
 
 model User {
@@ -80,6 +81,7 @@ model User {
   subKegiatan  SubKegiatan[]
   naskahDinas  NaskahDinas[]
   agendaAbsensi AgendaAbsensi[]
+  agendaTim    AgendaTim[]
 }
 
 // ==========================================
@@ -373,3 +375,48 @@ model KehadiranPeserta {
   @@index([agendaId])
   @@index([instansi])
 }
+
+// ==========================================
+// AGENDA KEGIATAN TIM
+// ==========================================
+enum KategoriAgenda {
+  RAPAT
+  PERJALANAN_DINAS
+  SOSIALISASI
+  MONITORING_EVALUASI
+  ACARA_INTERNAL
+  LAINNYA
+}
+
+enum StatusAgenda {
+  DIRENCANAKAN
+  BERLANGSUNG
+  SELESAI
+  DIBATALKAN
+}
+
+model AgendaTim {
+  id             String         @id @default(uuid())
+  judul          String
+  kategori       KategoriAgenda @default(RAPAT)
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime?
+  waktuMulai     String?        // misal "09:00"
+  waktuSelesai   String?        // misal "12:00"
+  lokasi         String?
+  deskripsi      String?        @db.Text
+  pic            String?        // Nama PIC / Penanggung Jawab
+  status         StatusAgenda   @default(DIRENCANAKAN)
+
+  teamId         String
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User           @relation(fields: [createdById], references: [id])
+
+  isDeleted      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([teamId, tanggalMulai])
+}
+

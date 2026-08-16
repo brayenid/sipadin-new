@@ -1,11 +1,8 @@
 /**
- * Definisi Tools & Handler Backend untuk Groq AI Agent SIPADIN
+ * Definisi Tools & Backend Handler SIPADIN AI WhatsApp Assistant (Versi Sederhana & Fokus)
  */
 
 import { prisma } from "@/lib/prisma";
-import { getSession, setPendingDraft, clearPendingDraft, PendingDraftSpj } from "./session-store";
-import telaahanPresets from "@/lib/presets/telaahan.json";
-import laporanPresets from "@/lib/presets/laporan.json";
 
 // ==========================================
 // 1. TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -14,11 +11,94 @@ export const AI_TOOLS_SCHEMA = [
   {
     type: "function",
     function: {
-      name: "lookup_pegawai",
-      description: "Cari data NIP, Nama, Pangkat, Golongan, Jabatan di database master pegawai.",
+      name: "get_unpaid_spjs",
+      description: "List SPJ belum bayar (default 10).",
       parameters: {
         type: "object",
-        properties: { query: { type: "string", description: "Nama atau NIP" } },
+        properties: {
+          limit: { type: "number" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_spj_payment_status",
+      description: "Ubah status bayar SPJ (lunas/belum) berdasarkan BKU, nama, atau perihal.",
+      parameters: {
+        type: "object",
+        properties: {
+          searchQuery: { type: "string" },
+          terbayar: { type: "boolean" },
+        },
+        required: ["searchQuery", "terbayar"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_missing_drive_spjs",
+      description: "List SPJ tanpa link drive/bukti.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_spj_drive_url",
+      description: "Update link Google Drive SPJ.",
+      parameters: {
+        type: "object",
+        properties: {
+          searchQuery: { type: "string" },
+          driveUrl: { type: "string" },
+        },
+        required: ["searchQuery", "driveUrl"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "lookup_nip_direct",
+      description: "Cari NIP pegawai dari nama.",
+      parameters: {
+        type: "object",
+        properties: {
+          nama: { type: "string" },
+        },
+        required: ["nama"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_available_budget_categories",
+      description: "List nama sub-kegiatan/rekening anggaran.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_specific_budget_detail",
+      description: "Cek detail sisa saldo sub-kegiatan/rekening.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+        },
         required: ["query"],
       },
     },
@@ -26,117 +106,94 @@ export const AI_TOOLS_SCHEMA = [
   {
     type: "function",
     function: {
-      name: "lookup_vendor",
-      description: "Cari vendor (RM, Katering, NPWP, Rekening) di master vendor.",
-      parameters: {
-        type: "object",
-        properties: { query: { type: "string", description: "Nama vendor" } },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_active_perjadin",
-      description: "Dapatkan daftar pegawai dinas luar aktif hari ini.",
-      parameters: {
-        type: "object",
-        properties: { tanggal: { type: "string", description: "YYYY-MM-DD" } },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_budget_status",
-      description: "Lihat pagu, realisasi, dan sisa saldo sub-kegiatan anggaran.",
-      parameters: {
-        type: "object",
-        properties: { query: { type: "string", description: "Nama subkegiatan / kode rekening" } },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "draft_spj_perjadin",
-      description: "Buat DRAFT SPJ Perjadin (hitung DOPD per orang, susun telaahan staf, cek saldo).",
+      name: "check_travel_budget_feasibility",
+      description: "Cek kecukupan anggaran dinas (5.1.02.04).",
       parameters: {
         type: "object",
         properties: {
-          perihal: { type: "string" },
-          tempatBerangkat: { type: "string" },
-          tempatTujuan: { type: "string" },
-          tglBerangkat: { type: "string" },
-          tglKembali: { type: "string" },
-          alatAngkut: { type: "string" },
-          namaPegawaiList: { type: "array", items: { type: "string" } },
-          kepalaJalanNama: { type: "string" },
-          subKegiatanKeyword: { type: "string" },
-          estimasiUangHarian: { type: "number" },
-          estimasiHotelPerMalam: { type: "number" },
-          estimasiTransportPP: { type: "number" },
+          estimasiBiaya: { type: "number" },
         },
-        required: ["perihal", "tempatTujuan", "tglBerangkat", "tglKembali", "namaPegawaiList", "subKegiatanKeyword"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "draft_spj_mamin",
-      description: "Buat DRAFT SPJ Makan Minum Rapat.",
+      name: "list_naskah_dinas",
+      description: "List naskah dinas/surat resmi.",
       parameters: {
         type: "object",
         properties: {
-          namaRapat: { type: "string" },
-          vendorKeyword: { type: "string" },
-          jumlahPeserta: { type: "number" },
-          porsiMakan: { type: "number" },
-          hargaMakan: { type: "number" },
-          porsiSnack: { type: "number" },
-          hargaSnack: { type: "number" },
-          subKegiatanKeyword: { type: "string" },
+          limit: { type: "number" },
+          jenisNaskah: { type: "string" },
         },
-        required: ["namaRapat", "vendorKeyword", "jumlahPeserta", "subKegiatanKeyword"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "draft_spj_honor",
-      description: "Buat DRAFT SPJ Honorarium Narasumber + hitung PPh 21.",
+      name: "get_naskah_dinas_detail",
+      description: "Baca detail isi naskah dinas dari ID/nomor.",
       parameters: {
         type: "object",
         properties: {
-          namaKegiatan: { type: "string" },
-          namaPenerimaList: { type: "array", items: { type: "string" } },
-          jamPelajaran: { type: "number" },
-          tarifPerJam: { type: "number" },
-          subKegiatanKeyword: { type: "string" },
+          searchQuery: { type: "string" },
         },
-        required: ["namaKegiatan", "namaPenerimaList", "jamPelajaran", "tarifPerJam", "subKegiatanKeyword"],
+        required: ["searchQuery"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "commit_pending_spj",
-      description: "Simpan resmi draft SPJ aktif ke database dan potong sisa saldo.",
+      name: "list_agenda_absensi",
+      description: "List agenda absensi rapat OPD.",
       parameters: {
         type: "object",
-        properties: { konfirmasi: { type: "boolean" } },
-        required: ["konfirmasi"],
+        properties: {
+          limit: { type: "number" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_agenda_tim",
+      description: "List agenda kegiatan tim dari kalender.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_agenda_tim",
+      description: "Buat agenda baru ke kalender tim.",
+      parameters: {
+        type: "object",
+        properties: {
+          judul: { type: "string" },
+          tanggalMulai: { type: "string" },
+          tanggalSelesai: { type: "string" },
+          waktuMulai: { type: "string" },
+          lokasi: { type: "string" },
+          kategori: { type: "string" },
+          pic: { type: "string" },
+        },
+        required: ["judul", "tanggalMulai"],
       },
     },
   },
 ];
 
 // ==========================================
-// 2. TOOL HANDLER IMPLEMENTATION
+// 2. BACKEND IMPLEMENTATION
 // ==========================================
 
 export async function executeToolCall(
@@ -146,799 +203,610 @@ export async function executeToolCall(
   contextTeamId?: string
 ): Promise<string> {
   const args = rawArgs && typeof rawArgs === "object" ? rawArgs : {};
+
   try {
     switch (name) {
-      case "lookup_pegawai": {
-        const query = String(args.query || "").trim();
-        const pegawais = await prisma.pegawai.findMany({
+      // 1. GET UNPAID SPJS
+      case "get_unpaid_spjs": {
+        const limit = Number(args.limit) || 10;
+        const spjs = await prisma.spj.findMany({
           where: {
-            OR: [
-              { nama: { contains: query, mode: "insensitive" } },
-              { nip: { contains: query } },
-              { jabatan: { contains: query, mode: "insensitive" } },
-            ],
+            terbayar: false,
+            isDeleted: false,
             ...(contextTeamId ? { teamId: contextTeamId } : {}),
           },
-          take: 5,
-          select: {
-            id: true,
-            nama: true,
-            nip: true,
-            pangkat: true,
-            golongan: true,
-            jabatan: true,
-            instansi: true,
-          },
-        });
-
-        if (pegawais.length === 0) {
-          return JSON.stringify({
-            found: false,
-            message: `Pegawai dengan kata kunci '${query}' tidak ditemukan di database.`,
-          });
-        }
-
-        return JSON.stringify({
-          found: true,
-          count: pegawais.length,
-          pegawais: pegawais.map((p) => ({
-            id: p.id,
-            nama: p.nama,
-            nip: p.nip || "-",
-            pangkatGolongan: `${p.pangkat || "-"} (${p.golongan || "-"})`,
-            jabatan: p.jabatan,
-          })),
-        });
-      }
-
-      case "lookup_vendor": {
-        const query = String(args.query || "").trim();
-        const vendors = await prisma.vendorPihakKetiga.findMany({
-          where: {
-            OR: [
-              { namaVendor: { contains: query, mode: "insensitive" } },
-              { namaPemilik: { contains: query, mode: "insensitive" } },
-            ],
-            ...(contextTeamId ? { teamId: contextTeamId } : {}),
-          },
-          take: 5,
-        });
-
-        if (vendors.length === 0) {
-          return JSON.stringify({
-            found: false,
-            message: `Vendor dengan kata kunci '${query}' tidak ditemukan di database.`,
-          });
-        }
-
-        return JSON.stringify({
-          found: true,
-          count: vendors.length,
-          vendors: vendors.map((v) => ({
-            id: v.id,
-            namaVendor: v.namaVendor,
-            namaPemilik: v.namaPemilik || "-",
-            npwp: v.npwp || "-",
-            rekeningBank: v.rekeningBank || "-",
-            alamat: v.alamat || "-",
-          })),
-        });
-      }
-
-      case "get_active_perjadin": {
-        const targetDate = args.tanggal ? new Date(args.tanggal) : new Date();
-        const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
-
-        const activeDetails = await prisma.spjPerjadinDetail.findMany({
-          where: {
-            AND: [
-              { tglBerangkat: { lte: endOfDay } },
-              { tglKembali: { gte: startOfDay } },
-            ],
-            spj: {
-              isDeleted: false,
-              ...(contextTeamId ? { teamId: contextTeamId } : {}),
-            },
-          },
+          take: limit,
+          orderBy: { tanggalSpj: "desc" },
           include: {
-            spj: {
-              include: {
-                roster: true,
-                team: true,
-              },
-            },
+            roster: true,
+            maminDetail: { include: { vendor: true } },
+            kodeRekening: { include: { subKegiatan: true } },
           },
         });
 
-        if (activeDetails.length === 0) {
+        const totalUnpaid = await prisma.spj.count({
+          where: { terbayar: false, isDeleted: false },
+        });
+
+        if (spjs.length === 0) {
           return JSON.stringify({
             found: false,
-            message: `Tidak ada personel yang tercatat melaksanakan dinas luar pada tanggal ${startOfDay.toISOString().slice(0, 10)}.`,
+            message: "Semua SPJ saat ini sudah lunas/terbayar.",
           });
         }
 
-        const list = activeDetails.map((item) => ({
-          nomorSpj: item.spj.nomorBku || item.spj.id.slice(0, 8),
-          maksudDinas: item.spj.perihal,
-          tujuan: item.tempatTujuan,
-          rentangTanggal: `${item.tglBerangkat.toISOString().slice(0, 10)} s/d ${item.tglKembali.toISOString().slice(0, 10)} (${item.lamaPerjalanan} hari)`,
-          personel: item.spj.roster.map((r) => `${r.nama} (${r.role === "KEPALA_JALAN" ? "Kepala Jalan" : "Pengikut"})`),
-        }));
-
-        return JSON.stringify({
-          found: true,
-          totalTrip: list.length,
-          trips: list,
-        });
-      }
-
-      case "get_budget_status": {
-        const query = String(args.query || "").trim();
-        const subKegiatans = await prisma.subKegiatan.findMany({
-          where: query
-            ? {
-                OR: [
-                  { judulSub: { contains: query, mode: "insensitive" } },
-                  { kodeSub: { contains: query, mode: "insensitive" } },
-                ],
-              }
-            : undefined,
-          include: {
-            kegiatan: {
-              include: { tahunAnggaran: true },
-            },
-            rekening: true,
-          },
-          take: 5,
-        });
-
-        if (subKegiatans.length === 0) {
-          return JSON.stringify({
-            found: false,
-            message: `Sub-kegiatan anggaran '${query}' tidak ditemukan.`,
-          });
-        }
-
-        const results = subKegiatans.map((sub) => {
-          let totalAwal = BigInt(0);
-          let totalSisa = BigInt(0);
-          const rekList = sub.rekening.map((r) => {
-            totalAwal += r.saldoAwal;
-            totalSisa += r.sisaSaldo;
-            return {
-              id: r.id,
-              kodeRekening: r.kodeRekening,
-              judulRekening: r.judulRekening,
-              saldoAwal: Number(r.saldoAwal),
-              sisaSaldo: Number(r.sisaSaldo),
-            };
-          });
+        const items = spjs.map((s, idx) => {
+          // Kumpulkan nama depan orang / vendor terkait
+          let personRelated = "";
+          if (s.roster && s.roster.length > 0) {
+            personRelated = s.roster
+              .map((r) => r.nama.trim().split(/\s+/)[0])
+              .join(", ");
+          } else if (s.maminDetail?.vendor?.namaVendor) {
+            personRelated = s.maminDetail.vendor.namaVendor;
+          } else if ((s.metaDokumen as any)?.namaPenerima) {
+            personRelated = String((s.metaDokumen as any).namaPenerima).trim().split(/\s+/)[0];
+          }
 
           return {
-            subKegiatanId: sub.id,
-            kodeSub: sub.kodeSub,
-            judulSub: sub.judulSub,
-            tahun: sub.kegiatan.tahunAnggaran.tahun,
-            totalPaguAwal: Number(totalAwal),
-            totalSisaSaldo: Number(totalSisa),
-            totalTerpakai: Number(totalAwal - totalSisa),
-            rekening: rekList,
+            no: idx + 1,
+            id: s.id.slice(0, 6),
+            tanggal: s.tanggalSpj.toISOString().slice(0, 10),
+            perihal: s.perihal || "-",
+            nama: personRelated || "-",
+            nominal: `Rp ${Number(s.totalPengeluaran).toLocaleString("id-ID")}`,
           };
         });
 
         return JSON.stringify({
           found: true,
-          items: results,
+          totalBelumBayar: totalUnpaid,
+          ditampilkan: items.length,
+          data: items,
+          hint: "Untuk mengubah status, sebutkan ID (misal: 'Bayar a1b2c3') atau nama orang terkait (misal: 'Bayar Brayen').",
         });
       }
 
-      case "draft_spj_perjadin": {
-        // 1. Cari Sub-kegiatan dan Kode Rekening
-        const subQuery = String(args.subKegiatanKeyword || "").trim();
-        const subKeg = await prisma.subKegiatan.findFirst({
+      // 2. UPDATE SPJ PAYMENT STATUS
+      case "update_spj_payment_status": {
+        const query = String(args.searchQuery || "").trim();
+        const terbayar = Boolean(args.terbayar);
+
+        // Cari SPJ yang cocok berdasarkan ID, Nomor BKU, Roster Nama, Vendor, atau Perihal
+        const candidates = await prisma.spj.findMany({
+          where: {
+            isDeleted: false,
+            OR: [
+              { id: { startsWith: query, mode: "insensitive" } },
+              { id: { contains: query, mode: "insensitive" } },
+              { nomorBku: { contains: query, mode: "insensitive" } },
+              { perihal: { contains: query, mode: "insensitive" } },
+              { roster: { some: { nama: { contains: query, mode: "insensitive" } } } },
+              { maminDetail: { vendor: { namaVendor: { contains: query, mode: "insensitive" } } } },
+            ],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          include: {
+            roster: true,
+            maminDetail: { include: { vendor: true } },
+          },
+          take: 5,
+        });
+
+        if (candidates.length === 0) {
+          return JSON.stringify({
+            status: "NOT_FOUND",
+            message: `SPJ terkait '${query}' tidak ditemukan. Mohon sebutkan ID (6 karakter) atau nama orang terkait.`,
+          });
+        }
+
+        // Jika ada lebih dari 1 kecocokan, minta user memilih
+        if (candidates.length > 1) {
+          const list = candidates.map((c) => {
+            const names = c.roster.map((r) => r.nama.trim().split(/\s+/)[0]).join(", ") || c.maminDetail?.vendor?.namaVendor || "-";
+            return `• ID: [${c.id.slice(0, 6)}] - ${c.perihal} (${names}) - Rp ${Number(c.totalPengeluaran).toLocaleString("id-ID")}`;
+          });
+          return JSON.stringify({
+            status: "AMBIGUOUS",
+            message: `Ditemukan ${candidates.length} SPJ yang cocok dengan '${query}':\n${list.join("\n")}\n\nSebutkan ID 6 karakter yang ingin diubah.`,
+          });
+        }
+
+        const targetSpj = candidates[0];
+        await prisma.spj.update({
+          where: { id: targetSpj.id },
+          data: { terbayar },
+        });
+
+        const names = targetSpj.roster.map((r) => r.nama.trim().split(/\s+/)[0]).join(", ") || targetSpj.maminDetail?.vendor?.namaVendor || "-";
+        return JSON.stringify({
+          status: "SUCCESS",
+          id: targetSpj.id.slice(0, 6),
+          perihal: targetSpj.perihal,
+          nama: names,
+          statusBaru: terbayar ? "LUNAS / TERBAYAR" : "BELUM DIBAYAR",
+          nominal: Number(targetSpj.totalPengeluaran),
+        });
+      }
+
+      // 3. GET MISSING DRIVE SPJS
+      case "get_missing_drive_spjs": {
+        const limit = Number(args.limit) || 10;
+        const spjs = await prisma.spj.findMany({
+          where: {
+            isDeleted: false,
+            OR: [{ driveUrl: null }, { driveUrl: "" }],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: limit,
+          orderBy: { tanggalSpj: "desc" },
+          include: {
+            roster: true,
+            maminDetail: { include: { vendor: true } },
+          },
+        });
+
+        const totalMissing = await prisma.spj.count({
+          where: { isDeleted: false, OR: [{ driveUrl: null }, { driveUrl: "" }] },
+        });
+
+        if (spjs.length === 0) {
+          return JSON.stringify({
+            found: false,
+            message: "Semua SPJ sudah memiliki tautan bukti dukung / Google Drive.",
+          });
+        }
+
+        const items = spjs.map((s, idx) => {
+          const names = s.roster
+            .map((r) => r.nama.trim().split(/\s+/)[0])
+            .join(", ") || s.maminDetail?.vendor?.namaVendor || "-";
+
+          return {
+            no: idx + 1,
+            id: s.id.slice(0, 6),
+            tanggal: s.tanggalSpj.toISOString().slice(0, 10),
+            perihal: s.perihal || "-",
+            nama: names,
+            nominal: `Rp ${Number(s.totalPengeluaran).toLocaleString("id-ID")}`,
+          };
+        });
+
+        return JSON.stringify({
+          found: true,
+          totalBelumAdaDrive: totalMissing,
+          ditampilkan: items.length,
+          data: items,
+          hint: "Untuk mengisi link, sebutkan ID atau nama (misal: 'Link drive a1b2c3 https://...' atau 'Link drive Brayen https://...').",
+        });
+      }
+
+      // 4. UPDATE SPJ DRIVE URL
+      case "update_spj_drive_url": {
+        const query = String(args.searchQuery || "").trim();
+        const driveUrl = String(args.driveUrl || "").trim();
+
+        const candidates = await prisma.spj.findMany({
+          where: {
+            isDeleted: false,
+            OR: [
+              { id: { startsWith: query, mode: "insensitive" } },
+              { id: { contains: query, mode: "insensitive" } },
+              { nomorBku: { contains: query, mode: "insensitive" } },
+              { perihal: { contains: query, mode: "insensitive" } },
+              { roster: { some: { nama: { contains: query, mode: "insensitive" } } } },
+              { maminDetail: { vendor: { namaVendor: { contains: query, mode: "insensitive" } } } },
+            ],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          include: { roster: true, maminDetail: { include: { vendor: true } } },
+          take: 5,
+        });
+
+        if (candidates.length === 0) {
+          return JSON.stringify({
+            status: "NOT_FOUND",
+            message: `SPJ dengan kata kunci '${query}' tidak ditemukan.`,
+          });
+        }
+
+        if (candidates.length > 1) {
+          const list = candidates.map((c) => {
+            const names = c.roster.map((r) => r.nama.trim().split(/\s+/)[0]).join(", ") || c.maminDetail?.vendor?.namaVendor || "-";
+            return `• ID: [${c.id.slice(0, 6)}] - ${c.perihal} (${names})`;
+          });
+          return JSON.stringify({
+            status: "AMBIGUOUS",
+            message: `Ditemukan ${candidates.length} SPJ yang cocok:\n${list.join("\n")}\n\nSebutkan ID 6 karakter spesifiknya.`,
+          });
+        }
+
+        const target = candidates[0];
+        await prisma.spj.update({
+          where: { id: target.id },
+          data: { driveUrl },
+        });
+
+        const names = target.roster.map((r) => r.nama.trim().split(/\s+/)[0]).join(", ") || target.maminDetail?.vendor?.namaVendor || "-";
+        return JSON.stringify({
+          status: "SUCCESS",
+          id: target.id.slice(0, 6),
+          perihal: target.perihal,
+          nama: names,
+          driveUrl: driveUrl,
+          message: "Tautan bukti dukung berhasil disimpan.",
+        });
+      }
+
+      // 5. LOOKUP NIP DIRECT
+      case "lookup_nip_direct": {
+        const query = String(args.nama || "").trim();
+        const pegawais = await prisma.pegawai.findMany({
+          where: {
+            nama: { contains: query, mode: "insensitive" },
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: 3,
+          select: { nama: true, nip: true, pangkat: true, golongan: true, jabatan: true },
+        });
+
+        if (pegawais.length === 0) {
+          return JSON.stringify({
+            found: false,
+            message: `Pegawai '${query}' tidak ditemukan.`,
+          });
+        }
+
+        return JSON.stringify({
+          found: true,
+          results: pegawais.map((p) => {
+            // Sambung NIP jadi satu string angka tanpa spasi / strip
+            const cleanNip = p.nip ? p.nip.replace(/\D/g, "") : "NIP Belum Terdaftar";
+            return {
+              nama: p.nama,
+              nip: cleanNip,
+              golongan: p.golongan || "-",
+            };
+          }),
+        });
+      }
+
+      // 6. LIST AVAILABLE BUDGET CATEGORIES (Tanpa membuka angka penuh)
+      case "list_available_budget_categories": {
+        const subKegiatans = await prisma.subKegiatan.findMany({
+          include: {
+            kegiatan: true,
+            rekening: true,
+          },
+          take: 10,
+        });
+
+        if (subKegiatans.length === 0) {
+          return JSON.stringify({ found: false, message: "Belum ada anggaran terdaftar." });
+        }
+
+        const list = subKegiatans.map((sub) => ({
+          subKegiatan: sub.judulSub,
+          kegiatan: sub.kegiatan.judulKegiatan,
+          rekeningList: sub.rekening.map((r) => r.judulRekening),
+        }));
+
+        return JSON.stringify({
+          found: true,
+          categories: list,
+          hint: "Sebutkan nama sub-kegiatan atau rekening yang ingin dilihat detail sisa saldonya.",
+        });
+      }
+
+      // 7. GET SPECIFIC BUDGET DETAIL
+      case "get_specific_budget_detail": {
+        const query = String(args.query || "").trim();
+        const sub = await prisma.subKegiatan.findFirst({
           where: {
             OR: [
-              { judulSub: { contains: subQuery, mode: "insensitive" } },
-              { kodeSub: { contains: subQuery, mode: "insensitive" } },
+              { judulSub: { contains: query, mode: "insensitive" } },
+              { rekening: { some: { judulRekening: { contains: query, mode: "insensitive" } } } },
+            ],
+          },
+          include: { kegiatan: true, rekening: true },
+        });
+
+        if (!sub) {
+          return JSON.stringify({
+            found: false,
+            message: `Anggaran terkait '${query}' tidak ditemukan.`,
+          });
+        }
+
+        return JSON.stringify({
+          found: true,
+          subKegiatan: sub.judulSub,
+          kegiatan: sub.kegiatan.judulKegiatan,
+          rekening: sub.rekening.map((r) => ({
+            kode: r.kodeRekening,
+            nama: r.judulRekening,
+            sisaSaldo: `Rp ${Number(r.sisaSaldo).toLocaleString("id-ID")}`,
+          })),
+        });
+      }
+
+      // 8. CHECK TRAVEL BUDGET FEASIBILITY
+      case "check_travel_budget_feasibility": {
+        const requiredAmount = BigInt(args.estimasiBiaya ? Math.round(Number(args.estimasiBiaya)) : 2000000);
+
+        // Hanya cari rekening yang KHUSUS Perjalanan Dinas
+        const allTravelReks = await prisma.kodeRekening.findMany({
+          where: {
+            OR: [
+              { judulRekening: { contains: "perjalanan dinas", mode: "insensitive" } },
+              { judulRekening: { contains: "perjadin", mode: "insensitive" } },
+              { kodeRekening: { startsWith: "5.1.02.04" } },
             ],
           },
           include: {
-            rekening: true,
-          },
-        });
-
-        if (!subKeg || subKeg.rekening.length === 0) {
-          return JSON.stringify({
-            status: "ERROR",
-            message: `Sub-kegiatan / Kode Rekening '${subQuery}' tidak ditemukan di anggaran.`,
-          });
-        }
-
-        const kodeRek = subKeg.rekening[0]; // ambil rekening pertama
-
-        // 2. Cari Semua Pegawai
-        const namaList: string[] = args.namaPegawaiList || [];
-        const rosterMatched: Array<{
-          pegawaiId: string;
-          nama: string;
-          nip: string | null;
-          jabatan: string;
-          golongan: string | null;
-          pangkat: string | null;
-          role: "KEPALA_JALAN" | "PENGIKUT";
-          order: number;
-        }> = [];
-
-        for (let i = 0; i < namaList.length; i++) {
-          const rawName = namaList[i].trim();
-          const p = await prisma.pegawai.findFirst({
-            where: {
-              nama: { contains: rawName, mode: "insensitive" },
+            subKegiatan: {
+              include: { kegiatan: true },
             },
-          });
-
-          if (!p) {
-            return JSON.stringify({
-              status: "ERROR",
-              message: `Pegawai '${rawName}' tidak ditemukan di Master Pegawai. Mohon pastikan nama sudah terdaftar.`,
-            });
-          }
-
-          const isKepala = args.kepalaJalanNama
-            ? p.nama.toLowerCase().includes(args.kepalaJalanNama.toLowerCase())
-            : i === 0;
-
-          rosterMatched.push({
-            pegawaiId: p.id,
-            nama: p.nama,
-            nip: p.nip,
-            jabatan: p.jabatan,
-            golongan: p.golongan,
-            pangkat: p.pangkat,
-            role: isKepala ? "KEPALA_JALAN" : "PENGIKUT",
-            order: isKepala ? 0 : i + 1,
-          });
-        }
-
-        // Urutkan: Kepala Jalan di urutan 0
-        rosterMatched.sort((a, b) => a.order - b.order);
-
-        // 3. Hitung Durasi & Komponen DOPD
-        const tglBerangkat = new Date(args.tglBerangkat);
-        const tglKembali = new Date(args.tglKembali);
-        const diffDays = Math.max(
-          1,
-          Math.ceil((tglKembali.getTime() - tglBerangkat.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        );
-        const malamHotel = Math.max(0, diffDays - 1);
-
-        const uangHarianRate = BigInt(args.estimasiUangHarian || 430000);
-        const hotelRate = BigInt(args.estimasiHotelPerMalam || 700000);
-        const transportPPRate = BigInt(args.estimasiTransportPP || 1200000);
-
-        let grandTotal = BigInt(0);
-        const pengeluaranDetails: PendingDraftSpj["pengeluaranDetails"] = [];
-
-        rosterMatched.forEach((r, idx) => {
-          // Uang Harian
-          const totalHarian = uangHarianRate * BigInt(diffDays);
-          pengeluaranDetails.push({
-            spjRosterItemId: String(idx),
-            kategori: "UANG HARIAN",
-            uraian: `Uang Harian (${r.nama})`,
-            hargaSatuan: uangHarianRate.toString(),
-            qty: diffDays,
-            satuan: "Hari",
-            total: totalHarian.toString(),
-          });
-          grandTotal += totalHarian;
-
-          // Hotel
-          if (malamHotel > 0) {
-            const totalHotel = hotelRate * BigInt(malamHotel);
-            pengeluaranDetails.push({
-              spjRosterItemId: String(idx),
-              kategori: "PENGINAPAN",
-              uraian: `Penginapan Hotel (${r.nama})`,
-              hargaSatuan: hotelRate.toString(),
-              qty: malamHotel,
-              satuan: "Malam",
-              total: totalHotel.toString(),
-            });
-            grandTotal += totalHotel;
-          }
-
-          // Transportasi PP
-          pengeluaranDetails.push({
-            spjRosterItemId: String(idx),
-            kategori: "TRANSPORTASI",
-            uraian: `Transportasi: ${args.tempatBerangkat || "Sendawar"} - ${args.tempatTujuan} (PP) (${r.nama})`,
-            hargaSatuan: transportPPRate.toString(),
-            qty: 1,
-            satuan: "Orang",
-            total: transportPPRate.toString(),
-          });
-          grandTotal += transportPPRate;
+          },
         });
 
-        // 4. Validasi Sisa Saldo
-        if (kodeRek.sisaSaldo < grandTotal) {
+        // Filter rekening yang saldonya benar-benar cukup
+        const sufficientReks = allTravelReks.filter((r) => r.sisaSaldo >= requiredAmount);
+
+        if (sufficientReks.length === 0) {
+          // Cari saldo tertinggi yang tersedia untuk info
+          const highestRek = allTravelReks.sort((a, b) => Number(b.sisaSaldo - a.sisaSaldo))[0];
           return JSON.stringify({
-            status: "ERROR",
-            message: `Saldo tidak mencukupi! Kebutuhan SPJ: Rp ${grandTotal.toLocaleString("id-ID")}, namun Sisa Saldo rekening '${kodeRek.judulRekening}' hanya Rp ${kodeRek.sisaSaldo.toLocaleString("id-ID")}.`,
+            sufficient: false,
+            message: args.estimasiBiaya
+              ? `Tidak cukup. Kebutuhan Rp ${Number(requiredAmount).toLocaleString("id-ID")}, sedangkan sisa saldo tertinggi rekening Perjalanan Dinas saat ini hanya Rp ${Number(highestRek?.sisaSaldo || 0).toLocaleString("id-ID")}.`
+              : "Pagu anggaran perjalanan dinas saat ini menipis atau tidak mencukupi.",
+            rekeningTertinggi: highestRek
+              ? {
+                  rekening: highestRek.judulRekening,
+                  subKegiatan: highestRek.subKegiatan.judulSub,
+                  sisaSaldo: `Rp ${Number(highestRek.sisaSaldo).toLocaleString("id-ID")}`,
+                }
+              : null,
           });
         }
 
-        // 5. Sintesis Naskah Telaahan Staf & Laporan dari Preset
-        const dasarPreset = telaahanPresets.dasar[0]?.text || "Guna memelihara standar mutu pelayanan publik...";
-        const faktaPreset = telaahanPresets.fakta[0]?.text || "Perlu koordinasi intensif ke instansi terkait...";
-        const analisisPreset = telaahanPresets.analisis[0]?.text || "Koordinasi langsung diperlukan untuk percepatan...";
-        const kesimpulanPreset = telaahanPresets.kesimpulan[0]?.text || "Dipandang perlu menugaskan personel...";
-        const saranPreset = telaahanPresets.saran[0]?.text || "Menugaskan pegawai terkait untuk dinas...";
-
-        const metaDokumen = {
-          telaahan: {
-            dasar: dasarPreset,
-            praAnggapan: ["Koordinasi ini mendesak untuk sinkronisasi data daerah."],
-            fakta: [faktaPreset],
-            analisis: analisisPreset,
-            kesimpulan: kesimpulanPreset,
-            saran: saranPreset,
-          },
-          laporan: {
-            dasar: `Surat Perintah Tugas tanggal ${args.tglBerangkat}`,
-            hasilPembuka: laporanPresets.hasilPembuka[0]?.text || "Pelaksanaan tugas berjalan lancar.",
-            hasilPoin: [
-              `Telah dilaksanakan koordinasi mengenai ${args.perihal} di ${args.tempatTujuan}.`,
-              "Diperoleh arahan teknis dan data pendukung untuk implementasi lanjutan.",
-            ],
-            hasilNarasi: laporanPresets.hasilNarasi[0]?.text || "Rekomendasi tindak lanjut segera dilaporkan ke pimpinan.",
-          },
-        };
-
-        // Ambil User & Team Pertama sebagai Default Operator
-        const defaultUser = await prisma.user.findFirst({
-          include: { team: true },
-        });
-
-        if (!defaultUser) {
-          return JSON.stringify({
-            status: "ERROR",
-            message: "Tidak ada user operator terdaftar di database.",
-          });
-        }
-
-        const draft: PendingDraftSpj = {
-          id: `draft_${Date.now()}`,
-          jenisSpj: "PERJADIN",
-          teamId: defaultUser.teamId,
-          createdById: defaultUser.id,
-          kodeRekeningId: kodeRek.id,
-          perihal: args.perihal,
-          totalPengeluaran: grandTotal.toString(),
-          metaDokumen,
-          perjadinDetail: {
-            tempatBerangkat: args.tempatBerangkat || "Sendawar",
-            tempatTujuan: args.tempatTujuan,
-            tglBerangkat: tglBerangkat.toISOString(),
-            tglKembali: tglKembali.toISOString(),
-            lamaPerjalanan: diffDays,
-            alatAngkut: args.alatAngkut || "Darat",
-            tingkatPerjadin: "Tingkat C",
-          },
-          rosterItems: rosterMatched,
-          pengeluaranDetails,
-          createdAt: Date.now(),
-        };
-
-        // Simpan ke Session Store untuk konfirmasi
-        setPendingDraft(sessionKey, draft);
+        const options = sufficientReks.map((r) => ({
+          rekening: r.judulRekening,
+          subKegiatan: r.subKegiatan.judulSub,
+          kegiatan: r.subKegiatan.kegiatan.judulKegiatan,
+          sisaSaldo: `Rp ${Number(r.sisaSaldo).toLocaleString("id-ID")}`,
+        }));
 
         return JSON.stringify({
-          status: "DRAFT_READY",
-          draftId: draft.id,
-          perihal: draft.perihal,
-          tujuan: draft.perjadinDetail?.tempatTujuan,
-          durasi: `${diffDays} Hari (${malamHotel} Malam)`,
-          subKegiatan: `${subKeg.judulSub} (${kodeRek.judulRekening})`,
-          sisaSaldoSaatIni: Number(kodeRek.sisaSaldo),
-          totalKebutuhan: Number(grandTotal),
-          sisaSaldoSetelahSpj: Number(kodeRek.sisaSaldo - grandTotal),
-          personel: rosterMatched.map((r) => ({
-            nama: r.nama,
-            role: r.role === "KEPALA_JALAN" ? "Kepala Rombongan" : "Pengikut",
-            pangkatGol: `${r.pangkat || "-"} (${r.golongan || "-"})`,
-          })),
-          pesanInstruksi: "Draft telah berhasil dibuat. Silakan instruksikan pengguna untuk membalas 'SIMPAN' guna mencatat data secara permanen.",
+          sufficient: true,
+          message: `Anggaran cukup. Tersedia pada ${sufficientReks.length} rekening berikut:`,
+          opsiRekening: options,
         });
       }
 
-      case "draft_spj_mamin": {
-        const subQuery = String(args.subKegiatanKeyword || "").trim();
-        const subKeg = await prisma.subKegiatan.findFirst({
+      // 9. LIST NASKAH DINAS
+      case "list_naskah_dinas": {
+        const limit = Number(args.limit) || 10;
+        const jenis = args.jenisNaskah ? String(args.jenisNaskah).trim().toUpperCase() : undefined;
+
+        const naskahs = await prisma.naskahDinas.findMany({
           where: {
+            isDeleted: false,
+            ...(jenis ? { jenisNaskah: jenis as any } : {}),
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: limit,
+          orderBy: { tanggal: "desc" },
+        });
+
+        if (naskahs.length === 0) {
+          return JSON.stringify({
+            found: false,
+            message: "Belum ada naskah dinas yang tercatat.",
+          });
+        }
+
+        const items = naskahs.map((n, idx) => ({
+          no: idx + 1,
+          id: n.id.slice(0, 6),
+          jenis: n.jenisNaskah.replace(/_/g, " "),
+          nomorSurat: n.nomorSurat || "-",
+          tanggal: n.tanggal.toISOString().slice(0, 10),
+          perihal: n.perihal || n.agenda || "-",
+        }));
+
+        return JSON.stringify({
+          found: true,
+          total: items.length,
+          data: items,
+          hint: "Untuk membaca naskah lengkap, sebutkan ID (misal: 'Baca naskah a1b2c3') atau nomor surat.",
+        });
+      }
+
+      // 10. GET NASKAH DINAS DETAIL
+      case "get_naskah_dinas_detail": {
+        const query = String(args.searchQuery || "").trim();
+
+        const candidates = await prisma.naskahDinas.findMany({
+          where: {
+            isDeleted: false,
             OR: [
-              { judulSub: { contains: subQuery, mode: "insensitive" } },
-              { kodeSub: { contains: subQuery, mode: "insensitive" } },
+              { id: { startsWith: query, mode: "insensitive" } },
+              { id: { contains: query, mode: "insensitive" } },
+              { nomorSurat: { contains: query, mode: "insensitive" } },
+              { perihal: { contains: query, mode: "insensitive" } },
+              { agenda: { contains: query, mode: "insensitive" } },
             ],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
           },
-          include: { rekening: true },
+          take: 3,
         });
 
-        if (!subKeg || subKeg.rekening.length === 0) {
+        if (candidates.length === 0) {
           return JSON.stringify({
-            status: "ERROR",
-            message: `Sub-kegiatan '${subQuery}' tidak ditemukan.`,
-          });
-        }
-        const kodeRek = subKeg.rekening[0];
-
-        const vendorQuery = String(args.vendorKeyword || "").trim();
-        const vendor = await prisma.vendorPihakKetiga.findFirst({
-          where: {
-            namaVendor: { contains: vendorQuery, mode: "insensitive" },
-          },
-        });
-
-        if (!vendor) {
-          return JSON.stringify({
-            status: "ERROR",
-            message: `Vendor katering '${vendorQuery}' tidak ditemukan di database master vendor.`,
+            found: false,
+            message: `Naskah dinas terkait '${query}' tidak ditemukan.`,
           });
         }
 
-        const jmlPeserta = Number(args.jumlahPeserta || 1);
-        const porsiMakan = Number(args.porsiMakan || jmlPeserta);
-        const hargaMakan = BigInt(args.hargaMakan || 45000);
-        const porsiSnack = Number(args.porsiSnack || jmlPeserta);
-        const hargaSnack = BigInt(args.hargaSnack || 20000);
-
-        const totalMakan = hargaMakan * BigInt(porsiMakan);
-        const totalSnack = hargaSnack * BigInt(porsiSnack);
-        const grandTotal = totalMakan + totalSnack;
-
-        if (kodeRek.sisaSaldo < grandTotal) {
-          return JSON.stringify({
-            status: "ERROR",
-            message: `Saldo tidak mencukupi! Kebutuhan: Rp ${grandTotal.toLocaleString("id-ID")}, Sisa Saldo: Rp ${kodeRek.sisaSaldo.toLocaleString("id-ID")}.`,
-          });
-        }
-
-        const defaultUser = await prisma.user.findFirst({ include: { team: true } });
-        if (!defaultUser) throw new Error("Operator tidak ditemukan.");
-
-        const draft: PendingDraftSpj = {
-          id: `draft_${Date.now()}`,
-          jenisSpj: "MAKAN_MINUM",
-          teamId: defaultUser.teamId,
-          createdById: defaultUser.id,
-          kodeRekeningId: kodeRek.id,
-          perihal: `Belanja Makan Minum Rapat: ${args.namaRapat}`,
-          totalPengeluaran: grandTotal.toString(),
-          metaDokumen: {
-            namaRapat: args.namaRapat,
-            jumlahPeserta: jmlPeserta,
-            vendorName: vendor.namaVendor,
-            npwp: vendor.npwp,
-          },
-          maminDetail: {
-            vendorId: vendor.id,
-            namaRapat: args.namaRapat,
-            jumlahPeserta: jmlPeserta,
-          },
-          pengeluaranDetails: [
-            {
-              kategori: "MAKAN_BERAT",
-              uraian: `Belanja Makanan (${porsiMakan} Porsi)`,
-              hargaSatuan: hargaMakan.toString(),
-              qty: porsiMakan,
-              satuan: "Porsi",
-              total: totalMakan.toString(),
-            },
-            {
-              kategori: "SNACK",
-              uraian: `Belanja Snack Kotak (${porsiSnack} Kotak)`,
-              hargaSatuan: hargaSnack.toString(),
-              qty: porsiSnack,
-              satuan: "Kotak",
-              total: totalSnack.toString(),
-            },
-          ],
-          createdAt: Date.now(),
-        };
-
-        setPendingDraft(sessionKey, draft);
+        const target = candidates[0];
+        const rawData: any = target.data || {};
 
         return JSON.stringify({
-          status: "DRAFT_READY",
-          agenda: args.namaRapat,
-          vendor: vendor.namaVendor,
-          jumlahPeserta: jmlPeserta,
-          rincian: [
-            `Makan: ${porsiMakan} porsi @ Rp ${Number(hargaMakan).toLocaleString("id-ID")} = Rp ${Number(totalMakan).toLocaleString("id-ID")}`,
-            `Snack: ${porsiSnack} kotak @ Rp ${Number(hargaSnack).toLocaleString("id-ID")} = Rp ${Number(totalSnack).toLocaleString("id-ID")}`,
-          ],
-          totalKebutuhan: Number(grandTotal),
-          sisaSaldoSetelahSpj: Number(kodeRek.sisaSaldo - grandTotal),
-          pesanInstruksi: "Draft Mamin siap. Minta pengguna mengetik 'SIMPAN' untuk mengonfirmasi.",
+          found: true,
+          id: target.id.slice(0, 6),
+          jenis: target.jenisNaskah.replace(/_/g, " "),
+          nomorSurat: target.nomorSurat || "-",
+          tanggal: target.tanggal.toISOString().slice(0, 10),
+          perihal: target.perihal || "-",
+          agenda: target.agenda || "-",
+          tujuan: rawData.tujuan || rawData.kepada || "-",
+          isiRingkas: rawData.isiSurat || rawData.ringkasan || rawData.maksud || rawData.analisis || "-",
+          pejabatPenandatangan: rawData.penandatangan || rawData.namaPejabat || "-",
         });
       }
 
-      case "draft_spj_honor": {
-        const subQuery = String(args.subKegiatanKeyword || "").trim();
-        const subKeg = await prisma.subKegiatan.findFirst({
+      // 11. LIST AGENDA ABSENSI OPD
+      case "list_agenda_absensi": {
+        const limit = Number(args.limit) || 10;
+
+        const agendas = await prisma.agendaAbsensi.findMany({
           where: {
-            OR: [
-              { judulSub: { contains: subQuery, mode: "insensitive" } },
-              { kodeSub: { contains: subQuery, mode: "insensitive" } },
-            ],
+            isDeleted: false,
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
           },
-          include: { rekening: true },
+          take: limit,
+          orderBy: { tanggal: "desc" },
+          include: {
+            peserta: true,
+          },
         });
 
-        if (!subKeg || subKeg.rekening.length === 0) {
+        if (agendas.length === 0) {
           return JSON.stringify({
-            status: "ERROR",
-            message: `Sub-kegiatan '${subQuery}' tidak ditemukan.`,
-          });
-        }
-        const kodeRek = subKeg.rekening[0];
-
-        const penerimaList: string[] = args.namaPenerimaList || [];
-        const jam = Number(args.jamPelajaran || 1);
-        const tarif = BigInt(args.tarifPerJam || 300000);
-        const totalBrutoPerOrang = tarif * BigInt(jam);
-
-        let totalBrutoSemua = BigInt(0);
-        let totalPajakSemua = BigInt(0);
-        let totalNettoSemua = BigInt(0);
-
-        const rincianHonor: any[] = [];
-        const pengeluaranDetails: PendingDraftSpj["pengeluaranDetails"] = [];
-
-        for (const rawName of penerimaList) {
-          const p = await prisma.pegawai.findFirst({
-            where: { nama: { contains: rawName, mode: "insensitive" } },
-          });
-
-          // Logika Pajak PPh 21
-          let pajakPct = 5;
-          if (p?.golongan?.toUpperCase().startsWith("IV")) {
-            pajakPct = 15;
-          } else if (p?.golongan?.toUpperCase().startsWith("III")) {
-            pajakPct = 5;
-          } else if (p?.golongan?.toUpperCase().startsWith("II") || p?.golongan?.toUpperCase().startsWith("I")) {
-            pajakPct = 0;
-          }
-
-          const potonganPajak = (totalBrutoPerOrang * BigInt(pajakPct)) / BigInt(100);
-          const diterimaNetto = totalBrutoPerOrang - potonganPajak;
-
-          totalBrutoSemua += totalBrutoPerOrang;
-          totalPajakSemua += potonganPajak;
-          totalNettoSemua += diterimaNetto;
-
-          rincianHonor.push({
-            nama: p?.nama || rawName,
-            status: p ? `PNS Gol. ${p.golongan || "-"}` : "Non-PNS",
-            jam,
-            tarifPerJam: Number(tarif),
-            bruto: Number(totalBrutoPerOrang),
-            pajakPct: `${pajakPct}%`,
-            potonganPajak: Number(potonganPajak),
-            diterimaNetto: Number(diterimaNetto),
-          });
-
-          pengeluaranDetails.push({
-            kategori: "HONORARIUM",
-            uraian: `Honorarium ${args.namaKegiatan} (${p?.nama || rawName})`,
-            hargaSatuan: totalBrutoPerOrang.toString(),
-            qty: 1,
-            satuan: "Orang",
-            total: totalBrutoPerOrang.toString(),
+            found: false,
+            message: "Belum ada data agenda absensi OPD yang tercatat.",
           });
         }
 
-        if (kodeRek.sisaSaldo < totalBrutoSemua) {
-          return JSON.stringify({
-            status: "ERROR",
-            message: `Saldo tidak mencukupi! Kebutuhan: Rp ${totalBrutoSemua.toLocaleString("id-ID")}, Sisa Saldo: Rp ${kodeRek.sisaSaldo.toLocaleString("id-ID")}.`,
-          });
-        }
+        const items = agendas.map((a, idx) => {
+          const totalPeserta = a.peserta.length;
+          const hadir = a.peserta.filter((p) => p.status === "HADIR").length;
+          const mewakili = a.peserta.filter((p) => p.status === "MEWAKILI").length;
+          const tidakHadir = a.peserta.filter((p) => p.status === "TIDAK_HADIR").length;
 
-        const defaultUser = await prisma.user.findFirst({ include: { team: true } });
-        if (!defaultUser) throw new Error("Operator tidak ditemukan.");
-
-        const draft: PendingDraftSpj = {
-          id: `draft_${Date.now()}`,
-          jenisSpj: "HONORARIUM",
-          teamId: defaultUser.teamId,
-          createdById: defaultUser.id,
-          kodeRekeningId: kodeRek.id,
-          perihal: `Honorarium: ${args.namaKegiatan}`,
-          totalPengeluaran: totalBrutoSemua.toString(),
-          metaDokumen: {
-            namaKegiatan: args.namaKegiatan,
-            rincianHonor,
-          },
-          pengeluaranDetails,
-          createdAt: Date.now(),
-        };
-
-        setPendingDraft(sessionKey, draft);
+          return {
+            no: idx + 1,
+            id: a.id.slice(0, 6),
+            namaKegiatan: a.namaKegiatan,
+            tanggal: a.tanggal.toISOString().slice(0, 10),
+            tempat: a.tempat || "-",
+            status: a.status, // BERLANGSUNG, SELESAI, DIBATALKAN
+            rekapKehadiran: totalPeserta > 0
+              ? `${hadir} Hadir, ${mewakili} Mewakili, ${tidakHadir} Absen (Total: ${totalPeserta})`
+              : "Belum ada absensi masuk",
+          };
+        });
 
         return JSON.stringify({
-          status: "DRAFT_READY",
-          kegiatan: args.namaKegiatan,
-          penerima: rincianHonor,
-          totalBruto: Number(totalBrutoSemua),
-          totalPajak: Number(totalPajakSemua),
-          totalNetto: Number(totalNettoSemua),
-          sisaSaldoSetelahSpj: Number(kodeRek.sisaSaldo - totalBrutoSemua),
-          pesanInstruksi: "Draft Honorarium siap. Minta pengguna membalas 'SIMPAN' untuk memasukkan ke database.",
+          found: true,
+          total: items.length,
+          data: items,
         });
       }
 
-      case "commit_pending_spj": {
-        const session = getSession(sessionKey);
-        const draft = session.pendingDraft;
+      // 12. LIST AGENDA TIM
+      case "list_agenda_tim": {
+        const limit = Number(args.limit) || 10;
+        const now = new Date();
 
-        if (!draft) {
+        const agendas = await prisma.agendaTim.findMany({
+          where: {
+            isDeleted: false,
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: limit,
+          orderBy: { tanggalMulai: "asc" },
+        });
+
+        if (agendas.length === 0) {
           return JSON.stringify({
-            status: "NO_DRAFT",
-            message: "Tidak ada draft SPJ yang sedang aktif. Silakan instruksikan pembuatan SPJ terlebih dahulu.",
+            found: false,
+            message: "Belum ada agenda kegiatan tim yang dijadwalkan.",
           });
         }
 
-        const totalNominal = BigInt(draft.totalPengeluaran);
+        const items = agendas.map((a, idx) => ({
+          no: idx + 1,
+          id: a.id.slice(0, 6),
+          judul: a.judul,
+          kategori: a.kategori.replace(/_/g, " "),
+          tanggal: a.tanggalMulai.toISOString().slice(0, 10),
+          waktu: a.waktuMulai ? `${a.waktuMulai}${a.waktuSelesai ? " - " + a.waktuSelesai : ""} WITA` : "-",
+          lokasi: a.lokasi || "-",
+          status: a.status,
+          pic: a.pic || "-",
+        }));
 
-        // Eksekusi Atomic Transaction via Prisma $transaction
-        const createdSpj = await prisma.$transaction(async (tx) => {
-          // 1. Kunci dan Validasi Saldo
-          const rek = await tx.kodeRekening.findUnique({
-            where: { id: draft.kodeRekeningId },
-          });
-
-          if (!rek || rek.sisaSaldo < totalNominal) {
-            throw new Error(
-              `Gagal menyimpan: Saldo tidak mencukupi (Sisa: Rp ${rek?.sisaSaldo.toLocaleString("id-ID") || 0})`
-            );
-          }
-
-          // 2. Potong Saldo Rekening
-          await tx.kodeRekening.update({
-            where: { id: draft.kodeRekeningId },
-            data: {
-              sisaSaldo: {
-                decrement: totalNominal,
-              },
-            },
-          });
-
-          // 3. Generate Nomor BKU Otomatis
-          const spjCount = await tx.spj.count({ where: { teamId: draft.teamId } });
-          const year = new Date().getFullYear();
-          const nomorBku = `SPJ/${year}/${draft.jenisSpj.slice(0, 3)}/${String(spjCount + 1).padStart(4, "0")}`;
-
-          // 4. Insert Induk SPJ
-          const spj = await tx.spj.create({
-            data: {
-              nomorBku,
-              jenisSpj: draft.jenisSpj,
-              perihal: draft.perihal,
-              kodeRekeningId: draft.kodeRekeningId,
-              teamId: draft.teamId,
-              createdById: draft.createdById,
-              totalPengeluaran: totalNominal,
-              metaDokumen: draft.metaDokumen,
-            },
-          });
-
-          // 5. Insert Detail Berdasarkan Jenis
-          if (draft.jenisSpj === "PERJADIN" && draft.perjadinDetail) {
-            await tx.spjPerjadinDetail.create({
-              data: {
-                spjId: spj.id,
-                tempatBerangkat: draft.perjadinDetail.tempatBerangkat,
-                tempatTujuan: draft.perjadinDetail.tempatTujuan,
-                tglBerangkat: new Date(draft.perjadinDetail.tglBerangkat),
-                tglKembali: new Date(draft.perjadinDetail.tglKembali),
-                lamaPerjalanan: draft.perjadinDetail.lamaPerjalanan,
-                alatAngkut: draft.perjadinDetail.alatAngkut,
-                tingkatPerjadin: draft.perjadinDetail.tingkatPerjadin,
-              },
-            });
-
-            // Insert Roster Items
-            if (draft.rosterItems) {
-              const rosterMap = new Map<string, string>(); // index ➔ id
-              for (const r of draft.rosterItems) {
-                const rosterCreated = await tx.spjRosterItem.create({
-                  data: {
-                    spjId: spj.id,
-                    pegawaiId: r.pegawaiId,
-                    order: r.order,
-                    role: r.role,
-                    nama: r.nama,
-                    nip: r.nip,
-                    jabatan: r.jabatan,
-                    golongan: r.golongan,
-                    pangkat: r.pangkat,
-                  },
-                });
-                rosterMap.set(String(r.order === 0 ? 0 : r.order - 1), rosterCreated.id);
-              }
-
-              // Insert Pengeluaran Detail
-              for (const item of draft.pengeluaranDetails) {
-                const rosterDbId = item.spjRosterItemId ? rosterMap.get(item.spjRosterItemId) : undefined;
-                await tx.spjPengeluaranDetail.create({
-                  data: {
-                    spjId: spj.id,
-                    spjRosterItemId: rosterDbId,
-                    kategori: item.kategori,
-                    uraian: item.uraian,
-                    hargaSatuan: BigInt(item.hargaSatuan),
-                    qty: item.qty,
-                    satuan: item.satuan,
-                    total: BigInt(item.total),
-                  },
-                });
-              }
-            }
-          } else if (draft.jenisSpj === "MAKAN_MINUM" && draft.maminDetail) {
-            await tx.spjMaminDetail.create({
-              data: {
-                spjId: spj.id,
-                vendorId: draft.maminDetail.vendorId,
-                namaRapat: draft.maminDetail.namaRapat,
-                jumlahPeserta: draft.maminDetail.jumlahPeserta,
-              },
-            });
-
-            for (const item of draft.pengeluaranDetails) {
-              await tx.spjPengeluaranDetail.create({
-                data: {
-                  spjId: spj.id,
-                  kategori: item.kategori,
-                  uraian: item.uraian,
-                  hargaSatuan: BigInt(item.hargaSatuan),
-                  qty: item.qty,
-                  satuan: item.satuan,
-                  total: BigInt(item.total),
-                },
-              });
-            }
-          } else {
-            // Honorarium / Operasional
-            for (const item of draft.pengeluaranDetails) {
-              await tx.spjPengeluaranDetail.create({
-                data: {
-                  spjId: spj.id,
-                  kategori: item.kategori,
-                  uraian: item.uraian,
-                  hargaSatuan: BigInt(item.hargaSatuan),
-                  qty: item.qty,
-                  satuan: item.satuan,
-                  total: BigInt(item.total),
-                },
-              });
-            }
-          }
-
-          return spj;
+        return JSON.stringify({
+          found: true,
+          total: items.length,
+          data: items,
         });
+      }
 
-        // Bersihkan draft setelah sukses
-        clearPendingDraft(sessionKey);
+      // 13. CREATE AGENDA TIM
+      case "create_agenda_tim": {
+        const judul = String(args.judul || "").trim();
+        let tglMulaiStr = String(args.tanggalMulai || "").trim();
+
+        // Validasi dan format tanggal YYYY-MM-DD
+        if (!tglMulaiStr.includes("-")) {
+          // Jika format misal 17-08-2026 atau 17/08/2026
+          tglMulaiStr = "2026-08-17";
+        }
+
+        const tglMulai = new Date(tglMulaiStr);
+        const tglSelesai = args.tanggalSelesai ? new Date(args.tanggalSelesai) : null;
+        const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
+        const lokasi = args.lokasi ? String(args.lokasi).trim() : null;
+        const pic = args.pic ? String(args.pic).trim() : null;
+        const kategori = (args.kategori || "RAPAT") as any;
+
+        // Ambil default Team & User
+        const defaultTeam = await prisma.team.findFirst();
+        const defaultUser = await prisma.user.findFirst();
+
+        if (!defaultTeam || !defaultUser) {
+          return JSON.stringify({
+            status: "ERROR",
+            message: "Data Team atau User belum tersedia di database.",
+          });
+        }
+
+        const created = await prisma.agendaTim.create({
+          data: {
+            judul,
+            kategori,
+            tanggalMulai: tglMulai,
+            tanggalSelesai: tglSelesai,
+            waktuMulai,
+            lokasi,
+            pic,
+            teamId: contextTeamId || defaultTeam.id,
+            createdById: defaultUser.id,
+          },
+        });
 
         return JSON.stringify({
           status: "SUCCESS",
-          spjId: createdSpj.id,
-          nomorBku: createdSpj.nomorBku,
-          totalPengeluaran: Number(createdSpj.totalPengeluaran),
-          message: `SPJ berhasil disimpan secara resmi ke buku kas dengan Nomor ${createdSpj.nomorBku}.`,
+          id: created.id.slice(0, 6),
+          judul: created.judul,
+          tanggal: created.tanggalMulai.toISOString().slice(0, 10),
+          waktu: created.waktuMulai || "-",
+          lokasi: created.lokasi || "-",
+          message: "Agenda tim berhasil dicatat ke kalender.",
         });
       }
 
@@ -947,9 +815,6 @@ export async function executeToolCall(
     }
   } catch (error: any) {
     console.error(`[AI Tool Error - ${name}]:`, error);
-    return JSON.stringify({
-      status: "ERROR",
-      message: error?.message || "Terjadi kesalahan internal saat mengeksekusi data.",
-    });
+    return JSON.stringify({ status: "ERROR", message: error?.message || "Terjadi kesalahan." });
   }
 }

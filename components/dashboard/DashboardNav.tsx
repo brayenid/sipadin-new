@@ -8,6 +8,7 @@ import {
   Users,
   Store,
   Calendar,
+  CalendarDays,
   PlusCircle,
   PenBox,
   ClipboardCheck,
@@ -24,6 +25,7 @@ const navMain = [
 ];
 
 const navTambahan = [
+  { href: "/dashboard/agenda", label: "Agenda Tim", icon: CalendarDays },
   { href: "/dashboard/absensi", label: "Absensi OPD", icon: ClipboardCheck },
   { href: "/dashboard/naskah-dinas", label: "Naskah Dinas", icon: PenBox },
 ];

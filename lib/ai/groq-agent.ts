@@ -8,7 +8,11 @@ import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"];
+const GROQ_MODELS = [
+  "llama-3.1-8b-instant",        // Kuota 500.000 TPD
+  "gemma2-9b-it",                // Kuota 500.000 TPD
+  "llama-3.2-3b-preview",        // Kuota 500.000 TPD
+];
 
 export interface AgentProcessResult {
   replyText: string;
@@ -16,7 +20,70 @@ export interface AgentProcessResult {
 }
 
 /**
- * Proses pesan WhatsApp user melalui Groq AI Agent
+ * Fallback AI Engine: Google Gemini (Bypass total limit Groq jika 429)
+ */
+async function callGeminiFallback(prompt: string, contextTeamId?: string): Promise<AgentProcessResult> {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!geminiKey) throw new Error("GEMINI_API_KEY not found");
+
+  // Jika pertanyaan umum tentang agenda / absensi / spj, kita jalankan query data langsung
+  const lower = prompt.toLowerCase();
+  let directDataText = "";
+  const toolsExecuted: string[] = [];
+
+  if (lower.includes("agenda")) {
+    const { executeToolCall } = await import("./tools");
+    directDataText = await executeToolCall("list_agenda_tim", { limit: 10 }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("list_agenda_tim");
+  } else if (lower.includes("absensi")) {
+    const { executeToolCall } = await import("./tools");
+    directDataText = await executeToolCall("list_agenda_absensi", { limit: 10 }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("list_agenda_absensi");
+  } else if (lower.includes("belum bayar") || lower.includes("belum dibayar") || lower.includes("unpaid")) {
+    const { executeToolCall } = await import("./tools");
+    directDataText = await executeToolCall("get_unpaid_spjs", { limit: 10 }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("get_unpaid_spjs");
+  } else if (lower.includes("nip")) {
+    const { executeToolCall } = await import("./tools");
+    const nameMatch = prompt.replace(/nip/gi, "").trim();
+    directDataText = await executeToolCall("lookup_nip_direct", { nama: nameMatch }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("lookup_nip_direct");
+  }
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+  const response = await fetch(geminiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${SYSTEM_PROMPT_SIPADIN_AGENT}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini Error (${response.status}): ${err}`);
+  }
+
+  const resJson = await response.json();
+  const reply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
+
+  return {
+    replyText: reply.trim(),
+    toolCallsExecuted: toolsExecuted,
+  };
+}
+
+/**
+ * Proses pesan WhatsApp user melalui Groq AI Agent dengan Auto Gemini Fallback
  */
 export async function processUserMessageWithGroq(
   sessionKey: string,
@@ -24,9 +91,6 @@ export async function processUserMessageWithGroq(
   contextTeamId?: string
 ): Promise<AgentProcessResult> {
   const apiKey = process.env.GROQ_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("GROQ_API_KEY belum dikonfigurasi di environment server (.env).");
-  }
 
   // 1. Ambil Session Percakapan
   const session = getSession(sessionKey);
@@ -41,13 +105,15 @@ export async function processUserMessageWithGroq(
   const toolsExecuted: string[] = [];
   let maxToolLoops = 5;
 
-  // Susun payload pesan lengkap (System Prompt + Riwayat Chat)
+  // Pangkas hanya 4 pesan terakhir agar payload token sangat kecil (< 300 token)
+  const recentMessages = session.messages.slice(-4).filter((m) => m.content !== null || (m.tool_calls && m.tool_calls.length > 0));
+
   let conversation: ChatMessage[] = [
     {
       role: "system",
       content: SYSTEM_PROMPT_SIPADIN_AGENT,
     },
-    ...session.messages,
+    ...recentMessages,
   ];
 
   while (maxToolLoops > 0) {
@@ -88,7 +154,8 @@ export async function processUserMessageWithGroq(
     }
 
     if (!data) {
-      throw lastError || new Error("Semua model Groq gagal memproses permintaan.");
+      console.warn("[Groq Agent] Semua model Groq terkena Rate Limit. Mengalihkan ke Fallback Engine: Google Gemini Flash...");
+      return await callGeminiFallback(userMessageText, contextTeamId);
     }
     const choice = data.choices?.[0];
     const assistantMsg = choice?.message;
