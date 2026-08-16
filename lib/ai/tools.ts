@@ -161,11 +161,13 @@ export const AI_TOOLS_SCHEMA = [
     type: "function",
     function: {
       name: "list_agenda_tim",
-      description: "List agenda kegiatan tim dari kalender.",
+      description: "List agenda kegiatan tim dari kalender (bisa filter kata kunci/judul atau tanggal tertentu).",
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number" },
+          searchQuery: { type: "string", description: "Filter berdasarkan judul atau lokasi (opsional)." },
+          tanggal: { type: "string", description: "Filter tanggal tertentu format YYYY-MM-DD (opsional)." },
+          limit: { type: "number", description: "Maksimal data yang diambil (default 10)." },
         },
       },
     },
@@ -178,19 +180,78 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          judul: { type: "string" },
-          tanggalMulai: { type: "string" },
-          tanggalSelesai: { type: "string" },
-          waktuMulai: { type: "string" },
-          lokasi: { type: "string" },
-          kategori: { type: "string" },
-          pic: { type: "string" },
+          judul: { type: "string", description: "Nama / judul kegiatan agenda." },
+          tanggalMulai: { type: "string", description: "Tanggal mulai format YYYY-MM-DD." },
+          tanggalSelesai: { type: "string", description: "Tanggal selesai format YYYY-MM-DD (opsional)." },
+          waktuMulai: { type: "string", description: "Waktu mulai misal '09:00' atau '19:00' (opsional)." },
+          lokasi: { type: "string", description: "Tempat atau lokasi kegiatan (opsional)." },
+          kategori: { type: "string", enum: ["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "LAINNYA"], description: "Kategori agenda." },
+          pic: { type: "string", description: "Nama penanggung jawab / PIC (opsional)." },
         },
         required: ["judul", "tanggalMulai"],
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "delete_agenda_tim",
+      description: "Hapus / batalkan agenda kegiatan tim dari kalender berdasarkan ID (6 karakter) atau kata kunci judul kegiatan.",
+      parameters: {
+        type: "object",
+        properties: {
+          searchQuery: { type: "string", description: "ID 6 karakter agenda atau kata kunci judul kegiatan yang mau dihapus." },
+        },
+        required: ["searchQuery"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_agenda_tim",
+      description: "Ubah / edit data agenda kegiatan tim (misal ubah jam, tanggal, judul, lokasi, PIC, atau status) berdasarkan ID (6 karakter) atau kata kunci judul kegiatan.",
+      parameters: {
+        type: "object",
+        properties: {
+          searchQuery: { type: "string", description: "ID 6 karakter agenda atau kata kunci judul kegiatan yang mau diubah." },
+          judul: { type: "string", description: "Judul baru agenda (opsional)." },
+          tanggalMulai: { type: "string", description: "Tanggal mulai baru format YYYY-MM-DD (opsional)." },
+          tanggalSelesai: { type: "string", description: "Tanggal selesai baru format YYYY-MM-DD (opsional)." },
+          waktuMulai: { type: "string", description: "Waktu mulai baru misal '14:00' atau '09:00' (opsional)." },
+          waktuSelesai: { type: "string", description: "Waktu selesai baru misal '16:00' (opsional)." },
+          lokasi: { type: "string", description: "Lokasi / tempat baru (opsional)." },
+          pic: { type: "string", description: "Nama PIC baru (opsional)." },
+          kategori: { type: "string", enum: ["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "LAINNYA"], description: "Kategori baru (opsional)." },
+          status: { type: "string", enum: ["DIRENCANAKAN", "BERLANGSUNG", "SELESAI", "DIBATALKAN"], description: "Status agenda baru (opsional)." },
+        },
+        required: ["searchQuery"],
+      },
+    },
+  },
 ];
+
+function formatWitaDate(d: Date): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Makassar",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 10);
+  }
+}
+
+function parseWitaDate(dateStr: string): Date {
+  const clean = dateStr.trim();
+  const datePart = clean.split("T")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return new Date(`${datePart}T00:00:00+08:00`);
+  }
+  return new Date(clean);
+}
 
 // ==========================================
 // 2. BACKEND IMPLEMENTATION
@@ -719,13 +780,37 @@ export async function executeToolCall(
       // 12. LIST AGENDA TIM
       case "list_agenda_tim": {
         const limit = Number(args.limit) || 10;
-        const now = new Date();
+        const searchQuery = args.searchQuery ? String(args.searchQuery).trim() : "";
+        const tanggalFilter = args.tanggal ? String(args.tanggal).trim() : "";
+
+        const whereClause: any = {
+          isDeleted: false,
+          ...(contextTeamId ? { teamId: contextTeamId } : {}),
+        };
+
+        if (searchQuery) {
+          whereClause.OR = [
+            { judul: { contains: searchQuery, mode: "insensitive" } },
+            { lokasi: { contains: searchQuery, mode: "insensitive" } },
+            { pic: { contains: searchQuery, mode: "insensitive" } },
+            { id: { startsWith: searchQuery, mode: "insensitive" } },
+          ];
+        }
+
+        if (tanggalFilter) {
+          const parsed = parseWitaDate(tanggalFilter);
+          if (!isNaN(parsed.getTime())) {
+            const startOfDay = new Date(parsed.getTime());
+            const endOfDay = new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1);
+            whereClause.tanggalMulai = {
+              gte: startOfDay,
+              lte: endOfDay,
+            };
+          }
+        }
 
         const agendas = await prisma.agendaTim.findMany({
-          where: {
-            isDeleted: false,
-            ...(contextTeamId ? { teamId: contextTeamId } : {}),
-          },
+          where: whereClause,
           take: limit,
           orderBy: { tanggalMulai: "asc" },
         });
@@ -733,7 +818,9 @@ export async function executeToolCall(
         if (agendas.length === 0) {
           return JSON.stringify({
             found: false,
-            message: "Belum ada agenda kegiatan tim yang dijadwalkan.",
+            message: searchQuery || tanggalFilter
+              ? `Tidak ada agenda yang cocok dengan pencarian '${searchQuery || tanggalFilter}'.`
+              : "Belum ada agenda kegiatan tim yang dijadwalkan.",
           });
         }
 
@@ -742,7 +829,7 @@ export async function executeToolCall(
           id: a.id.slice(0, 6),
           judul: a.judul,
           kategori: a.kategori.replace(/_/g, " "),
-          tanggal: a.tanggalMulai.toISOString().slice(0, 10),
+          tanggal: formatWitaDate(a.tanggalMulai),
           waktu: a.waktuMulai ? `${a.waktuMulai}${a.waktuSelesai ? " - " + a.waktuSelesai : ""} WITA` : "-",
           lokasi: a.lokasi || "-",
           status: a.status,
@@ -753,6 +840,7 @@ export async function executeToolCall(
           found: true,
           total: items.length,
           data: items,
+          hint: "Untuk menghapus agenda, ketik: 'Hapus agenda [Judul/ID]'",
         });
       }
 
@@ -761,14 +849,12 @@ export async function executeToolCall(
         const judul = String(args.judul || "").trim();
         let tglMulaiStr = String(args.tanggalMulai || "").trim();
 
-        // Validasi dan format tanggal YYYY-MM-DD
-        if (!tglMulaiStr.includes("-")) {
-          // Jika format misal 17-08-2026 atau 17/08/2026
-          tglMulaiStr = "2026-08-17";
+        if (!tglMulaiStr) {
+          tglMulaiStr = formatWitaDate(new Date());
         }
 
-        const tglMulai = new Date(tglMulaiStr);
-        const tglSelesai = args.tanggalSelesai ? new Date(args.tanggalSelesai) : null;
+        const tglMulai = parseWitaDate(tglMulaiStr);
+        const tglSelesai = args.tanggalSelesai ? parseWitaDate(args.tanggalSelesai) : null;
         const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
         const lokasi = args.lokasi ? String(args.lokasi).trim() : null;
         const pic = args.pic ? String(args.pic).trim() : null;
@@ -803,10 +889,147 @@ export async function executeToolCall(
           status: "SUCCESS",
           id: created.id.slice(0, 6),
           judul: created.judul,
-          tanggal: created.tanggalMulai.toISOString().slice(0, 10),
+          tanggal: formatWitaDate(created.tanggalMulai),
           waktu: created.waktuMulai || "-",
           lokasi: created.lokasi || "-",
           message: "Agenda tim berhasil dicatat ke kalender.",
+        });
+      }
+
+      // 14. DELETE AGENDA TIM
+      case "delete_agenda_tim": {
+        const query = String(args.searchQuery || "").trim();
+
+        if (!query) {
+          return JSON.stringify({
+            status: "ERROR",
+            message: "Mohon sebutkan judul atau ID agenda yang mau dihapus.",
+          });
+        }
+
+        const candidates = await prisma.agendaTim.findMany({
+          where: {
+            isDeleted: false,
+            OR: [
+              { id: { startsWith: query, mode: "insensitive" } },
+              { id: { contains: query, mode: "insensitive" } },
+              { judul: { contains: query, mode: "insensitive" } },
+              { lokasi: { contains: query, mode: "insensitive" } },
+            ],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: 5,
+        });
+
+        if (candidates.length === 0) {
+          return JSON.stringify({
+            status: "NOT_FOUND",
+            message: `Agenda terkait '${query}' tidak ditemukan di kalender.`,
+          });
+        }
+
+        if (candidates.length > 1) {
+          const list = candidates.map(
+            (c) => `• ID: [${c.id.slice(0, 6)}] - ${c.judul} (${formatWitaDate(c.tanggalMulai)}${c.waktuMulai ? ", " + c.waktuMulai : ""})`
+          );
+          return JSON.stringify({
+            status: "AMBIGUOUS",
+            message: `Ditemukan ${candidates.length} agenda yang cocok dengan '${query}':\n${list.join("\n")}\n\nSebutkan ID 6 karakter yang ingin dihapus.`,
+          });
+        }
+
+        const target = candidates[0];
+        await prisma.agendaTim.update({
+          where: { id: target.id },
+          data: { isDeleted: true },
+        });
+
+        return JSON.stringify({
+          status: "SUCCESS",
+          id: target.id.slice(0, 6),
+          judul: target.judul,
+          tanggal: formatWitaDate(target.tanggalMulai),
+          message: `Agenda *${target.judul}* berhasil dihapus dari kalender.`,
+        });
+      }
+
+      // 15. UPDATE AGENDA TIM
+      case "update_agenda_tim": {
+        const query = String(args.searchQuery || "").trim();
+
+        if (!query) {
+          return JSON.stringify({
+            status: "ERROR",
+            message: "Mohon sebutkan judul atau ID agenda yang mau diubah.",
+          });
+        }
+
+        const candidates = await prisma.agendaTim.findMany({
+          where: {
+            isDeleted: false,
+            OR: [
+              { id: { startsWith: query, mode: "insensitive" } },
+              { id: { contains: query, mode: "insensitive" } },
+              { judul: { contains: query, mode: "insensitive" } },
+              { lokasi: { contains: query, mode: "insensitive" } },
+            ],
+            ...(contextTeamId ? { teamId: contextTeamId } : {}),
+          },
+          take: 5,
+        });
+
+        if (candidates.length === 0) {
+          return JSON.stringify({
+            status: "NOT_FOUND",
+            message: `Agenda terkait '${query}' tidak ditemukan di kalender.`,
+          });
+        }
+
+        if (candidates.length > 1) {
+          const list = candidates.map(
+            (c) => `• ID: [${c.id.slice(0, 6)}] - ${c.judul} (${formatWitaDate(c.tanggalMulai)}${c.waktuMulai ? ", " + c.waktuMulai : ""})`
+          );
+          return JSON.stringify({
+            status: "AMBIGUOUS",
+            message: `Ditemukan ${candidates.length} agenda yang cocok dengan '${query}':\n${list.join("\n")}\n\nSebutkan ID 6 karakter yang ingin diubah.`,
+          });
+        }
+
+        const target = candidates[0];
+        const updateData: any = {};
+
+        if (args.judul) updateData.judul = String(args.judul).trim();
+        if (args.tanggalMulai) updateData.tanggalMulai = parseWitaDate(args.tanggalMulai);
+        if (args.tanggalSelesai) updateData.tanggalSelesai = parseWitaDate(args.tanggalSelesai);
+        if (args.waktuMulai !== undefined) updateData.waktuMulai = String(args.waktuMulai).trim() || null;
+        if (args.waktuSelesai !== undefined) updateData.waktuSelesai = String(args.waktuSelesai).trim() || null;
+        if (args.lokasi !== undefined) updateData.lokasi = String(args.lokasi).trim() || null;
+        if (args.pic !== undefined) updateData.pic = String(args.pic).trim() || null;
+        if (args.kategori) updateData.kategori = args.kategori;
+        if (args.status) updateData.status = args.status;
+
+        const updated = await prisma.agendaTim.update({
+          where: { id: target.id },
+          data: updateData,
+        });
+
+        const changeDescriptions: string[] = [];
+        if (args.judul) changeDescriptions.push(`Judul: ${updated.judul}`);
+        if (args.tanggalMulai) changeDescriptions.push(`Tgl: ${formatWitaDate(updated.tanggalMulai)}`);
+        if (args.waktuMulai) changeDescriptions.push(`Jam: ${updated.waktuMulai} WITA`);
+        if (args.lokasi) changeDescriptions.push(`Lokasi: ${updated.lokasi}`);
+        if (args.pic) changeDescriptions.push(`PIC: ${updated.pic}`);
+        if (args.status) changeDescriptions.push(`Status: ${updated.status}`);
+
+        return JSON.stringify({
+          status: "SUCCESS",
+          id: updated.id.slice(0, 6),
+          judul: updated.judul,
+          tanggal: formatWitaDate(updated.tanggalMulai),
+          waktu: updated.waktuMulai ? `${updated.waktuMulai}${updated.waktuSelesai ? " - " + updated.waktuSelesai : ""} WITA` : "-",
+          lokasi: updated.lokasi || "-",
+          perubahan: changeDescriptions.join(", ") || "Data berhasil diperbarui",
+          message: `Agenda *${updated.judul}* berhasil diperbarui.`,
         });
       }
 

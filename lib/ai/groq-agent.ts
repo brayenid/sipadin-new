@@ -5,7 +5,7 @@
  * Fallback 2: Google Gemini 1.5 Flash Native
  */
 
-import { SYSTEM_PROMPT_SIPADIN_AGENT } from "./prompts";
+import { getSystemPrompt } from "./prompts";
 import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
@@ -177,7 +177,17 @@ async function callGeminiNativeFallback(
   let directDataText = "";
   const toolsExecuted: string[] = [];
 
-  if (lower.includes("agenda")) {
+  if (lower.includes("hapus") && (lower.includes("agenda") || lower.includes("kegiatan") || lower.includes("obor") || lower.includes("rapat"))) {
+    const { executeToolCall } = await import("./tools");
+    const query = prompt.replace(/hapus|agenda|kegiatan|yang|tolong/gi, "").trim();
+    directDataText = await executeToolCall("delete_agenda_tim", { searchQuery: query || prompt }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("delete_agenda_tim");
+  } else if ((lower.includes("ubah") || lower.includes("edit") || lower.includes("ganti") || lower.includes("geser")) && (lower.includes("agenda") || lower.includes("kegiatan") || lower.includes("jam") || lower.includes("jadwal") || lower.includes("lokasi"))) {
+    const { executeToolCall } = await import("./tools");
+    const query = prompt.replace(/ubah|edit|ganti|geser|agenda|kegiatan|jam|jadwal|lokasi|jadi|ke|yang|tolong/gi, "").trim();
+    directDataText = await executeToolCall("list_agenda_tim", { searchQuery: query || undefined, limit: 5 }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("list_agenda_tim");
+  } else if (lower.includes("agenda")) {
     const { executeToolCall } = await import("./tools");
     directDataText = await executeToolCall("list_agenda_tim", { limit: 10 }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("list_agenda_tim");
@@ -206,7 +216,7 @@ async function callGeminiNativeFallback(
           role: "user",
           parts: [
             {
-              text: `${SYSTEM_PROMPT_SIPADIN_AGENT}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
+              text: `${getSystemPrompt()}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
             },
           ],
         },
@@ -243,7 +253,7 @@ export async function processUserMessageWithGroq(
 
   const recentMessages = session.messages.slice(-4).filter((m) => m.content !== null || (m.tool_calls && m.tool_calls.length > 0));
   const conversation: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT_SIPADIN_AGENT },
+    { role: "system", content: getSystemPrompt() },
     ...recentMessages,
   ];
 
