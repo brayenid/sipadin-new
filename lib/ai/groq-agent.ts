@@ -1,17 +1,35 @@
 /**
- * Groq AI Agent Engine (SIPADIN Co-Pilot)
- * Menjalankan LLM Llama 3.3 70B dengan Recursive Tool Calling & Session Memory.
+ * Unified Multi-Engine AI Agent (SIPADIN Co-Pilot)
+ * Engine Utama: OpenRouter (Free Models: Llama 3.3 70B, DeepSeek V3, Gemini 2.0 Flash)
+ * Fallback 1: Groq Cloud (Llama 3.1 8B, Gemma2 9B)
+ * Fallback 2: Google Gemini 1.5 Flash Native
  */
 
 import { SYSTEM_PROMPT_SIPADIN_AGENT } from "./prompts";
 import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
+// ==========================================
+// 1. OPENROUTER ENGINE (UTAMA - FREE MODELS)
+// ==========================================
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_FREE_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",
+  "deepseek/deepseek-chat:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "mistralai/mistral-small-24b-instruct-2501:free",
+];
+
+// ==========================================
+// 2. GROQ ENGINE (FALLBACK 1 - AKTIF SAAT INI)
+// ==========================================
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODELS = [
-  "llama-3.1-8b-instant",        // Kuota 500.000 TPD
-  "gemma2-9b-it",                // Kuota 500.000 TPD
-  "llama-3.2-3b-preview",        // Kuota 500.000 TPD
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+  "mixtral-8x7b-32768",
 ];
 
 export interface AgentProcessResult {
@@ -20,13 +38,141 @@ export interface AgentProcessResult {
 }
 
 /**
- * Fallback AI Engine: Google Gemini (Bypass total limit Groq jika 429)
+ * Eksekusi LLM via Endpoint OpenAI-Compatible (OpenRouter atau Groq) dengan Recursive Function Calling
  */
-async function callGeminiFallback(prompt: string, contextTeamId?: string): Promise<AgentProcessResult> {
+async function runOpenAICompatibleEngine(
+  apiUrl: string,
+  apiKey: string,
+  models: string[],
+  conversation: ChatMessage[],
+  sessionKey: string,
+  contextTeamId?: string,
+  extraHeaders: Record<string, string> = {}
+): Promise<{ success: boolean; result?: AgentProcessResult; error?: any }> {
+  const toolsExecuted: string[] = [];
+  let maxToolLoops = 4;
+  let currentConversation = [...conversation];
+  let usedModelName = "";
+
+  while (maxToolLoops > 0) {
+    maxToolLoops--;
+    let data: any = null;
+    let lastErr: any = null;
+
+    for (const model of models) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            ...extraHeaders,
+          },
+          body: JSON.stringify({
+            model,
+            messages: currentConversation,
+            tools: AI_TOOLS_SCHEMA,
+            tool_choice: "auto",
+            temperature: 0.1,
+            max_tokens: 1024,
+          }),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          usedModelName = model;
+          break;
+        } else {
+          const errText = await response.text();
+          console.warn(`[AI Engine ${apiUrl}] Model ${model} error (${response.status}):`, errText);
+          lastErr = new Error(`Error ${response.status}: ${errText}`);
+        }
+      } catch (err: any) {
+        lastErr = err;
+      }
+    }
+
+    if (!data) {
+      return { success: false, error: lastErr };
+    }
+
+    const choice = data.choices?.[0];
+    const assistantMsg = choice?.message;
+    if (!assistantMsg) {
+      return { success: false, error: new Error("Empty message response") };
+    }
+
+    // Jika LLM meminta pemanggilan tool (Function Calling)
+    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      const toolCallMsg: ChatMessage = {
+        role: "assistant",
+        content: assistantMsg.content || null,
+        tool_calls: assistantMsg.tool_calls,
+      };
+      currentConversation.push(toolCallMsg);
+      addMessageToSession(sessionKey, toolCallMsg);
+
+      for (const call of assistantMsg.tool_calls) {
+        const toolName = call.function.name;
+        let args = {};
+        try {
+          args = JSON.parse(call.function.arguments || "{}");
+        } catch {
+          args = {};
+        }
+
+        console.log(`[AI Tool Executing]: ${toolName}`, args);
+        toolsExecuted.push(toolName);
+
+        const toolResultString = await executeToolCall(
+          toolName,
+          args,
+          sessionKey,
+          contextTeamId
+        );
+
+        const toolResponseMsg: ChatMessage = {
+          role: "tool",
+          name: toolName,
+          tool_call_id: call.id,
+          content: toolResultString,
+        };
+        currentConversation.push(toolResponseMsg);
+        addMessageToSession(sessionKey, toolResponseMsg);
+      }
+      continue;
+    }
+
+    // Balasan Teks Akhir + Sign Model Khusus: "Source: *****"
+    const rawReply = assistantMsg.content || "Permintaan berhasil diproses.";
+    addMessageToSession(sessionKey, { role: "assistant", content: rawReply });
+
+    const cleanModelName = usedModelName.split("/").pop()?.replace(":free", "") || usedModelName;
+    const providerName = apiUrl.includes("openrouter") ? "OpenRouter" : "Groq";
+    const finalReplyWithSign = `${rawReply}\n\n_Source: ${providerName} (${cleanModelName})_`;
+
+    return {
+      success: true,
+      result: {
+        replyText: finalReplyWithSign,
+        toolCallsExecuted: toolsExecuted,
+      },
+    };
+  }
+
+  return { success: false, error: new Error("Max tool loops reached") };
+}
+
+/**
+ * Fallback Engine 2: Google Gemini Native
+ */
+async function callGeminiNativeFallback(
+  prompt: string,
+  contextTeamId?: string
+): Promise<AgentProcessResult> {
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   if (!geminiKey) throw new Error("GEMINI_API_KEY not found");
 
-  // Jika pertanyaan umum tentang agenda / absensi / spj, kita jalankan query data langsung
   const lower = prompt.toLowerCase();
   let directDataText = "";
   const toolsExecuted: string[] = [];
@@ -50,7 +196,7 @@ async function callGeminiFallback(prompt: string, contextTeamId?: string): Promi
     toolsExecuted.push("lookup_nip_direct");
   }
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
   const response = await fetch(geminiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,158 +220,76 @@ async function callGeminiFallback(prompt: string, contextTeamId?: string): Promi
   }
 
   const resJson = await response.json();
-  const reply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
+  const rawReply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
+  const finalReply = `${rawReply.trim()}\n\n_Source: Google Gemini (gemini-1.5-flash)_`;
 
   return {
-    replyText: reply.trim(),
+    replyText: finalReply,
     toolCallsExecuted: toolsExecuted,
   };
 }
 
 /**
- * Proses pesan WhatsApp user melalui Groq AI Agent dengan Auto Gemini Fallback
+ * Dispatcher Utama: OpenRouter (Utama) -> Groq (Fallback 1) -> Gemini (Fallback 2)
  */
 export async function processUserMessageWithGroq(
   sessionKey: string,
   userMessageText: string,
   contextTeamId?: string
 ): Promise<AgentProcessResult> {
-  const apiKey = process.env.GROQ_API_KEY?.trim();
-
-  // 1. Ambil Session Percakapan
   const session = getSession(sessionKey);
-
-  // Tambahkan user message ke session
-  const userMsg: ChatMessage = {
-    role: "user",
-    content: userMessageText,
-  };
+  const userMsg: ChatMessage = { role: "user", content: userMessageText };
   addMessageToSession(sessionKey, userMsg);
 
-  const toolsExecuted: string[] = [];
-  let maxToolLoops = 5;
-
-  // Pangkas hanya 4 pesan terakhir agar payload token sangat kecil (< 300 token)
   const recentMessages = session.messages.slice(-4).filter((m) => m.content !== null || (m.tool_calls && m.tool_calls.length > 0));
-
-  let conversation: ChatMessage[] = [
-    {
-      role: "system",
-      content: SYSTEM_PROMPT_SIPADIN_AGENT,
-    },
+  const conversation: ChatMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT_SIPADIN_AGENT },
     ...recentMessages,
   ];
 
-  while (maxToolLoops > 0) {
-    maxToolLoops--;
-
-    let lastError: any = null;
-    let data: any = null;
-
-    for (const model of GROQ_MODELS) {
-      try {
-        const response = await fetch(GROQ_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: conversation,
-            tools: AI_TOOLS_SCHEMA,
-            tool_choice: "auto",
-            temperature: 0.1,
-            max_tokens: 1024,
-          }),
-        });
-
-        if (response.ok) {
-          data = await response.json();
-          break;
-        } else {
-          const errBody = await response.text();
-          console.warn(`[Groq Agent] Model ${model} returned error ${response.status}:`, errBody);
-          lastError = new Error(`Groq error (${response.status}): ${errBody}`);
-        }
-      } catch (err: any) {
-        lastError = err;
+  // 1. TAHAP 1: Coba Engine Utama OpenRouter (Free Models)
+  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (openRouterKey) {
+    console.log("[AI Dispatcher] Menggunakan Engine Utama: OpenRouter (100% Free Models)...");
+    const orRes = await runOpenAICompatibleEngine(
+      OPENROUTER_API_URL,
+      openRouterKey,
+      OPENROUTER_FREE_MODELS,
+      conversation,
+      sessionKey,
+      contextTeamId,
+      {
+        "HTTP-Referer": "https://sipadin.id",
+        "X-Title": "SIPADIN AI Assistant",
       }
+    );
+
+    if (orRes.success && orRes.result) {
+      return orRes.result;
     }
-
-    if (!data) {
-      console.warn("[Groq Agent] Semua model Groq terkena Rate Limit. Mengalihkan ke Fallback Engine: Google Gemini Flash...");
-      return await callGeminiFallback(userMessageText, contextTeamId);
-    }
-    const choice = data.choices?.[0];
-    const assistantMsg = choice?.message;
-
-    if (!assistantMsg) {
-      throw new Error("Groq tidak mengembalikan respon pesan yang valid.");
-    }
-
-    // Jika Groq meminta pemanggilan tool (Function Calling)
-    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
-      // Simpan assistant message dengan tool_calls ke memory
-      const toolCallMsg: ChatMessage = {
-        role: "assistant",
-        content: assistantMsg.content || null,
-        tool_calls: assistantMsg.tool_calls,
-      };
-      conversation.push(toolCallMsg);
-      addMessageToSession(sessionKey, toolCallMsg);
-
-      // Eksekusi setiap tool call
-      for (const call of assistantMsg.tool_calls) {
-        const toolName = call.function.name;
-        let args = {};
-        try {
-          args = JSON.parse(call.function.arguments || "{}");
-        } catch (e) {
-          console.warn("[Groq Agent] Gagal parse argument tool:", call.function.arguments);
-        }
-
-        console.log(`[Groq Agent] Mengeksekusi tool: ${toolName}`, args);
-        toolsExecuted.push(toolName);
-
-        const toolResultString = await executeToolCall(
-          toolName,
-          args,
-          sessionKey,
-          contextTeamId
-        );
-
-        // Tambahkan hasil tool ke conversation
-        const toolResponseMsg: ChatMessage = {
-          role: "tool",
-          name: toolName,
-          tool_call_id: call.id,
-          content: toolResultString,
-        };
-        conversation.push(toolResponseMsg);
-        addMessageToSession(sessionKey, toolResponseMsg);
-      }
-
-      // Lanjutkan loop untuk meminta Groq merangkum hasil tool menjadi balasan teks
-      continue;
-    }
-
-    // Jika Groq selesai menghasilkan balasan teks akhir
-    const finalReply = assistantMsg.content || "Permintaan telah diproses.";
-    const finalAssistantMsg: ChatMessage = {
-      role: "assistant",
-      content: finalReply,
-    };
-    addMessageToSession(sessionKey, finalAssistantMsg);
-
-    return {
-      replyText: finalReply,
-      toolCallsExecuted: toolsExecuted,
-    };
+    console.warn("[AI Dispatcher] OpenRouter gagal/limit, beralih ke Fallback 1: Groq...");
   }
 
-  return {
-    replyText: "Maaf, proses membutuhkan waktu lebih lama dari biasanya. Silakan coba kembali.",
-    toolCallsExecuted: toolsExecuted,
-  };
+  // 2. TAHAP 2: Fallback 1 Groq Cloud
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (groqKey) {
+    console.log("[AI Dispatcher] Menggunakan Engine: Groq Cloud...");
+    const groqRes = await runOpenAICompatibleEngine(
+      GROQ_API_URL,
+      groqKey,
+      GROQ_MODELS,
+      conversation,
+      sessionKey,
+      contextTeamId
+    );
+
+    if (groqRes.success && groqRes.result) {
+      return groqRes.result;
+    }
+    console.warn("[AI Dispatcher] Groq gagal/limit, beralih ke Fallback 2: Google Gemini...");
+  }
+
+  // 3. TAHAP 3: Fallback 2 Google Gemini Flash Native
+  console.log("[AI Dispatcher] Menggunakan Fallback Engine: Google Gemini Flash...");
+  return await callGeminiNativeFallback(userMessageText, contextTeamId);
 }

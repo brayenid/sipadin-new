@@ -57,7 +57,7 @@ export default function RefineLaporanFieldAiButton({
   const [showResolution, setShowResolution] = useState(false);
   const [proposedText, setProposedText] = useState("");
   const [proposedList, setProposedList] = useState<string[]>([]);
-  const [aiSource, setAiSource] = useState<"Gemini" | "Groq">("Gemini");
+  const [aiSource, setAiSource] = useState<string>("OpenRouter");
 
   const isListField = fieldName === "hasilPoin";
   const disabled = quotaRemaining <= 0;
@@ -214,14 +214,11 @@ export default function RefineLaporanFieldAiButton({
       <Dialog open={showResolution} onOpenChange={setShowResolution}>
         <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-y-auto p-4 sm:p-6 text-xs rounded-xl">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div>
               <DialogTitle className="flex items-center gap-1.5 text-slate-900 text-sm sm:text-base font-bold">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
                 Resolusi Hasil AI untuk {fieldLabel}
               </DialogTitle>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-                Sumber: {aiSource} AI
-              </span>
             </div>
             <DialogDescription className="text-[11px] text-slate-500">
               Bandingkan draft lama dengan draf usulan AI di bawah ini sebelum menerapkannya ke dokumen. Anda dapat mengedit usulan AI secara langsung di sisi kanan.
@@ -310,7 +307,14 @@ export default function RefineLaporanFieldAiButton({
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+          {/* Info Sumber AI di Bawah Kotak Resolusi & di Atas Tombol */}
+          <div className="flex items-center justify-between px-1 py-1 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1 font-medium">
+              ⚡ Sumber Engine: <strong className="text-indigo-600 font-semibold">{aiSource} AI</strong>
+            </span>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"

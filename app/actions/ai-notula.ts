@@ -49,17 +49,77 @@ function parseStructuredJson(rawText: string) {
   }
 }
 
+async function callOpenRouter(prompt: string, systemInstruction?: string) {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not found");
+
+  const models = [
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-r1:free",
+    "mistralai/mistral-small-24b-instruct-2501:free",
+  ];
+
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      const messages: any[] = [];
+      if (systemInstruction) {
+        messages.push({ role: "system", content: systemInstruction });
+      }
+      messages.push({ role: "user", content: prompt });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://sipadin.id",
+          "X-Title": "SIPADIN Web AI",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`OpenRouter Error (${res.status}): ${err}`);
+      }
+
+      const json = await res.json();
+      const rawText = json.choices?.[0]?.message?.content;
+      if (!rawText) throw new Error("Empty content");
+
+      return { data: parseStructuredJson(rawText), model };
+    } catch (e: any) {
+      lastError = e;
+      console.warn(`[OpenRouter AI Notula] Model ${model} gagal:`, e.message || e);
+      continue;
+    }
+  }
+
+  throw lastError || new Error("OpenRouter all models failed");
+}
+
 async function callGroq(prompt: string, systemInstruction?: string) {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("GROQ_API_KEY tidak terdeteksi di lingkungan server.");
+    throw new Error("GROQ_API_KEY belum dikonfigurasi di file .env.");
   }
 
   const models = [
+    "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "llama-3.3-70b-specdec",
-    "llama3-8b-8192",
-    "gemma2-9b-it"
+    "mixtral-8x7b-32768"
   ];
   let lastError: any = null;
 
@@ -73,7 +133,7 @@ async function callGroq(prompt: string, systemInstruction?: string) {
       messages.push({ role: "user", content: prompt });
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -103,7 +163,7 @@ async function callGroq(prompt: string, systemInstruction?: string) {
         throw new Error("Groq tidak mengembalikan respon.");
       }
 
-      return parseStructuredJson(rawText);
+      return { data: parseStructuredJson(rawText), model };
     } catch (e: any) {
       lastError = e;
       console.warn(`[Groq AI Notula] Model ${model} gagal:`, e.message || e);
@@ -111,19 +171,7 @@ async function callGroq(prompt: string, systemInstruction?: string) {
     }
   }
 
-  const finalError = lastError || new Error("Gagal menghubungkan ke Groq.");
-  let userFriendlyMsg = "Gagal memproses permintaan dengan AI Groq. Silakan coba beberapa saat lagi.";
-  const errStr = finalError.message.toLowerCase();
-
-  if (errStr.includes("limit") || errStr.includes("429") || errStr.includes("rate_limit") || errStr.includes("quota")) {
-    userFriendlyMsg = "Batas penggunaan AI Groq telah tercapai. Harap tunggu beberapa saat.";
-  } else if (errStr.includes("401") || errStr.includes("unauthorized") || errStr.includes("api key")) {
-    userFriendlyMsg = "Kunci API (API Key) Groq tidak valid.";
-  } else if (errStr.includes("abort") || errStr.includes("timeout")) {
-    userFriendlyMsg = "Koneksi ke server AI Groq terputus atau melebihi batas waktu.";
-  }
-
-  throw new Error(userFriendlyMsg);
+  throw lastError || new Error("Gagal menghubungkan ke Groq.");
 }
 
 async function callGemini(prompt: string, systemInstruction?: string) {
@@ -133,9 +181,7 @@ async function callGemini(prompt: string, systemInstruction?: string) {
   }
 
   const candidateModels = [
-    "models/gemini-2.0-flash-lite",
-    "models/gemini-1.5-flash-8b",
-    "models/gemini-2.0-flash",
+    "models/gemini-1.5-flash-latest",
     "models/gemini-1.5-flash",
   ];
 
@@ -159,8 +205,9 @@ async function callGemini(prompt: string, systemInstruction?: string) {
     }
 
     console.log(`[Gemini AI Notula] Mencoba model: ${modelPath}...`);
+    const startTime = Date.now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       const res = await fetch(url, {
@@ -174,25 +221,7 @@ async function callGemini(prompt: string, systemInstruction?: string) {
 
       if (!res.ok) {
         const errText = await res.text();
-        let errMsg = `Status ${res.status}`;
-        try {
-          const errJson = JSON.parse(errText);
-          errMsg = errJson.error?.message || errMsg;
-        } catch (_) {}
-
-        const isQuotaOrNotFound =
-          res.status === 404 ||
-          res.status === 429 ||
-          errMsg.toLowerCase().includes("quota") ||
-          errMsg.toLowerCase().includes("limit: 0") ||
-          errMsg.toLowerCase().includes("not found");
-
-        if (isQuotaOrNotFound && modelPath !== candidateModels[candidateModels.length - 1]) {
-          lastError = new Error(`Model ${modelPath} (${errMsg})`);
-          continue;
-        }
-
-        throw new Error(`Gemini Error (${res.status}) pada ${modelPath}: ${errMsg}`);
+        throw new Error(`Gemini Error (${res.status}) pada ${modelPath}: ${errText}`);
       }
 
       const json = await res.json();
@@ -201,7 +230,7 @@ async function callGemini(prompt: string, systemInstruction?: string) {
         throw new Error("Gemini tidak mengembalikan respons teks.");
       }
 
-      return parseStructuredJson(rawText);
+      return { data: parseStructuredJson(rawText), model: modelPath.replace("models/", "") };
     } catch (e: any) {
       clearTimeout(timeoutId);
       lastError = e;
@@ -209,8 +238,31 @@ async function callGemini(prompt: string, systemInstruction?: string) {
     }
   }
 
-  const finalError = lastError || new Error("Gagal menghubungi layanan AI.");
-  throw finalError;
+  throw lastError || new Error("Gagal menghubungi layanan AI.");
+}
+
+async function callAiUnified(prompt: string, systemInstruction?: string): Promise<{ data: any; source: string }> {
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const res = await callOpenRouter(prompt, systemInstruction);
+      const cleanName = res.model.split("/").pop()?.replace(":free", "") || res.model;
+      return { data: res.data, source: `OpenRouter (${cleanName})` };
+    } catch (err: any) {
+      console.warn("[AI Unified Notula] OpenRouter gagal, fallback ke Groq:", err.message);
+    }
+  }
+
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await callGroq(prompt, systemInstruction);
+      return { data: res.data, source: `Groq (${res.model})` };
+    } catch (err: any) {
+      console.warn("[AI Unified Notula] Groq gagal, fallback ke Gemini:", err.message);
+    }
+  }
+
+  const res = await callGemini(prompt, systemInstruction);
+  return { data: res.data, source: `Gemini (${res.model})` };
 }
 
 const SYSTEM_PROMPT_NOTULA = `Anda adalah asisten birokrasi profesional untuk Pemerintah Kabupaten Kutai Barat.
@@ -275,7 +327,7 @@ PEDOMAN PENULISAN:
 
 export async function initNotulaAi(
   input: InitNotulaInput
-): Promise<{ htmlContent: string; source: "Groq" | "Gemini" }> {
+): Promise<{ htmlContent: string; source: string }> {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -299,24 +351,13 @@ KEMBALIKAN FORMAT JSON BERIKUT:
   "htmlContent": "<h1>I. PEMBUKAAN</h1><ol><li>...</li></ol>..."
 }`;
 
-  try {
-    const result = await callGroq(prompt, SYSTEM_PROMPT_NOTULA);
-    return { htmlContent: String(result.htmlContent || ""), source: "Groq" };
-  } catch (groqErr: any) {
-    console.warn("[AI Notula Fallback] Groq gagal, beralih ke Gemini...", groqErr.message);
-    try {
-      const result = await callGemini(prompt, SYSTEM_PROMPT_NOTULA);
-      return { htmlContent: String(result.htmlContent || ""), source: "Gemini" };
-    } catch (geminiErr: any) {
-      console.error("[AI Notula Fallback] Gemini juga gagal:", geminiErr.message);
-      throw groqErr;
-    }
-  }
+  const res = await callAiUnified(prompt, SYSTEM_PROMPT_NOTULA);
+  return { htmlContent: String(res.data.htmlContent || ""), source: res.source };
 }
 
 export async function refineNotulaAi(
   input: RefineNotulaInput
-): Promise<{ htmlContent: string; source: "Groq" | "Gemini" }> {
+): Promise<{ htmlContent: string; source: string }> {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -354,17 +395,6 @@ KEMBALIKAN FORMAT JSON BERIKUT:
   "htmlContent": "<h1>I. PEMBUKAAN</h1><ol><li>...</li></ol>..."
 }`;
 
-  try {
-    const result = await callGroq(prompt, SYSTEM_PROMPT_NOTULA);
-    return { htmlContent: String(result.htmlContent || ""), source: "Groq" };
-  } catch (groqErr: any) {
-    console.warn("[AI Notula Fallback] Groq gagal, beralih ke Gemini...", groqErr.message);
-    try {
-      const result = await callGemini(prompt, SYSTEM_PROMPT_NOTULA);
-      return { htmlContent: String(result.htmlContent || ""), source: "Gemini" };
-    } catch (geminiErr: any) {
-      console.error("[AI Notula Fallback] Gemini juga gagal:", geminiErr.message);
-      throw groqErr;
-    }
-  }
+  const res = await callAiUnified(prompt, SYSTEM_PROMPT_NOTULA);
+  return { htmlContent: String(res.data.htmlContent || ""), source: res.source };
 }

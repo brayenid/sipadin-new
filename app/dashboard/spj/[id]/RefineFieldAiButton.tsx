@@ -53,11 +53,10 @@ export default function RefineFieldAiButton({
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // State untuk resolusi modal preview hasil AI
   const [showResolution, setShowResolution] = useState(false);
   const [proposedText, setProposedText] = useState("");
   const [proposedList, setProposedList] = useState<string[]>([]);
-  const [aiSource, setAiSource] = useState<"Gemini" | "Groq">("Gemini");
+  const [aiSource, setAiSource] = useState<string>("OpenRouter");
 
   const isListField = fieldName === "praAnggapan" || fieldName === "fakta";
   const disabled = quotaRemaining <= 0;
@@ -216,14 +215,11 @@ export default function RefineFieldAiButton({
       <Dialog open={showResolution} onOpenChange={setShowResolution}>
         <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-y-auto p-4 sm:p-6 text-xs">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div>
               <DialogTitle className="flex items-center gap-1.5 text-slate-900 text-sm sm:text-base font-bold">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
                 Resolusi Hasil AI untuk {fieldLabel}
               </DialogTitle>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-                Sumber: {aiSource} AI
-              </span>
             </div>
             <DialogDescription className="text-[11px] text-slate-500">
               Bandingkan draft lama dengan draf usulan AI di bawah ini sebelum menerapkannya ke dokumen. Anda dapat mengedit usulan AI secara langsung di sisi kanan.
@@ -253,7 +249,7 @@ export default function RefineFieldAiButton({
               </div>
             </div>
 
-            {/* Sisi Ranan: Rekomendasi AI (EDITABLE) */}
+            {/* Sisi Kanan: Rekomendasi AI (EDITABLE) */}
             <div className="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100 space-y-2 relative">
               <p className="font-bold text-indigo-800 uppercase tracking-wider text-[10px] border-b border-indigo-100 pb-1 flex items-center justify-between">
                 <span>Usulan AI</span>
@@ -312,7 +308,15 @@ export default function RefineFieldAiButton({
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+          {/* Info Sumber AI di Bawah Kotak Resolusi & di Atas Tombol */}
+          <div className="flex items-center justify-between px-1 py-1 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1 font-medium">
+              ⚡ Sumber Engine: <strong className="text-indigo-600 font-semibold">{aiSource} AI</strong>
+            </span>
+            <span className="text-[10px] text-slate-400">Hasil tidak otomatis disisipkan teks watermark</span>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"

@@ -31,19 +31,79 @@ function parseStructuredJson(rawText: string) {
   }
 }
 
+async function callOpenRouter(prompt: string, systemInstruction?: string) {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not found");
+
+  const models = [
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-r1:free",
+    "mistralai/mistral-small-24b-instruct-2501:free",
+  ];
+
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      const messages: any[] = [];
+      if (systemInstruction) {
+        messages.push({ role: "system", content: systemInstruction });
+      }
+      messages.push({ role: "user", content: prompt });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://sipadin.id",
+          "X-Title": "SIPADIN Web AI",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`OpenRouter Error (${res.status}): ${err}`);
+      }
+
+      const json = await res.json();
+      const rawText = json.choices?.[0]?.message?.content;
+      if (!rawText) throw new Error("Empty content");
+
+      return { data: parseStructuredJson(rawText), model };
+    } catch (e: any) {
+      lastError = e;
+      console.warn(`[OpenRouter AI Laporan] Model ${model} gagal:`, e.message || e);
+      continue;
+    }
+  }
+
+  throw lastError || new Error("OpenRouter all models failed");
+}
+
 async function callGroq(prompt: string, systemInstruction?: string) {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
     throw new Error(
-      "GROQ_API_KEY tidak terdeteksi di lingkungan server."
+      "GROQ_API_KEY belum dikonfigurasi di file .env. Harap masukkan API key dari Groq Cloud."
     );
   }
 
   const models = [
-    "llama-3.3-70b-specdec",
+    "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "llama3-8b-8192",
-    "gemma2-9b-it"
+    "mixtral-8x7b-32768"
   ];
   let lastError: any = null;
 
@@ -87,7 +147,7 @@ async function callGroq(prompt: string, systemInstruction?: string) {
         throw new Error("Groq tidak mengembalikan respon.");
       }
 
-      return parseStructuredJson(rawText);
+      return { data: parseStructuredJson(rawText), model };
     } catch (e: any) {
       lastError = e;
       console.warn(`[Groq AI Laporan] Model ${model} gagal:`, e.message || e);
@@ -95,35 +155,18 @@ async function callGroq(prompt: string, systemInstruction?: string) {
     }
   }
 
-  const finalError = lastError || new Error("Gagal menghubungkan ke Groq.");
-  let userFriendlyMsg = "Gagal memproses permintaan dengan AI Groq. Silakan coba beberapa saat lagi.";
-  const errStr = finalError.message.toLowerCase();
-
-  if (errStr.includes("limit") || errStr.includes("429") || errStr.includes("rate_limit") || errStr.includes("quota")) {
-    userFriendlyMsg = "Batas penggunaan harian atau menit AI Groq telah habis. Harap tunggu beberapa saat.";
-  } else if (errStr.includes("401") || errStr.includes("unauthorized") || errStr.includes("api key")) {
-    userFriendlyMsg = "Kunci API (API Key) Groq tidak valid.";
-  } else if (errStr.includes("abort") || errStr.includes("timeout")) {
-    userFriendlyMsg = "Koneksi ke server AI Groq terlalu lambat atau terputus.";
-  }
-
-  throw new Error(userFriendlyMsg);
+  throw lastError || new Error("Gagal menghubungkan ke Groq.");
 }
 
 async function callGemini(prompt: string, systemInstruction?: string) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY belum dikonfigurasi di file .env."
-    );
+    throw new Error("GEMINI_API_KEY belum dikonfigurasi di file .env.");
   }
 
   const candidateModels = [
-    "models/gemini-1.5-flash-8b",
-    "models/gemini-2.0-flash-lite",
-    "models/gemini-2.0-flash-exp",
+    "models/gemini-1.5-flash-latest",
     "models/gemini-1.5-flash",
-    "models/gemini-2.0-flash",
   ];
 
   let lastError: Error | null = null;
@@ -160,30 +203,11 @@ async function callGemini(prompt: string, systemInstruction?: string) {
       });
 
       clearTimeout(timeoutId);
-      console.log(`[Gemini AI Laporan] Model ${modelPath} merespons dalam ${Date.now() - startTime}ms (${res.status})`);
+      console.log(`[Gemini AI Laporan] Model ${modelPath} merespons dalam ${Date.now() - startTime}ms dengan status: ${res.status}`);
 
       if (!res.ok) {
         const errText = await res.text();
-        let errMsg = `Status ${res.status}`;
-        try {
-          const errJson = JSON.parse(errText);
-          errMsg = errJson.error?.message || errMsg;
-        } catch (_) {}
-
-        const isQuotaOrNotFound =
-          res.status === 404 ||
-          res.status === 429 ||
-          errMsg.toLowerCase().includes("quota") ||
-          errMsg.toLowerCase().includes("limit: 0") ||
-          errMsg.toLowerCase().includes("no longer available") ||
-          errMsg.toLowerCase().includes("not found");
-
-        if (isQuotaOrNotFound && modelPath !== candidateModels[candidateModels.length - 1]) {
-          lastError = new Error(`Model ${modelPath} (${errMsg})`);
-          continue;
-        }
-
-        throw new Error(`Gemini Error (${res.status}) pada ${modelPath}: ${errMsg}`);
+        throw new Error(`Gemini Error (${res.status}) pada ${modelPath}: ${errText}`);
       }
 
       const json = await res.json();
@@ -192,47 +216,40 @@ async function callGemini(prompt: string, systemInstruction?: string) {
         throw new Error("Gemini tidak mengembalikan respons teks.");
       }
 
-      return parseStructuredJson(rawText);
+      return { data: parseStructuredJson(rawText), model: modelPath.replace("models/", "") };
     } catch (e: any) {
       clearTimeout(timeoutId);
       lastError = e;
-      const isTimeout = e.name === "AbortError";
-      const isRetryable =
-        isTimeout ||
-        e instanceof SyntaxError ||
-        e.message?.includes("JSON") ||
-        e.message?.includes("tidak tersedia") ||
-        e.message?.includes("404") ||
-        e.message?.includes("429") ||
-        e.message?.includes("quota") ||
-        e.message?.includes("Quota") ||
-        e.message?.includes("limit: 0") ||
-        e.message?.includes("no longer available");
-
-      console.warn(`[Gemini AI Laporan] Model ${modelPath} gagal: ${isTimeout ? "Timeout 8s" : e.message}`);
-
-      if (isRetryable && modelPath !== candidateModels[candidateModels.length - 1]) {
-        continue;
-      }
-      throw e;
+      console.warn(`[Gemini AI Laporan] Model ${modelPath} gagal:`, e.message || e);
+      continue;
     }
   }
 
-  const finalError = lastError || new Error("Gagal menghubungi layanan AI.");
-  let userFriendlyMsg = "Gagal memproses permintaan dengan AI. Silakan coba beberapa saat lagi.";
-  const errStr = finalError.message.toLowerCase();
+  throw lastError || new Error("Gagal menghubungi layanan AI.");
+}
 
-  if (errStr.includes("quota") || errStr.includes("429") || errStr.includes("limit")) {
-    userFriendlyMsg = "Batas kuota gratis AI menit ini telah habis. Harap tunggu sekitar 1 menit.";
-  } else if (errStr.includes("404") || errStr.includes("not found") || errStr.includes("no longer available")) {
-    userFriendlyMsg = "Layanan model AI tersebut tidak ditemukan.";
-  } else if (errStr.includes("abort") || errStr.includes("timeout")) {
-    userFriendlyMsg = "Koneksi ke server AI terlalu lambat.";
-  } else if (finalError instanceof SyntaxError || errStr.includes("json")) {
-    userFriendlyMsg = "Format respon AI tidak valid. Silakan coba klik refine kembali.";
+async function callAiUnified(prompt: string, systemInstruction?: string): Promise<{ data: any; source: string }> {
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const res = await callOpenRouter(prompt, systemInstruction);
+      const cleanName = res.model.split("/").pop()?.replace(":free", "") || res.model;
+      return { data: res.data, source: `OpenRouter (${cleanName})` };
+    } catch (err: any) {
+      console.warn("[AI Unified Laporan] OpenRouter gagal, fallback ke Groq:", err.message);
+    }
   }
 
-  throw new Error(userFriendlyMsg);
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await callGroq(prompt, systemInstruction);
+      return { data: res.data, source: `Groq (${res.model})` };
+    } catch (err: any) {
+      console.warn("[AI Unified Laporan] Groq gagal, fallback ke Gemini:", err.message);
+    }
+  }
+
+  const res = await callGemini(prompt, systemInstruction);
+  return { data: res.data, source: `Gemini (${res.model})` };
 }
 
 const SYSTEM_PROMPT_LAPORAN = `Anda adalah asisten kedinasan resmi Pemerintah Kabupaten Kutai Barat.
@@ -264,7 +281,7 @@ export type RefineLaporanFieldInput = {
 
 export async function refineLaporanFieldAi(
   input: RefineLaporanFieldInput
-): Promise<{ text?: string; items?: string[]; source: "Gemini" | "Groq" }> {
+): Promise<{ text?: string; items?: string[]; source: string }> {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -323,32 +340,15 @@ ${
 }`
 }`;
 
-  // Coba Groq dahulu
-  try {
-    const result = await callGroq(prompt, SYSTEM_PROMPT_LAPORAN);
-    if (isListField) {
-      const items = Array.isArray(result.items)
-        ? result.items.map(String)
-        : [String(result.items || result.text || "")];
-      return { items, source: "Groq" };
-    } else {
-      return { text: String(result.text || ""), source: "Groq" };
-    }
-  } catch (groqError: any) {
-    console.warn("[AI Laporan Fallback] Groq gagal, mencoba Gemini...", groqError.message);
-    try {
-      const result = await callGemini(prompt, SYSTEM_PROMPT_LAPORAN);
-      if (isListField) {
-        const items = Array.isArray(result.items)
-          ? result.items.map(String)
-          : [String(result.items || result.text || "")];
-        return { items, source: "Gemini" };
-      } else {
-        return { text: String(result.text || ""), source: "Gemini" };
-      }
-    } catch (geminiError: any) {
-      console.error("[AI Laporan Fallback] Gemini juga gagal:", geminiError.message);
-      throw groqError;
-    }
+  const res = await callAiUnified(prompt, SYSTEM_PROMPT_LAPORAN);
+  const result = res.data;
+
+  if (isListField) {
+    const items = Array.isArray(result.items)
+      ? result.items.map(String)
+      : [String(result.items || result.text || "")];
+    return { items, source: res.source };
+  } else {
+    return { text: String(result.text || ""), source: res.source };
   }
 }
