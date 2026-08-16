@@ -10,24 +10,22 @@ import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
 // ==========================================
-// 1. OPENROUTER ENGINE (UTAMA - LIVE FREE MODELS)
-// ==========================================
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_FREE_MODELS = [
-  "google/gemma-4-31b-it:free",
-  "google/gemma-4-26b-a4b-it:free",
-  "openai/gpt-oss-20b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-nano-30b-a3b:free",
-];
-
-// ==========================================
-// 2. GROQ ENGINE (FALLBACK 1 - AKTIF)
+// 1. GROQ ENGINE (UTAMA - STABIL & CEPAT)
 // ==========================================
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODELS = [
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
+];
+
+// ==========================================
+// 2. OPENROUTER ENGINE (FALLBACK 1)
+// ==========================================
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_FREE_MODELS = [
+  "openai/gpt-oss-20b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
 ];
 
 export interface AgentProcessResult {
@@ -142,7 +140,11 @@ async function runOpenAICompatibleEngine(
     }
 
     // Balasan Teks Akhir + Sign Model Khusus: "Source: *****"
-    const rawReply = assistantMsg.content || "Permintaan berhasil diproses.";
+    let rawReply = assistantMsg.content || "Permintaan berhasil diproses.";
+    // Bersihkan glitch token khusus seperti <pad>, <paa>, <unk>
+    rawReply = rawReply.replace(/<(pad|paa|unk|eos|bos)[^>]*>/gi, "").trim();
+    if (!rawReply) rawReply = "Permintaan berhasil diproses.";
+
     addMessageToSession(sessionKey, { role: "assistant", content: rawReply });
 
     const cleanModelName = usedModelName.split("/").pop()?.replace(":free", "") || usedModelName;
@@ -245,10 +247,29 @@ export async function processUserMessageWithGroq(
     ...recentMessages,
   ];
 
-  // 1. TAHAP 1: Coba Engine Utama OpenRouter (Free Models)
+  // 1. TAHAP 1: Coba Engine Utama Groq Cloud (Prioritas Utama)
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (groqKey) {
+    console.log("[AI Dispatcher] Menggunakan Engine Utama: Groq Cloud...");
+    const groqRes = await runOpenAICompatibleEngine(
+      GROQ_API_URL,
+      groqKey,
+      GROQ_MODELS,
+      conversation,
+      sessionKey,
+      contextTeamId
+    );
+
+    if (groqRes.success && groqRes.result) {
+      return groqRes.result;
+    }
+    console.warn("[AI Dispatcher] Groq gagal/limit, beralih ke Fallback 1: OpenRouter...");
+  }
+
+  // 2. TAHAP 2: Fallback 1 OpenRouter (Free Models)
   const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
   if (openRouterKey) {
-    console.log("[AI Dispatcher] Menggunakan Engine Utama: OpenRouter (100% Free Models)...");
+    console.log("[AI Dispatcher] Menggunakan Fallback 1: OpenRouter...");
     const orRes = await runOpenAICompatibleEngine(
       OPENROUTER_API_URL,
       openRouterKey,
@@ -265,29 +286,10 @@ export async function processUserMessageWithGroq(
     if (orRes.success && orRes.result) {
       return orRes.result;
     }
-    console.warn("[AI Dispatcher] OpenRouter gagal/limit, beralih ke Fallback 1: Groq...");
+    console.warn("[AI Dispatcher] OpenRouter gagal/limit, beralih ke Fallback 2: Direct Fallback...");
   }
 
-  // 2. TAHAP 2: Fallback 1 Groq Cloud
-  const groqKey = process.env.GROQ_API_KEY?.trim();
-  if (groqKey) {
-    console.log("[AI Dispatcher] Menggunakan Engine: Groq Cloud...");
-    const groqRes = await runOpenAICompatibleEngine(
-      GROQ_API_URL,
-      groqKey,
-      GROQ_MODELS,
-      conversation,
-      sessionKey,
-      contextTeamId
-    );
-
-    if (groqRes.success && groqRes.result) {
-      return groqRes.result;
-    }
-    console.warn("[AI Dispatcher] Groq gagal/limit, beralih ke Fallback 2: Google Gemini...");
-  }
-
-  // 3. TAHAP 3: Fallback 2 Google Gemini Flash Native
-  console.log("[AI Dispatcher] Menggunakan Fallback Engine: Google Gemini Flash...");
+  // 3. TAHAP 3: Fallback 2 Direct Assistant Handler
+  console.log("[AI Dispatcher] Menggunakan Direct Fallback Response...");
   return await callGeminiNativeFallback(userMessageText, contextTeamId);
 }
