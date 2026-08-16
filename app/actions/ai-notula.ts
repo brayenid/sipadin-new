@@ -54,10 +54,10 @@ async function callOpenRouter(prompt: string, systemInstruction?: string) {
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not found");
 
   const models = [
-    "google/gemini-2.0-flash-exp:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-r1:free",
-    "mistralai/mistral-small-24b-instruct-2501:free",
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "openai/gpt-oss-20b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
   ];
 
   let lastError: any = null;
@@ -118,8 +118,7 @@ async function callGroq(prompt: string, systemInstruction?: string) {
 
   const models = [
     "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile",
-    "mixtral-8x7b-32768"
+    "llama-3.3-70b-versatile"
   ];
   let lastError: any = null;
 
@@ -181,8 +180,8 @@ async function callGemini(prompt: string, systemInstruction?: string) {
   }
 
   const candidateModels = [
-    "models/gemini-1.5-flash-latest",
-    "models/gemini-1.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-flash-latest",
   ];
 
   let lastError: Error | null = null;

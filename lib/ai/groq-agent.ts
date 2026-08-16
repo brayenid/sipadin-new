@@ -10,26 +10,24 @@ import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
 // ==========================================
-// 1. OPENROUTER ENGINE (UTAMA - FREE MODELS)
+// 1. OPENROUTER ENGINE (UTAMA - LIVE FREE MODELS)
 // ==========================================
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_FREE_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-r1:free",
-  "deepseek/deepseek-chat:free",
-  "qwen/qwen-2.5-72b-instruct:free",
-  "mistralai/mistral-small-24b-instruct-2501:free",
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "openai/gpt-oss-20b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
 ];
 
 // ==========================================
-// 2. GROQ ENGINE (FALLBACK 1 - AKTIF SAAT INI)
+// 2. GROQ ENGINE (FALLBACK 1 - AKTIF)
 // ==========================================
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODELS = [
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
-  "mixtral-8x7b-32768",
 ];
 
 export interface AgentProcessResult {
@@ -196,7 +194,7 @@ async function callGeminiNativeFallback(
     toolsExecuted.push("lookup_nip_direct");
   }
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
   const response = await fetch(geminiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -221,7 +219,7 @@ async function callGeminiNativeFallback(
 
   const resJson = await response.json();
   const rawReply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
-  const finalReply = `${rawReply.trim()}\n\n_Source: Google Gemini (gemini-1.5-flash)_`;
+  const finalReply = `${rawReply.trim()}\n\n_Source: Google Gemini (gemini-2.5-flash)_`;
 
   return {
     replyText: finalReply,
