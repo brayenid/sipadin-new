@@ -148,8 +148,8 @@ async function runOpenAICompatibleEngine(
     addMessageToSession(sessionKey, { role: "assistant", content: rawReply });
 
     const cleanModelName = usedModelName.split("/").pop()?.replace(":free", "") || usedModelName;
-    const providerName = apiUrl.includes("openrouter") ? "OpenRouter" : "Groq";
-    const finalReplyWithSign = `${rawReply}\n\n_Source: ${providerName} (${cleanModelName})_`;
+    const providerCode = apiUrl.includes("openrouter") ? "or" : "gr";
+    const finalReplyWithSign = `${rawReply}\n\n_${providerCode}_`;
 
     return {
       success: true,
@@ -221,7 +221,7 @@ async function callGeminiNativeFallback(
 
   const resJson = await response.json();
   const rawReply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
-  const finalReply = `${rawReply.trim()}\n\n_Source: Google Gemini (gemini-2.5-flash)_`;
+  const finalReply = `${rawReply.trim()}\n\n_ge_`;
 
   return {
     replyText: finalReply,
