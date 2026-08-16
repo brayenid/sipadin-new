@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { processUserMessageWithGroq } from "@/lib/ai/groq-agent";
 import { sendFonnteMessage } from "@/lib/fonnte/client";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 /**
  * Endpoint Webhook Fonnte untuk Menerima Pesan Masuk WhatsApp
  * POST /api/fonnte/webhook
@@ -49,97 +52,180 @@ export async function POST(req: NextRequest) {
     const sender: string = String(body.sender || body.from || "").trim();
     const rawMessage: string = String(body.message || body.text || "").trim();
     const member: string = String(body.member || "").trim();
-    const isGroup = sender.includes("@g.us") || Boolean(body.group_id);
+    const isGroup = sender.includes("@g.us") || Boolean(body.group_id || body.groupId);
     const actualSender = isGroup && member ? member : sender;
+    const targetReply = isGroup
+      ? (sender.includes("@g.us") ? sender : String(body.group_id || body.groupId || sender))
+      : sender;
 
     console.log("==================================================");
     console.log("📥 [FONNTE WEBHOOK INCOMING]");
-    console.log(`Sender: ${sender} | Member: ${member} | Message: "${rawMessage}"`);
+    console.log(`isGroup: ${isGroup} | Sender: ${sender} | Member: ${member} | ActualSender: ${actualSender}`);
+    console.log(`Target Reply: ${targetReply}`);
+    console.log(`Raw Message: "${rawMessage}"`);
     console.log("==================================================");
 
     if (!sender || !rawMessage) {
       return NextResponse.json({ status: "ignored", reason: "Payload kosong atau tidak lengkap." }, { status: 200 });
     }
 
-    // 0. FITUR PING-PONG INSTAN (Untuk Tes Cepat Koneksi)
-    if (rawMessage.trim().toLowerCase() === "ping") {
-      console.log(`[Fonnte Webhook] Menerima PING dari ${actualSender}. Mengirim PONG...`);
-      await sendFonnteMessage({
-        target: sender,
-        message: "🏓 *PONG!*\n\nKoneksi WhatsApp Webhook ke server lokal berhasil terhubung aktif!",
-      });
-      return NextResponse.json({ status: "success", reply: "pong" }, { status: 200 });
-    }
-
-    // 1. FILTER SPAM & PESAN TIDAK RELEVAN (Menghemat Kuota Fonnte & Token AI)
+    // 1. FILTER SPAM & PESAN TIDAK RELEVAN
     const trimmedMsg = rawMessage.trim();
 
-    // A. Abaikan pesan terlalu pendek (< 2 karakter) atau hanya emotikon/karakter aneh
+    // A. Abaikan pesan terlalu pendek (< 2 karakter)
     if (trimmedMsg.length < 2) {
       console.log(`[Anti-Spam] Pesan dari ${actualSender} terlalu pendek (${trimmedMsg}), diabaikan.`);
       return NextResponse.json({ status: "ignored", reason: "Pesan terlalu pendek." }, { status: 200 });
     }
 
-    // B. Abaikan pesan spam broadcast umum / promosi / salam otomatis tanpa konteks
-    const spamPatterns = [
-      /^(ok|oke|siap|baik|ya|tes|test|p|asalamualaikum|assalamualaikum|halo|hai|pagi|siang|malam)\.?$/i,
-    ];
-    // Jika hanya mengetik salam/satu kata tanpa konteks dan tidak ada draft aktif
-    const isTrivialGreeting = spamPatterns.some((pattern) => pattern.test(trimmedMsg));
-    if (isTrivialGreeting && trimmedMsg.toLowerCase() !== "ping") {
-      console.log(`[Anti-Spam] Pesan basa-basi '${trimmedMsg}' diabaikan untuk menghemat kuota.`);
-      return NextResponse.json({ status: "ignored", reason: "Salam singkat tanpa konteks diabaikan." }, { status: 200 });
-    }
-
-    // C. Whitelist Verification (Berlaku untuk Chat Personal MAUPUN Pengirim di dalam Grup)
+    // B. Whitelist Verification (Berlaku untuk Chat Personal MAUPUN Pengirim di dalam Grup)
     const rawAllowed = process.env.WA_ALLOWED_NUMBERS?.trim() || "";
     if (rawAllowed.length > 0) {
-      const allowedList = rawAllowed.split(",").map((n) => n.trim().replace(/\D/g, "").replace(/^0/, "62"));
-      const cleanSender = actualSender.replace(/\D/g, "").replace(/^0/, "62");
-      const isAllowed = allowedList.some((allowed) => cleanSender.includes(allowed) || allowed.includes(cleanSender));
+      const allowedList = rawAllowed
+        .split(",")
+        .map((n) => n.trim().split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62"))
+        .filter(Boolean);
+
+      const cleanSender = actualSender
+        .split("@")[0]
+        .split(":")[0]
+        .replace(/\D/g, "")
+        .replace(/^0/, "62");
+
+      const isAllowed = allowedList.some(
+        (allowed) => cleanSender === allowed || cleanSender.includes(allowed) || allowed.includes(cleanSender)
+      );
+
+      console.log(`[Whitelist Check] cleanSender: "${cleanSender}", allowedList: ${JSON.stringify(allowedList)}, isAllowed: ${isAllowed}`);
+
       if (!isAllowed) {
-        console.warn(`[Anti-Spam & Security] Pesan dari nomor tidak berwenang (${actualSender}) di ${isGroup ? "Grup " + sender : "Personal"} diabaikan tanpa balasan.`);
+        console.warn(`[Anti-Spam & Security] Pesan dari nomor tidak berwenang (${actualSender} -> ${cleanSender}) di ${isGroup ? "Grup " + sender : "Personal"} diabaikan.`);
         return NextResponse.json({ status: "rejected", reason: "Pengirim tidak terdaftar di whitelist." }, { status: 200 });
       }
     }
 
-    // 2. Filter Trigger untuk Pesan Grup
-    // Jika pesan berasal dari grup, bot hanya merespons jika di-mention atau mengandung kata pemicu
-    const botKeyword = process.env.FONNTE_BOT_KEYWORD?.toLowerCase() || "sipadin";
+    // 2. Filter Trigger & Pembersihan Mention untuk Pesan Grup
     let cleanedMessage = rawMessage;
 
     if (isGroup) {
-      const lower = rawMessage.toLowerCase();
-      const hasTrigger =
-        lower.includes(`@${botKeyword}`) ||
-        lower.includes(`!${botKeyword}`) ||
-        lower.includes(`/${botKeyword}`) ||
-        lower.startsWith(botKeyword);
+      // Identifikasi nomor WhatsApp Bot (dari payload Fonnte body.device atau environment variable)
+      const deviceNumber = String(body.device || "").split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62");
+      const envBotNumber = String(process.env.FONNTE_BOT_NUMBER || process.env.WA_BOT_NUMBER || "")
+        .split("@")[0]
+        .split(":")[0]
+        .replace(/\D/g, "")
+        .replace(/^0/, "62");
+      const botNumbers = [deviceNumber, envBotNumber].filter(Boolean);
 
-      if (!hasTrigger) {
-        // Abaikan chat obrolan umum antar anggota grup
+      // Daftar kata kunci trigger nama bot
+      const rawKeywords = process.env.FONNTE_BOT_KEYWORD || "sipadin";
+      const keywords = rawKeywords
+        .split(",")
+        .map((k) => k.trim().toLowerCase())
+        .filter(Boolean);
+      if (!keywords.includes("sipadin")) keywords.push("sipadin");
+      if (!keywords.includes("bot")) keywords.push("bot");
+      if (!keywords.includes("ai")) keywords.push("ai");
+
+      const lowerMsg = rawMessage.toLowerCase();
+
+      // Cek Mention:
+      // a. Terdapat mention tag @ di teks pesan (misal: @Sipadin, @Sipadin X, @628xxx)
+      const hasAtMention = rawMessage.includes("@");
+
+      // b. Metadata mentioned dari payload Fonnte
+      let isMentionedInPayload = false;
+      if (body.mentioned) {
+        const payloadMentioned = Array.isArray(body.mentioned)
+          ? body.mentioned.map((m: any) => String(m).split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62"))
+          : [String(body.mentioned).split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62")];
+
+        if (botNumbers.length > 0) {
+          isMentionedInPayload = payloadMentioned.some((pNum: string) =>
+            botNumbers.some((bNum) => pNum.includes(bNum) || bNum.includes(pNum))
+          );
+        } else if (payloadMentioned.length > 0) {
+          isMentionedInPayload = true;
+        }
+      }
+
+      // c. Reply / Quote terhadap pesan bot di grup
+      let isQuotingBot = false;
+      const quotedSender = String(
+        body.quoted_sender ||
+          body.quoted_member ||
+          body.reply_to ||
+          body.reply_sender ||
+          (typeof body.quoted === "object" && body.quoted?.sender) ||
+          ""
+      )
+        .split("@")[0]
+        .split(":")[0]
+        .replace(/\D/g, "")
+        .replace(/^0/, "62");
+
+      if (quotedSender && botNumbers.length > 0) {
+        isQuotingBot = botNumbers.some((bNum) => quotedSender.includes(bNum) || bNum.includes(quotedSender));
+      }
+
+      // d. Keyword trigger nama bot
+      const isKeywordTriggered = keywords.some((kw) => {
+        return (
+          lowerMsg.includes(`@${kw}`) ||
+          lowerMsg.includes(`!${kw}`) ||
+          lowerMsg.includes(`/${kw}`) ||
+          lowerMsg.startsWith(kw)
+        );
+      });
+
+      const isMentioned = hasAtMention || isMentionedInPayload || isQuotingBot || isKeywordTriggered;
+
+      if (!isMentioned) {
+        console.log(`[Group Filter] Pesan di grup ${sender} dari ${actualSender} diabaikan karena bot tidak di-mention.`);
         return NextResponse.json({ status: "ignored", reason: "Bukan pesan yang ditujukan untuk bot di grup." }, { status: 200 });
       }
 
-      // Bersihkan kata pemicu dari pesan agar prompt lebih bersih
-      cleanedMessage = rawMessage
-        .replace(new RegExp(`@${botKeyword}`, "gi"), "")
-        .replace(new RegExp(`!${botKeyword}`, "gi"), "")
-        .replace(new RegExp(`/${botKeyword}`, "gi"), "")
-        .trim();
+      // Bersihkan mention (@Sipadin X, @Sipadin, @628xxx, !sipadin, /sipadin) dari teks agar prompt AI bersih
+      let cleaned = rawMessage;
+
+      // 1. Hapus mention nomor WhatsApp (@628xxx atau @08xxx)
+      cleaned = cleaned.replace(/@\d{8,16}(?:@s\.whatsapp\.net)?/gi, "");
+
+      // 2. Hapus tag mention @ di awal pesan (misal: "@Sipadin ")
+      cleaned = cleaned.replace(/^@[^\s]+\s*/, "");
+
+      // 3. Hapus sisa kata alias kontak di awal jika ada (misal: "X " dari "@Sipadin X ping")
+      cleaned = cleaned.replace(/^[a-zA-Z0-9_]+\s+(?=(?:ping|pong|info|cek|apa|tolong|bagaimana|buat|data|sisa|daftar|baca|bayar|link|nip|agenda|absensi|spj|halo|hai|\/|!|\?|[a-zA-Z]))/i, "");
+
+      // 4. Hapus prefix keyword bot
+      keywords.forEach((kw) => {
+        cleaned = cleaned
+          .replace(new RegExp(`@${kw}`, "gi"), "")
+          .replace(new RegExp(`!${kw}`, "gi"), "")
+          .replace(new RegExp(`/${kw}`, "gi"), "")
+          .replace(new RegExp(`^${kw}[:,\\s]*`, "gi"), "");
+      });
+
+      cleanedMessage = cleaned.trim();
       
       if (!cleanedMessage) {
         cleanedMessage = "Halo";
       }
     }
 
-    // 3. Tentukan Session Key unik per obrolan
-    const sessionKey = isGroup ? `group_${sender}_${actualSender}` : `user_${sender}`;
-    const targetReply = sender; // Balas ke grup jika pesan dari grup, atau ke nomor pengirim jika personal
+    console.log(`[Cleaned Message for Processing]: "${cleanedMessage}"`);
 
-    console.log(`[Fonnte Webhook] Memproses pesan dari ${actualSender} (${isGroup ? "Grup: " + sender : "Personal"}): "${cleanedMessage}"`);
+    // 3. FITUR PING-PONG INSTAN (Bekerja untuk Chat Personal maupun Mention Grup)
+    if (cleanedMessage.toLowerCase() === "ping" || rawMessage.trim().toLowerCase() === "ping") {
+      console.log(`[Fonnte Webhook] Menerima PING dari ${actualSender}. Mengirim PONG ke ${targetReply}...`);
+      await sendFonnteMessage({
+        target: targetReply,
+        message: "🏓 *PONG!*\n\nKoneksi WhatsApp Webhook ke server lokal berhasil terhubung aktif!",
+      });
+      return NextResponse.json({ status: "success", reply: "pong" }, { status: 200 });
+    }
 
-    // 3.5 SHORTCUT CEPAT: Bantuan / Panduan Perintah (/help, help, bantuan, menu)
+    // 4. SHORTCUT CEPAT: Bantuan / Panduan Perintah (/help, help, bantuan, menu)
     const lowerClean = cleanedMessage.toLowerCase().trim();
     if (lowerClean === "/help" || lowerClean === "help" || lowerClean === "bantuan" || lowerClean === "/bantuan" || lowerClean === "menu") {
       const helpMessage = `🤖 *SIPADIN Co-Pilot - Panduan Perintah*
@@ -182,7 +268,10 @@ _Ketik perintah di atas secara langsung & santai!_`;
       return NextResponse.json({ status: "success", type: "help_message" }, { status: 200 });
     }
 
-    // 4. Jalankan AI Agent Groq dengan 5 Fitur Terfokus
+    // 5. Jalankan AI Agent Groq dengan Tools
+    const sessionKey = isGroup ? `group_${sender}_${actualSender}` : `user_${sender}`;
+    console.log(`[Fonnte Webhook] Memproses pesan dari ${actualSender} (${isGroup ? "Grup: " + sender : "Personal"}): "${cleanedMessage}"`);
+
     let result: any = null;
     try {
       result = await processUserMessageWithGroq(sessionKey, cleanedMessage);
@@ -228,5 +317,20 @@ export async function GET() {
     status: "online",
     service: "SIPADIN AI WhatsApp Webhook (Fonnte)",
     timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * OPTIONS Handler untuk CORS & Preflight Request
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      Allow: "GET, POST, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+    },
   });
 }
