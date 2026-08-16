@@ -1,8 +1,8 @@
 /**
  * Unified Multi-Engine AI Agent (SIPADIN Co-Pilot)
- * Engine Utama: OpenRouter (Free Models: Llama 3.3 70B, DeepSeek V3, Gemini 2.0 Flash)
- * Fallback 1: Groq Cloud (Llama 3.1 8B, Gemma2 9B)
- * Fallback 2: Google Gemini 1.5 Flash Native
+ * Engine 1: Groq Cloud (Multi-Key, Llama 3.3 70B & Llama 3.1 8B)
+ * Engine 2: China AI (DeepSeek V3, SiliconCloud, Alibaba Qwen)
+ * Engine 3: Google Gemini Flash Native (1.5 Flash / 2.0 Flash)
  */
 
 import { getSystemPrompt } from "./prompts";
@@ -10,23 +10,66 @@ import { AI_TOOLS_SCHEMA, executeToolCall } from "./tools";
 import { getSession, addMessageToSession, ChatMessage } from "./session-store";
 
 // ==========================================
-// 1. GROQ ENGINE (UTAMA - STABIL & CEPAT)
+// 1. GROQ ENGINE (UTAMA - STABIL & KILAT)
 // ==========================================
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODELS = [
-  "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
 ];
 
 // ==========================================
-// 2. OPENROUTER ENGINE (FALLBACK 1)
+// 2. CHINA AI ENGINES CONFIGURATION
 // ==========================================
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_FREE_MODELS = [
-  "openai/gpt-oss-20b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-nano-30b-a3b:free",
-];
+interface ChinaAIConfig {
+  name: string;
+  apiUrl: string;
+  apiKey: string;
+  models: string[];
+  providerCode: string;
+}
+
+function getAvailableChinaAIEngines(): ChinaAIConfig[] {
+  const configs: ChinaAIConfig[] = [];
+
+  // DeepSeek Official
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (deepseekKey) {
+    configs.push({
+      name: "DeepSeek Official",
+      apiUrl: "https://api.deepseek.com/v1/chat/completions",
+      apiKey: deepseekKey,
+      models: ["deepseek-chat"],
+      providerCode: "ds",
+    });
+  }
+
+  // SiliconCloud (SiliconFlow - China)
+  const siliconKey = process.env.SILICONFLOW_API_KEY?.trim() || process.env.SILICONCLOUD_API_KEY?.trim();
+  if (siliconKey) {
+    configs.push({
+      name: "SiliconCloud China",
+      apiUrl: "https://api.siliconflow.cn/v1/chat/completions",
+      apiKey: siliconKey,
+      models: ["deepseek-ai/DeepSeek-V3", "Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
+      providerCode: "sf",
+    });
+  }
+
+  // Alibaba DashScope (Qwen Official)
+  const dashscopeKey = process.env.DASHSCOPE_API_KEY?.trim() || process.env.QWEN_API_KEY?.trim();
+  if (dashscopeKey) {
+    configs.push({
+      name: "Alibaba Qwen",
+      apiUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+      apiKey: dashscopeKey,
+      models: ["qwen-plus", "qwen-max", "qwen-turbo"],
+      providerCode: "qw",
+    });
+  }
+
+  return configs;
+}
 
 export interface AgentProcessResult {
   replyText: string;
@@ -34,7 +77,7 @@ export interface AgentProcessResult {
 }
 
 /**
- * Eksekusi LLM via Endpoint OpenAI-Compatible (OpenRouter atau Groq) dengan Recursive Function Calling
+ * Eksekusi LLM via Endpoint OpenAI-Compatible (Groq / DeepSeek / SiliconFlow / Qwen)
  */
 async function runOpenAICompatibleEngine(
   apiUrl: string,
@@ -43,7 +86,7 @@ async function runOpenAICompatibleEngine(
   conversation: ChatMessage[],
   sessionKey: string,
   contextTeamId?: string,
-  extraHeaders: Record<string, string> = {}
+  providerCode: string = "gr"
 ): Promise<{ success: boolean; result?: AgentProcessResult; error?: any }> {
   const toolsExecuted: string[] = [];
   let maxToolLoops = 4;
@@ -62,7 +105,6 @@ async function runOpenAICompatibleEngine(
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
-            ...extraHeaders,
           },
           body: JSON.stringify({
             model,
@@ -139,16 +181,13 @@ async function runOpenAICompatibleEngine(
       continue;
     }
 
-    // Balasan Teks Akhir + Sign Model Khusus: "Source: *****"
+    // Balasan Teks Akhir
     let rawReply = assistantMsg.content || "Permintaan berhasil diproses.";
-    // Bersihkan glitch token khusus seperti <pad>, <paa>, <unk>
     rawReply = rawReply.replace(/<(pad|paa|unk|eos|bos)[^>]*>/gi, "").trim();
     if (!rawReply) rawReply = "Permintaan berhasil diproses.";
 
     addMessageToSession(sessionKey, { role: "assistant", content: rawReply });
 
-    const cleanModelName = usedModelName.split("/").pop()?.replace(":free", "") || usedModelName;
-    const providerCode = apiUrl.includes("openrouter") ? "or" : "gr";
     const finalReplyWithSign = `${rawReply}\n\n_${providerCode}_`;
 
     return {
@@ -164,7 +203,7 @@ async function runOpenAICompatibleEngine(
 }
 
 /**
- * Fallback Engine 2: Google Gemini Native
+ * Fallback Engine: Google Gemini Native
  */
 async function callGeminiNativeFallback(
   prompt: string,
@@ -185,19 +224,19 @@ async function callGeminiNativeFallback(
   } else if ((lower.includes("ubah") || lower.includes("edit") || lower.includes("ganti") || lower.includes("geser")) && (lower.includes("agenda") || lower.includes("kegiatan") || lower.includes("jam") || lower.includes("jadwal") || lower.includes("lokasi"))) {
     const { executeToolCall } = await import("./tools");
     const query = prompt.replace(/ubah|edit|ganti|geser|agenda|kegiatan|jam|jadwal|lokasi|jadi|ke|yang|tolong/gi, "").trim();
-    directDataText = await executeToolCall("list_agenda_tim", { searchQuery: query || undefined, limit: 5 }, "gemini_fallback", contextTeamId);
+    directDataText = await executeToolCall("list_agenda_tim", { searchQuery: query || undefined, limit: "5" }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("list_agenda_tim");
   } else if (lower.includes("agenda")) {
     const { executeToolCall } = await import("./tools");
-    directDataText = await executeToolCall("list_agenda_tim", { limit: 10 }, "gemini_fallback", contextTeamId);
+    directDataText = await executeToolCall("list_agenda_tim", { limit: "10" }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("list_agenda_tim");
   } else if (lower.includes("absensi")) {
     const { executeToolCall } = await import("./tools");
-    directDataText = await executeToolCall("list_agenda_absensi", { limit: 10 }, "gemini_fallback", contextTeamId);
+    directDataText = await executeToolCall("list_agenda_absensi", { limit: "10" }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("list_agenda_absensi");
   } else if (lower.includes("belum bayar") || lower.includes("belum dibayar") || lower.includes("unpaid")) {
     const { executeToolCall } = await import("./tools");
-    directDataText = await executeToolCall("get_unpaid_spjs", { limit: 10 }, "gemini_fallback", contextTeamId);
+    directDataText = await executeToolCall("get_unpaid_spjs", { limit: "10" }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("get_unpaid_spjs");
   } else if (lower.includes("nip")) {
     const { executeToolCall } = await import("./tools");
@@ -206,30 +245,48 @@ async function callGeminiNativeFallback(
     toolsExecuted.push("lookup_nip_direct");
   }
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-  const response = await fetch(geminiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
+  // Model Gemini yang stabil
+  const geminiModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  let geminiResponse: Response | null = null;
+  let lastGeminiErr: any = null;
+
+  for (const modelName of geminiModels) {
+    try {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
             {
-              text: `${getSystemPrompt()}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
+              role: "user",
+              parts: [
+                {
+                  text: `${getSystemPrompt()}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
+                },
+              ],
             },
           ],
-        },
-      ],
-    }),
-  });
+        }),
+      });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini Error (${response.status}): ${err}`);
+      if (response.ok) {
+        geminiResponse = response;
+        break;
+      } else {
+        const err = await response.text();
+        lastGeminiErr = new Error(`Gemini ${modelName} (${response.status}): ${err}`);
+      }
+    } catch (err: any) {
+      lastGeminiErr = err;
+    }
   }
 
-  const resJson = await response.json();
+  if (!geminiResponse) {
+    throw lastGeminiErr || new Error("Semua model Gemini gagal merespon.");
+  }
+
+  const resJson = await geminiResponse.json();
   const rawReply = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "Aman, tapi datanya lagi kosong nih bro.";
   const finalReply = `${rawReply.trim()}\n\n_ge_`;
 
@@ -240,7 +297,7 @@ async function callGeminiNativeFallback(
 }
 
 /**
- * Dispatcher Utama: OpenRouter (Utama) -> Groq (Fallback 1) -> Gemini (Fallback 2)
+ * Dispatcher Utama: Groq Cloud -> China AI (DeepSeek/SiliconFlow/Qwen) -> Google Gemini Native
  */
 export async function processUserMessageWithGroq(
   sessionKey: string,
@@ -267,14 +324,15 @@ export async function processUserMessageWithGroq(
   for (let i = 0; i < groqKeys.length; i++) {
     const groqKey = groqKeys[i];
     console.log(`[AI Dispatcher] Mencoba Groq Key [${i + 1}/${groqKeys.length}] (...${groqKey.slice(-6)})...`);
-    
+
     const groqRes = await runOpenAICompatibleEngine(
       GROQ_API_URL,
       groqKey,
       GROQ_MODELS,
       conversation,
       sessionKey,
-      contextTeamId
+      contextTeamId,
+      "gr"
     );
 
     if (groqRes.success && groqRes.result) {
@@ -283,39 +341,36 @@ export async function processUserMessageWithGroq(
     console.warn(`[AI Dispatcher] Groq Key (...${groqKey.slice(-6)}) limit (429) / gagal.`);
   }
 
-  // 2. TAHAP 2: Fallback 1 Google Gemini Flash Native (Respon Kilat < 1 detik)
-  const geminiKey = process.env.GEMINI_API_KEY?.trim();
-  if (geminiKey) {
-    try {
-      console.log("[AI Dispatcher] Semua Groq limit, beralih ke Fallback 1: Google Gemini 2.5 Flash...");
-      const geminiRes = await callGeminiNativeFallback(userMessageText, contextTeamId);
-      return geminiRes;
-    } catch (geminiErr: any) {
-      console.warn("[AI Dispatcher] Gemini Flash gagal, beralih ke Fallback 2 OpenRouter...", geminiErr?.message);
-    }
-  }
-
-  // 3. TAHAP 3: Fallback 2 OpenRouter Free Models
-  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
-  if (openRouterKey) {
-    console.log("[AI Dispatcher] Menggunakan Fallback 2: OpenRouter Free...");
-    const orRes = await runOpenAICompatibleEngine(
-      OPENROUTER_API_URL,
-      openRouterKey,
-      OPENROUTER_FREE_MODELS,
+  // 2. TAHAP 2: Coba China AI Engine (DeepSeek / SiliconCloud / Qwen) jika terpasang di .env
+  const chinaEngines = getAvailableChinaAIEngines();
+  for (const engine of chinaEngines) {
+    console.log(`[AI Dispatcher] Mencoba China AI: ${engine.name}...`);
+    const chinaRes = await runOpenAICompatibleEngine(
+      engine.apiUrl,
+      engine.apiKey,
+      engine.models,
       conversation,
       sessionKey,
       contextTeamId,
-      {
-        "HTTP-Referer": "https://sipadin.id",
-        "X-Title": "SIPADIN AI Assistant",
-      }
+      engine.providerCode
     );
 
-    if (orRes.success && orRes.result) {
-      return orRes.result;
+    if (chinaRes.success && chinaRes.result) {
+      return chinaRes.result;
     }
-    console.warn("[AI Dispatcher] OpenRouter gagal/limit.");
+    console.warn(`[AI Dispatcher] ${engine.name} gagal/limit.`);
+  }
+
+  // 3. TAHAP 3: Fallback Google Gemini Flash Native
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiKey) {
+    try {
+      console.log("[AI Dispatcher] Menggunakan Fallback: Google Gemini Flash Native...");
+      const geminiRes = await callGeminiNativeFallback(userMessageText, contextTeamId);
+      return geminiRes;
+    } catch (geminiErr: any) {
+      console.warn("[AI Dispatcher] Gemini Flash gagal:", geminiErr?.message);
+    }
   }
 
   return {

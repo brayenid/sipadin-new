@@ -16,7 +16,7 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number" },
+          limit: { type: "string", description: "Jumlah maksimal data, contoh '10'." },
         },
       },
     },
@@ -44,7 +44,7 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number" },
+          limit: { type: "string", description: "Jumlah maksimal data, contoh '10'." },
         },
       },
     },
@@ -111,7 +111,7 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          estimasiBiaya: { type: "number" },
+          estimasiBiaya: { type: "string", description: "Estimasi nominal biaya perjalanan dinas, contoh '5000000'." },
         },
       },
     },
@@ -124,7 +124,7 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number" },
+          limit: { type: "string", description: "Jumlah maksimal data, contoh '10'." },
           jenisNaskah: { type: "string" },
         },
       },
@@ -152,7 +152,7 @@ export const AI_TOOLS_SCHEMA = [
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number" },
+          limit: { type: "string", description: "Jumlah maksimal data, contoh '10'." },
         },
       },
     },
@@ -167,7 +167,7 @@ export const AI_TOOLS_SCHEMA = [
         properties: {
           searchQuery: { type: "string", description: "Filter berdasarkan judul atau lokasi (opsional)." },
           tanggal: { type: "string", description: "Filter tanggal tertentu format YYYY-MM-DD (opsional)." },
-          limit: { type: "number", description: "Maksimal data yang diambil (default 10)." },
+          limit: { type: "string", description: "Maksimal data yang diambil, contoh '10'." },
         },
       },
     },
