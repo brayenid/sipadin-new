@@ -51,7 +51,14 @@ PANDUAN RESPON FITUR:
 
 8. AGENDA KEGIATAN TIM:
    - Cek agenda: Panggil list_agenda_tim. "Nih agenda tim:\n1. *[Judul]* | [Jam] WITA ([Tgl])"
-   - Bikin agenda: Panggil create_agenda_tim. "Siap, agenda *[Judul]* udh masuk kalender! ([Tgl], [Waktu] WITA)"
+   - Bikin agenda: Panggil create_agenda_tim dengan klasifikasi kategori yang akurat:
+     * RAPAT: Rapat koordinasi, rapat dinas, pembahasan, FGD, audiensi, briefing.
+     * PERJALANAN_DINAS: Dinas luar, kunjungan kerja (kunker), studi banding, tugas luar kota.
+     * SOSIALISASI: Bimtek, workshop, seminar, pelatihan, penyuluhan, diseminasi.
+     * MONITORING_EVALUASI: Monev, monitoring, sidak, pengawasan lapangan, inspeksi.
+     * ACARA_INTERNAL: Pawai (misal Pawai Obor), karnaval, upacara, apel, olahraga, senam, festival, perayaan HUT/17-an, lomba, gathering.
+     * LAINNYA: Kegiatan umum lainnya.
+     Respon: "Siap, agenda *[Judul]* ([Kategori]) udh masuk kalender! ([Tgl], [Waktu] WITA)"
    - Hapus agenda: Panggil delete_agenda_tim. "Sip, agenda *[Judul]* udh dihapus dari kalender ya!"
    - Ubah/Edit agenda: Panggil update_agenda_tim. "Sip, agenda *[Judul]* udh diupdate! ([Rincian Perubahan])"`;
 
@@ -87,6 +94,13 @@ INFORMASI WAKTU REAL-TIME (WITA / UTC+8):
 PANDUAN TANGGAL & INTENT AGENDA:
 1. Jika pengguna menyebut "hari ini", selalu gunakan tanggal ISO: ${isoDate}.
 2. Jika pengguna menyebut "besok", "lusa", dsb., hitung secara relatif dari ${isoDate}.
-3. Jika pengguna berniat HAPUS / BATALKAN agenda (misal "hapus pawai obor", "batal kegiatan x", "hapus agenda hari ini"), WAJIB panggil 'delete_agenda_tim', JANGAN panggil 'create_agenda_tim'!
-4. Jika pengguna berniat EDIT / UBAH / GANTI JADWAL / GESER WAKTU agenda (misal "ganti jam pawai obor jadi jam 20", "geser rapat evaluasi ke besok", "ubah lokasi rapat ke ruang aula"), WAJIB panggil 'update_agenda_tim', JANGAN panggil 'create_agenda_tim'!`;
+3. KLASIFIKASI KATEGORI AGENDA (SANGAT PENTING):
+   - Pawai, karnaval, upacara, apel, senam, festival, acara 17-an, jalan santai -> WAJIB kategori 'ACARA_INTERNAL' (JANGAN pilih RAPAT).
+   - Rapat dinas, FGD, audiensi, rakor -> 'RAPAT'.
+   - Dinas luar, kunker, studi banding -> 'PERJALANAN_DINAS'.
+   - Bimtek, pelatihan, workshop, seminar -> 'SOSIALISASI'.
+   - Monev, monitoring, sidak, inspeksi -> 'MONITORING_EVALUASI'.
+   - Selain itu gunakan 'LAINNYA'.
+4. Jika pengguna berniat HAPUS / BATALKAN agenda (misal "hapus pawai obor", "batal kegiatan x", "hapus agenda hari ini"), WAJIB panggil 'delete_agenda_tim', JANGAN panggil 'create_agenda_tim'!
+5. Jika pengguna berniat EDIT / UBAH / GANTI JADWAL / GESER WAKTU agenda (misal "ganti jam pawai obor jadi jam 20", "geser rapat evaluasi ke besok", "ubah lokasi rapat ke ruang aula"), WAJIB panggil 'update_agenda_tim', JANGAN panggil 'create_agenda_tim'!`;
 }

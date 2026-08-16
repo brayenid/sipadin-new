@@ -253,6 +253,104 @@ function parseWitaDate(dateStr: string): Date {
   return new Date(clean);
 }
 
+export function inferKategoriAgenda(judul: string, explicitKategori?: string): "RAPAT" | "PERJALANAN_DINAS" | "SOSIALISASI" | "MONITORING_EVALUASI" | "ACARA_INTERNAL" | "LAINNYA" {
+  if (explicitKategori) {
+    const norm = explicitKategori.toUpperCase().trim();
+    if (["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "LAINNYA"].includes(norm)) {
+      return norm as any;
+    }
+  }
+
+  const lower = (judul || "").toLowerCase();
+
+  // 1. Acara Internal / Perayaan / Pawai / Upacara / Olahraga
+  if (
+    lower.includes("pawai") ||
+    lower.includes("obor") ||
+    lower.includes("karnaval") ||
+    lower.includes("upacara") ||
+    lower.includes("apel") ||
+    lower.includes("senam") ||
+    lower.includes("olahraga") ||
+    lower.includes("jalan santai") ||
+    lower.includes("gathering") ||
+    lower.includes("family day") ||
+    lower.includes("lomba") ||
+    lower.includes("perayaan") ||
+    lower.includes("festival") ||
+    lower.includes("buka puasa") ||
+    lower.includes("halal bihalal") ||
+    lower.includes("syukuran") ||
+    lower.includes("17-an") ||
+    lower.includes("17 agustus") ||
+    lower.includes("hut")
+  ) {
+    return "ACARA_INTERNAL";
+  }
+
+  // 2. Sosialisasi / Bimtek / Pelatihan / Workshop
+  if (
+    lower.includes("sosialisasi") ||
+    lower.includes("bimtek") ||
+    lower.includes("bimbingan teknis") ||
+    lower.includes("pelatihan") ||
+    lower.includes("workshop") ||
+    lower.includes("seminar") ||
+    lower.includes("webinar") ||
+    lower.includes("diseminasi") ||
+    lower.includes("penyuluhan") ||
+    lower.includes("lokakarya") ||
+    lower.includes("diklat")
+  ) {
+    return "SOSIALISASI";
+  }
+
+  // 3. Perjalanan Dinas / Kunker / Studi Banding
+  if (
+    lower.includes("dinas luar") ||
+    lower.includes("perjalanan dinas") ||
+    lower.includes("perjadin") ||
+    lower.includes("kunjungan kerja") ||
+    lower.includes("kunker") ||
+    lower.includes("studi banding") ||
+    lower.includes("luar daerah") ||
+    lower.includes("luar kota")
+  ) {
+    return "PERJALANAN_DINAS";
+  }
+
+  // 4. Monitoring & Evaluasi / Sidak / Pengawasan
+  if (
+    lower.includes("monev") ||
+    lower.includes("monitoring") ||
+    lower.includes("evaluasi lapangan") ||
+    lower.includes("sidak") ||
+    lower.includes("inspeksi") ||
+    lower.includes("pengawasan") ||
+    lower.includes("verifikasi lapangan") ||
+    lower.includes("peninjauan")
+  ) {
+    return "MONITORING_EVALUASI";
+  }
+
+  // 5. Rapat / Koordinasi / Pertemuan
+  if (
+    lower.includes("rapat") ||
+    lower.includes("koordinasi") ||
+    lower.includes("rakor") ||
+    lower.includes("fgd") ||
+    lower.includes("musyawarah") ||
+    lower.includes("briefing") ||
+    lower.includes("audiensi") ||
+    lower.includes("sidang") ||
+    lower.includes("pertemuan")
+  ) {
+    return "RAPAT";
+  }
+
+  return "LAINNYA";
+}
+
 // ==========================================
 // 2. BACKEND IMPLEMENTATION
 // ==========================================
@@ -858,7 +956,7 @@ export async function executeToolCall(
         const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
         const lokasi = args.lokasi ? String(args.lokasi).trim() : null;
         const pic = args.pic ? String(args.pic).trim() : null;
-        const kategori = (args.kategori || "RAPAT") as any;
+        const kategori = inferKategoriAgenda(judul, args.kategori);
 
         // Ambil default Team & User
         const defaultTeam = await prisma.team.findFirst();
@@ -889,10 +987,11 @@ export async function executeToolCall(
           status: "SUCCESS",
           id: created.id.slice(0, 6),
           judul: created.judul,
+          kategori: created.kategori.replace(/_/g, " "),
           tanggal: formatWitaDate(created.tanggalMulai),
           waktu: created.waktuMulai || "-",
           lokasi: created.lokasi || "-",
-          message: "Agenda tim berhasil dicatat ke kalender.",
+          message: `Agenda tim (${created.kategori.replace(/_/g, " ")}) berhasil dicatat ke kalender.`,
         });
       }
 
@@ -1005,7 +1104,11 @@ export async function executeToolCall(
         if (args.waktuSelesai !== undefined) updateData.waktuSelesai = String(args.waktuSelesai).trim() || null;
         if (args.lokasi !== undefined) updateData.lokasi = String(args.lokasi).trim() || null;
         if (args.pic !== undefined) updateData.pic = String(args.pic).trim() || null;
-        if (args.kategori) updateData.kategori = args.kategori;
+        if (args.kategori) {
+          updateData.kategori = inferKategoriAgenda(args.judul || target.judul, args.kategori);
+        } else if (args.judul) {
+          updateData.kategori = inferKategoriAgenda(args.judul);
+        }
         if (args.status) updateData.status = args.status;
 
         const updated = await prisma.agendaTim.update({
@@ -1019,12 +1122,14 @@ export async function executeToolCall(
         if (args.waktuMulai) changeDescriptions.push(`Jam: ${updated.waktuMulai} WITA`);
         if (args.lokasi) changeDescriptions.push(`Lokasi: ${updated.lokasi}`);
         if (args.pic) changeDescriptions.push(`PIC: ${updated.pic}`);
+        if (args.kategori || args.judul) changeDescriptions.push(`Kategori: ${updated.kategori.replace(/_/g, " ")}`);
         if (args.status) changeDescriptions.push(`Status: ${updated.status}`);
 
         return JSON.stringify({
           status: "SUCCESS",
           id: updated.id.slice(0, 6),
           judul: updated.judul,
+          kategori: updated.kategori.replace(/_/g, " "),
           tanggal: formatWitaDate(updated.tanggalMulai),
           waktu: updated.waktuMulai ? `${updated.waktuMulai}${updated.waktuSelesai ? " - " + updated.waktuSelesai : ""} WITA` : "-",
           lokasi: updated.lokasi || "-",
