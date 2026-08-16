@@ -5,6 +5,27 @@ import { sendFonnteMessage } from "@/lib/fonnte/client";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Cache Anti-Duplikasi Pesan Masuk (Mencegah Double Reply jika Webhook Ter-trigger Ganda)
+const recentProcessedMessages = new Map<string, number>();
+
+function isDuplicateMessage(dedupKey: string, ttlMs: number = 15000): boolean {
+  const now = Date.now();
+  // Bersihkan cache kedaluwarsa
+  for (const [key, timestamp] of recentProcessedMessages.entries()) {
+    if (now - timestamp > 30000) {
+      recentProcessedMessages.delete(key);
+    }
+  }
+
+  const lastSeen = recentProcessedMessages.get(dedupKey);
+  if (lastSeen && now - lastSeen < ttlMs) {
+    return true;
+  }
+
+  recentProcessedMessages.set(dedupKey, now);
+  return false;
+}
+
 /**
  * Endpoint Webhook Fonnte untuk Menerima Pesan Masuk WhatsApp
  * POST /api/fonnte/webhook
@@ -67,6 +88,20 @@ export async function POST(req: NextRequest) {
 
     if (!sender || !rawMessage) {
       return NextResponse.json({ status: "ignored", reason: "Payload kosong atau tidak lengkap." }, { status: 200 });
+    }
+
+    // 0.5 ANTI-DUPLICATE / DEDUP CHECK (Mencegah Double Reply dari Retry Webhook)
+    const msgId = String(body.id || body.message_id || body.requestid || "").trim();
+    const dedupKey = msgId
+      ? `id_${msgId}`
+      : `text_${actualSender}_${targetReply}_${rawMessage.trim().toLowerCase()}`;
+
+    if (isDuplicateMessage(dedupKey, 12000)) {
+      console.warn(`[Anti-Duplicate] Request duplikat untuk key: ${dedupKey} diabaikan.`);
+      return NextResponse.json(
+        { status: "ignored", reason: "Request duplikat terdeteksi dalam window waktu bersamaan." },
+        { status: 200 }
+      );
     }
 
     // 1. FILTER SPAM & PESAN TIDAK RELEVAN

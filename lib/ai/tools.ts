@@ -488,13 +488,13 @@ export async function executeToolCall(
         const list = subKegiatans.map((sub) => ({
           subKegiatan: sub.judulSub,
           kegiatan: sub.kegiatan.judulKegiatan,
-          rekeningList: sub.rekening.map((r) => r.judulRekening),
+          jumlahRekening: sub.rekening.length,
         }));
 
         return JSON.stringify({
           found: true,
           categories: list,
-          hint: "Sebutkan nama sub-kegiatan atau rekening yang ingin dilihat detail sisa saldonya.",
+          hint: "Sebutkan nama sub-kegiatan atau rekening yang ingin dicek sisa saldonya.",
         });
       }
 
