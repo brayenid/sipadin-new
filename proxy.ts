@@ -18,9 +18,14 @@ export default auth((req) => {
 
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
-  const isPublicApi = pathname.startsWith("/api/fonnte") || pathname.startsWith("/api/ai") || pathname.startsWith("/api/wa");
+  const isPublicApi =
+    pathname.startsWith("/api/fonnte") ||
+    pathname.startsWith("/api/ai") ||
+    pathname.startsWith("/api/wa") ||
+    pathname.startsWith("/api/absensi");
+  const isPublicPage = pathname.startsWith("/p/absensi");
 
-  if (isApiAuth || isPublicApi) return NextResponse.next();
+  if (isApiAuth || isPublicApi || isPublicPage) return NextResponse.next();
 
   if (!session && !isAuthPage) {
     const loginUrl = new URL("/login", req.url);
@@ -37,6 +42,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/fonnte|api/ai|api/wa|_next/static|_next/image|favicon.ico|manifest\\..*|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/fonnte|api/ai|api/wa|api/absensi|p/absensi|_next/static|_next/image|favicon.ico|uploads|manifest\\..*|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -26,6 +26,7 @@ type Pegawai = {
   jabatan: string;
   instansi: string;
   eselon: string | null;
+  kategoriPegawai?: string | null;
   wajibAbsenOpd: boolean;
   urutanOpd: number | null;
 };
@@ -54,7 +55,8 @@ export default function PejabatBindingList({
       if (!original) return false;
       return (
         original.wajibAbsenOpd !== item.wajibAbsenOpd ||
-        original.eselon !== item.eselon
+        original.eselon !== item.eselon ||
+        original.kategoriPegawai !== item.kategoriPegawai
       );
     });
   };
@@ -87,6 +89,19 @@ export default function PejabatBindingList({
     );
   };
 
+  const handleKategoriSelectChange = (id: string, val: string) => {
+    setInternalList((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              kategoriPegawai: val === "NONE" ? null : val,
+            }
+          : item
+      )
+    );
+  };
+
   const handleSaveBulk = async () => {
     const dirtyItems = getDirtyItems();
     if (dirtyItems.length === 0) {
@@ -101,6 +116,7 @@ export default function PejabatBindingList({
           pegawaiId: item.id,
           wajibAbsenOpd: item.wajibAbsenOpd,
           eselon: item.eselon,
+          kategoriPegawai: item.kategoriPegawai,
           urutanOpd: item.urutanOpd ?? 0,
         }))
       );
@@ -269,12 +285,13 @@ export default function PejabatBindingList({
                   <TableHead className="text-xs">Jabatan</TableHead>
                   <TableHead className="text-xs">Perangkat Daerah / OPD</TableHead>
                   <TableHead className="text-xs text-center w-36">Eselon</TableHead>
+                  <TableHead className="text-xs text-center w-36">Kategori Grup</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-400 text-xs">
+                    <TableCell colSpan={7} className="h-32 text-center text-slate-400 text-xs">
                       Tidak ada data pejabat yang sesuai dengan filter
                     </TableCell>
                   </TableRow>
@@ -321,6 +338,22 @@ export default function PejabatBindingList({
                           <option value="III.b">III.b</option>
                           <option value="IV.a">IV.a</option>
                           <option value="IV.b">IV.b</option>
+                        </select>
+                      </TableCell>
+
+                      {/* Selector Kategori Grup */}
+                      <TableCell className="text-center text-xs">
+                        <select
+                          value={p.kategoriPegawai || "NONE"}
+                          onChange={(e) => handleKategoriSelectChange(p.id, e.target.value)}
+                          className="h-8 w-28 text-xs font-semibold rounded-md border border-slate-300 bg-white px-2 py-1 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        >
+                          <option value="NONE">- Standar -</option>
+                          <option value="ESELON_2">Eselon II</option>
+                          <option value="ESELON_3">Eselon III</option>
+                          <option value="KECAMATAN">Kecamatan</option>
+                          <option value="STAF">Staf Teknis</option>
+                          <option value="UMUM">Umum</option>
                         </select>
                       </TableCell>
                     </TableRow>

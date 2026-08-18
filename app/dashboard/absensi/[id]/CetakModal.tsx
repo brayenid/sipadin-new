@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, Download, Loader2, FileText, CheckCircle2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import DaftarHadirOpdPdf, { DaftarHadirOpdData } from "@/pdf/templates/DaftarHadirOpdPdf";
 import { formatWita } from "@/lib/date-utils";
 
@@ -57,6 +57,8 @@ export default function CetakModal({
   const [mode, setMode] = useState<"blanko" | "terisi">("blanko");
   const [pageSize, setPageSize] = useState<"F4" | "A4">("F4");
   const [jumlahBaris, setJumlahBaris] = useState<number>(31);
+  const [tampilkanSpesifikEselon, setTampilkanSpesifikEselon] = useState(false);
+  const [tampilkanFooterCatatan, setTampilkanFooterCatatan] = useState(false);
 
   const formattedTanggal = formatWita(agenda.tanggal, "dd MMMM yyyy");
 
@@ -75,23 +77,24 @@ export default function CetakModal({
       mode={mode}
       jumlahBarisKosong={jumlahBaris}
       pageSize={pageSize}
+      tampilkanSpesifikEselon={tampilkanSpesifikEselon}
+      tampilkanFooterCatatan={tampilkanFooterCatatan}
     />
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl h-[94vh] flex flex-col p-4 sm:p-6">
+      <DialogContent className="!max-w-[94vw] w-[94vw] sm:!max-w-[94vw] h-[94vh] flex flex-col p-4 sm:p-6 bg-white">
         <DialogHeader className="pb-3 border-b shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-900">
-              <Printer className="w-5 h-5 text-indigo-600" />
-              Cetak Format Daftar Hadir Perangkat Daerah
+            <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
+              Cetak Blanko Daftar Hadir Lapangan
             </DialogTitle>
 
             <div className="flex items-center gap-2">
               <PDFDownloadLink
                 document={documentElement}
-                fileName={`Daftar_Hadir_${agenda.namaKegiatan.replace(/[^a-zA-Z0-9]/g, "_")}_${mode}.pdf`}
+                fileName={`Blanko_Daftar_Hadir_${agenda.namaKegiatan.replace(/[^a-zA-Z0-9]/g, "_")}_${mode}.pdf`}
               >
                 {({ loading }) => (
                   <Button
@@ -112,16 +115,16 @@ export default function CetakModal({
           </div>
 
           {/* Opsi Cetak */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-3 items-end">
             <div>
-              <Label className="text-[11px] font-semibold text-slate-700">Tipe Format Daftar Hadir</Label>
+              <Label className="text-[11px] font-semibold text-slate-700">Tipe Format Blanko</Label>
               <Select value={mode} onValueChange={(val: any) => setMode(val)}>
                 <SelectTrigger className="mt-1 text-xs h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="blanko">Blanko Kosong (Tanda Tangan Lapangan)</SelectItem>
-                  <SelectItem value="terisi">Terisi Nama Pejabat ({agenda.peserta.length} OPD)</SelectItem>
+                  <SelectItem value="blanko">Blanko Kosong (Tanda Tangan Fisik)</SelectItem>
+                  <SelectItem value="terisi">Format Terisi Nama Pegawai ({agenda.peserta.length} OPD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -139,7 +142,7 @@ export default function CetakModal({
               </Select>
             </div>
 
-            {mode === "blanko" && (
+            {mode === "blanko" ? (
               <div>
                 <Label className="text-[11px] font-semibold text-slate-700">Jumlah Baris Kosong</Label>
                 <Input
@@ -154,7 +157,34 @@ export default function CetakModal({
                   className="mt-1 text-xs h-8"
                 />
               </div>
+            ) : (
+              <div className="flex items-center text-xs text-slate-500 pb-1.5">
+                Total {agenda.peserta.length} pegawai terdaftar
+              </div>
             )}
+
+            {/* Checkbox Opsi Tambahan */}
+            <div className="flex flex-col gap-1.5 pb-0.5 text-xs text-slate-700 md:col-span-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={tampilkanSpesifikEselon}
+                  onChange={(e) => setTampilkanSpesifikEselon(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-[11px]">Judul Spesifik Eselon II.b & III.a</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={tampilkanFooterCatatan}
+                  onChange={(e) => setTampilkanFooterCatatan(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-[11px]">Catatan Peringatan Footer</span>
+              </label>
+            </div>
           </div>
         </DialogHeader>
 

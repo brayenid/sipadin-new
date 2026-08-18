@@ -126,7 +126,7 @@ export default function ModalTambahPeserta({
         <DialogHeader className="shrink-0 pb-3 border-b border-slate-100">
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
             <UserPlus className="w-4 h-4 text-indigo-600" />
-            Tambah Pejabat (Bulk Insert)
+            Tambah Pegawai (Bulk Insert)
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Centang pegawai yang ingin ditambahkan secara massal ke dalam daftar kehadiran agenda.

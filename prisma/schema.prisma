@@ -97,9 +97,10 @@ model Pegawai {
   instansi  String   @default("Sekretariat Daerah Kabupaten Kutai Barat")
   
   // Binding Khusus Eselon & Absensi OPD
-  eselon        String?  // misal: "II.b", "III.a"
-  wajibAbsenOpd Boolean  @default(false)
-  urutanOpd     Int?     @default(0)
+  eselon          String?  // misal: "II.b", "III.a"
+  kategoriPegawai String?  // misal: "ESELON_2", "ESELON_3", "KECAMATAN", "STAF", "UMUM"
+  wajibAbsenOpd   Boolean  @default(false)
+  urutanOpd       Int?     @default(0)
 
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -321,6 +322,7 @@ model NaskahDinas {
 // ==========================================
 model AgendaAbsensi {
   id              String               @id @default(uuid())
+  publicToken     String?              @unique
   namaKegiatan    String
   hari            String?              // misal: "Senin"
   tanggal         DateTime             // Tanggal pelaksanaan kegiatan
@@ -328,7 +330,21 @@ model AgendaAbsensi {
   tempat          String
   deskripsi       String?              @db.Text
   targetPeserta   String?              @default("Eselon II.b dan III.a")
+  targetKategori  String?              @default("ESELON_2_3") // "ESELON_2", "ESELON_3", "SEMUA_OPD", "KECAMATAN", "CUSTOM"
   
+  // Pengaturan Waktu & Status Pengisian Mandiri
+  isPublicActive  Boolean              @default(true)
+  waktuBukaAbsen  DateTime?            // Waktu mulai form dibuka
+  waktuTutupAbsen DateTime?            // Waktu batas form ditutup
+  requireLocation Boolean              @default(true) // Wajib GPS
+  requirePhoto    Boolean              @default(true) // Wajib Selfie Foto
+  allowNonPeserta Boolean              @default(true) // Izinkan peserta di luar daftar mengisi absen
+
+  // Titik Lokasi Kegiatan & Geofencing (Opsional)
+  targetLatitude  Float?
+  targetLongitude Float?
+  radiusMeter     Int?                 @default(100) // Radius batas toleransi kehadiran dalam meter
+
   status          StatusAgendaAbsensi  @default(BERLANGSUNG)
   driveUrl        String?              // Tautan Google Drive hasil scan absensi/foto
   
@@ -345,6 +361,7 @@ model AgendaAbsensi {
   peserta         KehadiranPeserta[]
 
   @@index([teamId, tanggal])
+  @@index([publicToken])
 }
 
 model KehadiranPeserta {
@@ -368,6 +385,17 @@ model KehadiranPeserta {
   namaPerwakilan    String?         // Diisi jika status MEWAKILI
   jabatanPerwakilan String?
   keterangan        String?
+
+  // Self Input Publik, Geotag, Foto, dan Waktu
+  isSelfInput       Boolean         @default(false)
+  waktuInput        DateTime?       // Waktu saat melakukan submit absen
+  latitude          Float?
+  longitude         Float?
+  accuracy          Float?          // Akurasi GPS dalam meter
+  lokasiText        String?         // Geocoding / string lat,lng
+  fotoUrl           String?         // URL foto bukti di Cloudflare R2
+  ipAddress         String?
+  userAgent         String?
   
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

@@ -21,20 +21,22 @@ export type DaftarHadirOpdPdfProps = {
   mode?: "blanko" | "terisi";
   jumlahBarisKosong?: number;
   pageSize?: "F4" | "A4";
+  tampilkanSpesifikEselon?: boolean;
+  tampilkanFooterCatatan?: boolean;
 };
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 36,
+    paddingTop: 32,
     paddingBottom: 36,
-    paddingHorizontal: 40,
+    paddingHorizontal: 36,
     fontSize: 9,
     fontFamily: "Arial",
     color: "#000000",
   },
   headerWrap: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   title: {
     fontFamily: "Arial",
@@ -47,78 +49,82 @@ const styles = StyleSheet.create({
   subTitle: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 10.5,
+    fontSize: 10,
     textAlign: "center",
     textTransform: "uppercase",
     lineHeight: 1.3,
+    marginTop: 2,
   },
   metaContainer: {
-    marginBottom: 14,
+    marginBottom: 12,
     width: "100%",
   },
   metaRow: {
     flexDirection: "row",
-    marginBottom: 5,
+    marginBottom: 4,
     alignItems: "flex-start",
   },
   metaLabel: {
-    width: 80,
+    width: 75,
     fontFamily: "Arial",
-    fontSize: 9.5,
+    fontSize: 9,
     textTransform: "uppercase",
   },
   metaColon: {
-    width: 14,
-    fontSize: 9.5,
+    width: 12,
+    fontSize: 9,
     textAlign: "center",
   },
   metaVal: {
     flex: 1,
-    fontSize: 9.5,
+    fontSize: 9,
   },
 
   // ── Tabel ──────────────────────────────────────────────
-  // Outer wrapper: border kiri + kanan + atas saja (bawah ditutup tiap row)
   table: {
     width: "100%",
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderTopWidth: 1,
-    borderColor: "#000",
+    marginBottom: 8,
   },
 
   // Baris header
   headerRow: {
     flexDirection: "row",
+    borderTopWidth: 1,
     borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: "#000",
     minHeight: 22,
+    backgroundColor: "#ffffff",
   },
 
   // Baris data
   dataRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: "#000",
     minHeight: 26,
+    backgroundColor: "#ffffff",
   },
 
   // Sel header
   thCell: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 9,
+    fontSize: 8.5,
     textAlign: "center",
     textTransform: "uppercase",
     paddingVertical: 4,
-    paddingHorizontal: 3,
+    paddingHorizontal: 2,
     justifyContent: "center",
     alignItems: "center",
   },
   thText: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 9,
+    fontSize: 8.5,
     textAlign: "center",
     textTransform: "uppercase",
   },
@@ -133,22 +139,22 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
   },
 
-  // Divider vertikal antar kolom (bukan border di Text, tapi borderRight pada View)
+  // Divider vertikal antar kolom
   borderRight: {
     borderRightWidth: 1,
     borderColor: "#000",
   },
 
   // Lebar kolom
-  noCol:  { width: "6%" },
+  noCol: { width: "6%" },
   namaCol: { width: "27%" },
   jabatanCol: { width: "27%" },
   opdCol: { width: "27%" },
   ttdCol: { width: "13%" },
 
   footerNote: {
-    marginTop: 10,
-    fontSize: 8.5,
+    marginTop: 6,
+    fontSize: 8,
     fontFamily: "Arial",
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -160,6 +166,8 @@ export default function DaftarHadirOpdPdf({
   mode = "blanko",
   jumlahBarisKosong = 31,
   pageSize = "F4",
+  tampilkanSpesifikEselon = false,
+  tampilkanFooterCatatan = false,
 }: DaftarHadirOpdPdfProps) {
   const pageDimensions = pageSize === "F4" ? [595.28, 935.43] : "A4";
 
@@ -177,12 +185,23 @@ export default function DaftarHadirOpdPdf({
       <Page size={pageDimensions as any} style={styles.page}>
         {/* Judul */}
         <View style={styles.headerWrap}>
-          <Text style={styles.title}>
-            DAFTAR HADIR {data.targetPeserta?.toUpperCase() || "ESELON II.b DAN III.a"}
-          </Text>
-          <Text style={styles.subTitle}>
-            PADA KEGIATAN YANG MENGUNDANG SELURUH PERANGKAT DAERAH
-          </Text>
+          {tampilkanSpesifikEselon ? (
+            <>
+              <Text style={styles.title}>
+                DAFTAR HADIR {data.targetPeserta?.toUpperCase() || "ESELON II.B DAN III.A"}
+              </Text>
+              <Text style={styles.subTitle}>
+                PADA KEGIATAN YANG MENGUNDANG SELURUH PERANGKAT DAERAH
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>DAFTAR HADIR</Text>
+              <Text style={styles.subTitle}>
+                PADA KEGIATAN YANG MENGUNDANG PERANGKAT DAERAH
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Informasi Acara */}
@@ -219,9 +238,8 @@ export default function DaftarHadirOpdPdf({
 
         {/* Tabel Daftar Hadir */}
         <View style={styles.table}>
-
-          {/* Header Row */}
-          <View style={[styles.headerRow]} fixed>
+          {/* Header Row (Repeats automatically on page breaks) */}
+          <View style={styles.headerRow} fixed>
             <View style={[styles.thCell, styles.borderRight, styles.noCol]}>
               <Text style={styles.thText}>NO</Text>
             </View>
@@ -239,7 +257,7 @@ export default function DaftarHadirOpdPdf({
             </View>
           </View>
 
-          {/* Data Rows */}
+          {/* Data Rows (Each row wrapped with wrap={false} to prevent cut-off) */}
           {rows.map((row, idx) => (
             <View key={idx} wrap={false} style={styles.dataRow}>
               <View style={[styles.tdCell, styles.borderRight, styles.noCol]}>
@@ -259,13 +277,14 @@ export default function DaftarHadirOpdPdf({
               </View>
             </View>
           ))}
-
         </View>
 
-        {/* Footer */}
-        <Text style={styles.footerNote} wrap={false}>
-          *SELAIN ESELON II.b DAN III.a TIDAK PERLU MENGISI ABSEN
-        </Text>
+        {/* Footer Note (Opsional via Checkbox) */}
+        {tampilkanFooterCatatan && (
+          <Text style={styles.footerNote} wrap={false}>
+            *SELAIN ESELON II.B DAN III.A TIDAK PERLU MENGISI ABSEN
+          </Text>
+        )}
       </Page>
     </Document>
   );

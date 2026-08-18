@@ -38,6 +38,19 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setErrorMsg(null)
+
+    // Cek apakah akun sedang terkunci karena rate limit
+    try {
+      const { checkRateLimitStatus } = await import('@/app/actions/akun')
+      const status = await checkRateLimitStatus(data.username)
+      if (!status.allowed) {
+        setErrorMsg(status.message || 'Terlalu banyak percobaan login gagal. Silakan coba lagi nanti.')
+        return
+      }
+    } catch {
+      // Lanjutkan jika pengecekan gagal
+    }
+
     const result = await signIn('credentials', {
       username: data.username,
       password: data.password,
@@ -45,7 +58,20 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setErrorMsg('Username atau password salah. Silakan coba lagi.')
+      // Cek kembali status rate limit setelah percobaan gagal
+      try {
+        const { checkRateLimitStatus } = await import('@/app/actions/akun')
+        const status = await checkRateLimitStatus(data.username)
+        if (!status.allowed) {
+          setErrorMsg(status.message || 'Batas percobaan login terlampaui. Akun dibatasi sementara.')
+        } else if (status.remainingAttempts <= 2) {
+          setErrorMsg(`Username atau password salah. Sisa kesempatan: ${status.remainingAttempts} kali sebelum dibatasi.`)
+        } else {
+          setErrorMsg('Username atau password salah. Silakan coba lagi.')
+        }
+      } catch {
+        setErrorMsg('Username atau password salah. Silakan coba lagi.')
+      }
     } else {
       toast.success('Login Berhasil', {
         description: 'Selamat datang kembali!',

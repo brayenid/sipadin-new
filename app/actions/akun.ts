@@ -143,3 +143,8 @@ export async function deleteAkun(id: string) {
 
   revalidatePath("/dashboard/akun");
 }
+
+export async function checkRateLimitStatus(username: string) {
+  const { checkLoginRateLimit } = await import("@/lib/rate-limit");
+  return checkLoginRateLimit(username);
+}

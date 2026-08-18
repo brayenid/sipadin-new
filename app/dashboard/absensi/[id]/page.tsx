@@ -36,8 +36,8 @@ export default async function AgendaDetailPage({
         </div>
 
         {/* Title & Header Detail */}
-        <div className="space-y-2">
-          <h1 className="text-xl font-black sm:text-2xl tracking-tight text-slate-900">
+        <div>
+          <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">
             {agenda.namaKegiatan}
           </h1>
         </div>

@@ -51,3 +51,18 @@ export function parseWitaInput(dateString: string | null | undefined): Date | nu
     return null;
   }
 }
+
+/**
+ * Combines date (YYYY-MM-DD) and time (HH:mm) strings in WITA (+08:00) into a Date object.
+ */
+export function combineDateAndTimeWita(dateString: string, timeString: string): Date | null {
+  if (!dateString || !timeString) return null;
+  try {
+    const timeFormatted = timeString.length === 5 ? `${timeString}:00` : timeString;
+    return new Date(`${dateString}T${timeFormatted}+08:00`);
+  } catch (error) {
+    console.error("Error combining date & time:", dateString, timeString, error);
+    return null;
+  }
+}
+

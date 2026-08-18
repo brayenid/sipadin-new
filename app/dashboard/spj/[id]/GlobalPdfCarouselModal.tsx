@@ -527,24 +527,35 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
         tabId: "laporan",
         render: () => {
           const lSpj = { noSuratTugas: `${st.nomorPrefix || ""}${st.nomorTengah || ""}${st.nomorSuffix || ""}` };
+          const lapSignerId = lap.penandatanganId || st.penandatanganId;
+          const lapSigner = pegawaiList.find((p) => p.id === lapSignerId);
+          const lapConfig = meta.laporanPdf || meta.laporanPdfConfig;
           const lapData = {
             dasarLaporan: lap.dasarLaporan || "",
             kegiatan: lap.kegiatan || "",
             waktu: lap.waktu || "",
             lokasi: lap.lokasi || "",
             tujuan: lap.tujuan || "",
-            signerNama: stSigner?.nama || "",
-            signerNip: stSigner?.nip || "",
-            signerJabatan: stSigner?.jabatan || "",
-            signerPangkat: stSigner?.pangkat || "",
-            signerGolongan: stSigner?.golongan || "",
-            signerJabatanTampil: stSigner?.jabatanTampil || "",
+            signerNama: lapSigner?.nama || "",
+            signerNip: lapSigner?.nip || "",
+            signerJabatan: lapSigner?.jabatan || "",
+            signerPangkat: lapSigner?.pangkat || "",
+            signerGolongan: lapSigner?.golongan || "",
+            signerJabatanTampil: lap.jabatanTampil || lapSigner?.jabatan || "",
+            excludeMengetahui: !!lap.excludeMengetahui,
             hasilMode: lap.hasilMode || "POINTS",
             hasilPembuka: lap.hasilPembuka || "",
             hasilPoin: lap.hasilPoin || [],
             hasilNarasi: lap.hasilNarasi || "",
           };
-          return <LaporanPdf spj={lSpj} roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))} laporan={lapData} />;
+          return (
+            <LaporanPdf 
+              spj={lSpj} 
+              roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))} 
+              laporan={lapData} 
+              config={lapConfig}
+            />
+          );
         }
       });
     }

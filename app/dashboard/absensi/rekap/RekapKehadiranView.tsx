@@ -25,12 +25,32 @@ import {
   Filter,
   FileText,
   Loader2,
+  Camera,
+  MapPin,
+  Smartphone,
+  UserCheck,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
 import CetakRekapModal from "./CetakRekapModal";
 import CetakRekapPegawaiModal from "./CetakRekapPegawaiModal";
+
+type HistoryItem = {
+  agendaId: string;
+  namaKegiatan: string;
+  tanggal: Date;
+  status: "HADIR" | "MEWAKILI" | "TIDAK_HADIR" | "IZIN";
+  keterangan?: string | null;
+  namaPerwakilan?: string | null;
+  jabatanPerwakilan?: string | null;
+  fotoUrl?: string | null;
+  lokasiText?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isSelfInput?: boolean;
+  waktuInput?: Date | null;
+};
 
 type OpdSummaryItem = {
   instansi: string;
@@ -43,14 +63,7 @@ type OpdSummaryItem = {
   totalPartisipasi: number;
   persentaseKehadiran: number;
   persentaseHadirLangsung: number;
-  history: {
-    agendaId: string;
-    namaKegiatan: string;
-    tanggal: Date;
-    status: "HADIR" | "MEWAKILI" | "TIDAK_HADIR" | "IZIN";
-    keterangan?: string | null;
-    namaPerwakilan?: string | null;
-  }[];
+  history: HistoryItem[];
 };
 
 type PegawaiSummaryItem = {
@@ -65,14 +78,7 @@ type PegawaiSummaryItem = {
   izin: number;
   totalPartisipasi: number;
   persentaseKehadiran: number;
-  history: {
-    agendaId: string;
-    namaKegiatan: string;
-    tanggal: Date;
-    status: "HADIR" | "MEWAKILI" | "TIDAK_HADIR" | "IZIN";
-    keterangan?: string | null;
-    namaPerwakilan?: string | null;
-  }[];
+  history: HistoryItem[];
 };
 
 const NAMA_BULAN = [
@@ -595,19 +601,19 @@ export default function RekapKehadiranView({
                                       Riwayat Kehadiran {opd.instansi} ({opd.history.length} Agenda):
                                     </p>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
                                       {opd.history.map((h, i) => (
                                         <Link 
                                           key={i} 
                                           href={`/dashboard/absensi/${h.agendaId}`}
-                                          className="block p-2.5 bg-white border border-slate-200 rounded-md text-xs space-y-1 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
+                                          className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
                                         >
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-bold text-slate-900 truncate pr-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-slate-900 truncate">
                                               {h.namaKegiatan}
                                             </span>
                                             <Badge
-                                              className={`text-[9px] px-1.5 py-0 ${
+                                              className={`text-[9px] px-1.5 py-0 shrink-0 ${
                                                 h.status === "HADIR"
                                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                                   : h.status === "MEWAKILI"
@@ -616,17 +622,56 @@ export default function RekapKehadiranView({
                                               }`}
                                             >
                                               {h.status === "HADIR"
-                                                ? "100% Hadir"
+                                                ? "Hadir"
                                                 : h.status === "MEWAKILI"
-                                                ? "50% Mewakili"
-                                                : "0% Absen"}
+                                                ? "Mewakili"
+                                                : "Absen"}
                                             </Badge>
                                           </div>
-                                          <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                            <span>{formatWita(h.tanggal, "dd MMM yyyy")}</span>
+
+                                          <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="w-3 h-3 text-slate-400" />
+                                              {formatWita(h.tanggal, "dd MMM yyyy")}
+                                            </span>
                                             {h.namaPerwakilan && (
-                                              <span className="text-amber-700 font-medium">
+                                              <span className="text-amber-700 font-medium truncate">
                                                 Wakili: {h.namaPerwakilan}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Metadata Metode, Foto & Geotag */}
+                                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                                            {h.isSelfInput ? (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
+                                                <Smartphone className="w-2.5 h-2.5" />
+                                                Self-Input
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                                                <UserCheck className="w-2.5 h-2.5" />
+                                                Manual
+                                              </span>
+                                            )}
+
+                                            {h.fotoUrl && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Camera className="w-2.5 h-2.5" />
+                                                Foto
+                                              </span>
+                                            )}
+
+                                            {(h.lokasiText || h.latitude) && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <MapPin className="w-2.5 h-2.5" />
+                                                GPS
+                                              </span>
+                                            )}
+
+                                            {h.waktuInput && (
+                                              <span className="text-[10px] text-slate-400 ml-auto">
+                                                {formatWita(h.waktuInput, "HH:mm")} WITA
                                               </span>
                                             )}
                                           </div>
@@ -772,21 +817,19 @@ export default function RekapKehadiranView({
                                     <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                       <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                                       Riwayat Kehadiran Individu ({peg.history.length} Agenda):
-                                    </p>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                    </p>                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
                                       {peg.history.map((h, i) => (
-                                        <Link
-                                          key={i}
+                                        <Link 
+                                          key={i} 
                                           href={`/dashboard/absensi/${h.agendaId}`}
-                                          className="block p-2.5 bg-white border border-slate-200 rounded-md text-xs space-y-1 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
+                                          className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
                                         >
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-bold text-slate-900 truncate pr-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-slate-900 truncate">
                                               {h.namaKegiatan}
                                             </span>
                                             <Badge
-                                              className={`text-[9px] px-1.5 py-0 ${
+                                              className={`text-[9px] px-1.5 py-0 shrink-0 ${
                                                 h.status === "HADIR"
                                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                                   : h.status === "MEWAKILI"
@@ -795,17 +838,56 @@ export default function RekapKehadiranView({
                                               }`}
                                             >
                                               {h.status === "HADIR"
-                                                ? "100% Hadir"
+                                                ? "Hadir"
                                                 : h.status === "MEWAKILI"
-                                                ? "50% Mewakili"
-                                                : "0% Absen"}
+                                                ? "Mewakili"
+                                                : "Absen"}
                                             </Badge>
                                           </div>
-                                          <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                            <span>{formatWita(h.tanggal, "dd MMM yyyy")}</span>
+
+                                          <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="w-3 h-3 text-slate-400" />
+                                              {formatWita(h.tanggal, "dd MMM yyyy")}
+                                            </span>
                                             {h.namaPerwakilan && (
-                                              <span className="text-amber-700 font-medium">
+                                              <span className="text-amber-700 font-medium truncate">
                                                 Wakili: {h.namaPerwakilan}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Metadata Metode, Foto & Geotag */}
+                                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                                            {h.isSelfInput ? (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
+                                                <Smartphone className="w-2.5 h-2.5" />
+                                                Self-Input
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                                                <UserCheck className="w-2.5 h-2.5" />
+                                                Manual
+                                              </span>
+                                            )}
+
+                                            {h.fotoUrl && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Camera className="w-2.5 h-2.5" />
+                                                Foto
+                                              </span>
+                                            )}
+
+                                            {(h.lokasiText || h.latitude) && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <MapPin className="w-2.5 h-2.5" />
+                                                GPS
+                                              </span>
+                                            )}
+
+                                            {h.waktuInput && (
+                                              <span className="text-[10px] text-slate-400 ml-auto">
+                                                {formatWita(h.waktuInput, "HH:mm")} WITA
                                               </span>
                                             )}
                                           </div>

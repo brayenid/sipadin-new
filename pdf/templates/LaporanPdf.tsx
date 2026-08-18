@@ -3,6 +3,7 @@ import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@rea
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
 import '@/pdf/fonts'
+import type { PdfConfig } from '@/components/pdf/PdfPreviewModal'
 
 export type LaporanHasilMode = 'POINTS' | 'NARRATIVE'
 
@@ -25,12 +26,15 @@ export type Laporan = {
   lokasi: string | null
   tujuan: string | null
 
+  penandatanganId?: string | null
   signerNama: string | null
   signerNip: string | null
   signerJabatan: string | null
   signerPangkat: string | null
   signerGolongan: string | null
   signerJabatanTampil: string | null
+
+  excludeMengetahui?: boolean
 
   hasilMode: LaporanHasilMode
   hasilPembuka: string | null
@@ -44,6 +48,7 @@ export type LaporanPdfProps = {
   }
   roster: RosterItem[]
   laporan: Laporan | null
+  config?: PdfConfig
 }
 
 function sortRoster(list: RosterItem[]) {
@@ -79,61 +84,37 @@ function normalizeOneLine(s: string) {
   return normalizeMultiline(s).replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metaRow}>
-      <Text style={styles.metaLabel}>{label}</Text>
-      <Text style={styles.metaColon}>:</Text>
-      <Text style={styles.metaValue}>{value}</Text>
-    </View>
-  )
-}
-
-function PointsBlock({ points }: { points: string[] }) {
-  const cleaned = (points ?? []).map((x) => normalizeMultiline(String(x || ''))).filter(Boolean)
-  if (cleaned.length === 0) return <Text style={styles.bodyText}>-</Text>
-
-  return (
-    <View style={{ marginTop: 2 }}>
-      {cleaned.map((p, idx) => (
-        <View key={idx} style={styles.pointRow}>
-          <Text style={styles.pointNo}>{idx + 1}.</Text>
-          <Text style={styles.pointText}>{p}</Text>
-        </View>
-      ))}
-    </View>
-  )
-}
-
 export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<DocumentProps> {
   const rosterSorted = sortRoster(props.roster ?? [])
   const laporan = props.laporan
+  const config = props.config
 
   const dasar = safeText(
-    laporan?.dasarLaporan ?? (props.spj.noSuratTugas ? `Surat Tugas Nomor ${props.spj.noSuratTugas}` : null),
+    config?.content?.dasarLaporan ?? laporan?.dasarLaporan ?? (props.spj.noSuratTugas ? `Surat Tugas Nomor ${props.spj.noSuratTugas}` : null),
     '-'
   )
 
-  const kegiatanRaw = (laporan?.kegiatan ?? '').trim()
-  const kegiatan = safeText(laporan?.kegiatan, '-')
+  const kegiatanRaw = (config?.content?.kegiatan ?? laporan?.kegiatan ?? '').trim()
+  const kegiatan = safeText(kegiatanRaw, '-')
   
   // Custom format date if time is provided
   let waktu = '';
-  if (laporan?.waktu) {
+  const waktuRaw = config?.content?.waktu ?? laporan?.waktu;
+  if (waktuRaw) {
     try {
-      waktu = formatWita(laporan.waktu, 'dd MMMM yyyy');
+      waktu = formatWita(waktuRaw, 'dd MMMM yyyy');
     } catch {
-      waktu = laporan.waktu;
+      waktu = waktuRaw;
     }
   }
 
-  const lokasi = safeText(laporan?.lokasi, '-')
-  const tujuan = safeText(laporan?.tujuan, '-')
+  const lokasi = safeText(config?.content?.lokasi ?? laporan?.lokasi, '-')
+  const tujuan = safeText(config?.content?.tujuan ?? laporan?.tujuan, '-')
 
   const hasilMode = laporan?.hasilMode ?? 'POINTS'
-  const hasilNarasi = normalizeMultiline(safeText(laporan?.hasilNarasi, ''))
+  const hasilNarasi = normalizeMultiline(safeText(config?.content?.hasilNarasi ?? laporan?.hasilNarasi, ''))
 
-  const pembukaManual = normalizeMultiline(safeText(laporan?.hasilPembuka, ''))
+  const pembukaManual = normalizeMultiline(safeText(config?.content?.hasilPembuka ?? laporan?.hasilPembuka, ''))
   const pembukaAuto =
     kegiatanRaw.length > 0
       ? `Setelah melakukan kegiatan ${kegiatanRaw}, maka dapat disimpulkan sebagai berikut:`
@@ -148,12 +129,197 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
         : pembukaManual
 
   // Penandatangan (Signer) logic
-  const signerNama = safeText(laporan?.signerNama, '')
-  const signerNip = safeText(laporan?.signerNip, '')
-  // Gunakan jabatan tampil jika ada, jika tidak gunakan jabatan asli dari pegawai
-  const signerJabatanRaw = (laporan?.signerJabatanTampil || laporan?.signerJabatan || '').trim()
+  const signerNama = safeText(config?.content?.signerNama ?? laporan?.signerNama, '')
+  const signerNip = safeText(config?.content?.signerNip ?? laporan?.signerNip, '')
+  const signerJabatanRaw = (config?.content?.signerJabatanTampil || config?.content?.signerJabatan || laporan?.signerJabatanTampil || laporan?.signerJabatan || '').trim()
   const signerJabatanLabel = signerJabatanRaw ? `${signerJabatanRaw},` : ''
   const signerPangkatGol = fmtPangkatGol(laporan?.signerPangkat ?? null, laporan?.signerGolongan ?? null)
+
+  const excludeMengetahui = laporan?.excludeMengetahui ?? false
+
+  // Dynamic Styles from config
+  const pageMarginTop = config?.styles?.marginTop ?? 28
+  const pageMarginBottom = config?.styles?.marginBottom ?? 32
+  const pageMarginHorizontal = config?.styles?.marginHorizontal ?? 40
+  const globalFontSize = config?.styles?.fontSize ?? 11
+  const globalLineHeight = config?.styles?.lineHeight ?? 1.35
+
+  const styles = StyleSheet.create({
+    page: {
+      paddingTop: pageMarginTop,
+      paddingBottom: pageMarginBottom,
+      paddingHorizontal: pageMarginHorizontal,
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight,
+      fontFamily: 'Helvetica'
+    },
+    titleWrap: {
+      marginTop: -8,
+      alignItems: 'center',
+      marginBottom: 2
+    },
+    title: {
+      fontSize: globalFontSize,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      textDecoration: 'underline'
+    },
+    metaWrap: {
+      marginTop: 10
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 2
+    },
+    metaLabel: {
+      width: 150,
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight
+    },
+    metaColon: {
+      width: 10,
+      textAlign: 'center',
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight
+    },
+    metaValue: {
+      flex: 1,
+      textAlign: 'justify',
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight
+    },
+    sectionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 4
+    },
+    sectionValue: {
+      flex: 1
+    },
+    bodyText: {
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight * 1.1,
+      textAlign: 'justify'
+    },
+    paragraph: {
+      textAlign: 'justify',
+      textIndent: 28
+    },
+    pointRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 3
+    },
+    pointNo: {
+      width: 14,
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight * 1.1
+    },
+    pointText: {
+      flex: 1,
+      textAlign: 'justify',
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight * 1.1
+    },
+    signWrap: {
+      marginTop: 36,
+      flexDirection: 'row',
+      justifyContent: excludeMengetahui ? 'flex-end' : 'space-between',
+      break: false
+    },
+    signColLeft: {
+      width: '45%'
+    },
+    signColRight: {
+      width: excludeMengetahui ? '50%' : '50%'
+    },
+    signLabel: {
+      fontSize: globalFontSize,
+      minHeight: 14,
+      lineHeight: globalLineHeight
+    },
+    rosterLabel: {
+      fontSize: globalFontSize,
+      minHeight: 14,
+      lineHeight: globalLineHeight,
+      marginLeft: excludeMengetahui ? 0 : -40
+    },
+    signSpace: {
+      height: 48
+    },
+    signName: {
+      fontSize: globalFontSize,
+      fontWeight: 700,
+      textDecoration: 'underline',
+      lineHeight: 1.1
+    },
+    signSub: {
+      marginTop: 1,
+      fontSize: Math.max(8, globalFontSize - 1),
+      lineHeight: 1.2
+    },
+    execRow: {
+      flexDirection: 'row',
+      marginBottom: 10,
+      minHeight: 20,
+      alignItems: 'center'
+    },
+    execNo: {
+      width: 15,
+      fontSize: Math.max(8, globalFontSize - 1),
+      marginLeft: excludeMengetahui ? 0 : -40
+    },
+    execContent: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    },
+    execName: {
+      fontSize: Math.max(8, globalFontSize - 1),
+      maxWidth: 160,
+      overflow: 'hidden'
+    },
+    execDotsWrapper: {
+      width: 100
+    },
+    execDotsLeft: {
+      paddingLeft: 0
+    },
+    execDotsRight: {
+      paddingLeft: 50
+    },
+    execDotsText: {
+      fontSize: Math.max(8, globalFontSize - 1)
+    }
+  })
+
+  function MetaRow({ label, value }: { label: string; value: string }) {
+    return (
+      <View style={styles.metaRow}>
+        <Text style={styles.metaLabel}>{label}</Text>
+        <Text style={styles.metaColon}>:</Text>
+        <Text style={styles.metaValue}>{value}</Text>
+      </View>
+    )
+  }
+
+  function PointsBlock({ points }: { points: string[] }) {
+    const cleaned = (points ?? []).map((x) => normalizeMultiline(String(x || ''))).filter(Boolean)
+    if (cleaned.length === 0) return <Text style={styles.bodyText}>-</Text>
+
+    return (
+      <View style={{ marginTop: 2 }}>
+        {cleaned.map((p, idx) => (
+          <View key={idx} style={styles.pointRow}>
+            <Text style={styles.pointNo}>{idx + 1}.</Text>
+            <Text style={styles.pointText}>{p}</Text>
+          </View>
+        ))}
+      </View>
+    )
+  }
 
   return (
     <Document>
@@ -198,17 +364,19 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
 
         {/* ===== Signatures Area ===== */}
         <View style={styles.signWrap} wrap={false}>
-          {/* Sisi Kiri: Pejabat Penandatangan / Mengetahui */}
-          <View style={styles.signColLeft}>
-            <Text style={styles.signLabel}>Mengetahui,</Text>
-            <Text style={styles.signLabel}>{signerJabatanLabel}</Text>
-            <View style={styles.signSpace} />
-            <Text style={styles.signName}>{signerNama}</Text>
-            {signerPangkatGol ? <Text style={styles.signSub}>{signerPangkatGol}</Text> : null}
-            {signerNip ? <Text style={styles.signSub}>NIP. {signerNip}</Text> : null}
-          </View>
+          {/* Sisi Kiri: Pejabat Penandatangan / Mengetahui (Kecuali jika dieksklusi) */}
+          {!excludeMengetahui && (
+            <View style={styles.signColLeft}>
+              <Text style={styles.signLabel}>Mengetahui,</Text>
+              <Text style={styles.signLabel}>{signerJabatanLabel}</Text>
+              <View style={styles.signSpace} />
+              <Text style={styles.signName}>{signerNama}</Text>
+              {signerPangkatGol ? <Text style={styles.signSub}>{signerPangkatGol}</Text> : null}
+              {signerNip ? <Text style={styles.signSub}>NIP. {signerNip}</Text> : null}
+            </View>
+          )}
 
-          {/* Right roster executor */}
+          {/* Sisi Kanan: Yang Melaksanakan Tugas */}
           <View style={styles.signColRight}>
             <Text style={styles.rosterLabel}>Yang Melaksanakan Tugas,</Text>
 
@@ -237,148 +405,3 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
   )
 }
 
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 28,
-    paddingBottom: 32,
-    paddingHorizontal: 40,
-    fontSize: 11,
-    lineHeight: 1.35,
-    fontFamily: 'Helvetica'
-  },
-  titleWrap: {
-    marginTop: -8,
-    alignItems: 'center',
-    marginBottom: 2
-  },
-  title: {
-    fontSize: 11,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    textDecoration: 'underline'
-  },
-  metaWrap: {
-    marginTop: 10
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 2
-  },
-  metaLabel: {
-    width: 150
-  },
-  metaColon: {
-    width: 10,
-    textAlign: 'center'
-  },
-  metaValue: {
-    flex: 1,
-    textAlign: 'justify'
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 4
-  },
-  sectionValue: {
-    flex: 1
-  },
-  bodyText: {
-    fontSize: 11,
-    lineHeight: 1.5,
-    textAlign: 'justify'
-  },
-  paragraph: {
-    textAlign: 'justify',
-    textIndent: 28
-  },
-  pointRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 3
-  },
-  pointNo: {
-    width: 14
-  },
-  pointText: {
-    flex: 1,
-    textAlign: 'justify'
-  },
-  signWrap: {
-    marginTop: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    // Mencegah tanda tangan terpotong ganti halaman yang berbeda
-    break: false
-  },
-  signColLeft: {
-    width: '45%'
-  },
-  signColRight: {
-    width: '50%'
-  },
-  signLabel: {
-    fontSize: 11,
-    minHeight: 14
-  },
-  rosterLabel: {
-    fontSize: 11,
-    minHeight: 14,
-    marginLeft: -40
-  },
-  signSpace: {
-    height: 50
-  },
-  signName: {
-    fontWeight: 700,
-    textDecoration: 'underline',
-    lineHeight: 1.1
-  },
-  signSub: {
-    marginTop: 1,
-    fontSize: 10,
-    lineHeight: 1.2
-  },
-  execRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    minHeight: 20, // Memberi ruang vertikal agar antar nama tidak terlalu rapat
-    alignItems: 'center'
-  },
-
-  execNo: {
-    width: 15,
-    fontSize: 10,
-    marginLeft: -40
-  },
-
-  execContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between' // Memastikan nama di kiri, titik di kanan,
-  },
-
-  execName: {
-    fontSize: 10,
-    maxWidth: 160, // Batasi lebar nama agar tidak menabrak titik-titik
-    overflow: 'hidden'
-  },
-
-  execDotsWrapper: {
-    width: 100 // Lebar tetap untuk area titik-titik
-  },
-
-  execDotsLeft: {
-    paddingLeft: 0
-  },
-
-  execDotsRight: {
-    paddingLeft: 50 // Geser ke kanan untuk pola zig-zag (1, 3 di kiri; 2, 4 di kanan)
-  },
-
-  execDotsText: {
-    fontSize: 10
-  }
-})

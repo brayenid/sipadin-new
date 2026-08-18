@@ -1,0 +1,486 @@
+import React from "react";
+import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import "@/pdf/fonts";
+
+export type LaporanHasilAgendaData = {
+  namaKegiatan: string;
+  hari?: string | null;
+  tanggalLabel: string;
+  waktu?: string | null;
+  tempat: string;
+  targetPeserta?: string | null;
+  targetLatitude?: number | null;
+  targetLongitude?: number | null;
+  radiusMeter?: number | null;
+  peserta: {
+    nama: string;
+    nip?: string | null;
+    jabatan: string;
+    instansi: string;
+    status: string;
+    namaPerwakilan?: string | null;
+    jabatanPerwakilan?: string | null;
+    keterangan?: string | null;
+    isSelfInput?: boolean;
+    waktuInput?: string | null;
+    lokasiText?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  }[];
+};
+
+export type LaporanHasilAgendaPdfProps = {
+  data: LaporanHasilAgendaData;
+  pageSize?: "F4" | "A4";
+};
+
+// Helper Geodesic Distance
+function calculateDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+const styles = StyleSheet.create({
+  page: {
+    paddingTop: 36,
+    paddingBottom: 36,
+    paddingHorizontal: 36,
+    fontSize: 9,
+    fontFamily: "Arial",
+    color: "#000000",
+  },
+  headerWrap: {
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  title: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 11,
+    textAlign: "center",
+    textTransform: "uppercase",
+    lineHeight: 1.3,
+  },
+  subTitle: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 9.5,
+    textAlign: "center",
+    textTransform: "uppercase",
+    lineHeight: 1.3,
+    marginTop: 2,
+  },
+  metaContainer: {
+    marginBottom: 10,
+    width: "100%",
+  },
+  metaRow: {
+    flexDirection: "row",
+    marginBottom: 3,
+    alignItems: "flex-start",
+  },
+  metaLabel: {
+    width: 75,
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 8.5,
+    textTransform: "uppercase",
+  },
+  metaColon: {
+    width: 12,
+    fontSize: 8.5,
+    textAlign: "center",
+  },
+  metaVal: {
+    flex: 1,
+    fontSize: 8.5,
+  },
+
+  // ── Kotak Analisis Geolokasi Kedinasan ────────────────────
+  analysisBox: {
+    marginBottom: 12,
+    padding: 7,
+    borderWidth: 0.5,
+    borderColor: "#000000",
+    backgroundColor: "#ffffff",
+  },
+  analysisHeader: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 8.5,
+    textTransform: "uppercase",
+    marginBottom: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#000000",
+    paddingBottom: 2.5,
+  },
+  analysisItem: {
+    flexDirection: "row",
+    marginBottom: 2.5,
+    alignItems: "flex-start",
+  },
+  analysisNumber: {
+    width: 14,
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 8,
+  },
+  analysisContent: {
+    flex: 1,
+    fontSize: 8,
+    lineHeight: 1.25,
+  },
+  analysisBold: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+  },
+
+  // ── Tabel ──────────────────────────────────────────────
+  table: {
+    width: "100%",
+    marginBottom: 8,
+  },
+  headerRow: {
+    flexDirection: "row",
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: "#000000",
+    minHeight: 22,
+    backgroundColor: "#ffffff",
+  },
+  dataRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: "#000000",
+    minHeight: 22,
+    backgroundColor: "#ffffff",
+  },
+  thCell: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 8,
+    textAlign: "center",
+    textTransform: "uppercase",
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  thText: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    fontSize: 8,
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  tdCell: {
+    paddingVertical: 3.5,
+    paddingHorizontal: 3.5,
+    justifyContent: "center",
+  },
+  tdText: {
+    fontSize: 8,
+    color: "#000000",
+  },
+  tdBold: {
+    fontFamily: "Arial",
+    fontWeight: "bold",
+  },
+  borderRight: {
+    borderRightWidth: 0.5,
+    borderColor: "#000000",
+  },
+
+  // Lebar kolom
+  colNo: { width: "5%" },
+  colNama: { width: "26%" },
+  colJabatan: { width: "27%" },
+  colStatus: { width: "12%" },
+  colKeterangan: { width: "20%" },
+  colWaktu: { width: "10%" },
+});
+
+export default function LaporanHasilAgendaPdf({
+  data,
+  pageSize = "F4",
+}: LaporanHasilAgendaPdfProps) {
+  const pageDimensions = pageSize === "F4" ? [595.28, 935.43] : "A4";
+
+  // Perhitungan Analisis Geolokasi GPS Kedinasan
+  const totalPeserta = data.peserta.length;
+  const pesertaWithGps = data.peserta.filter(
+    (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
+  );
+  const totalGps = pesertaWithGps.length;
+  const pctGps = totalPeserta > 0 ? Math.round((totalGps / totalPeserta) * 100) : 0;
+
+  const hasVenue =
+    typeof data.targetLatitude === "number" &&
+    typeof data.targetLongitude === "number";
+  const venueRadius = data.radiusMeter || 100;
+
+  let centroidLat: number | null = null;
+  let centroidLng: number | null = null;
+  let meanDistance = 0;
+  let stdDevMeters = 0;
+  let effectiveRadius = venueRadius;
+
+  if (totalGps > 0) {
+    const sumLat = pesertaWithGps.reduce((acc, p) => acc + (p.latitude || 0), 0);
+    const sumLng = pesertaWithGps.reduce((acc, p) => acc + (p.longitude || 0), 0);
+    centroidLat = sumLat / totalGps;
+    centroidLng = sumLng / totalGps;
+
+    const distances = pesertaWithGps.map((p) =>
+      calculateDistanceMeters(centroidLat!, centroidLng!, p.latitude!, p.longitude!)
+    );
+    meanDistance = distances.reduce((a, b) => a + b, 0) / totalGps;
+    const variance =
+      distances.reduce((acc, d) => acc + Math.pow(d - meanDistance, 2), 0) / totalGps;
+    stdDevMeters = Math.sqrt(variance);
+
+    if (!hasVenue) {
+      if (totalGps >= 4) {
+        effectiveRadius = Math.max(50, Math.min(500, Math.round(meanDistance + 2 * stdDevMeters)));
+      } else {
+        effectiveRadius = 100;
+      }
+    }
+  }
+
+  const centerLat = hasVenue ? data.targetLatitude! : centroidLat;
+  const centerLng = hasVenue ? data.targetLongitude! : centroidLng;
+
+  let countInside = 0;
+  let countOutside = 0;
+  const anomalousPeserta: { nama: string; dist: number }[] = [];
+
+  if (centerLat !== null && centerLng !== null) {
+    pesertaWithGps.forEach((p) => {
+      const dist = calculateDistanceMeters(centerLat, centerLng, p.latitude!, p.longitude!);
+      if (dist <= effectiveRadius) {
+        countInside++;
+      } else {
+        countOutside++;
+        anomalousPeserta.push({ nama: p.nama, dist });
+      }
+    });
+  }
+
+  const pctInside = totalGps > 0 ? Math.round((countInside / totalGps) * 100) : 0;
+
+  return (
+    <Document>
+      <Page size={pageDimensions as any} style={styles.page}>
+        {/* Header Judul */}
+        <View style={styles.headerWrap}>
+          <Text style={styles.title}>LAPORAN HASIL PRESENSI KEGIATAN</Text>
+          <Text style={styles.subTitle}>
+            PEMERINTAH KABUPATEN KUTAI BARAT
+          </Text>
+        </View>
+
+        {/* Informasi Kegiatan */}
+        <View style={styles.metaContainer}>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>KEGIATAN</Text>
+            <Text style={styles.metaColon}>:</Text>
+            <Text style={[styles.metaVal, styles.tdBold]}>{data.namaKegiatan}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>HARI / TGL</Text>
+            <Text style={styles.metaColon}>:</Text>
+            <Text style={styles.metaVal}>
+              {data.hari ? `${data.hari}, ` : ""}{data.tanggalLabel}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>WAKTU</Text>
+            <Text style={styles.metaColon}>:</Text>
+            <Text style={styles.metaVal}>{data.waktu || "-"}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>TEMPAT</Text>
+            <Text style={styles.metaColon}>:</Text>
+            <Text style={styles.metaVal}>{data.tempat || "-"}</Text>
+          </View>
+        </View>
+
+        {/* Laporan Analisis Geolokasi Kedinasan */}
+        <View style={styles.analysisBox}>
+          <Text style={styles.analysisHeader}>
+            RINGKASAN ANALISIS GEOLOKASI (GPS) & KESESUAIAN PRESENSI
+          </Text>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>1.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>Perekaman Koordinat GPS: </Text>
+              {totalGps > 0 ? (
+                <>
+                  Tercatat sebanyak <Text style={styles.analysisBold}>{totalGps} dari {totalPeserta} peserta ({pctGps}%)</Text> melakukan presensi mandiri dengan data geolokasi GPS yang valid.
+                </>
+              ) : (
+                "Belum ada data geolokasi GPS yang terekam pada presensi agenda ini."
+              )}
+            </Text>
+          </View>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>2.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>Titik Acuan Lokasi: </Text>
+              {hasVenue ? (
+                <>
+                  Titik lokasi kegiatan ditetapkan secara resmi pada koordinat <Text style={styles.analysisBold}>{data.targetLatitude?.toFixed(5)}, {data.targetLongitude?.toFixed(5)}</Text> ({data.tempat}) dengan batas toleransi radius <Text style={styles.analysisBold}>±{venueRadius} meter</Text>.
+                </>
+              ) : totalGps >= 4 ? (
+                <>
+                  Pusat kegiatan diestimasi secara statistik berbasis rata-rata kluster presensi peserta pada koordinat <Text style={styles.analysisBold}>{centroidLat?.toFixed(5)}, {centroidLng?.toFixed(5)}</Text> dengan toleransi standar deviasi (2σ) sebesar <Text style={styles.analysisBold}>±{effectiveRadius} meter</Text> (Deviasi: ±{Math.round(stdDevMeters)}m, N={totalGps}).
+                </>
+              ) : totalGps > 0 ? (
+                <>
+                  Pusat kegiatan diestimasi berdasarkan rata-rata koordinat peserta pada <Text style={styles.analysisBold}>{centroidLat?.toFixed(5)}, {centroidLng?.toFixed(5)}</Text> dengan radius batas aman awal <Text style={styles.analysisBold}>±100 meter</Text> (Sampel awal N &lt; 4).
+                </>
+              ) : (
+                "Titik acuan kegiatan belum ditetapkan."
+              )}
+            </Text>
+          </View>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>3.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>Kesesuaian Presensi (Geofence): </Text>
+              {totalGps > 0 ? (
+                <>
+                  Sebanyak <Text style={styles.analysisBold}>{countInside} peserta ({pctInside}%)</Text> terverifikasi berada di dalam zona radius lokasi kegiatan.
+                </>
+              ) : (
+                "-"
+              )}
+            </Text>
+          </View>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>4.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>Catatan Evaluasi / Rekomendasi: </Text>
+              {totalGps === 0 ? (
+                "Seluruh data kehadiran dicatat secara manual oleh admin / operator absensi."
+              ) : countOutside > 0 ? (
+                <>
+                  Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> yang terdeteksi melakukan presensi di luar batas radius lokasi (
+                  {anomalousPeserta.slice(0, 3).map((a, i) => `${a.nama} [${(a.dist / 1000).toFixed(1)} km]`).join(", ")}
+                  {anomalousPeserta.length > 3 ? ` dan ${anomalousPeserta.length - 3} lainnya` : ""}). Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
+                </>
+              ) : (
+                "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan."
+              )}
+            </Text>
+          </View>
+        </View>
+
+        {/* Tabel Data Kehadiran */}
+        <View style={styles.table}>
+          {/* Header Row */}
+          <View style={styles.headerRow} fixed>
+            <View style={[styles.thCell, styles.borderRight, styles.colNo]}>
+              <Text style={styles.thText}>NO</Text>
+            </View>
+            <View style={[styles.thCell, styles.borderRight, styles.colNama]}>
+              <Text style={styles.thText}>NAMA PEGAWAI / NIP</Text>
+            </View>
+            <View style={[styles.thCell, styles.borderRight, styles.colJabatan]}>
+              <Text style={styles.thText}>JABATAN & INSTANSI</Text>
+            </View>
+            <View style={[styles.thCell, styles.borderRight, styles.colStatus]}>
+              <Text style={styles.thText}>STATUS</Text>
+            </View>
+            <View style={[styles.thCell, styles.borderRight, styles.colKeterangan]}>
+              <Text style={styles.thText}>PERWAKILAN / KET</Text>
+            </View>
+            <View style={[styles.thCell, styles.colWaktu]}>
+              <Text style={styles.thText}>METODE / WAKTU</Text>
+            </View>
+          </View>
+
+          {/* Data Rows */}
+          {data.peserta.map((row, idx) => {
+            const statusLabel =
+              row.status === "HADIR"
+                ? "HADIR"
+                : row.status === "MEWAKILI"
+                ? "MEWAKILI"
+                : row.status === "IZIN"
+                ? "IZIN"
+                : "TIDAK HADIR";
+
+            return (
+              <View key={idx} wrap={false} style={styles.dataRow}>
+                <View style={[styles.tdCell, styles.borderRight, styles.colNo]}>
+                  <Text style={[styles.tdText, { textAlign: "center" }]}>{idx + 1}</Text>
+                </View>
+                <View style={[styles.tdCell, styles.borderRight, styles.colNama]}>
+                  <Text style={[styles.tdText, styles.tdBold]}>{row.nama}</Text>
+                  {row.nip && <Text style={[styles.tdText, { fontSize: 7, marginTop: 1 }]}>NIP: {row.nip}</Text>}
+                </View>
+                <View style={[styles.tdCell, styles.borderRight, styles.colJabatan]}>
+                  <Text style={styles.tdText}>{row.jabatan}</Text>
+                  <Text style={[styles.tdText, { fontSize: 7.5, marginTop: 1 }]}>{row.instansi}</Text>
+                </View>
+                <View style={[styles.tdCell, styles.borderRight, styles.colStatus]}>
+                  <Text style={[styles.tdText, styles.tdBold, { textAlign: "center" }]}>
+                    {statusLabel}
+                  </Text>
+                </View>
+                <View style={[styles.tdCell, styles.borderRight, styles.colKeterangan]}>
+                  {row.status === "MEWAKILI" && row.namaPerwakilan ? (
+                    <Text style={styles.tdText}>
+                      Wkl: {row.namaPerwakilan} {row.jabatanPerwakilan ? `(${row.jabatanPerwakilan})` : ""}
+                    </Text>
+                  ) : null}
+                  {row.keterangan ? (
+                    <Text style={[styles.tdText, { fontSize: 7.5 }]}>
+                      Ket: {row.keterangan}
+                    </Text>
+                  ) : null}
+                  {!row.namaPerwakilan && !row.keterangan && <Text style={styles.tdText}>-</Text>}
+                </View>
+                <View style={[styles.tdCell, styles.colWaktu]}>
+                  <Text style={[styles.tdText, { textAlign: "center", fontSize: 7.5 }]}>
+                    {row.isSelfInput ? "Online" : "Manual"}
+                  </Text>
+                  {row.waktuInput && (
+                    <Text style={[styles.tdText, { textAlign: "center", fontSize: 7, marginTop: 1 }]}>
+                      {row.waktuInput}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </Page>
+    </Document>
+  );
+}

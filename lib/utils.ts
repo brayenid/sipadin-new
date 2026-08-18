@@ -44,3 +44,13 @@ export function serializeBigInt<T>(data: T): T {
   }
   return data;
 }
+
+export function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Hapus karakter non-alphanumeric kecuali spasi dan strip
+    .replace(/[\s_-]+/g, "-") // Ganti spasi/underscore berulang dengan satu strip
+    .replace(/^-+|-+$/g, ""); // Hapus strip di awal dan akhir
+}
+

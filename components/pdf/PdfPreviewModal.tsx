@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateSpjMetaDokumen } from "@/app/actions/pdf-meta";
+import { toast } from "sonner";
 
 // PDFViewer client-side only
 const PDFViewer = dynamic(
@@ -71,7 +72,7 @@ export default function PdfPreviewModal({
       ...prev,
       styles: {
         ...prev.styles,
-        [key]: parseFloat(value) || undefined
+        [key]: value === "" ? undefined : parseFloat(value)
       }
     }));
   };
@@ -90,9 +91,9 @@ export default function PdfPreviewModal({
     setIsSaving(true);
     try {
       await updateSpjMetaDokumen(spjId, { [docKey]: config });
-      // Keep open, just notify
+      toast.success("Konfigurasi layout berhasil disimpan!");
     } catch (err: any) {
-      alert("Gagal menyimpan konfigurasi: " + err.message);
+      toast.error("Gagal menyimpan konfigurasi: " + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -179,7 +180,12 @@ export default function PdfPreviewModal({
           {/* Right Panel: Live PDF Preview */}
           <div className="flex-1 h-full bg-slate-500 flex flex-col relative min-h-0">
             {isOpen && (
-              <PDFViewer width="100%" height="100%" className="border-none w-full h-full flex-1">
+              <PDFViewer
+                key={JSON.stringify(config)}
+                width="100%"
+                height="100%"
+                className="border-none w-full h-full flex-1"
+              >
                 {renderDocument(config)}
               </PDFViewer>
             )}

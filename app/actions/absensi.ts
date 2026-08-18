@@ -2,9 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseWitaInput, formatWita } from "@/lib/date-utils";
+import { parseWitaInput, formatWita, combineDateAndTimeWita } from "@/lib/date-utils";
+import { deleteFromR2OrLocal } from "@/lib/r2";
+import { generateSlug } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
+import { v4 as uuidv4 } from "uuid";
 
 // ==========================================
 // 1. MANAJEMEN BINDING PEJABAT (MASTER ESELON)
@@ -48,6 +51,7 @@ export async function updateBindingPejabat(data: {
   pegawaiId: string;
   wajibAbsenOpd: boolean;
   eselon?: string | null;
+  kategoriPegawai?: string | null;
   urutanOpd?: number;
   instansi?: string;
   jabatan?: string;
@@ -55,7 +59,7 @@ export async function updateBindingPejabat(data: {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
-  const { pegawaiId, wajibAbsenOpd, eselon, urutanOpd, instansi, jabatan } = data;
+  const { pegawaiId, wajibAbsenOpd, eselon, kategoriPegawai, urutanOpd, instansi, jabatan } = data;
 
   const res = await prisma.pegawai.update({
     where: {
@@ -65,6 +69,7 @@ export async function updateBindingPejabat(data: {
     data: {
       wajibAbsenOpd,
       eselon: eselon || null,
+      kategoriPegawai: kategoriPegawai || null,
       urutanOpd: urutanOpd ?? 0,
       ...(instansi ? { instansi } : {}),
       ...(jabatan ? { jabatan } : {}),
@@ -82,6 +87,7 @@ export async function bulkUpdateBindingPejabat(
     pegawaiId: string;
     wajibAbsenOpd: boolean;
     eselon?: string | null;
+    kategoriPegawai?: string | null;
     urutanOpd?: number;
   }[]
 ) {
@@ -95,6 +101,7 @@ export async function bulkUpdateBindingPejabat(
         data: {
           wajibAbsenOpd: item.wajibAbsenOpd,
           eselon: item.eselon || null,
+          kategoriPegawai: item.kategoriPegawai || null,
           urutanOpd: item.urutanOpd ?? 0,
         },
       })
@@ -230,6 +237,18 @@ export async function createAgendaAbsensi(payload: {
   tempat: string;
   deskripsi?: string;
   targetPeserta?: string;
+  targetKategori?: string;
+  waktuBukaAbsen?: string; // ISO / YYYY-MM-DDTHH:mm
+  waktuTutupAbsen?: string; // ISO / YYYY-MM-DDTHH:mm
+  jamBuka?: string; // HH:mm
+  jamTutup?: string; // HH:mm
+  requireLocation?: boolean;
+  requirePhoto?: boolean;
+  allowNonPeserta?: boolean;
+  targetLatitude?: number | null;
+  targetLongitude?: number | null;
+  radiusMeter?: number | null;
+  customPegawaiIds?: string[];
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -237,12 +256,65 @@ export async function createAgendaAbsensi(payload: {
   const parsedTanggal = parseWitaInput(payload.tanggal) || new Date();
   const hariComputed = payload.hari || formatWita(parsedTanggal, "EEEE");
 
-  // Ambil pegawai ter-binding wajib absen OPD
+  // Format waktu buka & tutup absen dengan default cerdas jika tidak diisi manual
+  const tanggalStr = payload.tanggal.split("T")[0];
+  let waktuBuka: Date | null = null;
+  let waktuTutup: Date | null = null;
+
+  if (payload.waktuBukaAbsen) {
+    waktuBuka = new Date(payload.waktuBukaAbsen);
+  } else if (payload.jamBuka) {
+    waktuBuka = combineDateAndTimeWita(tanggalStr, payload.jamBuka);
+  } else {
+    // Default buka: 07:30 WITA pada hari H
+    waktuBuka = combineDateAndTimeWita(tanggalStr, "07:30");
+  }
+
+  if (payload.waktuTutupAbsen) {
+    waktuTutup = new Date(payload.waktuTutupAbsen);
+  } else if (payload.jamTutup) {
+    waktuTutup = combineDateAndTimeWita(tanggalStr, payload.jamTutup);
+  } else {
+    // Default tutup: 14:00 WITA pada hari H
+    waktuTutup = combineDateAndTimeWita(tanggalStr, "14:00");
+  }
+
+  // Filter pegawai sesuai kategori target binding
+  const targetKategori = payload.targetKategori || "ESELON_2_3";
+  let targetPegawaiFilter: any = { teamId: session.user.teamId };
+
+  if (targetKategori === "CUSTOM" && payload.customPegawaiIds && payload.customPegawaiIds.length > 0) {
+    targetPegawaiFilter.id = { in: payload.customPegawaiIds };
+  } else if (targetKategori === "ESELON_2") {
+    targetPegawaiFilter.OR = [
+      { eselon: { in: ["II.a", "II.b", "II"] } },
+      { kategoriPegawai: "ESELON_2" },
+      { wajibAbsenOpd: true, eselon: { contains: "II", mode: "insensitive" } },
+    ];
+  } else if (targetKategori === "ESELON_3") {
+    targetPegawaiFilter.OR = [
+      { eselon: { in: ["III.a", "III.b", "III"] } },
+      { kategoriPegawai: "ESELON_3" },
+      { wajibAbsenOpd: true, eselon: { contains: "III", mode: "insensitive" } },
+    ];
+  } else if (targetKategori === "KECAMATAN") {
+    targetPegawaiFilter.OR = [
+      { instansi: { contains: "Kecamatan", mode: "insensitive" } },
+      { kategoriPegawai: "KECAMATAN" },
+    ];
+  } else if (targetKategori === "SEMUA_OPD") {
+    targetPegawaiFilter.wajibAbsenOpd = true;
+  } else {
+    // Default: ESELON_2_3
+    targetPegawaiFilter.OR = [
+      { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
+      { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
+      { wajibAbsenOpd: true },
+    ];
+  }
+
   const pejabatTerdaftar = await prisma.pegawai.findMany({
-    where: {
-      teamId: session.user.teamId,
-      wajibAbsenOpd: true,
-    },
+    where: targetPegawaiFilter,
     orderBy: [
       { urutanOpd: "asc" },
       { instansi: "asc" },
@@ -250,16 +322,31 @@ export async function createAgendaAbsensi(payload: {
     ],
   });
 
+  const baseSlug = generateSlug(payload.namaKegiatan).slice(0, 45) || "agenda-presensi";
+  const randomSuffix = Math.random().toString(36).substring(2, 6);
+  const generatedToken = `${baseSlug}-${randomSuffix}`;
+
   const created = await prisma.$transaction(async (tx) => {
     const agenda = await tx.agendaAbsensi.create({
       data: {
+        publicToken: generatedToken,
         namaKegiatan: payload.namaKegiatan,
         tanggal: parsedTanggal,
         hari: hariComputed,
-        waktu: payload.waktu || "09:00 WITA - Selesai",
+        waktu: payload.waktu || "09:00 WITA",
         tempat: payload.tempat,
         deskripsi: payload.deskripsi || null,
         targetPeserta: payload.targetPeserta || "Eselon II.b dan III.a",
+        targetKategori,
+        isPublicActive: true,
+        waktuBukaAbsen: waktuBuka,
+        waktuTutupAbsen: waktuTutup,
+        requireLocation: payload.requireLocation ?? true,
+        requirePhoto: payload.requirePhoto ?? true,
+        allowNonPeserta: payload.allowNonPeserta ?? true,
+        targetLatitude: payload.targetLatitude ?? null,
+        targetLongitude: payload.targetLongitude ?? null,
+        radiusMeter: payload.radiusMeter ?? 100,
         status: StatusAgendaAbsensi.BERLANGSUNG,
         teamId: session.user.teamId,
         createdById: session.user.id,
@@ -277,7 +364,8 @@ export async function createAgendaAbsensi(payload: {
           instansi: p.instansi,
           eselon: p.eselon || "II.b",
           urutan: p.urutanOpd ?? idx + 1,
-          status: StatusKehadiran.TIDAK_HADIR, // Status default awal adalah tidak hadir (belum dicentang)
+          status: StatusKehadiran.TIDAK_HADIR,
+          isSelfInput: false,
         })),
       });
     }
@@ -299,8 +387,20 @@ export async function updateAgendaAbsensi(
     tempat?: string;
     deskripsi?: string;
     targetPeserta?: string;
+    targetKategori?: string;
+    isPublicActive?: boolean;
+    waktuBukaAbsen?: string | Date | null;
+    waktuTutupAbsen?: string | Date | null;
+    jamBuka?: string;
+    jamTutup?: string;
+    requireLocation?: boolean;
+    requirePhoto?: boolean;
+    targetLatitude?: number | null;
+    targetLongitude?: number | null;
+    radiusMeter?: number | null;
     status?: StatusAgendaAbsensi;
     driveUrl?: string;
+    publicToken?: string;
   }
 ) {
   const session = await auth();
@@ -310,6 +410,48 @@ export async function updateAgendaAbsensi(
 
   if (payload.tanggal) {
     dataToUpdate.tanggal = parseWitaInput(payload.tanggal) || new Date();
+  }
+
+  if (payload.jamBuka !== undefined || payload.jamTutup !== undefined) {
+    const currentAgenda = await prisma.agendaAbsensi.findUnique({
+      where: { id },
+      select: { tanggal: true },
+    });
+    const baseDate = payload.tanggal ? payload.tanggal.split("T")[0] : formatWita(currentAgenda?.tanggal || new Date(), "yyyy-MM-dd");
+
+    if (payload.jamBuka) {
+      dataToUpdate.waktuBukaAbsen = combineDateAndTimeWita(baseDate, payload.jamBuka);
+    }
+    if (payload.jamTutup) {
+      dataToUpdate.waktuTutupAbsen = combineDateAndTimeWita(baseDate, payload.jamTutup);
+    }
+    delete dataToUpdate.jamBuka;
+    delete dataToUpdate.jamTutup;
+  }
+
+  if (typeof payload.waktuBukaAbsen === "string") {
+    dataToUpdate.waktuBukaAbsen = new Date(payload.waktuBukaAbsen);
+  }
+  if (typeof payload.waktuTutupAbsen === "string") {
+    dataToUpdate.waktuTutupAbsen = new Date(payload.waktuTutupAbsen);
+  }
+  if (payload.publicToken !== undefined) {
+    const cleanSlug = generateSlug(payload.publicToken).slice(0, 80);
+    if (!cleanSlug) {
+      throw new Error("Slug / tautan kustom tidak boleh kosong");
+    }
+    // Cek apakah slug sudah dipakai oleh agenda lain
+    const existing = await prisma.agendaAbsensi.findFirst({
+      where: {
+        publicToken: cleanSlug,
+        id: { not: id },
+        isDeleted: false,
+      },
+    });
+    if (existing) {
+      throw new Error(`Slug "${cleanSlug}" sudah digunakan oleh agenda lain. Silakan pilih slug yang berbeda.`);
+    }
+    dataToUpdate.publicToken = cleanSlug;
   }
 
   const updated = await prisma.agendaAbsensi.update({
@@ -323,12 +465,49 @@ export async function updateAgendaAbsensi(
   revalidatePath("/dashboard/absensi");
   revalidatePath(`/dashboard/absensi/${id}`);
   revalidatePath("/dashboard/absensi/rekap");
+  if (updated.publicToken) {
+    revalidatePath(`/p/absensi/${updated.publicToken}`);
+  }
   return updated;
+}
+
+export async function togglePublicAbsensiActive(id: string, isPublicActive: boolean) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const updated = await prisma.agendaAbsensi.update({
+    where: { id, teamId: session.user.teamId },
+    data: { isPublicActive },
+  });
+
+  revalidatePath("/dashboard/absensi");
+  revalidatePath(`/dashboard/absensi/${id}`);
+  if (updated.publicToken) {
+    revalidatePath(`/p/absensi/${updated.publicToken}`);
+  }
+  return { success: true, isPublicActive: updated.isPublicActive };
 }
 
 export async function deleteAgendaAbsensi(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: { id, teamId: session.user.teamId },
+    include: {
+      peserta: {
+        select: { fotoUrl: true },
+      },
+    },
+  });
+
+  if (agenda?.peserta) {
+    for (const p of agenda.peserta) {
+      if (p.fotoUrl) {
+        await deleteFromR2OrLocal(p.fotoUrl);
+      }
+    }
+  }
 
   await prisma.agendaAbsensi.update({
     where: {
@@ -342,6 +521,262 @@ export async function deleteAgendaAbsensi(id: string) {
 
   revalidatePath("/dashboard/absensi");
   return { success: true };
+}
+
+// ==========================================
+// 2.5. PUBLIC SELF-INPUT ENDPOINTS (TANPA LOGIN)
+// ==========================================
+
+export async function getPublicAgendaByToken(token: string) {
+  if (!token) throw new Error("Token tautan presensi tidak valid");
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: {
+      publicToken: token,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      publicToken: true,
+      namaKegiatan: true,
+      hari: true,
+      tanggal: true,
+      waktu: true,
+      tempat: true,
+      deskripsi: true,
+      targetPeserta: true,
+      targetKategori: true,
+      status: true,
+      isPublicActive: true,
+      waktuBukaAbsen: true,
+      waktuTutupAbsen: true,
+      requireLocation: true,
+      requirePhoto: true,
+      allowNonPeserta: true,
+    },
+  });
+
+  if (!agenda) {
+    throw new Error("Agenda presensi tidak ditemukan atau telah dihapus");
+  }
+
+  const now = new Date();
+  let timeStatus: "NOT_STARTED" | "OPEN" | "CLOSED" = "OPEN";
+
+  if (!agenda.isPublicActive) {
+    timeStatus = "CLOSED";
+  } else if (agenda.waktuBukaAbsen && now < agenda.waktuBukaAbsen) {
+    timeStatus = "NOT_STARTED";
+  } else if (agenda.waktuTutupAbsen && now > agenda.waktuTutupAbsen) {
+    timeStatus = "CLOSED";
+  }
+
+  return {
+    ...agenda,
+    serverTime: now.toISOString(),
+    timeStatus,
+  };
+}
+
+export async function searchPublicPesertaAgenda(publicToken: string, query: string) {
+  if (!publicToken || !query || !query.trim()) {
+    return [];
+  }
+
+  const cleanQuery = query.trim();
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: { publicToken, isDeleted: false },
+    select: { id: true },
+  });
+
+  if (!agenda) {
+    throw new Error("Agenda presensi tidak ditemukan");
+  }
+
+  const matches = await prisma.kehadiranPeserta.findMany({
+    where: {
+      agendaId: agenda.id,
+      OR: [
+        { nama: { contains: cleanQuery, mode: "insensitive" } },
+        { instansi: { contains: cleanQuery, mode: "insensitive" } },
+        { jabatan: { contains: cleanQuery, mode: "insensitive" } },
+        { nip: { contains: cleanQuery, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      pegawaiId: true,
+      nama: true,
+      nip: true,
+      jabatan: true,
+      instansi: true,
+      eselon: true,
+      urutan: true,
+      status: true,
+      isSelfInput: true,
+      waktuInput: true,
+    },
+    orderBy: [
+      { urutan: "asc" },
+      { nama: "asc" },
+    ],
+    take: 10,
+  });
+
+  return matches;
+}
+
+export async function submitSelfAbsensi(payload: {
+  publicToken: string;
+  pesertaId?: string; // Jika memilih pejabat binding
+  nama?: string;
+  nip?: string;
+  jabatan?: string;
+  instansi?: string;
+  eselon?: string;
+  status: StatusKehadiran;
+  namaPerwakilan?: string | null;
+  jabatanPerwakilan?: string | null;
+  keterangan?: string | null;
+  fotoUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  lokasiText?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}) {
+  const { publicToken } = payload;
+  if (!publicToken) throw new Error("Token tidak valid");
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: { publicToken, isDeleted: false },
+  });
+
+  if (!agenda) throw new Error("Agenda presensi tidak ditemukan");
+
+  // Validasi status kegiatan
+  if (agenda.status === StatusAgendaAbsensi.DIBATALKAN) {
+    throw new Error("Presensi tidak dapat dilakukan karena kegiatan telah DIBATALKAN");
+  }
+
+  // Validasi saklar aktif
+  if (!agenda.isPublicActive) {
+    throw new Error("Pengisian presensi online saat ini dinonaktifkan oleh Administrator");
+  }
+
+  const now = new Date();
+
+  // Validasi rentang waktu buka
+  if (agenda.waktuBukaAbsen && now < agenda.waktuBukaAbsen) {
+    throw new Error(
+      `Presensi belum dibuka. Jadwal buka presensi: ${formatWita(agenda.waktuBukaAbsen, "dd MMMM yyyy HH:mm")} WITA`
+    );
+  }
+
+  // Validasi rentang waktu tutup
+  if (agenda.waktuTutupAbsen && now > agenda.waktuTutupAbsen) {
+    throw new Error(
+      `Presensi telah berakhir pada ${formatWita(agenda.waktuTutupAbsen, "dd MMMM yyyy HH:mm")} WITA`
+    );
+  }
+
+  // Validasi foto jika diwajibkan
+  if (agenda.requirePhoto && !payload.fotoUrl) {
+    throw new Error("Foto selfie bukti presensi wajib diambil dan diunggah");
+  }
+
+  // Validasi geotag jika diwajibkan
+  if (agenda.requireLocation && (payload.latitude === undefined || payload.longitude === undefined || payload.latitude === null || payload.longitude === null)) {
+    throw new Error("Izin lokasi (Geotag/GPS) wajib diaktifkan untuk memastikan kehadiran Anda di lokasi kegiatan");
+  }
+
+  let resultPeserta;
+
+  if (payload.pesertaId) {
+    // Cek foto lama untuk diunlink jika ada foto baru
+    if (payload.fotoUrl) {
+      const oldRecord = await prisma.kehadiranPeserta.findUnique({
+        where: { id: payload.pesertaId },
+        select: { fotoUrl: true },
+      });
+      if (oldRecord?.fotoUrl && oldRecord.fotoUrl !== payload.fotoUrl) {
+        await deleteFromR2OrLocal(oldRecord.fotoUrl);
+      }
+    }
+
+    // Update data peserta binding yang sudah terdaftar di agenda
+    resultPeserta = await prisma.kehadiranPeserta.update({
+      where: {
+        id: payload.pesertaId,
+        agendaId: agenda.id,
+      },
+      data: {
+        status: payload.status,
+        namaPerwakilan: payload.status === "MEWAKILI" ? payload.namaPerwakilan : null,
+        jabatanPerwakilan: payload.status === "MEWAKILI" ? payload.jabatanPerwakilan : null,
+        keterangan: payload.keterangan || null,
+        fotoUrl: payload.fotoUrl || null,
+        latitude: payload.latitude || null,
+        longitude: payload.longitude || null,
+        accuracy: payload.accuracy || null,
+        lokasiText: payload.lokasiText || null,
+        waktuInput: now,
+        isSelfInput: true,
+        ipAddress: payload.ipAddress || null,
+        userAgent: payload.userAgent || null,
+      },
+    });
+  } else {
+    // Peserta tamu / baru di luar daftar binding
+    if (agenda.allowNonPeserta === false) {
+      throw new Error("Pengisian presensi untuk nama di luar daftar undangan tidak diizinkan pada kegiatan ini.");
+    }
+
+    if (!payload.nama || !payload.jabatan || !payload.instansi) {
+      throw new Error("Nama, Jabatan, dan Instansi/OPD wajib diisi");
+    }
+
+    const currentCount = await prisma.kehadiranPeserta.count({
+      where: { agendaId: agenda.id },
+    });
+
+    resultPeserta = await prisma.kehadiranPeserta.create({
+      data: {
+        agendaId: agenda.id,
+        nama: payload.nama,
+        nip: payload.nip || null,
+        jabatan: payload.jabatan,
+        instansi: payload.instansi,
+        eselon: payload.eselon || "II.b",
+        urutan: currentCount + 1,
+        status: payload.status,
+        namaPerwakilan: payload.status === "MEWAKILI" ? payload.namaPerwakilan : null,
+        jabatanPerwakilan: payload.status === "MEWAKILI" ? payload.jabatanPerwakilan : null,
+        keterangan: payload.keterangan || null,
+        fotoUrl: payload.fotoUrl || null,
+        latitude: payload.latitude || null,
+        longitude: payload.longitude || null,
+        accuracy: payload.accuracy || null,
+        lokasiText: payload.lokasiText || null,
+        waktuInput: now,
+        isSelfInput: true,
+        ipAddress: payload.ipAddress || null,
+        userAgent: payload.userAgent || null,
+      },
+    });
+  }
+
+  revalidatePath(`/p/absensi/${publicToken}`);
+  revalidatePath(`/dashboard/absensi/${agenda.id}`);
+  revalidatePath("/dashboard/absensi");
+  revalidatePath("/dashboard/absensi/rekap");
+
+  return {
+    success: true,
+    data: resultPeserta,
+  };
 }
 
 // ==========================================
@@ -360,6 +795,20 @@ export async function updateKehadiranPesertaBatch(
   extraAgendaData?: {
     driveUrl?: string;
     status?: StatusAgendaAbsensi;
+    tanggal?: string | Date;
+    hari?: string;
+    waktu?: string;
+    tempat?: string;
+    deskripsi?: string | null;
+    jamBuka?: string;
+    jamTutup?: string;
+    waktuBukaAbsen?: string | Date;
+    waktuTutupAbsen?: string | Date;
+    targetLatitude?: number | null;
+    targetLongitude?: number | null;
+    radiusMeter?: number | null;
+    allowNonPeserta?: boolean;
+    publicToken?: string;
   }
 ) {
   const session = await auth();
@@ -385,19 +834,100 @@ export async function updateKehadiranPesertaBatch(
     }
 
     if (extraAgendaData) {
-      await tx.agendaAbsensi.update({
-        where: { id: agendaId },
-        data: {
-          ...(extraAgendaData.driveUrl !== undefined ? { driveUrl: extraAgendaData.driveUrl } : {}),
-          ...(extraAgendaData.status ? { status: extraAgendaData.status } : {}),
-        },
-      });
+      const agendaUpdatePayload: any = {};
+
+      if (extraAgendaData.publicToken !== undefined) {
+        const cleanSlug = generateSlug(extraAgendaData.publicToken).slice(0, 80);
+        if (!cleanSlug) {
+          throw new Error("Slug / tautan kustom tidak boleh kosong");
+        }
+        const existing = await tx.agendaAbsensi.findFirst({
+          where: {
+            publicToken: cleanSlug,
+            id: { not: agendaId },
+            isDeleted: false,
+          },
+        });
+        if (existing) {
+          throw new Error(`Slug "${cleanSlug}" sudah digunakan oleh agenda lain.`);
+        }
+        agendaUpdatePayload.publicToken = cleanSlug;
+      }
+
+      if (extraAgendaData.driveUrl !== undefined) {
+        agendaUpdatePayload.driveUrl = extraAgendaData.driveUrl;
+      }
+      if (extraAgendaData.status) {
+        agendaUpdatePayload.status = extraAgendaData.status;
+      }
+      if (extraAgendaData.allowNonPeserta !== undefined) {
+        agendaUpdatePayload.allowNonPeserta = extraAgendaData.allowNonPeserta;
+      }
+      if (extraAgendaData.tempat !== undefined) {
+        agendaUpdatePayload.tempat = extraAgendaData.tempat;
+      }
+      if (extraAgendaData.waktu !== undefined) {
+        agendaUpdatePayload.waktu = extraAgendaData.waktu;
+      }
+      if (extraAgendaData.deskripsi !== undefined) {
+        agendaUpdatePayload.deskripsi = extraAgendaData.deskripsi;
+      }
+      if (extraAgendaData.targetLatitude !== undefined) {
+        agendaUpdatePayload.targetLatitude =
+          extraAgendaData.targetLatitude !== null && !isNaN(Number(extraAgendaData.targetLatitude))
+            ? Number(extraAgendaData.targetLatitude)
+            : null;
+      }
+      if (extraAgendaData.targetLongitude !== undefined) {
+        agendaUpdatePayload.targetLongitude =
+          extraAgendaData.targetLongitude !== null && !isNaN(Number(extraAgendaData.targetLongitude))
+            ? Number(extraAgendaData.targetLongitude)
+            : null;
+      }
+      if (extraAgendaData.radiusMeter !== undefined) {
+        agendaUpdatePayload.radiusMeter =
+          extraAgendaData.radiusMeter !== null && !isNaN(Number(extraAgendaData.radiusMeter))
+            ? parseInt(String(extraAgendaData.radiusMeter), 10)
+            : 100;
+      }
+      if (extraAgendaData.tanggal) {
+        const parsed = parseWitaInput(extraAgendaData.tanggal as string) || new Date(extraAgendaData.tanggal);
+        agendaUpdatePayload.tanggal = parsed;
+        agendaUpdatePayload.hari = extraAgendaData.hari || formatWita(parsed, "EEEE");
+      }
+
+      // Hitung rentang waktu absen jika jamBuka / jamTutup diupdate
+      const baseDateStr = extraAgendaData.tanggal
+        ? (typeof extraAgendaData.tanggal === "string" ? extraAgendaData.tanggal.split("T")[0] : formatWita(extraAgendaData.tanggal, "yyyy-MM-dd"))
+        : formatWita(agenda.tanggal, "yyyy-MM-dd");
+
+      if (extraAgendaData.jamBuka) {
+        agendaUpdatePayload.waktuBukaAbsen = combineDateAndTimeWita(baseDateStr, extraAgendaData.jamBuka);
+      } else if (extraAgendaData.waktuBukaAbsen) {
+        agendaUpdatePayload.waktuBukaAbsen = new Date(extraAgendaData.waktuBukaAbsen);
+      }
+
+      if (extraAgendaData.jamTutup) {
+        agendaUpdatePayload.waktuTutupAbsen = combineDateAndTimeWita(baseDateStr, extraAgendaData.jamTutup);
+      } else if (extraAgendaData.waktuTutupAbsen) {
+        agendaUpdatePayload.waktuTutupAbsen = new Date(extraAgendaData.waktuTutupAbsen);
+      }
+
+      if (Object.keys(agendaUpdatePayload).length > 0) {
+        await tx.agendaAbsensi.update({
+          where: { id: agendaId },
+          data: agendaUpdatePayload,
+        });
+      }
     }
   });
 
   revalidatePath(`/dashboard/absensi/${agendaId}`);
   revalidatePath("/dashboard/absensi");
   revalidatePath("/dashboard/absensi/rekap");
+  if (agenda.publicToken) {
+    revalidatePath(`/p/absensi/${agenda.publicToken}`);
+  }
   return { success: true };
 }
 
@@ -451,6 +981,15 @@ export async function deletePesertaFromAgenda(agendaId: string, pesertaId: strin
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
+  const peserta = await prisma.kehadiranPeserta.findUnique({
+    where: { id: pesertaId },
+    select: { fotoUrl: true },
+  });
+
+  if (peserta?.fotoUrl) {
+    await deleteFromR2OrLocal(peserta.fotoUrl);
+  }
+
   await prisma.kehadiranPeserta.delete({
     where: {
       id: pesertaId,
@@ -498,6 +1037,22 @@ export async function getRekapKehadiranOpd(params?: {
 
   const totalAgenda = agendas.length;
 
+  type HistoryRecord = {
+    agendaId: string;
+    namaKegiatan: string;
+    tanggal: Date;
+    status: StatusKehadiran;
+    keterangan?: string | null;
+    namaPerwakilan?: string | null;
+    jabatanPerwakilan?: string | null;
+    fotoUrl?: string | null;
+    lokasiText?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    isSelfInput?: boolean;
+    waktuInput?: Date | null;
+  };
+
   // Akumulasi per Instansi / Perangkat Daerah dan Pegawai
   const opdMap: Record<
     string,
@@ -509,14 +1064,7 @@ export async function getRekapKehadiranOpd(params?: {
       mewakili: number;
       tidakHadir: number;
       izin: number;
-      history: {
-        agendaId: string;
-        namaKegiatan: string;
-        tanggal: Date;
-        status: StatusKehadiran;
-        keterangan?: string | null;
-        namaPerwakilan?: string | null;
-      }[];
+      history: HistoryRecord[];
     }
   > = {};
 
@@ -532,14 +1080,7 @@ export async function getRekapKehadiranOpd(params?: {
       mewakili: number;
       tidakHadir: number;
       izin: number;
-      history: {
-        agendaId: string;
-        namaKegiatan: string;
-        tanggal: Date;
-        status: StatusKehadiran;
-        keterangan?: string | null;
-        namaPerwakilan?: string | null;
-      }[];
+      history: HistoryRecord[];
     }
   > = {};
 
@@ -601,6 +1142,13 @@ export async function getRekapKehadiranOpd(params?: {
             status: candidate,
             keterangan: p.keterangan,
             namaPerwakilan: p.namaPerwakilan,
+            jabatanPerwakilan: p.jabatanPerwakilan,
+            fotoUrl: p.fotoUrl,
+            lokasiText: p.lokasiText,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            isSelfInput: p.isSelfInput,
+            waktuInput: p.waktuInput,
           };
         }
       } else {
@@ -619,6 +1167,13 @@ export async function getRekapKehadiranOpd(params?: {
           status: p.status,
           keterangan: p.keterangan,
           namaPerwakilan: p.namaPerwakilan,
+          jabatanPerwakilan: p.jabatanPerwakilan,
+          fotoUrl: p.fotoUrl,
+          lokasiText: p.lokasiText,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          isSelfInput: p.isSelfInput,
+          waktuInput: p.waktuInput,
         });
       }
 
@@ -653,6 +1208,13 @@ export async function getRekapKehadiranOpd(params?: {
         status: p.status,
         keterangan: p.keterangan,
         namaPerwakilan: p.namaPerwakilan,
+        jabatanPerwakilan: p.jabatanPerwakilan,
+        fotoUrl: p.fotoUrl,
+        lokasiText: p.lokasiText,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        isSelfInput: p.isSelfInput,
+        waktuInput: p.waktuInput,
       });
     }
   }

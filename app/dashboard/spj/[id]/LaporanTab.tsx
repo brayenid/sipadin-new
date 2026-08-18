@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Loader2, FileText, RefreshCw, Plus, Trash2 } from "lucide-react";
+import { Save, Loader2, FileText, RefreshCw, Plus, Trash2, Check, ChevronsUpDown, EyeOff, UserCheck } from "lucide-react";
 import { updateMetaDokumen } from "@/lib/actions-client";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import LaporanPdf, { LaporanHasilMode } from "@/pdf/templates/LaporanPdf";
@@ -16,10 +16,14 @@ import { PresetDialog } from "@/components/ui/preset-dialog";
 import laporanPresets from "@/lib/presets/laporan.json";
 import InitLaporanAiModal from "./InitLaporanAiModal";
 import RefineLaporanFieldAiButton from "./RefineLaporanFieldAiButton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: any, pegawaiList: any[], onDirtyChange?: (dirty: boolean) => void }) {
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
   
   const meta = typeof spj.metaDokumen === "object" && spj.metaDokumen !== null ? spj.metaDokumen : {};
   const data = meta.laporan || {};
@@ -31,6 +35,9 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
     waktu: data.waktu || "",
     lokasi: data.lokasi || "",
     tujuan: data.tujuan || "",
+    penandatanganId: data.penandatanganId || dataSuratTugas.penandatanganId || "",
+    jabatanTampil: data.jabatanTampil || "",
+    excludeMengetahui: data.excludeMengetahui ?? false,
     hasilMode: (data.hasilMode as LaporanHasilMode) || "POINTS",
     hasilPembuka: data.hasilPembuka || "",
     hasilNarasi: data.hasilNarasi || "",
@@ -164,7 +171,7 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
     }
   };
 
-  const selectedPegawai = pegawaiList?.find((p) => p.id === dataSuratTugas.penandatanganId);
+  const selectedPegawai = pegawaiList?.find((p) => p.id === form.penandatanganId);
 
   return (
     <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
@@ -224,8 +231,102 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
           />
         </div>
       </CardHeader>
-      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6">
+      <CardContent className="px-3 pb-3 pt-4 sm:p-6 sm:pt-6 space-y-6 sm:space-y-8">
         
+        {/* BAGIAN PENANDATANGAN (DIAMBIL DARI DATABASE / MANDIRI) */}
+        <div className="space-y-4 border p-3 sm:p-4 rounded-lg bg-slate-50">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs sm:text-sm font-semibold text-slate-800">Pejabat Penandatangan</Label>
+                {dataSuratTugas.penandatanganId && form.penandatanganId !== dataSuratTugas.penandatanganId && (
+                  <button
+                    type="button"
+                    className="text-[10px] font-bold text-primary hover:underline"
+                    onClick={() => {
+                      setForm({ ...form, penandatanganId: dataSuratTugas.penandatanganId });
+                      onDirtyChange?.(true);
+                      toast.info("Disinkronkan dengan penandatangan Surat Tugas");
+                    }}
+                  >
+                    (Sinkron Surat Tugas)
+                  </button>
+                )}
+              </div>
+
+              {/* Action Toggle Eksklusi Mengetahui */}
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={form.excludeMengetahui}
+                  onChange={(e) => {
+                    setForm({ ...form, excludeMengetahui: e.target.checked });
+                    onDirtyChange?.(true);
+                  }}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                />
+                <span className={form.excludeMengetahui ? "text-rose-600 font-bold" : "text-slate-600"}>
+                  Eksklusi / Sembunyikan &apos;Mengetahui&apos;
+                </span>
+              </label>
+            </div>
+            
+            {!form.excludeMengetahui && (
+              <>
+                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <PopoverTrigger>
+                    <div
+                      role="combobox"
+                      aria-expanded={openCombobox}
+                      className="w-full max-w-md justify-between bg-white font-normal flex items-center h-9 px-4 py-2 border border-slate-200/60 rounded-md text-sm cursor-pointer hover:bg-slate-50"
+                    >
+                      {form.penandatanganId
+                        ? pegawaiList?.find((p) => p.id === form.penandatanganId)?.nama
+                        : "Cari Pejabat Penandatangan..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full max-w-md p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Cari nama pegawai..." />
+                      <CommandList>
+                        <CommandEmpty>Pegawai tidak ditemukan.</CommandEmpty>
+                        <CommandGroup>
+                          {pegawaiList?.map((p) => (
+                            <CommandItem
+                              key={p.id}
+                              value={p.nama}
+                              onSelect={() => {
+                                setForm({ ...form, penandatanganId: p.id });
+                                setOpenCombobox(false);
+                                onDirtyChange?.(true);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  form.penandatanganId === p.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {p.nama}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {selectedPegawai && (
+                  <div className="mt-2 text-[10px] sm:text-sm text-slate-500">
+                    Akan ditandatangani oleh: <span className="font-bold text-slate-900">{selectedPegawai.nama}</span> ({form.jabatanTampil || selectedPegawai.jabatan})
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* DASAR LAPORAN */}
           <div className="space-y-1.5 sm:space-y-2">
@@ -468,7 +569,18 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
         title="Pratinjau Laporan"
         spjId={spj.id}
         docKey="laporanPdf"
-        fields={[]}
+        initialConfig={meta.laporanPdf}
+        fields={[
+          { key: 'dasarLaporan', label: 'Dasar Laporan', type: 'text' },
+          { key: 'kegiatan', label: 'Kegiatan Yang Dilakukan', type: 'text' },
+          { key: 'lokasi', label: '1. Lokasi', type: 'text' },
+          { key: 'tujuan', label: '2. Tujuan', type: 'text' },
+          { key: 'hasilPembuka', label: 'Pembuka Hasil', type: 'textarea' },
+          { key: 'hasilNarasi', label: 'Narasi Hasil', type: 'textarea' },
+          { key: 'signerNama', label: 'Override Nama Penandatangan', type: 'text' },
+          { key: 'signerNip', label: 'Override NIP Penandatangan', type: 'text' },
+          { key: 'signerJabatanTampil', label: 'Override Jabatan Tampil', type: 'text' },
+        ]}
         renderDocument={(config) => {
           const laporanData = {
             dasarLaporan: form.dasarLaporan,
@@ -477,12 +589,15 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
             lokasi: form.lokasi,
             tujuan: form.tujuan,
 
+            penandatanganId: form.penandatanganId,
             signerNama: selectedPegawai?.nama || null,
             signerNip: selectedPegawai?.nip || null,
             signerJabatan: selectedPegawai?.jabatan || null,
             signerPangkat: selectedPegawai?.pangkat || null,
             signerGolongan: selectedPegawai?.golongan || null,
-            signerJabatanTampil: selectedPegawai?.jabatan || null,
+            signerJabatanTampil: form.jabatanTampil || selectedPegawai?.jabatan || null,
+
+            excludeMengetahui: form.excludeMengetahui,
 
             hasilMode: form.hasilMode as LaporanHasilMode,
             hasilPembuka: form.hasilPembuka,
@@ -507,6 +622,7 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
               spj={{ noSuratTugas: getNomorSuratTugasFull() }} 
               roster={rosterData}
               laporan={laporanData}
+              config={config}
             />
           );
         }}
