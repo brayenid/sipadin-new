@@ -226,8 +226,9 @@ export default function PublicAbsensiForm({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: mode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 720 },
+          height: { ideal: 960 },
+          aspectRatio: { ideal: 3 / 4 },
         },
         audio: false,
       });
@@ -1062,7 +1063,7 @@ export default function PublicAbsensiForm({
                 Foto Selfie Kehadiran <span className="text-red-500">*</span>
               </label>
 
-              <div className="bg-slate-950 rounded-xl overflow-hidden aspect-4/3 flex items-center justify-center relative">
+              <div className="bg-slate-950 rounded-2xl overflow-hidden aspect-[3/4] max-w-xs sm:max-w-sm mx-auto flex items-center justify-center relative shadow-inner">
                 {isCameraActive ? (
                   <>
                     <video

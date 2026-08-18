@@ -45,11 +45,11 @@ export default function FotoPreviewModal({
         </DialogHeader>
 
         <div className="py-2">
-          <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-4/3 flex items-center justify-center border border-slate-200">
+          <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[3/4] max-w-xs mx-auto flex items-center justify-center border border-slate-200 shadow-inner">
             <img
               src={peserta.fotoUrl}
               alt={`Foto ${peserta.nama}`}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
 

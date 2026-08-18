@@ -40,11 +40,21 @@ export async function generateMetadata({
         description,
         images: ["/sipadin.png"],
       },
+      robots: {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      },
     };
   } catch {
     return {
       title: "Presensi Kegiatan - SIPADIN",
       description: "Sistem Informasi Presensi Elektronik Pemerintah Kabupaten Kutai Barat.",
+      robots: {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      },
       openGraph: {
         title: "Presensi Kegiatan - SIPADIN",
         description: "Sistem Informasi Presensi Elektronik Pemerintah Kabupaten Kutai Barat.",

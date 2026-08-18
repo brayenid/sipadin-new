@@ -29,6 +29,10 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(self), geolocation=(self), microphone=()",
   },
+  {
+    key: "X-Robots-Tag",
+    value: "noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate",
+  },
 ];
 
 const nextConfig: NextConfig = {
