@@ -378,10 +378,10 @@ export default function PetaSebaranGps({
 
   return (
     <div className="space-y-4">
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Metric Cards - Horizontal Scroll pada Mobile, Grid 4 Kolom pada Desktop */}
+      <div className="flex sm:grid sm:grid-cols-4 gap-3 overflow-x-auto sm:overflow-visible pb-1.5 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Card 1: Total Rekap GPS */}
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <div className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             Total Rekap GPS
           </div>
@@ -393,7 +393,7 @@ export default function PetaSebaranGps({
         </div>
 
         {/* Card 2: Titik Lokasi Kegiatan / Estimasi Rata-rata */}
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <div className="min-w-[230px] sm:min-w-0 flex-1 shrink-0 snap-start bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             {hasVenue ? "Lokasi Kegiatan" : "Estimasi Pusat Kerumunan"}
           </div>
@@ -419,7 +419,7 @@ export default function PetaSebaranGps({
         </div>
 
         {/* Card 3: Radius Toleransi & Standar Deviasi */}
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <div className="min-w-[230px] sm:min-w-0 flex-1 shrink-0 snap-start bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             {hasVenue ? "Radius Toleransi" : "Radius Std Deviasi (±2σ)"}
           </div>
@@ -437,7 +437,7 @@ export default function PetaSebaranGps({
 
         {/* Card 4: Status Kesesuaian Lokasi & Deteksi Anomali */}
         <div
-          className={`p-3.5 rounded-xl border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] ${
+          className={`min-w-[230px] sm:min-w-0 flex-1 shrink-0 snap-start p-3.5 rounded-xl border shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] ${
             countAnomaly > 0
               ? "bg-amber-50/70 border-amber-200/70 text-amber-900"
               : "bg-emerald-50/70 border-emerald-200/70 text-emerald-900"

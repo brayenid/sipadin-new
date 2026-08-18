@@ -274,14 +274,14 @@ export default function PejabatBindingList({
             </div>
           </div>
 
-          {/* Tabel Pejabat */}
+          {/* Tabel Pegawai */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
                   <TableHead className="w-12 text-center text-xs">No</TableHead>
                   <TableHead className="w-28 text-center text-xs">Wajib Absen?</TableHead>
-                  <TableHead className="text-xs">Nama Pejabat</TableHead>
+                  <TableHead className="text-xs">Nama Pegawai</TableHead>
                   <TableHead className="text-xs">Jabatan</TableHead>
                   <TableHead className="text-xs">Perangkat Daerah / OPD</TableHead>
                   <TableHead className="text-xs text-center w-36">Eselon</TableHead>
@@ -292,7 +292,7 @@ export default function PejabatBindingList({
                 {filteredList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="h-32 text-center text-slate-400 text-xs">
-                      Tidak ada data pejabat yang sesuai dengan filter
+                      Tidak ada data pegawai yang sesuai dengan filter
                     </TableCell>
                   </TableRow>
                 ) : (

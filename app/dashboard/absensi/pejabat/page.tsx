@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
 
 export const metadata = {
-  title: "Kelola Binding Pejabat OPD - SIPADIN",
+  title: "Kelola Binding Pegawai OPD - SIPADIN",
 };
 
 export default async function PejabatBindingPage() {

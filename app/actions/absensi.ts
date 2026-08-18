@@ -807,6 +807,8 @@ export async function updateKehadiranPesertaBatch(
     targetLatitude?: number | null;
     targetLongitude?: number | null;
     radiusMeter?: number | null;
+    requireLocation?: boolean;
+    requirePhoto?: boolean;
     allowNonPeserta?: boolean;
     publicToken?: string;
   }
@@ -859,6 +861,12 @@ export async function updateKehadiranPesertaBatch(
       }
       if (extraAgendaData.status) {
         agendaUpdatePayload.status = extraAgendaData.status;
+      }
+      if (extraAgendaData.requireLocation !== undefined) {
+        agendaUpdatePayload.requireLocation = extraAgendaData.requireLocation;
+      }
+      if (extraAgendaData.requirePhoto !== undefined) {
+        agendaUpdatePayload.requirePhoto = extraAgendaData.requirePhoto;
       }
       if (extraAgendaData.allowNonPeserta !== undefined) {
         agendaUpdatePayload.allowNonPeserta = extraAgendaData.allowNonPeserta;

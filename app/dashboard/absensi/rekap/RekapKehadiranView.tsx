@@ -440,7 +440,7 @@ export default function RekapKehadiranView({
                     Peringkat & Rekapitulasi Kehadiran Perangkat Daerah
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 mt-0.5">
-                    Akumulasi tingkat kehadiran pejabat dari seluruh agenda kegiatan resmi. Klik baris OPD untuk melihat riwayat agenda.
+                    Akumulasi tingkat kehadiran pegawai dari seluruh agenda kegiatan resmi. Klik baris OPD untuk melihat riwayat agenda.
                   </CardDescription>
                 </div>
 
@@ -541,7 +541,7 @@ export default function RekapKehadiranView({
                                 </div>
                                 {opd.jabatanTerdata.length > 0 && (
                                   <p className="text-[10px] text-slate-400 mt-0.5">
-                                    Pejabat: {opd.jabatanTerdata.join(", ")}
+                                    Pegawai: {opd.jabatanTerdata.join(", ")}
                                   </p>
                                 )}
                               </TableCell>
@@ -703,7 +703,7 @@ export default function RekapKehadiranView({
                     Rekapitulasi Kehadiran Individu / Pegawai
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 mt-0.5">
-                    Laporan persentase kehadiran masing-masing pejabat dari seluruh undangan agenda. Klik baris pegawai untuk detail riwayat.
+                    Laporan persentase kehadiran masing-masing pegawai dari seluruh undangan agenda. Klik baris pegawai untuk detail riwayat.
                   </CardDescription>
                 </div>
 

@@ -157,9 +157,9 @@ export default function AgendaList({
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
-      {/* 4 Summary Cards (All bg-white) */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      {/* 4 Summary Cards - Horizontal Scroll pada Mobile, Grid 4 Kolom pada Desktop */}
+      <div className="flex sm:grid sm:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pb-1.5 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Card className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">
@@ -174,7 +174,7 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Card className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
@@ -189,7 +189,7 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Card className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
@@ -204,11 +204,11 @@ export default function AgendaList({
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Card className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Pejabat Ter-binding
+                Pegawai Ter-binding
               </p>
               <p className="text-2xl font-black text-slate-800 mt-0.5">{totalPejabatTerdaftar}</p>
               <Link
@@ -234,7 +234,7 @@ export default function AgendaList({
                 Daftar Agenda Absensi Perangkat Daerah
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-0.5">
-                Kelola agenda, cetak blanko daftar hadir fisik, checklist kehadiran pejabat, dan tautkan arsip Google Drive.
+                Kelola agenda, cetak blanko daftar hadir fisik, checklist kehadiran pegawai, dan tautkan arsip Google Drive.
               </CardDescription>
             </div>
 
@@ -249,7 +249,7 @@ export default function AgendaList({
               <Link href="/dashboard/absensi/pejabat">
                 <Button variant="outline" size="sm" className="text-xs">
                   <Users className="w-3.5 h-3.5 mr-1" />
-                  Master Pejabat
+                  Master Pegawai
                 </Button>
               </Link>
 
@@ -590,7 +590,7 @@ export default function AgendaList({
           </Button>
         </Link>
         <Link href="/dashboard/absensi/pejabat">
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Master Pejabat Wajib Absen">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Master Pegawai Wajib Absen">
             <Users className="w-4 h-4 text-slate-700" />
           </Button>
         </Link>

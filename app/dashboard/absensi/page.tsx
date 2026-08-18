@@ -71,7 +71,7 @@ export default async function AbsensiPage({
               Absensi Perangkat Daerah
             </h1>
             <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
-              Pencatatan dan rekapitulasi kehadiran resmi Pejabat pada seluruh kegiatan.
+              Pencatatan dan rekapitulasi kehadiran resmi Pegawai pada seluruh kegiatan.
             </p>
           </div>
         </div>

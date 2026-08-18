@@ -61,10 +61,10 @@ export default function ModalBuatAgenda({
 
   const handleTargetKategoriChange = (kat: string) => {
     let targetLabel = "Eselon II.b dan III.a";
-    if (kat === "ESELON_2") targetLabel = "Khusus Pejabat Eselon II (Kepala OPD)";
-    else if (kat === "ESELON_3") targetLabel = "Khusus Pejabat Eselon III (Sekretaris / Kabid)";
+    if (kat === "ESELON_2") targetLabel = "Khusus Pegawai Eselon II (Kepala OPD)";
+    else if (kat === "ESELON_3") targetLabel = "Khusus Pegawai Eselon III (Sekretaris / Kabid)";
     else if (kat === "KECAMATAN") targetLabel = "Camat dan Perangkat Kecamatan";
-    else if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / ASN";
+    else if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / Pegawai";
 
     setForm((prev) => ({
       ...prev,
@@ -125,16 +125,16 @@ export default function ModalBuatAgenda({
           <div className="p-3 bg-amber-50/50 border border-amber-200/60 rounded-lg flex items-start gap-2.5 text-xs text-amber-800 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Belum ada Pejabat yang ditetapkan!</p>
+              <p className="font-semibold">Belum ada Pegawai yang ditetapkan!</p>
               <p className="text-[11px] text-amber-700 mt-0.5">
-                Silakan lakukan penetapan data dari Master Pegawai terlebih dahulu agar nama pejabat OPD otomatis terisi pada agenda ini.
+                Silakan lakukan penetapan data dari Master Pegawai terlebih dahulu agar nama pegawai OPD otomatis terisi pada agenda ini.
               </p>
               <Link
                 href="/dashboard/absensi/pejabat"
                 onClick={onClose}
                 className="inline-flex items-center gap-1 font-bold text-indigo-700 hover:underline mt-1.5"
               >
-                Kelola Pejabat &rarr;
+                Kelola Pegawai &rarr;
               </Link>
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function ModalBuatAgenda({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-semibold text-slate-700">
-                Target Kategori Binding Pejabat
+                Target Kategori Binding Pegawai
               </Label>
               <select
                 value={form.targetKategori}
@@ -339,7 +339,7 @@ export default function ModalBuatAgenda({
 
           <div className="flex items-center justify-between pt-3 border-t">
             <span className="text-[11px] text-slate-400">
-              {totalPejabatTerdaftar} pejabat terdaftar di sistem.
+              {totalPejabatTerdaftar} pegawai terdaftar di sistem.
             </span>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={loading}>
