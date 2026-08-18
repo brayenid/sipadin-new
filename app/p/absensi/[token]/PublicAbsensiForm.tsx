@@ -680,6 +680,15 @@ export default function PublicAbsensiForm({
   return (
     <div className="min-h-screen bg-slate-50/60 py-6 sm:py-10 px-3 sm:px-6">
       <div className="max-w-xl mx-auto space-y-3.5">
+        {/* Logo Pemkab Kubar di Atas Form */}
+        <div className="flex justify-center pb-1 select-none">
+          <img
+            src="/logo.png"
+            alt="Logo Pemerintah Kabupaten Kutai Barat"
+            className="h-16 sm:h-20 w-auto object-contain drop-shadow-xs"
+          />
+        </div>
+
         {/* Header Formal */}
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] border-t-4 border-t-indigo-600">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
