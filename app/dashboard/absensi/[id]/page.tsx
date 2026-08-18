@@ -1,7 +1,7 @@
 import { getAgendaAbsensiDetail, getAllPegawaiForBinding } from "@/app/actions/absensi";
 import ChecklistForm from "./ChecklistForm";
 import Link from "next/link";
-import { ChevronLeft, Calendar, MapPin, Clock, Users } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, Clock, Users, Camera } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 
 export const metadata = {
@@ -40,6 +40,25 @@ export default async function AgendaDetailPage({
           <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">
             {agenda.namaKegiatan}
           </h1>
+
+          {/* Subjudul: Tag Badges Kebutuhan Validasi (Hanya muncul jika dicentang) */}
+          {(agenda.requirePhoto || agenda.requireLocation) && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {agenda.requirePhoto && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 shadow-2xs">
+                  <Camera className="w-3.5 h-3.5" />
+                  Wajib Foto Selfie
+                </span>
+              )}
+
+              {agenda.requireLocation && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                  <MapPin className="w-3.5 h-3.5" />
+                  Wajib Kunci GPS
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

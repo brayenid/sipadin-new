@@ -699,6 +699,25 @@ export default function PublicAbsensiForm({
             {agenda.namaKegiatan}
           </h1>
 
+          {/* Subjudul: Tag Badge Persyaratan Presensi (Hanya muncul jika dicentang) */}
+          {(agenda.requirePhoto || agenda.requireLocation) && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {agenda.requirePhoto && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-200">
+                  <Camera className="w-3 h-3" />
+                  Wajib Foto Selfie
+                </span>
+              )}
+
+              {agenda.requireLocation && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <MapPin className="w-3 h-3" />
+                  Wajib Kunci GPS
+                </span>
+              )}
+            </div>
+          )}
+
           {agenda.deskripsi && (
             <p className="text-xs text-slate-600 mt-2 whitespace-pre-line leading-relaxed">
               {agenda.deskripsi}

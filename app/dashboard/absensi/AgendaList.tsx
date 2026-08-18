@@ -25,6 +25,7 @@ import {
   BarChart3,
   CheckCheck,
   Eye,
+  Camera,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { deleteAgendaAbsensi } from "@/app/actions/absensi";
@@ -39,6 +40,8 @@ type AgendaItem = {
   tempat: string;
   deskripsi: string | null;
   targetPeserta: string | null;
+  requireLocation?: boolean;
+  requirePhoto?: boolean;
   status: "BERLANGSUNG" | "SELESAI" | "DIBATALKAN";
   driveUrl: string | null;
   stats: {
@@ -430,15 +433,25 @@ export default function AgendaList({
                           >
                             {item.namaKegiatan}
                           </Link>
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{item.tempat}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {item.targetPeserta && (
+                              <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                                {item.targetPeserta}
+                              </span>
+                            )}
+                            {item.requirePhoto !== false && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
+                                <Camera className="w-2.5 h-2.5" />
+                                Selfie
+                              </span>
+                            )}
+                            {item.requireLocation !== false && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                <MapPin className="w-2.5 h-2.5" />
+                                GPS
+                              </span>
+                            )}
                           </div>
-                          {item.targetPeserta && (
-                            <span className="inline-block mt-1 text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded-sm">
-                              {item.targetPeserta}
-                            </span>
-                          )}
                         </TableCell>
 
                         <TableCell className="text-xs text-slate-600">
