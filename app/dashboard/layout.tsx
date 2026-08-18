@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import DashboardNav from "@/components/dashboard/DashboardNav";
 import MobileSidebarShell from "@/components/dashboard/MobileSidebarShell";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
+import { PrivacyModeProvider } from "@/components/dashboard/PrivacyModeProvider";
 
 export default async function DashboardLayout({
   children,
@@ -87,7 +88,9 @@ export default async function DashboardLayout({
 
         {/* Main content area — pt-14 on mobile to clear the fixed top bar */}
         <main className="flex-1 h-full overflow-y-auto bg-slate-50/50 flex flex-col pt-14 lg:pt-0">
-          {children}
+          <PrivacyModeProvider>
+            {children}
+          </PrivacyModeProvider>
         </main>
       </div>
     </SidebarProvider>

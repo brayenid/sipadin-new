@@ -1,5 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Info, Code2, Cpu, ShieldCheck } from "lucide-react";
+import { auth } from "@/lib/auth";
+import PrivacyModeControl from "./PrivacyModeControl";
 
 export const metadata = {
   title: "Tentang Aplikasi - SIPADIN",
@@ -42,11 +44,14 @@ export default function TentangPage() {
 
             <div className="w-full h-px bg-slate-100 mb-6" />
 
-            <div className="space-y-1">
+            <div className="space-y-1 mb-6">
               <p className="text-xs text-slate-500">Dikembangkan oleh</p>
               <p className="text-sm font-semibold text-slate-900">Tim PPTL</p>
               <p className="text-[11px] text-slate-400 mt-2 italic">"Dibangun tanpa anggaran, murni memudahkan"</p>
             </div>
+
+            {/* 1 Tombol Minimalis di Bawah */}
+            <PrivacyModeControl />
             
           </CardContent>
         </Card>
