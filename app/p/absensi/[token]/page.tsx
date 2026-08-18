@@ -2,6 +2,7 @@ import { getPublicAgendaByToken } from "@/app/actions/absensi";
 import PublicAbsensiForm from "./PublicAbsensiForm";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { formatWita } from "@/lib/date-utils";
 
 export async function generateMetadata({
   params,
@@ -11,13 +12,49 @@ export async function generateMetadata({
   try {
     const { token } = await params;
     const agenda = await getPublicAgendaByToken(token);
+    const tanggalText = agenda.tanggal ? formatWita(agenda.tanggal, "dd MMMM yyyy") : "";
+    const tempatText = agenda.tempat ? ` di ${agenda.tempat}` : "";
+    const title = `Presensi: ${agenda.namaKegiatan} - SIPADIN`;
+    const description = `Form pengisian daftar hadir mandiri elektronik untuk kegiatan "${agenda.namaKegiatan}" (${tanggalText}${tempatText}) - Pemerintah Kabupaten Kutai Barat.`;
+
     return {
-      title: `Presensi: ${agenda.namaKegiatan} - SIPADIN Kubar`,
-      description: `Form presensi mandiri kegiatan ${agenda.namaKegiatan} Pemerintah Kabupaten Kutai Barat.`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: "website",
+        siteName: "SIPADIN - Pemkab Kutai Barat",
+        images: [
+          {
+            url: "/sipadin.png",
+            width: 800,
+            height: 600,
+            alt: "SIPADIN - Sistem Informasi Presensi & Perjalanan Dinas Elektronik",
+          },
+        ],
+      },
+      twitter: {
+        card: "summary",
+        title,
+        description,
+        images: ["/sipadin.png"],
+      },
     };
   } catch {
     return {
       title: "Presensi Kegiatan - SIPADIN",
+      description: "Sistem Informasi Presensi Elektronik Pemerintah Kabupaten Kutai Barat.",
+      openGraph: {
+        title: "Presensi Kegiatan - SIPADIN",
+        description: "Sistem Informasi Presensi Elektronik Pemerintah Kabupaten Kutai Barat.",
+        images: [
+          {
+            url: "/sipadin.png",
+            alt: "SIPADIN",
+          },
+        ],
+      },
     };
   }
 }

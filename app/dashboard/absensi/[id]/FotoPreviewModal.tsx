@@ -37,10 +37,10 @@ export default function FotoPreviewModal({
       <DialogContent className="max-w-md p-6 bg-white rounded-3xl border border-slate-200 text-center">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
-            Foto Selfie Presensi
+            Foto Selfie Kehadiran
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            {peserta.nama} — {peserta.instansi}
+            {peserta.nama} - {peserta.instansi}
           </DialogDescription>
         </DialogHeader>
 

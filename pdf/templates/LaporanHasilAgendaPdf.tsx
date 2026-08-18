@@ -328,7 +328,7 @@ export default function LaporanHasilAgendaPdf({
         {/* Laporan Analisis Geolokasi Kedinasan */}
         <View style={styles.analysisBox}>
           <Text style={styles.analysisHeader}>
-            RINGKASAN ANALISIS GEOLOKASI (GPS) & KESESUAIAN PRESENSI
+            RINGKASAN ANALISIS GEOLOKASI DAN KESESUAIAN PRESENSI
           </Text>
 
           <View style={styles.analysisItem}>

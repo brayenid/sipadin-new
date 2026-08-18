@@ -50,6 +50,7 @@ import {
   deletePesertaFromAgenda,
   togglePublicAbsensiActive,
   updateAgendaAbsensi,
+  deleteAgendaAbsensi,
 } from "@/app/actions/absensi";
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
@@ -257,6 +258,25 @@ export default function ChecklistForm({
   };
 
   // Konfirmasi & Hapus peserta via Custom AlertDialog
+  const [isDeleteAgendaOpen, setIsDeleteAgendaOpen] = useState(false);
+  const [deletingAgenda, setDeletingAgenda] = useState(false);
+
+  const handleConfirmDeleteAgenda = async () => {
+    setDeletingAgenda(true);
+    try {
+      const res = await deleteAgendaAbsensi(agenda.id);
+      if (res?.success) {
+        toast.success("Agenda presensi berhasil dihapus");
+        router.push("/dashboard/absensi");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus agenda");
+    } finally {
+      setDeletingAgenda(false);
+      setIsDeleteAgendaOpen(false);
+    }
+  };
+
   const handleConfirmDeletePeserta = async () => {
     if (!deletePesertaTarget) return;
     setDeletingPeserta(true);
@@ -988,6 +1008,17 @@ export default function ChecklistForm({
                 type="button"
                 variant="outline"
                 size="sm"
+                onClick={() => setIsDeleteAgendaOpen(true)}
+                className="text-xs border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 font-semibold"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                Hapus Agenda
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsCetakOpen(true)}
                 className="text-xs border-slate-300 hover:bg-slate-50 font-semibold"
               >
@@ -1358,6 +1389,37 @@ export default function ChecklistForm({
           toast.success("Titik lokasi kegiatan berhasil ditentukan dari peta!");
         }}
       />
+
+      {/* Dialog Konfirmasi Hapus Agenda */}
+      <AlertDialog
+        open={isDeleteAgendaOpen}
+        onOpenChange={(open) => !open && setIsDeleteAgendaOpen(false)}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-900">Hapus Agenda Presensi?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 text-xs leading-relaxed">
+              Apakah Anda yakin ingin menghapus agenda{" "}
+              <strong className="text-slate-900 font-bold">{agenda.namaKegiatan}</strong>? Seluruh data kehadiran pegawai, berkas foto presensi di penyimpanan, dan tautan publik terkait agenda ini akan dihapus secara permanen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAgenda} className="text-xs">Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteAgenda}
+              disabled={deletingAgenda}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs"
+            >
+              {deletingAgenda ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-1.5" />
+              )}
+              Hapus Agenda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog Konfirmasi Hapus Peserta */}
       <AlertDialog

@@ -35,8 +35,8 @@ interface PesertaItem {
   eselon: string | null;
   urutan: number;
   status: StatusKehadiran;
-  isSelfInput: boolean;
-  waktuInput: Date | string | null;
+  isSelfInput?: boolean;
+  waktuInput?: Date | string | null;
 }
 
 interface PublicAgendaData {
@@ -107,7 +107,7 @@ export default function PublicAbsensiForm({
     searchPublicPesertaAgenda(agenda.publicToken, debouncedQuery)
       .then((results) => {
         if (active) {
-          setSearchResults(results);
+          setSearchResults(results as PesertaItem[]);
           setIsSearching(false);
         }
       })
@@ -277,9 +277,36 @@ export default function PublicAbsensiForm({
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
+    const vWidth = video.videoWidth || 640;
+    const vHeight = video.videoHeight || 480;
+
+    // Hitung aspect ratio tampilan viewfinder yang dilihat pengguna di layar secara presisi
+    const containerRect = video.getBoundingClientRect();
+    const targetAspect =
+      containerRect.width > 0 && containerRect.height > 0
+        ? containerRect.width / containerRect.height
+        : vWidth / vHeight;
+    const videoAspect = vWidth / vHeight;
+
+    let sx = 0;
+    let sy = 0;
+    let sWidth = vWidth;
+    let sHeight = vHeight;
+
+    if (videoAspect > targetAspect) {
+      // Video sensor lebih lebar dari viewfinder (crop sisi kiri-kanan simetris)
+      sWidth = Math.round(vHeight * targetAspect);
+      sx = Math.round((vWidth - sWidth) / 2);
+    } else {
+      // Video sensor lebih tinggi dari viewfinder (crop sisi atas-bawah simetris)
+      sHeight = Math.round(vWidth / targetAspect);
+      sy = Math.round((vHeight - sHeight) / 2);
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    // Atur resolusi kanvas proporsional terhadap framing yang dilihat pengguna
+    canvas.width = Math.min(sWidth, 720);
+    canvas.height = Math.round(canvas.width / targetAspect);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -288,7 +315,8 @@ export default function PublicAbsensiForm({
       ctx.scale(-1, 1);
     }
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Gambar hanya area yang terlihat pada viewfinder (WYSIWYG)
+    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       async (blob) => {
         if (!blob) return;
@@ -296,8 +324,8 @@ export default function PublicAbsensiForm({
         try {
           const compressed = await compressImage(blob, {
             maxWidth: 720,
-            maxHeight: 720,
-            quality: 0.72,
+            maxHeight: 960,
+            quality: 0.75,
             mimeType: "image/jpeg",
           });
           setPhotoBlob(compressed.blob);
@@ -382,7 +410,7 @@ export default function PublicAbsensiForm({
       return;
     }
 
-    if (agenda.requirePhoto && !photoBlob && !photoDataUrl) {
+    if (agenda.requirePhoto && status !== "IZIN" && !photoBlob && !photoDataUrl) {
       toast.error("Foto selfie presensi wajib diambil secara langsung dari kamera");
       return;
     }
@@ -655,10 +683,10 @@ export default function PublicAbsensiForm({
         {/* Header Formal */}
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] border-t-4 border-t-indigo-600">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
-            Pemerintah Kabupaten Kutai Barat
+            Daftar Hadir
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-            Daftar Hadir: {agenda.namaKegiatan}
+            {agenda.namaKegiatan}
           </h1>
 
           {agenda.deskripsi && (
@@ -691,7 +719,7 @@ export default function PublicAbsensiForm({
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-800">
-                Nama Pegawai / Perangkat Daerah <span className="text-red-500">*</span>
+                Nama Pegawai <span className="text-red-500">*</span>
               </label>
 
               {agenda.allowNonPeserta !== false && (
@@ -940,7 +968,10 @@ export default function PublicAbsensiForm({
 
               <button
                 type="button"
-                onClick={() => setStatus("IZIN")}
+                onClick={() => {
+                  setStatus("IZIN");
+                  stopCamera();
+                }}
                 className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
                   status === "IZIN"
                     ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
@@ -1015,14 +1046,14 @@ export default function PublicAbsensiForm({
             )}
           </div>
 
-          {/* Card 3: Foto Selfie Real-time (Wajib Kamera Langsung) */}
-          {agenda.requirePhoto && (
+          {/* Card 3: Foto Selfie Real-time (Wajib Kamera Langsung hanya untuk HADIR & MEWAKILI) */}
+          {agenda.requirePhoto && status !== "IZIN" && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
               <label className="block text-xs font-bold text-slate-800">
-                Foto Selfie Kehadiran (Kamera Langsung) <span className="text-red-500">*</span>
+                Foto Selfie Kehadiran <span className="text-red-500">*</span>
               </label>
 
-              <div className="bg-slate-900 rounded-xl overflow-hidden aspect-4/3 flex items-center justify-center relative">
+              <div className="bg-slate-950 rounded-xl overflow-hidden aspect-4/3 flex items-center justify-center relative">
                 {isCameraActive ? (
                   <>
                     <video
@@ -1071,7 +1102,7 @@ export default function PublicAbsensiForm({
                     <img
                       src={photoDataUrl}
                       alt="Hasil Foto"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover"
                     />
                     <div className="absolute bottom-3 inset-x-0 flex justify-center">
                       <button

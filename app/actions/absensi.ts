@@ -682,8 +682,8 @@ export async function submitSelfAbsensi(payload: {
     );
   }
 
-  // Validasi foto jika diwajibkan
-  if (agenda.requirePhoto && !payload.fotoUrl) {
+  // Validasi foto jika diwajibkan (Hanya wajib untuk HADIR dan MEWAKILI, status IZIN tidak wajib selfie)
+  if (agenda.requirePhoto && payload.status !== "IZIN" && !payload.fotoUrl) {
     throw new Error("Foto selfie bukti presensi wajib diambil dan diunggah");
   }
 
