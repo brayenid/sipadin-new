@@ -18,7 +18,7 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react";
-import { bulkUpdateBindingPejabat, getPegawaiForBindingPaginated } from "@/app/actions/absensi";
+import { bulkUpdateBindingPejabat, getPegawaiForBindingPaginated, bulkSetWajibAbsenByFilter } from "@/app/actions/absensi";
 
 type Pegawai = {
   id: string;
@@ -189,6 +189,34 @@ export default function PejabatBindingList({
     setInternalList((prev) =>
       prev.map((item) => (item.id === id ? { ...item, kategoriPegawai: newKat || null } : item))
     );
+  };
+
+  const [applyingBulkFilter, setApplyingBulkFilter] = useState(false);
+
+  // Terapkan Wajib Absen ke SELURUH data yang cocok dengan filter (termasuk yang belum di-scroll)
+  const handleSelectAllFilter = async (wajib: boolean) => {
+    setApplyingBulkFilter(true);
+    try {
+      const res = await bulkSetWajibAbsenByFilter({
+        search: search || undefined,
+        eselon: filterEselon !== "ALL" ? filterEselon : undefined,
+        status: filterStatus !== "ALL" ? (filterStatus as any) : undefined,
+        wajibAbsenOpd: wajib,
+      });
+
+      // Update local view
+      setInternalList((prev) => prev.map((item) => ({ ...item, wajibAbsenOpd: wajib })));
+      toast.success(
+        wajib
+          ? `Berhasil menandai seluruh ${res.count} pegawai hasil filter sebagai Wajib Absen.`
+          : `Berhasil membatalkan Wajib Absen untuk seluruh ${res.count} pegawai hasil filter.`
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menerapkan status masal.");
+    } finally {
+      setApplyingBulkFilter(false);
+    }
   };
 
   // Toggle Semua Data yang Sedang Tampil
@@ -368,19 +396,25 @@ export default function PejabatBindingList({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleSelectAllCurrentPage(true)}
-                  disabled={internalList.length === 0 || allCurrentPageSelected}
-                  className="h-9 text-xs text-indigo-700 hover:bg-white hover:text-indigo-800 font-medium"
+                  onClick={() => handleSelectAllFilter(true)}
+                  disabled={pagination.totalItems === 0 || applyingBulkFilter}
+                  className="h-9 text-xs text-indigo-700 hover:bg-white hover:text-indigo-800 font-bold"
+                  title="Tandai seluruh pegawai hasil filter ini sebagai Wajib Absen"
                 >
-                  <UserCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  Pilih Halaman Ini
+                  {applyingBulkFilter ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <UserCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                  )}
+                  Pilih Semua ({pagination.totalItems.toLocaleString("id-ID")})
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleSelectAllCurrentPage(false)}
-                  disabled={internalList.length === 0 || !someCurrentPageSelected}
+                  onClick={() => handleSelectAllFilter(false)}
+                  disabled={pagination.totalItems === 0 || applyingBulkFilter}
                   className="h-9 text-xs text-slate-600 hover:bg-slate-100 font-medium"
+                  title="Batalkan Wajib Absen untuk seluruh pegawai hasil filter ini"
                 >
                   <UserX className="w-3.5 h-3.5 mr-1 text-slate-500" />
                   Batal Semua
@@ -388,6 +422,29 @@ export default function PejabatBindingList({
               </div>
             </div>
           </div>
+
+          {/* Smart Banner: Jika user centang halaman ini dan total filter lebih banyak */}
+          {allCurrentPageSelected && pagination.totalItems > internalList.length && (
+            <div className="bg-indigo-50 border border-indigo-200/80 rounded-lg p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-indigo-900 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px]">
+                  Info
+                </Badge>
+                <span>
+                  Semua <strong>{internalList.length}</strong> pegawai di halaman ini telah dipilih. Ingin memilih <strong>seluruh {pagination.totalItems.toLocaleString("id-ID")} pegawai</strong> hasil filter saat ini?
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => handleSelectAllFilter(true)}
+                disabled={applyingBulkFilter}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 text-xs font-bold shrink-0 shadow-xs"
+              >
+                {applyingBulkFilter ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                Pilih Seluruh {pagination.totalItems.toLocaleString("id-ID")} Pegawai
+              </Button>
+            </div>
+          )}
 
           {/* Tabel Pegawai */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto relative">
@@ -400,7 +457,20 @@ export default function PejabatBindingList({
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
                   <TableHead className="w-12 text-center text-xs">No</TableHead>
-                  <TableHead className="w-20 text-center text-xs">Pilih</TableHead>
+                  <TableHead className="w-20 text-center text-xs">
+                    <div
+                      className="flex items-center justify-center gap-1 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
+                      onClick={() => handleSelectAllCurrentPage(!allCurrentPageSelected)}
+                      title={allCurrentPageSelected ? "Hapus centang yang tampil" : "Centang semua yang tampil"}
+                    >
+                      <Checkbox
+                        checked={allCurrentPageSelected}
+                        onCheckedChange={(checked) => handleSelectAllCurrentPage(Boolean(checked))}
+                        aria-label="Pilih Semua yang Ditampilkan"
+                        className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                      />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-xs">Nama Pegawai</TableHead>
                   <TableHead className="text-xs">Jabatan</TableHead>
                   <TableHead className="text-xs">OPD</TableHead>

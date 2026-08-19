@@ -234,6 +234,68 @@ export async function bulkUpdateBindingPejabat(
   return { success: true };
 }
 
+export async function bulkSetWajibAbsenByFilter(params: {
+  search?: string;
+  status?: "ALL" | "BINDING" | "UNBOUND";
+  eselon?: string;
+  wajibAbsenOpd: boolean;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const teamId = session.user.teamId;
+  const search = params.search?.trim();
+  const status = params.status || "ALL";
+  const eselon = params.eselon || "ALL";
+
+  // Build where clause matching filter
+  const where: any = { teamId };
+
+  if (search) {
+    where.OR = [
+      { nama: { contains: search, mode: "insensitive" } },
+      { nip: { contains: search, mode: "insensitive" } },
+      { jabatan: { contains: search, mode: "insensitive" } },
+      { instansi: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (status === "BINDING") {
+    where.wajibAbsenOpd = true;
+  } else if (status === "UNBOUND") {
+    where.wajibAbsenOpd = false;
+  }
+
+  if (eselon === "ESELON_ONLY") {
+    where.AND = [
+      { eselon: { not: null } },
+      { eselon: { not: "NON_ESELON" } },
+      { eselon: { not: "" } },
+    ];
+  } else if (eselon === "NON_ESELON") {
+    where.OR = [
+      { eselon: null },
+      { eselon: "NON_ESELON" },
+      { eselon: "" },
+    ];
+  } else if (eselon !== "ALL") {
+    where.eselon = eselon;
+  }
+
+  const result = await prisma.pegawai.updateMany({
+    where,
+    data: {
+      wajibAbsenOpd: params.wajibAbsenOpd,
+    },
+  });
+
+  revalidatePath("/dashboard/absensi");
+  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/pegawai");
+
+  return { success: true, count: result.count };
+}
+
 // ==========================================
 // 2. AGENDA ABSENSI CRUD
 // ==========================================
