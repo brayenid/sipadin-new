@@ -762,12 +762,28 @@ export default function ChecklistForm({
 
           {/* ── CARD 1: Informasi Kegiatan ── */}
           <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_1px_4px_-2px_rgba(0,0,0,0.06)]">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <span className="w-1 h-4 rounded-full bg-indigo-500 shrink-0" />
-              <p className="text-xs font-bold text-slate-700">Informasi Kegiatan</p>
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-1 h-4 rounded-full bg-indigo-500 shrink-0" />
+                <p className="text-xs font-bold text-slate-700">Informasi Kegiatan</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-slate-400">Status:</span>
+                <select
+                  value={statusAgenda}
+                  onChange={(e) => setStatusAgenda(e.target.value as StatusAgendaAbsensi)}
+                  className="h-7 text-xs font-bold bg-slate-50 border border-slate-200 rounded-md px-2 text-slate-800 outline-none"
+                >
+                  <option value="BERLANGSUNG">Berlangsung</option>
+                  <option value="SELESAI">Selesai</option>
+                  <option value="DIBATALKAN">Dibatalkan</option>
+                </select>
+              </div>
             </div>
+
             <CardContent className="p-4 space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              {/* Baris 1: Waktu & Tempat Pelaksanaan */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700">
                     Tanggal Pelaksanaan
@@ -781,36 +797,27 @@ export default function ChecklistForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">
-                      Waktu Acara (WITA)
-                    </Label>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
-                      {waktu || `${jamMulai} WITA`}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div>
-                      <Input
-                        type="time"
-                        required
-                        value={jamMulai}
-                        onChange={(e) => handleJamMulaiChange(e.target.value)}
-                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                        title="Jam Mulai Acara"
-                      />
-                      <span className="text-[10px] text-slate-500">Mulai</span>
-                    </div>
-                    <div>
-                      <Input
-                        type="time"
-                        value={jamSelesai}
-                        onChange={(e) => handleJamSelesaiChange(e.target.value)}
-                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                        title="Jam Selesai (Opsional)"
-                      />
-                      <span className="text-[10px] text-slate-500">Selesai (Opsional)</span>
-                    </div>
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Waktu Acara (WITA)
+                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="time"
+                      required
+                      value={jamMulai}
+                      onChange={(e) => handleJamMulaiChange(e.target.value)}
+                      className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
+                      title="Jam Mulai Acara"
+                    />
+                    <span className="text-xs font-medium text-slate-400">s/d</span>
+                    <Input
+                      type="time"
+                      value={jamSelesai}
+                      onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                      className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
+                      title="Jam Selesai (Opsional)"
+                      placeholder="Selesai"
+                    />
                   </div>
                 </div>
 
@@ -820,30 +827,16 @@ export default function ChecklistForm({
                   </Label>
                   <Input
                     type="text"
-                    placeholder="Contoh: Ruang Rapat Kantor Bupati"
+                    placeholder="Contoh: Gedung ATJ / Ruang Rapat"
                     value={tempat}
                     onChange={(e) => setTempat(e.target.value)}
                     className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Status Agenda
-                  </Label>
-                  <select
-                    value={statusAgenda}
-                    onChange={(e) => setStatusAgenda(e.target.value as StatusAgendaAbsensi)}
-                    className="w-full h-9 text-xs font-semibold bg-white border border-slate-300 rounded-md px-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="BERLANGSUNG">Berlangsung</option>
-                    <option value="SELESAI">Selesai</option>
-                    <option value="DIBATALKAN">Dibatalkan</option>
-                  </select>
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
+              {/* Baris 2: Target Binding & Label Kop Peserta */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-indigo-500" />
@@ -852,7 +845,7 @@ export default function ChecklistForm({
                   <select
                     value={targetKategori}
                     onChange={(e) => handleTargetKategoriChange(e.target.value)}
-                    className="w-full h-9 text-xs font-semibold bg-white border border-slate-300 rounded-md px-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="w-full h-9 text-xs font-semibold bg-white border border-slate-300 rounded-md px-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="SEMUA_OPD">Semua / Seluruh Perangkat Daerah & Pegawai</option>
                     <option value="ESELON_2_3">OPD Utama (Eselon II & III)</option>
@@ -877,16 +870,17 @@ export default function ChecklistForm({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              {/* Baris 3: Catatan Agenda */}
+              <div className="space-y-1.5 pt-1">
                 <Label className="text-xs font-semibold text-slate-700">
                   Keterangan / Catatan Agenda (Opsional)
                 </Label>
-                <Textarea
+                <Input
+                  type="text"
                   placeholder="Tambahkan catatan khusus untuk agenda ini jika diperlukan..."
                   value={deskripsi}
                   onChange={(e) => setDeskripsi(e.target.value)}
-                  rows={2}
-                  className="text-xs bg-white border-slate-300 resize-none font-medium text-slate-800"
+                  className="text-xs bg-white border-slate-300 h-9 font-medium text-slate-800"
                 />
               </div>
             </CardContent>
