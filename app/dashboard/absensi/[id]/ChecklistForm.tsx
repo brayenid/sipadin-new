@@ -148,12 +148,27 @@ export default function ChecklistForm({
   const [requireLocation, setRequireLocation] = useState<boolean>(agenda.requireLocation ?? true);
   const [requirePhoto, setRequirePhoto] = useState<boolean>(agenda.requirePhoto ?? true);
   const [allowNonPeserta, setAllowNonPeserta] = useState<boolean>(agenda.allowNonPeserta ?? true);
+  const [targetKategori, setTargetKategori] = useState<string>(agenda.targetKategori || "SEMUA_OPD");
+  const [targetPeserta, setTargetPeserta] = useState<string>(
+    agenda.targetPeserta || "Seluruh Perangkat Daerah / Pegawai"
+  );
   const [publicToken, setPublicToken] = useState<string>(agenda.publicToken || "");
   const [picPegawaiId, setPicPegawaiId] = useState<string | null>(agenda.picPegawaiId || null);
   const [picNama, setPicNama] = useState<string>(agenda.picNama || "");
   const [picNip, setPicNip] = useState<string>(agenda.picNip || "");
   const [picJabatan, setPicJabatan] = useState<string>(agenda.picJabatan || "");
   const [gettingVenueGps, setGettingVenueGps] = useState(false);
+
+  const handleTargetKategoriChange = (kat: string) => {
+    setTargetKategori(kat);
+    let targetLabel = "Seluruh Perangkat Daerah / Pegawai";
+    if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / Pegawai";
+    else if (kat === "ESELON_2_3") targetLabel = "OPD Utama (Eselon II & III)";
+    else if (kat === "ESELON_2") targetLabel = "Khusus Pegawai Eselon II (Kepala OPD)";
+    else if (kat === "ESELON_3") targetLabel = "Khusus Pegawai Eselon III (Sekretaris / Kabid)";
+    else if (kat === "KECAMATAN") targetLabel = "Camat dan Perangkat Kecamatan";
+    setTargetPeserta(targetLabel);
+  };
 
   const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA">("EDIT_AGENDA");
 
@@ -255,6 +270,8 @@ export default function ChecklistForm({
     setRequireLocation(agenda.requireLocation ?? true);
     setRequirePhoto(agenda.requirePhoto ?? true);
     setAllowNonPeserta(agenda.allowNonPeserta ?? true);
+    setTargetKategori(agenda.targetKategori || "SEMUA_OPD");
+    setTargetPeserta(agenda.targetPeserta || "Seluruh Perangkat Daerah / Pegawai");
     setPublicToken(agenda.publicToken || "");
     setPicPegawaiId(agenda.picPegawaiId || null);
     setPicNama(agenda.picNama || "");
@@ -397,6 +414,8 @@ export default function ChecklistForm({
           requireLocation,
           requirePhoto,
           allowNonPeserta: allowNonPeserta,
+          targetKategori: targetKategori || undefined,
+          targetPeserta: targetPeserta.trim() || undefined,
           publicToken: publicToken.trim() || undefined,
           picPegawaiId: picPegawaiId || null,
           picNama: picNama.trim() || null,
@@ -766,6 +785,40 @@ export default function ChecklistForm({
                     <option value="SELESAI">Selesai</option>
                     <option value="DIBATALKAN">Dibatalkan</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-500" />
+                    Target Kategori Binding Pegawai
+                  </Label>
+                  <select
+                    value={targetKategori}
+                    onChange={(e) => handleTargetKategoriChange(e.target.value)}
+                    className="w-full h-9 text-xs font-semibold bg-white border border-slate-300 rounded-md px-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="SEMUA_OPD">Semua / Seluruh Perangkat Daerah & Pegawai</option>
+                    <option value="ESELON_2_3">OPD Utama (Eselon II & III)</option>
+                    <option value="ESELON_2">Khusus Eselon II (Kepala OPD)</option>
+                    <option value="ESELON_3">Khusus Eselon III (Sekretaris/Kabid)</option>
+                    <option value="KECAMATAN">Kecamatan se-Kutai Barat</option>
+                    <option value="CUSTOM">Kustom (Pilihan Tertentu)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Label Target Peserta (Kop / Lampiran)
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="Contoh: Seluruh Perangkat Daerah / Pegawai"
+                    value={targetPeserta}
+                    onChange={(e) => setTargetPeserta(e.target.value)}
+                    className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
+                  />
                 </div>
               </div>
 

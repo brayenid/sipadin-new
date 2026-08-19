@@ -39,8 +39,8 @@ export default function ModalBuatAgenda({
     waktu: "09:00 WITA - Selesai",
     tempat: "",
     deskripsi: "",
-    targetPeserta: "Eselon II.b dan III.a",
-    targetKategori: "ESELON_2_3",
+    targetPeserta: "Seluruh Perangkat Daerah / Pegawai",
+    targetKategori: "SEMUA_OPD",
     jamBuka: "07:30",
     jamTutup: "14:00",
     requireLocation: true,
@@ -60,11 +60,12 @@ export default function ModalBuatAgenda({
   };
 
   const handleTargetKategoriChange = (kat: string) => {
-    let targetLabel = "Eselon II.b dan III.a";
-    if (kat === "ESELON_2") targetLabel = "Khusus Pegawai Eselon II (Kepala OPD)";
+    let targetLabel = "Seluruh Perangkat Daerah / Pegawai";
+    if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / Pegawai";
+    else if (kat === "ESELON_2_3") targetLabel = "OPD Utama (Eselon II & III)";
+    else if (kat === "ESELON_2") targetLabel = "Khusus Pegawai Eselon II (Kepala OPD)";
     else if (kat === "ESELON_3") targetLabel = "Khusus Pegawai Eselon III (Sekretaris / Kabid)";
     else if (kat === "KECAMATAN") targetLabel = "Camat dan Perangkat Kecamatan";
-    else if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / Pegawai";
 
     setForm((prev) => ({
       ...prev,
@@ -254,11 +255,11 @@ export default function ModalBuatAgenda({
                 onChange={(e) => handleTargetKategoriChange(e.target.value)}
                 className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               >
+                <option value="SEMUA_OPD">Semua / Seluruh Perangkat Daerah & Pegawai</option>
                 <option value="ESELON_2_3">OPD Utama (Eselon II & III)</option>
                 <option value="ESELON_2">Khusus Eselon II (Kepala OPD)</option>
                 <option value="ESELON_3">Khusus Eselon III (Sekretaris/Kabid)</option>
                 <option value="KECAMATAN">Kecamatan se-Kutai Barat</option>
-                <option value="SEMUA_OPD">Seluruh Perangkat Daerah / Pegawai</option>
               </select>
             </div>
 

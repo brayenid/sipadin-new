@@ -280,7 +280,7 @@ export async function createAgendaAbsensi(payload: {
   }
 
   // Filter pegawai sesuai kategori target binding
-  const targetKategori = payload.targetKategori || "ESELON_2_3";
+  const targetKategori = payload.targetKategori || "SEMUA_OPD";
   let targetPegawaiFilter: any = { teamId: session.user.teamId };
 
   if (targetKategori === "CUSTOM" && payload.customPegawaiIds && payload.customPegawaiIds.length > 0) {
@@ -297,20 +297,20 @@ export async function createAgendaAbsensi(payload: {
       { kategoriPegawai: "ESELON_3" },
       { wajibAbsenOpd: true, eselon: { contains: "III", mode: "insensitive" } },
     ];
-  } else if (targetKategori === "KECAMATAN") {
-    targetPegawaiFilter.OR = [
-      { instansi: { contains: "Kecamatan", mode: "insensitive" } },
-      { kategoriPegawai: "KECAMATAN" },
-    ];
-  } else if (targetKategori === "SEMUA_OPD") {
-    targetPegawaiFilter.wajibAbsenOpd = true;
-  } else {
-    // Default: ESELON_2_3
+  } else if (targetKategori === "ESELON_2_3") {
     targetPegawaiFilter.OR = [
       { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
       { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
       { wajibAbsenOpd: true },
     ];
+  } else if (targetKategori === "KECAMATAN") {
+    targetPegawaiFilter.OR = [
+      { instansi: { contains: "Kecamatan", mode: "insensitive" } },
+      { kategoriPegawai: "KECAMATAN" },
+    ];
+  } else {
+    // Default: SEMUA_OPD (Seluruh Perangkat Daerah / Pegawai Wajib Absen)
+    targetPegawaiFilter.wajibAbsenOpd = true;
   }
 
   const pejabatTerdaftar = await prisma.pegawai.findMany({
@@ -336,7 +336,7 @@ export async function createAgendaAbsensi(payload: {
         waktu: payload.waktu || "09:00 WITA",
         tempat: payload.tempat,
         deskripsi: payload.deskripsi || null,
-        targetPeserta: payload.targetPeserta || "Eselon II.b dan III.a",
+        targetPeserta: payload.targetPeserta || (targetKategori === "SEMUA_OPD" ? "Seluruh Perangkat Daerah / Pegawai" : "Eselon II.b dan III.a"),
         targetKategori,
         isPublicActive: true,
         waktuBukaAbsen: waktuBuka,
@@ -813,6 +813,8 @@ export async function updateKehadiranPesertaBatch(
     requireLocation?: boolean;
     requirePhoto?: boolean;
     allowNonPeserta?: boolean;
+    targetKategori?: string;
+    targetPeserta?: string;
     publicToken?: string;
     picPegawaiId?: string | null;
     picNama?: string | null;
@@ -844,6 +846,13 @@ export async function updateKehadiranPesertaBatch(
 
     if (extraAgendaData) {
       const agendaUpdatePayload: any = {};
+
+      if (extraAgendaData.targetKategori !== undefined) {
+        agendaUpdatePayload.targetKategori = extraAgendaData.targetKategori;
+      }
+      if (extraAgendaData.targetPeserta !== undefined) {
+        agendaUpdatePayload.targetPeserta = extraAgendaData.targetPeserta;
+      }
 
       if (extraAgendaData.publicToken !== undefined) {
         const cleanSlug = generateSlug(extraAgendaData.publicToken).slice(0, 80);

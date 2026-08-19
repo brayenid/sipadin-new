@@ -70,6 +70,7 @@ PANDUAN RESPON FITUR:
      b. AGENDA ABSENSI OPD (Presensi Publik Mandiri dengan Link):
         * Pemicu: User menyebut "absen", "presensi", "daftar hadir", "link absen", "form kehadiran", "rakor OPD", "selfie", "gps", atau minta link pengisian.
         * PENGATURAN FORM PRESENSI BISA DIATUR LANGSUNG VIA CHAT:
+          - Target Peserta / Kategori: Default 'Semua / Seluruh Perangkat Daerah & Pegawai' (targetKategori: 'SEMUA_OPD'). Jika user minta khusus (misal 'khusus eselon 2', 'khusus camat/kecamatan', 'eselon 2 dan 3'), sesuaikan targetKategori & targetPeserta.
           - Wajib Selfie/Foto: Default 'Ya' (requirePhoto: true). Jika user minta "tanpa selfie" / "tanpa foto", set requirePhoto: false.
           - Wajib GPS/Lokasi: Default 'Ya' (requireLocation: true). Jika user minta "tanpa GPS" / "tidak wajib GPS" / "bebas lokasi", set requireLocation: false.
           - Peserta di luar daftar: Default 'Boleh' (allowNonPeserta: true).

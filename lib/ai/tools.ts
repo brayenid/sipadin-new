@@ -209,8 +209,8 @@ export const AI_TOOLS_SCHEMA = [
           waktuSelesai: { type: "string", description: "Waktu selesai misal '12:00' (opsional)." },
           tempat: { type: "string", description: "Tempat / lokasi acara presensi." },
           deskripsi: { type: "string", description: "Keterangan atau deskripsi kegiatan (opsional)." },
-          targetPeserta: { type: "string", description: "Target peserta, default 'Eselon II.b dan III.a' (opsional)." },
-          targetKategori: { type: "string", enum: ["ESELON_2", "ESELON_3", "ESELON_2_3", "SEMUA_OPD", "KECAMATAN", "CUSTOM"], description: "Kategori binding peserta OPD." },
+          targetPeserta: { type: "string", description: "Target peserta, default 'Seluruh Perangkat Daerah / Pegawai' (opsional)." },
+          targetKategori: { type: "string", enum: ["SEMUA_OPD", "ESELON_2", "ESELON_3", "ESELON_2_3", "KECAMATAN", "CUSTOM"], description: "Kategori binding peserta OPD. Default: 'SEMUA_OPD'." },
           requirePhoto: { type: "boolean", description: "Wajibkan foto selfie/kamera saat mengisi absen (default: true). Jika pengguna minta tanpa selfie/foto, set false." },
           requireLocation: { type: "boolean", description: "Wajibkan verifikasi lokasi GPS saat mengisi absen (default: true). Jika pengguna minta tanpa GPS/lokasi bebas, set false." },
           allowNonPeserta: { type: "boolean", description: "Izinkan peserta di luar daftar undangan/OPD mengisi hadir (default: true). Jika khusus yang terdaftar saja, set false." },
@@ -1048,8 +1048,10 @@ export async function executeToolCall(
         const waktuSelesai = args.waktuSelesai ? String(args.waktuSelesai).trim() : null;
         const tempat = args.tempat ? String(args.tempat).trim() : "Aula Kantor";
         const deskripsi = args.deskripsi ? String(args.deskripsi).trim() : null;
-        const targetPeserta = args.targetPeserta ? String(args.targetPeserta).trim() : "Eselon II.b dan III.a";
-        const targetKategori = args.targetKategori || "ESELON_2_3";
+        const targetKategori = args.targetKategori || "SEMUA_OPD";
+        const targetPeserta = args.targetPeserta
+          ? String(args.targetPeserta).trim()
+          : (targetKategori === "SEMUA_OPD" ? "Seluruh Perangkat Daerah / Pegawai" : "Eselon II.b dan III.a");
         const requirePhoto = typeof args.requirePhoto === "boolean" ? args.requirePhoto : true;
         const requireLocation = typeof args.requireLocation === "boolean" ? args.requireLocation : true;
         const allowNonPeserta = typeof args.allowNonPeserta === "boolean" ? args.allowNonPeserta : true;
@@ -1130,15 +1132,37 @@ export async function executeToolCall(
 
         // 3. Pre-populate daftar pejabat eselon/OPD
         try {
+          let targetPegawaiFilter: any = { teamId: effectiveTeamId };
+          if (targetKategori === "ESELON_2") {
+            targetPegawaiFilter.OR = [
+              { eselon: { in: ["II.a", "II.b", "II"] } },
+              { kategoriPegawai: "ESELON_2" },
+              { wajibAbsenOpd: true, eselon: { contains: "II", mode: "insensitive" } },
+            ];
+          } else if (targetKategori === "ESELON_3") {
+            targetPegawaiFilter.OR = [
+              { eselon: { in: ["III.a", "III.b", "III"] } },
+              { kategoriPegawai: "ESELON_3" },
+              { wajibAbsenOpd: true, eselon: { contains: "III", mode: "insensitive" } },
+            ];
+          } else if (targetKategori === "ESELON_2_3") {
+            targetPegawaiFilter.OR = [
+              { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
+              { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
+              { wajibAbsenOpd: true },
+            ];
+          } else if (targetKategori === "KECAMATAN") {
+            targetPegawaiFilter.OR = [
+              { instansi: { contains: "Kecamatan", mode: "insensitive" } },
+              { kategoriPegawai: "KECAMATAN" },
+            ];
+          } else {
+            // Default: SEMUA_OPD
+            targetPegawaiFilter.wajibAbsenOpd = true;
+          }
+
           const pejabatTerdaftar = await prisma.pegawai.findMany({
-            where: {
-              teamId: effectiveTeamId,
-              OR: [
-                { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
-                { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
-                { wajibAbsenOpd: true },
-              ],
-            },
+            where: targetPegawaiFilter,
             orderBy: [{ urutanOpd: "asc" }, { instansi: "asc" }, { nama: "asc" }],
           });
 
