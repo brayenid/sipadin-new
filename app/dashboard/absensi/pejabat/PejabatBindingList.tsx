@@ -349,7 +349,7 @@ export default function PejabatBindingList({
 
         <CardContent className="p-4 sm:p-6 space-y-4">
           {/* Filter Bar */}
-          <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
@@ -391,64 +391,12 @@ export default function PejabatBindingList({
                 <option value="WAJIB">Hanya Wajib Absen</option>
                 <option value="TIDAK_WAJIB">Belum Wajib Absen</option>
               </select>
-
-              <div className="flex items-center gap-1 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSelectAllFilter(true)}
-                  disabled={pagination.totalItems === 0 || applyingBulkFilter}
-                  className="h-9 text-xs text-indigo-700 hover:bg-white hover:text-indigo-800 font-bold"
-                  title="Tandai seluruh pegawai hasil filter ini sebagai Wajib Absen"
-                >
-                  {applyingBulkFilter ? (
-                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                  ) : (
-                    <UserCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  )}
-                  Pilih Semua ({pagination.totalItems.toLocaleString("id-ID")})
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSelectAllFilter(false)}
-                  disabled={pagination.totalItems === 0 || applyingBulkFilter}
-                  className="h-9 text-xs text-slate-600 hover:bg-slate-100 font-medium"
-                  title="Batalkan Wajib Absen untuk seluruh pegawai hasil filter ini"
-                >
-                  <UserX className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                  Batal Semua
-                </Button>
-              </div>
             </div>
           </div>
 
-          {/* Smart Banner: Jika user centang halaman ini dan total filter lebih banyak */}
-          {allCurrentPageSelected && pagination.totalItems > internalList.length && (
-            <div className="bg-indigo-50 border border-indigo-200/80 rounded-lg p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-indigo-900 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px]">
-                  Info
-                </Badge>
-                <span>
-                  Semua <strong>{internalList.length}</strong> pegawai di halaman ini telah dipilih. Ingin memilih <strong>seluruh {pagination.totalItems.toLocaleString("id-ID")} pegawai</strong> hasil filter saat ini?
-                </span>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => handleSelectAllFilter(true)}
-                disabled={applyingBulkFilter}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 text-xs font-bold shrink-0 shadow-xs"
-              >
-                {applyingBulkFilter ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Pilih Seluruh {pagination.totalItems.toLocaleString("id-ID")} Pegawai
-              </Button>
-            </div>
-          )}
-
           {/* Tabel Pegawai */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto relative">
-            {isPending && (
+            {(isPending || applyingBulkFilter) && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
                 <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
               </div>
@@ -457,18 +405,21 @@ export default function PejabatBindingList({
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
                   <TableHead className="w-12 text-center text-xs">No</TableHead>
-                  <TableHead className="w-20 text-center text-xs">
+                  <TableHead className="min-w-[130px] text-center text-xs">
                     <div
-                      className="flex items-center justify-center gap-1 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
-                      onClick={() => handleSelectAllCurrentPage(!allCurrentPageSelected)}
-                      title={allCurrentPageSelected ? "Hapus centang yang tampil" : "Centang semua yang tampil"}
+                      className="flex items-center justify-center gap-1.5 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
+                      onClick={() => handleSelectAllFilter(!allCurrentPageSelected)}
+                      title={allCurrentPageSelected ? "Batalkan semua wajib absen hasil filter" : "Pilih semua wajib absen hasil filter"}
                     >
                       <Checkbox
                         checked={allCurrentPageSelected}
-                        onCheckedChange={(checked) => handleSelectAllCurrentPage(Boolean(checked))}
-                        aria-label="Pilih Semua yang Ditampilkan"
+                        onCheckedChange={(checked) => handleSelectAllFilter(Boolean(checked))}
+                        aria-label="Pilih Semua"
                         className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                       />
+                      <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">
+                        PILIH SEMUA
+                      </span>
                     </div>
                   </TableHead>
                   <TableHead className="text-xs">Nama Pegawai</TableHead>
