@@ -112,6 +112,9 @@ model Pegawai {
   kehadiranItems KehadiranPeserta[]
 
   @@unique([nip, teamId])
+  @@index([teamId, nama])
+  @@index([teamId, wajibAbsenOpd])
+  @@index([teamId, instansi])
 }
 
 model VendorPihakKetiga {

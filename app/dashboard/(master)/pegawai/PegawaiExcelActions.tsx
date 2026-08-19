@@ -31,6 +31,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number; batch: number; totalBatches: number } | null>(null);
 
   // EXPORT EXCEL
   const handleExport = () => {
@@ -58,40 +59,65 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
       { wch: 20 }, // NIP
       { wch: 30 }, // Nama
       { wch: 15 }, // Pangkat
-      { wch: 10 }, // Golongan
-      { wch: 25 }, // Jabatan
-      { wch: 25 }, // Instansi
-      { wch: 12 }, // Eselon
+      { wch: 15 }, // Golongan
+      { wch: 35 }, // Jabatan
+      { wch: 35 }, // Instansi
+      { wch: 10 }, // Eselon
     ];
 
-    XLSX.writeFile(workbook, "Data_Pegawai_SIPADIN.xlsx");
-    toast.success("Berhasil mengunduh data pegawai");
+    XLSX.writeFile(workbook, `Data_Pegawai_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   // DOWNLOAD TEMPLATE
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        NIP: "199001012020121001",
-        "Nama Lengkap": "Dr. Budi Santoso, S.Kom",
-        Pangkat: "Penata Tk. I",
-        Golongan: "III/d",
-        Jabatan: "Kepala Bidang E-Gov",
-        Instansi: "Sekretariat Daerah",
-        Eselon: "III.a",
+        NIP: "198001012005011001",
+        "Nama Lengkap": "Budi Santoso, S.Kom",
+        Pangkat: "Penata",
+        Golongan: "III/c",
+        Jabatan: "Pranata Komputer Ahli Muda",
+        Instansi: "Dinas Komunikasi dan Informatika",
+        Eselon: "",
       },
+      {
+        NIP: "198502022010012002",
+        "Nama Lengkap": "Siti Rahma, S.E.",
+        Pangkat: "Penata Muda Tk. I",
+        Golongan: "III/b",
+        Jabatan: "Bendahara Pengeluaran",
+        Instansi: "Sekretariat Daerah",
+        Eselon: "",
+      },
+      {
+        NIP: "",
+        "Nama Lengkap": "Ahmad Yani",
+        Pangkat: "",
+        Golongan: "",
+        Jabatan: "Tenaga Teknis (Non-ASN)",
+        Instansi: "Bagian Umum",
+        Eselon: "",
+      }
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
 
-    worksheet["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 25 }, { wch: 12 }];
+    worksheet["!cols"] = [
+      { wch: 22 }, // NIP
+      { wch: 30 }, // Nama Lengkap
+      { wch: 20 }, // Pangkat
+      { wch: 12 }, // Golongan
+      { wch: 35 }, // Jabatan
+      { wch: 35 }, // Instansi
+      { wch: 10 }, // Eselon
+    ];
 
     XLSX.writeFile(workbook, "Template_Import_Pegawai.xlsx");
   };
 
-  // IMPORT EXCEL
+  // IMPORT EXCEL DENGAN CHUNKING BATCHING (Mendukung hingga ribuan data)
   const handleImport = async () => {
     if (!file) {
       toast.error("Pilih file excel terlebih dahulu");
@@ -99,6 +125,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
     }
 
     setLoading(true);
+    setProgress(null);
     try {
       const dataBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(dataBuffer, { type: "array" });
@@ -112,33 +139,57 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
       }
 
       const formattedData = jsonData.map((row) => ({
-        nip: row["NIP"]?.toString() || null,
-        nama: row["Nama Lengkap"]?.toString() || "",
-        pangkat: row["Pangkat"]?.toString() || null,
-        golongan: row["Golongan"]?.toString() || null,
-        jabatan: row["Jabatan"]?.toString() || "",
-        instansi: row["Instansi"]?.toString() || null,
-        eselon: row["Eselon"]?.toString() || null,
+        nip: row["NIP"]?.toString().trim() || null,
+        nama: row["Nama Lengkap"]?.toString().trim() || "",
+        pangkat: row["Pangkat"]?.toString().trim() || null,
+        golongan: row["Golongan"]?.toString().trim() || null,
+        jabatan: row["Jabatan"]?.toString().trim() || "",
+        instansi: row["Instansi"]?.toString().trim() || null,
+        eselon: row["Eselon"]?.toString().trim() || null,
       })).filter(item => item.nama && item.jabatan); // Hapus baris yang kosong
 
       if (formattedData.length === 0) {
         throw new Error("Tidak ada data valid yang bisa diimport. Pastikan kolom Nama Lengkap dan Jabatan terisi.");
       }
 
-      const result = await importPegawaiExcel(formattedData);
+      const CHUNK_SIZE = 500;
+      const totalBatches = Math.ceil(formattedData.length / CHUNK_SIZE);
+      let totalInserted = 0;
+      let totalUpdated = 0;
+      let totalSkipped = 0;
+
+      for (let i = 0; i < formattedData.length; i += CHUNK_SIZE) {
+        const chunk = formattedData.slice(i, i + CHUNK_SIZE);
+        const batchNum = Math.floor(i / CHUNK_SIZE) + 1;
+        const currentCount = Math.min(i + CHUNK_SIZE, formattedData.length);
+
+        setProgress({
+          current: currentCount,
+          total: formattedData.length,
+          batch: batchNum,
+          totalBatches,
+        });
+
+        const result = await importPegawaiExcel(chunk);
+        totalInserted += result.inserted;
+        totalUpdated += result.updated;
+        totalSkipped += result.skipped;
+      }
       
       setIsOpen(false);
       setFile(null);
+      setProgress(null);
       
       toast.success(
-        `Import Selesai! ${result.inserted} data baru, ${result.updated} diperbarui (konflik NIP), ${result.skipped} dilewati.`, 
-        { duration: 6000 }
+        `Import Selesai! ${totalInserted.toLocaleString("id-ID")} data baru, ${totalUpdated.toLocaleString("id-ID")} diperbarui (konflik NIP), ${totalSkipped.toLocaleString("id-ID")} dilewati.`, 
+        { duration: 7000 }
       );
       
     } catch (err: any) {
       toast.error(err.message || "Gagal mengimport data");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -183,6 +234,24 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
                 disabled={loading}
               />
             </div>
+
+            {progress && (
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg space-y-2">
+                <div className="flex justify-between text-xs font-semibold text-indigo-900">
+                  <span>Mengimpor batch {progress.batch} dari {progress.totalBatches}...</span>
+                  <span>{Math.round((progress.current / progress.total) * 100)}%</span>
+                </div>
+                <div className="w-full h-2 bg-indigo-200/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 transition-all duration-300 rounded-full"
+                    style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-indigo-700 text-center">
+                  Memproses {progress.current.toLocaleString("id-ID")} dari {progress.total.toLocaleString("id-ID")} data pegawai
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 mt-4">
@@ -191,7 +260,7 @@ export default function PegawaiExcelActions({ data }: { data: Pegawai[] }) {
             </Button>
             <Button onClick={handleImport} disabled={!file || loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Mulai Import
+              {loading ? "Mengimpor..." : "Mulai Import"}
             </Button>
           </div>
         </DialogContent>

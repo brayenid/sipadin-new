@@ -160,81 +160,85 @@ export async function importPegawaiExcel(
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
-  let inserted = 0;
-  let updated = 0;
-  let skipped = 0;
+  const validData = data.filter((item) => item.nama?.trim() && item.jabatan?.trim());
+  const skipped = data.length - validData.length;
 
+  if (validData.length === 0) {
+    return { inserted: 0, updated: 0, skipped };
+  }
+
+  // 1. Kumpulkan semua NIP unik yang ada di batch ini untuk single bulk query
+  const nips = Array.from(
+    new Set(validData.map((d) => d.nip?.trim()).filter((nip): nip is string => Boolean(nip)))
+  );
+
+  // 2. Ambil data pegawai eksisting berdasarkan NIP dalam 1 query (High Performance)
+  const existingPegawais = nips.length > 0
+    ? await prisma.pegawai.findMany({
+        where: {
+          teamId: session.user.teamId,
+          nip: { in: nips },
+        },
+        select: { id: true, nip: true },
+      })
+    : [];
+
+  const existingMap = new Map<string, string>();
+  existingPegawais.forEach((p) => {
+    if (p.nip) existingMap.set(p.nip, p.id);
+  });
+
+  const toInsert: any[] = [];
+  const toUpdate: { id: string; data: any }[] = [];
+  const seenNipInBatch = new Set<string>();
+
+  for (const item of validData) {
+    const nipTrimmed = item.nip?.trim() || null;
+    const itemData = {
+      nama: item.nama.trim(),
+      pangkat: item.pangkat?.trim() || null,
+      golongan: item.golongan?.trim() || null,
+      jabatan: item.jabatan.trim(),
+      instansi: item.instansi?.trim() || "Sekretariat Daerah",
+      eselon: item.eselon?.trim() || null,
+    };
+
+    if (nipTrimmed && existingMap.has(nipTrimmed)) {
+      toUpdate.push({
+        id: existingMap.get(nipTrimmed)!,
+        data: itemData,
+      });
+    } else if (nipTrimmed && seenNipInBatch.has(nipTrimmed)) {
+      // Jika NIP duplikat di dalam file excel yang sama, masukkan ke update
+      continue;
+    } else {
+      if (nipTrimmed) seenNipInBatch.add(nipTrimmed);
+      toInsert.push({
+        nip: nipTrimmed,
+        ...itemData,
+        teamId: session.user.teamId,
+      });
+    }
+  }
+
+  // 3. Eksekusi insert bulk dan update dalam transaksi
   await prisma.$transaction(async (tx) => {
-    for (const item of data) {
-      if (!item.nama.trim() || !item.jabatan.trim()) {
-        skipped++;
-        continue;
-      }
-
-      // Resolusi Konflik Berdasarkan NIP
-      // Jika NIP diisi, kita cek apakah sudah ada NIP yang sama di dalam tim ini
-      if (item.nip && item.nip.trim() !== "") {
-        const existing = await tx.pegawai.findUnique({
-          where: {
-            nip_teamId: {
-              nip: item.nip.trim(),
-              teamId: session.user.teamId,
-            }
-          }
-        });
-
-        if (existing) {
-          // Update data yang sudah ada
-          await tx.pegawai.update({
-            where: { id: existing.id },
-            data: {
-              nama: item.nama,
-              pangkat: item.pangkat || null,
-              golongan: item.golongan || null,
-              jabatan: item.jabatan,
-              instansi: item.instansi || "Sekretariat Daerah",
-              eselon: item.eselon || null,
-            },
-          });
-          updated++;
-        } else {
-          // Insert data baru
-          await tx.pegawai.create({
-            data: {
-              nip: item.nip.trim(),
-              nama: item.nama,
-              pangkat: item.pangkat || null,
-              golongan: item.golongan || null,
-              jabatan: item.jabatan,
-              instansi: item.instansi || "Sekretariat Daerah",
-              eselon: item.eselon || null,
-              teamId: session.user.teamId,
-            },
-          });
-          inserted++;
-        }
-      } else {
-        // Jika tidak ada NIP, selalu insert baru karena tidak bisa dilacak untuk conflict resolution
-        await tx.pegawai.create({
-          data: {
-            nip: null,
-            nama: item.nama,
-            pangkat: item.pangkat || null,
-            golongan: item.golongan || null,
-            jabatan: item.jabatan,
-            instansi: item.instansi || "Sekretariat Daerah",
-            eselon: item.eselon || null,
-            teamId: session.user.teamId,
-          },
-        });
-        inserted++;
-      }
+    if (toInsert.length > 0) {
+      await tx.pegawai.createMany({
+        data: toInsert,
+      });
+    }
+    for (const up of toUpdate) {
+      await tx.pegawai.update({
+        where: { id: up.id },
+        data: up.data,
+      });
     }
   }, {
     maxWait: 5000,
-    timeout: 60000
+    timeout: 30000,
   });
 
   revalidatePath("/dashboard/pegawai");
-  return { inserted, updated, skipped };
+  return { inserted: toInsert.length, updated: toUpdate.length, skipped };
 }
