@@ -244,6 +244,11 @@ async function callGeminiNativeFallback(
     const nameMatch = prompt.replace(/nip/gi, "").trim();
     directDataText = await executeToolCall("lookup_nip_direct", { nama: nameMatch }, "gemini_fallback", contextTeamId);
     toolsExecuted.push("lookup_nip_direct");
+  } else if (lower.includes("perjadin") || lower.includes("perjalanan dinas") || (lower.includes("rekap") && lower.includes("dinas")) || lower.includes("berapa kali dinas") || lower.includes("sering dinas")) {
+    const { executeToolCall } = await import("./tools");
+    const nameMatch = prompt.replace(/rekap|perjalanan|dinas|perjadin|berapa|kali|siapa|paling|sering|total|tolong|cek/gi, "").trim();
+    directDataText = await executeToolCall("get_rekap_perjalanan_dinas", { nama: nameMatch || undefined }, "gemini_fallback", contextTeamId);
+    toolsExecuted.push("get_rekap_perjalanan_dinas");
   }
 
   // Model Gemini yang stabil

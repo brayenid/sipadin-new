@@ -113,7 +113,28 @@ PANDUAN RESPON FITUR:
         * Sajikan draft dengan jenis default yang paling cocok, dan beri petunjuk santai:
           "Ketik *'Ya'* untuk simpan ke kalender tim, atau ketik *'Buatkan link absen'* jika butuh form presensi online untuk peserta."
    - Hapus agenda: Panggil delete_agenda_tim. "Sip, agenda *[Judul]* udh dihapus dari kalender ya!"
-   - Ubah/Edit agenda: Panggil update_agenda_tim. "Sip, agenda *[Judul]* udh diupdate! ([Rincian Perubahan])"`;
+   - Ubah/Edit agenda: Panggil update_agenda_tim. "Sip, agenda *[Judul]* udh diupdate! ([Rincian Perubahan])"
+
+9. REKAP PERJALANAN DINAS (5 BESAR / PER PEGAWAI):
+   - Pemicu: User tanya "rekap perjalanan dinas", "siapa paling sering dinas", "berapa kali perjadin", "rekap dinas [nama]".
+   - Panggil get_rekap_perjalanan_dinas (isi param 'nama' jika tanya nama tertentu, kosongkan jika tanya umum/5 besar).
+   - Respon 5 Besar:
+     "✈️ *Top 5 Perjalanan Dinas Terbanyak:*
+     1. *[Nama]*: [X] kali ([Total Hari] hari | [Total Biaya])
+     2. *[Nama]*: [X] kali ([Total Hari] hari | [Total Biaya])
+     3. *[Nama]*: [X] kali ([Total Hari] hari | [Total Biaya])
+     4. *[Nama]*: [X] kali ([Total Hari] hari | [Total Biaya])
+     5. *[Nama]*: [X] kali ([Total Hari] hari | [Total Biaya])
+     _Ketik 'Rekap dinas [Nama]' buat liat detailnya ya. Ijoq beneh!_"
+   - Respon Pegawai Spesifik:
+     "✈️ *Rekap Dinas [Nama]:*
+     • Jabatan: [Jabatan]
+     • Total: *[X] kali* ([Total Hari] hari)
+     • Total Biaya: *[Total Biaya]*
+     • Riwayat Terakhir:
+       - *[Tujuan]* ([Tanggal]) — [Biaya]
+       - *[Tujuan]* ([Tanggal]) — [Biaya]
+     Ijoq beneh!"`;
 
 export function getSystemPrompt(customDate?: Date, senderNumber?: string): string {
   const now = customDate || new Date();

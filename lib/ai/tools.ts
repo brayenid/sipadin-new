@@ -257,6 +257,20 @@ export const AI_TOOLS_SCHEMA = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_rekap_perjalanan_dinas",
+      description: "Ambil rekap total perjalanan dinas (frekuensi/berapa kali dinas & total biaya per pegawai). Jika nama diisi: tampilkan rekap spesifik pegawai tersebut. Jika nama dikosongkan: tampilkan 5 besar pegawai yang paling sering perjalanan dinas.",
+      parameters: {
+        type: "object",
+        properties: {
+          nama: { type: "string", description: "Nama atau kata kunci pegawai yang dicari (opsional, kosongkan untuk melihat 5 besar)." },
+          tahun: { type: "string", description: "Tahun anggaran (opsional, misal '2026')." },
+        },
+      },
+    },
+  },
 ];
 
 function formatWitaDate(d: Date | string | null | undefined): string {
@@ -1339,6 +1353,185 @@ export async function executeToolCall(
           lokasi: updated.lokasi || "-",
           perubahan: changeDescriptions.join(", ") || "Data berhasil diperbarui",
           message: `Agenda *${updated.judul}* berhasil diperbarui.`,
+        });
+      }
+
+      // 16. GET REKAP PERJALANAN DINAS (5 BESAR / PER PEGAWAI)
+      case "get_rekap_perjalanan_dinas": {
+        const namaQuery = args.nama ? String(args.nama).trim() : "";
+        const tahunQuery = args.tahun ? String(args.tahun).trim() : "";
+
+        const spjWhereFilter: any = {
+          isDeleted: false,
+          jenisSpj: "PERJADIN",
+          ...(contextTeamId ? { teamId: contextTeamId } : {}),
+        };
+
+        if (tahunQuery) {
+          spjWhereFilter.kodeRekening = {
+            subKegiatan: {
+              kegiatan: {
+                tahunAnggaran: { tahun: tahunQuery },
+              },
+            },
+          };
+        }
+
+        // Ambil semua roster perjalanan dinas beserta SPJ dan pengeluarannya
+        const rosterItems = await prisma.spjRosterItem.findMany({
+          where: {
+            spj: spjWhereFilter,
+            ...(namaQuery
+              ? {
+                  OR: [
+                    { nama: { contains: namaQuery, mode: "insensitive" } },
+                    { pegawai: { nama: { contains: namaQuery, mode: "insensitive" } } },
+                  ],
+                }
+              : {}),
+          },
+          include: {
+            pengeluaranDetails: { select: { hargaSatuan: true, faktorPengali: true } },
+            spj: {
+              select: {
+                id: true,
+                perihal: true,
+                tanggalSpj: true,
+                perjadinDetail: {
+                  select: {
+                    tempatBerangkat: true,
+                    tempatTujuan: true,
+                    tglBerangkat: true,
+                    tglKembali: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { spj: { tanggalSpj: "desc" } },
+        });
+
+        if (rosterItems.length === 0) {
+          return JSON.stringify({
+            found: false,
+            message: namaQuery
+              ? `Tidak ditemukan data perjalanan dinas untuk pegawai '${namaQuery}'.`
+              : "Belum ada data perjalanan dinas yang tercatat.",
+          });
+        }
+
+        // Agregasi per pegawai (berdasarkan pegawaiId / nama)
+        const mapPegawai = new Map<
+          string,
+          {
+            nama: string;
+            nip: string;
+            jabatan: string;
+            totalPerjadin: number;
+            totalHari: number;
+            totalNominal: bigint;
+            trips: {
+              perihal: string;
+              tujuan: string;
+              tgl: string;
+              nominal: bigint;
+            }[];
+          }
+        >();
+
+        for (const item of rosterItems) {
+          const key = item.pegawaiId || item.nama.trim().toLowerCase();
+          let current = mapPegawai.get(key);
+          if (!current) {
+            current = {
+              nama: item.nama,
+              nip: item.nip || "-",
+              jabatan: item.jabatan || "-",
+              totalPerjadin: 0,
+              totalHari: 0,
+              totalNominal: BigInt(0),
+              trips: [],
+            };
+            mapPegawai.set(key, current);
+          }
+
+          current.totalPerjadin += 1;
+
+          // Hitung pengeluaran untuk orang ini
+          let itemNominal = BigInt(0);
+          for (const d of item.pengeluaranDetails) {
+            const pengali = (d.faktorPengali as { value: number }[] | undefined)?.reduce(
+              (acc, f) => acc * (parseInt(String(f.value)) || 1),
+              1
+            ) || 1;
+            itemNominal += BigInt(d.hargaSatuan.toString()) * BigInt(pengali);
+          }
+          current.totalNominal += itemNominal;
+
+          // Trip info
+          if (item.spj.perjadinDetail) {
+            const tglB = item.spj.perjadinDetail.tglBerangkat;
+            const tglK = item.spj.perjadinDetail.tglKembali;
+            const hari = Math.max(1, Math.round((tglK.getTime() - tglB.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+            current.totalHari += hari;
+
+            if (current.trips.length < 5) {
+              current.trips.push({
+                perihal: item.spj.perihal || "Dinas Luar",
+                tujuan: item.spj.perjadinDetail.tempatTujuan || "-",
+                tgl: `${formatWita(tglB, "dd MMM yyyy")}`,
+                nominal: itemNominal,
+              });
+            }
+          }
+        }
+
+        const aggregated = Array.from(mapPegawai.values()).sort((a, b) => {
+          if (b.totalPerjadin !== a.totalPerjadin) {
+            return b.totalPerjadin - a.totalPerjadin;
+          }
+          return Number(b.totalNominal - a.totalNominal);
+        });
+
+        // 1. Jika pengguna menanyakan nama spesifik
+        if (namaQuery) {
+          const target = aggregated[0];
+          return JSON.stringify({
+            found: true,
+            mode: "DETAIL_PEGAWAI",
+            nama: target.nama,
+            nip: target.nip,
+            jabatan: target.jabatan,
+            totalPerjadin: `${target.totalPerjadin} kali`,
+            totalHari: `${target.totalHari} hari`,
+            totalBiaya: `Rp ${Number(target.totalNominal).toLocaleString("id-ID")}`,
+            riwayatTerakhir: target.trips.map((t, idx) => ({
+              no: idx + 1,
+              tujuan: t.tujuan,
+              perihal: t.perihal,
+              tanggal: t.tgl,
+              biaya: `Rp ${Number(t.nominal).toLocaleString("id-ID")}`,
+            })),
+          });
+        }
+
+        // 2. Jika tanya rekap umum (Tampilkan 5 Besar)
+        const top5 = aggregated.slice(0, 5).map((p, idx) => ({
+          rank: idx + 1,
+          nama: p.nama,
+          jabatan: p.jabatan,
+          totalPerjadin: `${p.totalPerjadin} kali`,
+          totalHari: `${p.totalHari} hari`,
+          totalBiaya: `Rp ${Number(p.totalNominal).toLocaleString("id-ID")}`,
+          tujuanTerakhir: p.trips[0]?.tujuan || "-",
+        }));
+
+        return JSON.stringify({
+          found: true,
+          mode: "LEADERBOARD_TOP5",
+          totalPegawaiDinas: aggregated.length,
+          top5,
+          hint: "Untuk melihat riwayat lengkap pegawai tertentu, ketik: 'Rekap dinas [Nama Pegawai]'",
         });
       }
 
