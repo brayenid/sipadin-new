@@ -12,6 +12,11 @@ export type LaporanHasilAgendaData = {
   targetLatitude?: number | null;
   targetLongitude?: number | null;
   radiusMeter?: number | null;
+  pic?: {
+    nama?: string | null;
+    nip?: string | null;
+    jabatan?: string | null;
+  } | null;
   peserta: {
     nama: string;
     nip?: string | null;
@@ -115,7 +120,7 @@ const styles = StyleSheet.create({
   analysisBox: {
     marginBottom: 12,
     padding: 7,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: "#000000",
     backgroundColor: "#ffffff",
   },
@@ -125,7 +130,7 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     textTransform: "uppercase",
     marginBottom: 5,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 1,
     borderBottomColor: "#000000",
     paddingBottom: 2.5,
   },
@@ -157,21 +162,21 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: "row",
-    borderTopWidth: 0.5,
-    borderBottomWidth: 0.5,
-    borderLeftWidth: 0.5,
-    borderRightWidth: 0.5,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: "#000000",
     minHeight: 22,
     backgroundColor: "#ffffff",
   },
   dataRow: {
     flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderLeftWidth: 0.5,
-    borderRightWidth: 0.5,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: "#000000",
-    minHeight: 22,
+    minHeight: 26,
     backgroundColor: "#ffffff",
   },
   thCell: {
@@ -206,7 +211,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   borderRight: {
-    borderRightWidth: 0.5,
+    borderRightWidth: 1,
     borderColor: "#000000",
   },
 
@@ -217,6 +222,36 @@ const styles = StyleSheet.create({
   colStatus: { width: "12%" },
   colKeterangan: { width: "20%" },
   colWaktu: { width: "10%" },
+
+  // ── Kolom Tanda Tangan PIC (Opsional) ────────────────────
+  signatureContainer: {
+    marginTop: 20,
+    alignItems: "flex-end",
+    paddingRight: 10,
+  },
+  sigDate: {
+    fontSize: 8.5,
+    marginBottom: 3,
+  },
+  sigJob: {
+    fontSize: 8.5,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+  sigSpacer: {
+    height: 48,
+  },
+  sigName: {
+    fontSize: 8.5,
+    fontWeight: "bold",
+    textDecoration: "underline",
+    textAlign: "right",
+  },
+  sigNip: {
+    fontSize: 8,
+    marginTop: 2,
+    textAlign: "right",
+  },
 });
 
 export default function LaporanHasilAgendaPdf({
@@ -326,7 +361,7 @@ export default function LaporanHasilAgendaPdf({
         </View>
 
         {/* Laporan Analisis Geolokasi Kedinasan */}
-        <View style={styles.analysisBox}>
+        <View style={styles.analysisBox} wrap={false}>
           <Text style={styles.analysisHeader}>
             RINGKASAN ANALISIS GEOLOKASI DAN KESESUAIAN PRESENSI
           </Text>
@@ -480,6 +515,25 @@ export default function LaporanHasilAgendaPdf({
             );
           })}
         </View>
+
+        {/* Kolom Tanda Tangan PIC (Opsional) */}
+        {data.pic?.nama && (
+          <View style={styles.signatureContainer} wrap={false}>
+            <Text style={styles.sigDate}>
+              Sendawar, {data.tanggalLabel}
+            </Text>
+            <Text style={styles.sigJob}>
+              {data.pic.jabatan || "Pejabat Penanggung Jawab"}
+            </Text>
+            <View style={styles.sigSpacer} />
+            <Text style={styles.sigName}>
+              {data.pic.nama}
+            </Text>
+            {data.pic.nip && (
+              <Text style={styles.sigNip}>NIP. {data.pic.nip}</Text>
+            )}
+          </View>
+        )}
       </Page>
     </Document>
   );

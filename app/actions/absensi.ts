@@ -811,6 +811,10 @@ export async function updateKehadiranPesertaBatch(
     requirePhoto?: boolean;
     allowNonPeserta?: boolean;
     publicToken?: string;
+    picPegawaiId?: string | null;
+    picNama?: string | null;
+    picNip?: string | null;
+    picJabatan?: string | null;
   }
 ) {
   const session = await auth();
@@ -870,6 +874,18 @@ export async function updateKehadiranPesertaBatch(
       }
       if (extraAgendaData.allowNonPeserta !== undefined) {
         agendaUpdatePayload.allowNonPeserta = extraAgendaData.allowNonPeserta;
+      }
+      if (extraAgendaData.picPegawaiId !== undefined) {
+        agendaUpdatePayload.picPegawaiId = extraAgendaData.picPegawaiId;
+      }
+      if (extraAgendaData.picNama !== undefined) {
+        agendaUpdatePayload.picNama = extraAgendaData.picNama;
+      }
+      if (extraAgendaData.picNip !== undefined) {
+        agendaUpdatePayload.picNip = extraAgendaData.picNip;
+      }
+      if (extraAgendaData.picJabatan !== undefined) {
+        agendaUpdatePayload.picJabatan = extraAgendaData.picJabatan;
       }
       if (extraAgendaData.tempat !== undefined) {
         agendaUpdatePayload.tempat = extraAgendaData.tempat;

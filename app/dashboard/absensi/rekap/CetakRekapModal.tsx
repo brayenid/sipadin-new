@@ -42,9 +42,9 @@ export default function CetakRekapModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-6xl w-[90vw] h-[85vh] flex flex-col p-4 sm:p-5">
+      <DialogContent className="w-[94vw] !max-w-[94vw] sm:!max-w-[94vw] h-[92vh] flex flex-col p-4 sm:p-6 bg-white">
         <DialogHeader className="pb-3 border-b shrink-0 flex flex-row items-center justify-between">
-          <DialogTitle className="text-sm sm:text-base font-bold text-slate-900">
+          <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
             Laporan Rekapitulasi Kehadiran
           </DialogTitle>
         </DialogHeader>

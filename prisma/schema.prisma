@@ -348,6 +348,12 @@ model AgendaAbsensi {
   status          StatusAgendaAbsensi  @default(BERLANGSUNG)
   driveUrl        String?              // Tautan Google Drive hasil scan absensi/foto
   
+  // Penandatangan / PIC Agenda (Opsional)
+  picPegawaiId    String?
+  picNama         String?
+  picNip          String?
+  picJabatan      String?
+
   teamId          String
   team            Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdById     String

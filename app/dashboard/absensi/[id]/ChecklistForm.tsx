@@ -55,6 +55,7 @@ import {
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
 import { generateSlug } from "@/lib/utils";
+import { Combobox } from "@/components/ui/combobox";
 import CetakModal from "./CetakModal";
 import ExportLaporanAgendaModal from "./ExportLaporanAgendaModal";
 import ModalTambahPeserta from "./ModalTambahPeserta";
@@ -106,6 +107,10 @@ type Agenda = {
   targetLatitude?: number | null;
   targetLongitude?: number | null;
   radiusMeter?: number | null;
+  picPegawaiId?: string | null;
+  picNama?: string | null;
+  picNip?: string | null;
+  picJabatan?: string | null;
   driveUrl: string | null;
   peserta: Peserta[];
 };
@@ -143,6 +148,10 @@ export default function ChecklistForm({
   const [requirePhoto, setRequirePhoto] = useState<boolean>(agenda.requirePhoto ?? true);
   const [allowNonPeserta, setAllowNonPeserta] = useState<boolean>(agenda.allowNonPeserta ?? true);
   const [publicToken, setPublicToken] = useState<string>(agenda.publicToken || "");
+  const [picPegawaiId, setPicPegawaiId] = useState<string | null>(agenda.picPegawaiId || null);
+  const [picNama, setPicNama] = useState<string>(agenda.picNama || "");
+  const [picNip, setPicNip] = useState<string>(agenda.picNip || "");
+  const [picJabatan, setPicJabatan] = useState<string>(agenda.picJabatan || "");
   const [gettingVenueGps, setGettingVenueGps] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA">("EDIT_AGENDA");
@@ -236,6 +245,10 @@ export default function ChecklistForm({
     setRequirePhoto(agenda.requirePhoto ?? true);
     setAllowNonPeserta(agenda.allowNonPeserta ?? true);
     setPublicToken(agenda.publicToken || "");
+    setPicPegawaiId(agenda.picPegawaiId || null);
+    setPicNama(agenda.picNama || "");
+    setPicNip(agenda.picNip || "");
+    setPicJabatan(agenda.picJabatan || "");
     setJamBuka(agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30");
     setJamTutup(agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00");
   }, [agenda]);
@@ -374,6 +387,10 @@ export default function ChecklistForm({
           requirePhoto,
           allowNonPeserta: allowNonPeserta,
           publicToken: publicToken.trim() || undefined,
+          picPegawaiId: picPegawaiId || null,
+          picNama: picNama.trim() || null,
+          picNip: picNip.trim() || null,
+          picJabatan: picJabatan.trim() || null,
         }
       );
 
@@ -1024,6 +1041,101 @@ export default function ChecklistForm({
             </CardContent>
           </Card>
 
+          {/* ── CARD 4: Pejabat Penandatangan / PIC Laporan (Opsional) ── */}
+          <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_1px_4px_-2px_rgba(0,0,0,0.06)]">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-1 h-4 rounded-full bg-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-slate-700">Pejabat Penandatangan / PIC Laporan (Opsional)</p>
+                  <p className="text-[11px] text-slate-400">
+                    Pilih pegawai yang bertindak sebagai PIC penandatangan pada dokumen laporan hasil presensi kegiatan.
+                  </p>
+                </div>
+              </div>
+              {picNama && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPicPegawaiId(null);
+                    setPicNama("");
+                    setPicNip("");
+                    setPicJabatan("");
+                    toast.info("Penandatangan laporan dikosongkan");
+                  }}
+                  className="h-7 px-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold"
+                >
+                  Reset / Kosongkan
+                </Button>
+              )}
+            </div>
+            <CardContent className="p-4 space-y-3.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Cari & Pilih Pegawai</Label>
+                <Combobox
+                  options={allPegawai.map((p) => ({
+                    value: p.id,
+                    label: `${p.nama} ${p.nip ? `(NIP. ${p.nip})` : ""} - ${p.jabatan}`,
+                    content: (
+                      <div className="py-1">
+                        <div className="font-semibold text-slate-900">{p.nama}</div>
+                        <div className="text-[11px] text-slate-500">{p.jabatan} • {p.instansi}</div>
+                        {p.nip && <div className="text-[10px] text-slate-400 font-mono">NIP: {p.nip}</div>}
+                      </div>
+                    ),
+                  }))}
+                  value={picPegawaiId || ""}
+                  onChange={(val) => {
+                    const selected = allPegawai.find((p) => p.id === val);
+                    if (selected) {
+                      setPicPegawaiId(selected.id);
+                      setPicNama(selected.nama);
+                      setPicNip(selected.nip || "");
+                      setPicJabatan(selected.jabatan);
+                      toast.success(`PIC Penandatangan dipilih: ${selected.nama}`);
+                    }
+                  }}
+                  placeholder="-- Pilih Pejabat Penandatangan (Opsional) --"
+                  emptyText="Pegawai tidak ditemukan."
+                  className="h-9 text-xs bg-white"
+                />
+              </div>
+
+              {picNama && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                  <div>
+                    <span className="text-slate-500 font-medium text-[11px] block">Nama Lengkap:</span>
+                    <Input
+                      value={picNama}
+                      onChange={(e) => setPicNama(e.target.value)}
+                      className="bg-white text-xs h-8 mt-1 border-slate-300 font-semibold text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium text-[11px] block">NIP:</span>
+                    <Input
+                      value={picNip}
+                      onChange={(e) => setPicNip(e.target.value)}
+                      placeholder="NIP. ..."
+                      className="bg-white text-xs h-8 mt-1 border-slate-300 font-mono text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium text-[11px] block">Jabatan:</span>
+                    <Input
+                      value={picJabatan}
+                      onChange={(e) => setPicJabatan(e.target.value)}
+                      placeholder="Jabatan..."
+                      className="bg-white text-xs h-8 mt-1 border-slate-300 text-slate-800"
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* ── Footer: Aksi Hapus Agenda & Simpan ── */}
           <div className="flex items-center justify-between gap-3 px-1 py-1">
             <Button
@@ -1043,30 +1155,35 @@ export default function ChecklistForm({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsCetakOpen(true)}
-                className="text-xs border-slate-300 hover:bg-slate-50 font-semibold"
+                className="text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50"
               >
-                <Printer className="w-3.5 h-3.5 mr-1 text-slate-700" />
+                <Printer className="w-3.5 h-3.5 mr-1 text-slate-500" />
                 Cetak Blanko
               </Button>
 
               <Button
+                type="button"
+                size="sm"
                 onClick={handleSave}
                 disabled={saving}
-                size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs"
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs"
               >
                 {saving ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Menyimpan...
+                  </>
                 ) : (
-                  <Save className="w-3.5 h-3.5 mr-1" />
+                  <>
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                    Simpan Perubahan
+                  </>
                 )}
-                Simpan Perubahan
               </Button>
             </div>
           </div>
         </div>
       )}
-
 
       {activeTab === "PETA_GPS" && (
         <PetaSebaranGps
@@ -1394,6 +1511,9 @@ export default function ChecklistForm({
           targetLatitude,
           targetLongitude,
           radiusMeter,
+          picNama,
+          picNip,
+          picJabatan,
           peserta: pesertaList,
         }}
       />

@@ -211,7 +211,7 @@ export default function AgendaList({
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Pegawai Ter-binding
+                Pegawai Ditetapkan
               </p>
               <p className="text-2xl font-black text-slate-800 mt-0.5">{totalPejabatTerdaftar}</p>
               <Link

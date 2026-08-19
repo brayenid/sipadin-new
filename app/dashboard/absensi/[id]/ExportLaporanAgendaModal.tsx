@@ -8,10 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import LaporanHasilAgendaPdf, { LaporanHasilAgendaData } from "@/pdf/templates/LaporanHasilAgendaPdf";
 import { formatWita } from "@/lib/date-utils";
 
@@ -25,11 +22,6 @@ const PDFViewer = dynamic(
       </div>
     ),
   }
-);
-
-const PDFDownloadLink = dynamic(
-  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  { ssr: false }
 );
 
 export default function ExportLaporanAgendaModal({
@@ -49,6 +41,9 @@ export default function ExportLaporanAgendaModal({
     targetLatitude?: number | null;
     targetLongitude?: number | null;
     radiusMeter?: number | null;
+    picNama?: string | null;
+    picNip?: string | null;
+    picJabatan?: string | null;
     peserta: {
       nama: string;
       nip?: string | null;
@@ -80,6 +75,13 @@ export default function ExportLaporanAgendaModal({
     targetLatitude: agenda.targetLatitude,
     targetLongitude: agenda.targetLongitude,
     radiusMeter: agenda.radiusMeter,
+    pic: agenda.picNama
+      ? {
+          nama: agenda.picNama,
+          nip: agenda.picNip,
+          jabatan: agenda.picJabatan,
+        }
+      : null,
     peserta: agenda.peserta.map((p) => ({
       nama: p.nama,
       nip: p.nip,
@@ -98,62 +100,25 @@ export default function ExportLaporanAgendaModal({
   };
 
   const documentElement = (
-    <LaporanHasilAgendaPdf data={laporanData} pageSize={pageSize} />
+    <LaporanHasilAgendaPdf data={laporanData} pageSize="F4" />
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="!max-w-[94vw] w-[94vw] sm:!max-w-[94vw] h-[94vh] flex flex-col p-4 sm:p-6 bg-white">
-        <DialogHeader className="pb-3 border-b shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
-                Laporan Hasil Presensi Kegiatan (PDF)
-              </DialogTitle>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {agenda.namaKegiatan} • {formattedTanggal}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Label className="text-[11px] font-semibold text-slate-700">Kertas:</Label>
-                <Select value={pageSize} onValueChange={(val: any) => setPageSize(val)}>
-                  <SelectTrigger className="text-xs h-8 w-32 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="F4">F4 / Folio</SelectItem>
-                    <SelectItem value="A4">A4</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <PDFDownloadLink
-                document={documentElement}
-                fileName={`Laporan_Presensi_${agenda.namaKegiatan.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button
-                    size="sm"
-                    disabled={loading}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Download className="w-3.5 h-3.5 mr-1" />
-                    )}
-                    Unduh PDF
-                  </Button>
-                )}
-              </PDFDownloadLink>
-            </div>
+      <DialogContent className="!max-w-[94vw] w-[94vw] sm:!max-w-[94vw] h-[94vh] flex flex-col p-3 sm:p-5 bg-white">
+        <DialogHeader className="pb-2.5 border-b shrink-0 flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
+              Laporan Hasil Presensi Kegiatan
+            </DialogTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {agenda.namaKegiatan} • {formattedTanggal}
+            </p>
           </div>
         </DialogHeader>
 
         {/* PDF Viewer Container */}
-        <div className="flex-1 w-full mt-3 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+        <div className="flex-1 w-full mt-2 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
           <PDFViewer width="100%" height="100%" showToolbar={true}>
             {documentElement}
           </PDFViewer>

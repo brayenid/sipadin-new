@@ -29,10 +29,10 @@ export default function LaporanRekapPegawaiPdf({
       <Page size="A4" style={styles.page}>
         {/* Judul Laporan */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>LAPORAN REKAPITULASI KEHADIRAN PEJABAT / PEGAWAI</Text>
+          <Text style={styles.titleText}>LAPORAN REKAPITULASI KEHADIRAN PEGAWAI</Text>
           <Text style={styles.subtitleText}>{data.periodeLabel ? `PERIODE: ${data.periodeLabel.toUpperCase()}` : `TAHUN ANGGARAN: ${data.tahun}`}</Text>
           <Text style={styles.descText}>
-            Akumulasi tingkat kehadiran perorangan pejabat eselon pada seluruh agenda kegiatan resmi daerah
+            Akumulasi tingkat kehadiran pegawai pada seluruh agenda kegiatan resmi daerah
           </Text>
         </View>
 
@@ -42,11 +42,11 @@ export default function LaporanRekapPegawaiPdf({
             <View style={[styles.th, styles.colNo, styles.borderRight]}><Text style={styles.thText}>No</Text></View>
             <View style={[styles.th, styles.colNama, styles.borderRight]}><Text style={styles.thText}>Nama & Jabatan</Text></View>
             <View style={[styles.th, styles.colOpd, styles.borderRight]}><Text style={styles.thText}>Perangkat Daerah</Text></View>
-            <View style={[styles.th, styles.colQty, styles.borderRight]}><Text style={styles.thText}>Undang</Text></View>
-            <View style={[styles.th, styles.colQty, styles.borderRight]}><Text style={styles.thText}>Hadir</Text></View>
-            <View style={[styles.th, styles.colQty, styles.borderRight]}><Text style={styles.thText}>Wakili</Text></View>
-            <View style={[styles.th, styles.colQty, styles.borderRight]}><Text style={styles.thText}>Absen/Izin</Text></View>
-            <View style={[styles.th, styles.colPercent]}><Text style={styles.thText}>Persentase</Text></View>
+            <View style={[styles.th, styles.colUndang, styles.borderRight]}><Text style={styles.thText}>Undang</Text></View>
+            <View style={[styles.th, styles.colHadir, styles.borderRight]}><Text style={styles.thText}>Hadir</Text></View>
+            <View style={[styles.th, styles.colWakili, styles.borderRight]}><Text style={styles.thText}>Wakili</Text></View>
+            <View style={[styles.th, styles.colAbsen, styles.borderRight]}><Text style={styles.thText}>Absen/Izin</Text></View>
+            <View style={[styles.th, styles.colPercent]}><Text style={styles.thText}>% Hadir</Text></View>
           </View>
 
           {data.dataPegawai.map((peg, idx) => {
@@ -64,10 +64,10 @@ export default function LaporanRekapPegawaiPdf({
                   <Text style={styles.subText}>{peg.jabatan}</Text>
                 </View>
                 <View style={[styles.td, styles.colOpd, styles.alignLeft, styles.borderRight]}><Text style={styles.tdText}>{peg.instansi}</Text></View>
-                <View style={[styles.td, styles.colQty, styles.borderRight]}><Text style={styles.tdText}>{peg.totalDiundang}</Text></View>
-                <View style={[styles.td, styles.colQty, styles.textGreen, styles.borderRight]}><Text style={[styles.tdText, styles.fontBold]}>{peg.hadir}</Text></View>
-                <View style={[styles.td, styles.colQty, styles.textOrange, styles.borderRight]}><Text style={styles.tdText}>{peg.mewakili}</Text></View>
-                <View style={[styles.td, styles.colQty, styles.textRed, styles.borderRight]}><Text style={styles.tdText}>{peg.tidakHadir + peg.izin}</Text></View>
+                <View style={[styles.td, styles.colUndang, styles.borderRight]}><Text style={styles.tdText}>{peg.totalDiundang}</Text></View>
+                <View style={[styles.td, styles.colHadir, styles.textGreen, styles.borderRight]}><Text style={[styles.tdText, styles.fontBold]}>{peg.hadir}</Text></View>
+                <View style={[styles.td, styles.colWakili, styles.textOrange, styles.borderRight]}><Text style={styles.tdText}>{peg.mewakili}</Text></View>
+                <View style={[styles.td, styles.colAbsen, styles.textRed, styles.borderRight]}><Text style={styles.tdText}>{peg.tidakHadir + peg.izin}</Text></View>
                 <View style={[styles.td, styles.colPercent]}><Text style={[styles.tdText, styles.fontBold]}>{peg.persentaseKehadiran}%</Text></View>
               </View>
             );
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 22,
   },
   titleText: {
     fontSize: 11,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   descText: {
     fontSize: 8,
     color: "#64748b",
-    marginTop: 6,
+    marginTop: 5,
     textAlign: "center",
   },
   table: {
@@ -118,9 +118,10 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: "row",
+    backgroundColor: "#f1f5f9",
     borderBottomWidth: 0.5,
     borderBottomColor: "#cbd5e1",
-    height: 24,
+    height: 25,
     alignItems: "center",
   },
   tableRow: {
@@ -134,18 +135,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   th: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
   },
   thText: {
-    fontSize: 7.5,
+    fontSize: 7.2,
     fontWeight: "bold",
-    color: "#334155",
+    color: "#1e293b",
+    textAlign: "center",
   },
   td: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
   tdText: {
     fontSize: 7.5,
     color: "#334155",
+    textAlign: "center",
   },
   subText: {
     fontSize: 6.5,
@@ -169,19 +172,28 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
   },
   colNo: {
-    width: "5%",
+    width: "4.5%",
   },
   colNama: {
-    width: "28%",
+    width: "27.5%",
   },
   colOpd: {
-    width: "27%",
+    width: "26%",
   },
-  colQty: {
-    width: "7.5%",
+  colUndang: {
+    width: "8%",
+  },
+  colHadir: {
+    width: "8%",
+  },
+  colWakili: {
+    width: "8%",
+  },
+  colAbsen: {
+    width: "10%",
   },
   colPercent: {
-    width: "10%",
+    width: "8%",
   },
   fontBold: {
     fontWeight: "bold",
