@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { generateSlug } from "@/lib/utils";
-import { combineDateAndTimeWita, calculatePresensiWindow } from "@/lib/date-utils";
+import { formatWita, parseWitaInput, combineDateAndTimeWita, calculatePresensiWindow } from "@/lib/date-utils";
 
 // ==========================================
 // 1. TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -259,26 +259,15 @@ export const AI_TOOLS_SCHEMA = [
   },
 ];
 
-function formatWitaDate(d: Date): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Makassar",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(d);
-  } catch {
-    return d.toISOString().slice(0, 10);
-  }
+function formatWitaDate(d: Date | string | null | undefined): string {
+  if (!d) return "-";
+  return formatWita(d, "yyyy-MM-dd");
 }
 
 function parseWitaDate(dateStr: string): Date {
-  const clean = dateStr.trim();
-  const datePart = clean.split("T")[0];
-  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-    return new Date(`${datePart}T00:00:00+08:00`);
-  }
-  return new Date(clean);
+  const parsed = parseWitaInput(dateStr);
+  if (parsed && !isNaN(parsed.getTime())) return parsed;
+  return new Date();
 }
 
 export function inferKategoriAgenda(judul: string, explicitKategori?: string): "RAPAT" | "PERJALANAN_DINAS" | "SOSIALISASI" | "MONITORING_EVALUASI" | "ACARA_INTERNAL" | "LAINNYA" {
@@ -438,7 +427,7 @@ export async function executeToolCall(
           return {
             no: idx + 1,
             id: s.id.slice(0, 6),
-            tanggal: s.tanggalSpj.toISOString().slice(0, 10),
+            tanggal: formatWita(s.tanggalSpj, "yyyy-MM-dd"),
             perihal: s.perihal || "-",
             nama: personRelated || "-",
             nominal: `Rp ${Number(s.totalPengeluaran).toLocaleString("id-ID")}`,
@@ -552,7 +541,7 @@ export async function executeToolCall(
           return {
             no: idx + 1,
             id: s.id.slice(0, 6),
-            tanggal: s.tanggalSpj.toISOString().slice(0, 10),
+            tanggal: formatWita(s.tanggalSpj, "yyyy-MM-dd"),
             perihal: s.perihal || "-",
             nama: names,
             nominal: `Rp ${Number(s.totalPengeluaran).toLocaleString("id-ID")}`,
@@ -799,7 +788,7 @@ export async function executeToolCall(
           id: n.id.slice(0, 6),
           jenis: n.jenisNaskah.replace(/_/g, " "),
           nomorSurat: n.nomorSurat || "-",
-          tanggal: n.tanggal.toISOString().slice(0, 10),
+          tanggal: formatWita(n.tanggal, "yyyy-MM-dd"),
           perihal: n.perihal || n.agenda || "-",
         }));
 
@@ -845,7 +834,7 @@ export async function executeToolCall(
           id: target.id.slice(0, 6),
           jenis: target.jenisNaskah.replace(/_/g, " "),
           nomorSurat: target.nomorSurat || "-",
-          tanggal: target.tanggal.toISOString().slice(0, 10),
+          tanggal: formatWita(target.tanggal, "yyyy-MM-dd"),
           perihal: target.perihal || "-",
           agenda: target.agenda || "-",
           tujuan: rawData.tujuan || rawData.kepada || "-",
@@ -887,9 +876,14 @@ export async function executeToolCall(
             no: idx + 1,
             id: a.id.slice(0, 6),
             namaKegiatan: a.namaKegiatan,
-            tanggal: a.tanggal.toISOString().slice(0, 10),
+            tanggal: formatWita(a.tanggal, "yyyy-MM-dd"),
+            tanggalLengkap: formatWita(a.tanggal, "EEEE, dd MMMM yyyy"),
+            hari: a.hari || formatWita(a.tanggal, "EEEE"),
+            waktu: a.waktu || "-",
             tempat: a.tempat || "-",
+            targetPeserta: a.targetPeserta || "-",
             status: a.status, // BERLANGSUNG, SELESAI, DIBATALKAN
+            linkPublik: a.publicToken ? `https://sipadin.id/p/absensi/${a.publicToken}` : "-",
             rekapKehadiran: totalPeserta > 0
               ? `${hadir} Hadir, ${mewakili} Mewakili, ${tidakHadir} Absen (Total: ${totalPeserta})`
               : "Belum ada absensi masuk",
@@ -955,7 +949,8 @@ export async function executeToolCall(
           id: a.id.slice(0, 6),
           judul: a.judul,
           kategori: a.kategori.replace(/_/g, " "),
-          tanggal: formatWitaDate(a.tanggalMulai),
+          tanggal: formatWita(a.tanggalMulai, "yyyy-MM-dd"),
+          tanggalLengkap: formatWita(a.tanggalMulai, "EEEE, dd MMMM yyyy"),
           waktu: a.waktuMulai ? `${a.waktuMulai}${a.waktuSelesai ? " - " + a.waktuSelesai : ""} WITA` : "-",
           lokasi: a.lokasi || "-",
           status: a.status,
@@ -1081,14 +1076,13 @@ export async function executeToolCall(
           ? `${waktuMulai}${waktuSelesai ? ` - ${waktuSelesai}` : ""} WITA`
           : "09:00 WITA";
 
-        const baseDateStr = tglMulai.toISOString().split("T")[0];
+        const baseDateStr = formatWita(tglMulai, "yyyy-MM-dd");
         const windowTimes = calculatePresensiWindow(waktuMulai || "09:00", waktuSelesai);
         const waktuBuka = combineDateAndTimeWita(baseDateStr, windowTimes.jamBuka);
         const waktuTutup = combineDateAndTimeWita(baseDateStr, windowTimes.jamTutup);
 
-        // Hitung nama hari dalam Bahasa Indonesia
-        const hariNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-        const hariIndo = hariNames[tglMulai.getDay()] || "Senin";
+        // Hitung nama hari dalam Bahasa Indonesia sesuai WITA
+        const hariIndo = formatWita(tglMulai, "EEEE");
 
         // 1. Simpan ke AgendaAbsensi
         const createdAbsensi = await prisma.agendaAbsensi.create({
