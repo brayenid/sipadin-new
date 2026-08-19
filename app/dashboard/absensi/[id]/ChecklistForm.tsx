@@ -43,6 +43,7 @@ import {
   Crosshair,
   Settings,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -227,6 +228,16 @@ export default function ChecklistForm({
 
   const [deletePesertaTarget, setDeletePesertaTarget] = useState<{ id: string; nama: string } | null>(null);
   const [deletingPeserta, setDeletingPeserta] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    router.refresh();
+    setTimeout(() => {
+      setRefreshing(false);
+      toast.success("Data presensi berhasil disegarkan");
+    }, 600);
+  };
 
   // Sync state ketika agenda props berubah
   React.useEffect(() => {
@@ -1213,16 +1224,31 @@ export default function ChecklistForm({
                 </CardDescription>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsTambahOpen(true)}
-                className="text-xs border-slate-300 hover:bg-slate-50 font-semibold self-start sm:self-auto"
-              >
-                <UserPlus className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                Tambah Pegawai Manual
-              </Button>
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="text-xs border-slate-300 hover:bg-slate-50 font-semibold"
+                  title="Segarkan data presensi terbaru"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1 text-indigo-600 ${refreshing ? "animate-spin" : ""}`} />
+                  {refreshing ? "Menyegarkan..." : "Segarkan"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTambahOpen(true)}
+                  className="text-xs border-slate-300 hover:bg-slate-50 font-semibold"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                  Tambah Pegawai Manual
+                </Button>
+              </div>
             </div>
 
             {/* Ringkasan Statistik Presensi Singkat */}

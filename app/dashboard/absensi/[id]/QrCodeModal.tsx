@@ -77,34 +77,49 @@ export default function QrCodeModal({
         qrImg.onerror = rej;
       });
 
-      // 2. Muat Logo SIPADIN
-      const logoImg = new Image();
-      logoImg.crossOrigin = "anonymous";
-      logoImg.src = "/sipadin.png";
-      let logoLoaded = false;
-      try {
-        await new Promise((res) => {
-          logoImg.onload = () => {
-            logoLoaded = true;
+      // 2. Muat Logo Lambang Kutai Barat (Atas) & Logo SIPADIN (Bawah)
+      const kubarImg = new Image();
+      kubarImg.crossOrigin = "anonymous";
+      kubarImg.src = "/logo.png";
+      let kubarLoaded = false;
+
+      const sipadinImg = new Image();
+      sipadinImg.crossOrigin = "anonymous";
+      sipadinImg.src = "/sipadin.png";
+      let sipadinLoaded = false;
+
+      await Promise.all([
+        new Promise((res) => {
+          kubarImg.onload = () => {
+            kubarLoaded = true;
             res(true);
           };
-          logoImg.onerror = () => res(false);
-        });
-      } catch {
-        logoLoaded = false;
-      }
+          kubarImg.onerror = () => res(false);
+        }),
+        new Promise((res) => {
+          sipadinImg.onload = () => {
+            sipadinLoaded = true;
+            res(true);
+          };
+          sipadinImg.onerror = () => res(false);
+        }),
+      ]);
 
       // 3. Setup Layout & Dimensi Canvas
       const canvasWidth = 720;
-      const topPadding = 50; // Jarak pinggir atas ke logo
-      const logoTargetWidth = 175; // Logo SIPADIN lebih besar
-      const logoTargetHeight = logoLoaded && logoImg.width > 0 
-        ? (logoImg.height / logoImg.width) * logoTargetWidth 
-        : 48;
+      const topPadding = 36; // Jarak pinggir atas ke logo Kutai Barat
+      const kubarTargetHeight = 98; // Logo Kubar diperbesar lebih gagah
+      const kubarTargetWidth = kubarLoaded && kubarImg.height > 0
+        ? (kubarImg.width / kubarImg.height) * kubarTargetHeight
+        : 82;
+      const kubarX = (canvasWidth - kubarTargetWidth) / 2;
 
-      // Jarak logo ke QR sejajar dengan jarak atas ke logo
-      const gapToQr = topPadding;
-      const qrY = topPadding + logoTargetHeight + gapToQr;
+      // Teks Judul FORMULIR KEHADIRAN di bawah logo Kubar (dijauhkan agar proporsional)
+      const textHeaderY = topPadding + kubarTargetHeight + 38;
+
+      // Jarak teks Header ke QR
+      const gapToQr = 26;
+      const qrY = textHeaderY + gapToQr;
       const qrSize = 480;
       const qrX = (canvasWidth - qrSize) / 2;
 
@@ -113,12 +128,12 @@ export default function QrCodeModal({
       const measureCanvas = document.createElement("canvas");
       const measureCtx = measureCanvas.getContext("2d");
 
-      // 1. Keterangan instruksi absen (Di Atas Judul Agenda)
-      const instructionText = "Pindai QR Code di atas menggunakan kamera ponsel untuk mengisi absensi secara mandiri.";
-      const instLineHeight = 36;
+      // 1. Keterangan instruksi absen singkat
+      const instructionText = "Pindai QR Code untuk mengisi absensi mandiri";
+      const instLineHeight = 28;
       let instructionLines: string[] = [];
       if (measureCtx) {
-        measureCtx.font = "24px system-ui, -apple-system, sans-serif";
+        measureCtx.font = "18px system-ui, -apple-system, sans-serif";
         const instWords = instructionText.split(" ");
         let cur = "";
         for (let n = 0; n < instWords.length; n++) {
@@ -135,7 +150,7 @@ export default function QrCodeModal({
         instructionLines = [instructionText];
       }
 
-      // 2. Judul Agenda (Di Bawah Keterangan Instruksi, Diperbesar 28px)
+      // 2. Judul Agenda (Di Bawah Keterangan Instruksi, Diperbesar 28px bold)
       const titleLineHeight = 36;
       const titleWords = namaKegiatan.split(" ");
       let titleLines: string[] = [];
@@ -158,17 +173,25 @@ export default function QrCodeModal({
       }
 
       // Hitung posisi Y masing-masing elemen
-      const startInstY = qrY + qrSize + 36;
-      const startTitleY = startInstY + (instructionLines.length * instLineHeight) + 16;
-      const startMetaY = startTitleY + (titleLines.length * titleLineHeight) + 16;
+      const startInstY = qrY + qrSize + 32;
+      const startTitleY = startInstY + (instructionLines.length * instLineHeight) + 14;
+      const startMetaY = startTitleY + (titleLines.length * titleLineHeight) + 14;
       
       let metaCount = 0;
       if (tanggal || waktu) metaCount++;
       if (tempat) metaCount++;
       const endMetaY = startMetaY + (metaCount * 26);
-      const footerY = endMetaY + 20;
 
-      const totalCanvasHeight = Math.max(980, footerY + 50);
+      // Dimensi Logo SIPADIN di Bagian Bawah Kecil (Dijauhkan lagi ke bawah dengan gap lega)
+      const gapToSipadin = 68;
+      const sipadinTargetWidth = 100;
+      const sipadinTargetHeight = sipadinLoaded && sipadinImg.width > 0
+        ? (sipadinImg.height / sipadinImg.width) * sipadinTargetWidth
+        : 26;
+      const sipadinX = (canvasWidth - sipadinTargetWidth) / 2;
+      const sipadinY = endMetaY + gapToSipadin;
+
+      const totalCanvasHeight = Math.max(1070, sipadinY + sipadinTargetHeight + 45);
 
       // Render Final Canvas
       const canvas = document.createElement("canvas");
@@ -181,23 +204,26 @@ export default function QrCodeModal({
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvasWidth, totalCanvasHeight);
 
-      // Gambar Logo SIPADIN di Atas (Hitam Putih & Opacity Sedang)
-      if (logoLoaded && logoImg.width > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.45; // Opacity sedang
-        ctx.filter = "grayscale(100%)"; // Hitam putih
-        const logoX = (canvasWidth - logoTargetWidth) / 2;
-        ctx.drawImage(logoImg, logoX, topPadding, logoTargetWidth, logoTargetHeight);
-        ctx.restore();
+      // 1. Gambar Logo Lambang Kutai Barat di Atas (Lebih Besar & Tajam)
+      if (kubarLoaded && kubarImg.width > 0) {
+        ctx.drawImage(kubarImg, kubarX, topPadding, kubarTargetWidth, kubarTargetHeight);
       }
 
-      // Gambar QR Code di Tengah
+      // 2. Teks FORMULIR KEHADIRAN di bawah Logo Atas (Font Lebih Besar & Warna Soft Elegan)
+      ctx.save();
+      ctx.fillStyle = "#475569"; // Soft slate (tidak terlalu hitam)
+      ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("FORMULIR KEHADIRAN", canvasWidth / 2, textHeaderY);
+      ctx.restore();
+
+      // 3. Gambar QR Code di Tengah
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // 1. Gambar Keterangan Singkat Absen (Di Atas Judul)
+      // 4. Gambar Keterangan Singkat Absen
       ctx.save();
-      ctx.fillStyle = "#475569";
-      ctx.font = "20px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#64748b";
+      ctx.font = "18px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       let yInst = startInstY;
       for (const line of instructionLines) {
@@ -205,7 +231,7 @@ export default function QrCodeModal({
         yInst += instLineHeight;
       }
 
-      // 2. Gambar Judul Kegiatan (Lebih Besar 28px bold)
+      // 5. Gambar Judul Kegiatan (Lebih Besar 28px bold)
       ctx.fillStyle = "#0f172a";
       ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
       let yText = startTitleY;
@@ -214,7 +240,7 @@ export default function QrCodeModal({
         yText += titleLineHeight;
       }
 
-      // 3. Gambar Informasi Tempat & Waktu (Meta Lebih Besar 16px)
+      // 6. Gambar Informasi Tempat & Waktu (Meta 16px)
       ctx.fillStyle = "#334155";
       ctx.font = "16px system-ui, -apple-system, sans-serif";
       let yMeta = startMetaY;
@@ -229,12 +255,16 @@ export default function QrCodeModal({
         ctx.fillText(`Lokasi: ${tempat}`, canvasWidth / 2, yMeta);
         yMeta += 26;
       }
-
-      // 4. Watermark footer identitas
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "13px system-ui, -apple-system, sans-serif";
-      ctx.fillText("Pemerintah Kabupaten Kutai Barat", canvasWidth / 2, yMeta + 12);
       ctx.restore();
+
+      // 7. Gambar Logo SIPADIN Kecil di Bagian Bawah (Dijauhkan ke bawah, Grayscale 100% & Opacity Sangat Rendah / Halus)
+      if (sipadinLoaded && sipadinImg.width > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.08; // Opasitas sangat rendah / ultra subtle
+        ctx.filter = "grayscale(100%)"; // Filter Black & White
+        ctx.drawImage(sipadinImg, sipadinX, sipadinY, sipadinTargetWidth, sipadinTargetHeight);
+        ctx.restore();
+      }
 
       // Download file PNG
       const finalDataUrl = canvas.toDataURL("image/png");

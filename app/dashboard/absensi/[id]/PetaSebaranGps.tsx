@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   MapPin,
   Building2,
@@ -17,6 +18,7 @@ import {
   Layers,
   Satellite,
   Map,
+  RefreshCw,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { calculateDistanceMeters, formatDistance, isWithinRadius } from "@/lib/geo-utils";
@@ -97,6 +99,27 @@ const ChangeMapView = dynamic(
   { ssr: false }
 );
 
+// Pan To Selected Target Helper
+const PanToSelectedPerson = dynamic(
+  () =>
+    Promise.resolve(({ targetCoord }: { targetCoord: [number, number] | null }) => {
+      const { useMap } = require("react-leaflet");
+      const map = useMap();
+
+      useEffect(() => {
+        if (targetCoord && typeof window !== "undefined") {
+          map.flyTo(targetCoord, 17, {
+            duration: 0.8,
+            easeLinearity: 0.25,
+          });
+        }
+      }, [targetCoord, map]);
+
+      return null;
+    }),
+  { ssr: false }
+);
+
 export default function PetaSebaranGps({
   agenda,
   pesertaList,
@@ -104,16 +127,38 @@ export default function PetaSebaranGps({
   agenda: AgendaVenueInfo;
   pesertaList: PesertaWithGps[];
 }) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [filterRadius, setFilterRadius] = useState<"ALL" | "INSIDE" | "OUTSIDE">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [hoveredPersonId, setHoveredPersonId] = useState<string | null>(null);
+  const [panTarget, setPanTarget] = useState<[number, number] | null>(null);
   const [mapLayer, setMapLayer] = useState<"ESRI" | "OSM">("ESRI");
   const [showCentroidAnalysis, setShowCentroidAnalysis] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    router.refresh();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 600);
+  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Auto-scroll pada daftar kanan saat marker di peta di-hover
+  useEffect(() => {
+    if (hoveredPersonId && typeof document !== "undefined") {
+      const el = document.getElementById(`peserta-card-${hoveredPersonId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [hoveredPersonId]);
 
   const hasVenue =
     typeof agenda.targetLatitude === "number" &&
@@ -327,7 +372,7 @@ export default function PetaSebaranGps({
     });
   };
 
-  const createPersonIcon = (isInside: boolean, isAnomaly: boolean) => {
+  const createPersonIcon = (isInside: boolean, isAnomaly: boolean, isHovered: boolean = false) => {
     if (typeof window === "undefined") return undefined;
     const L = require("leaflet");
     let bg = "#10b981"; // Green (normal inside)
@@ -339,6 +384,48 @@ export default function PetaSebaranGps({
     } else if (!isInside) {
       bg = "#f59e0b"; // Amber (outside radius)
       shadow = "rgba(245, 158, 11, 0.4)";
+    }
+
+    if (isHovered) {
+      return L.divIcon({
+        className: "custom-person-icon-hovered",
+        html: `
+          <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+            <div style="
+              position: absolute;
+              width: 50px;
+              height: 50px;
+              border-radius: 50%;
+              background-color: ${bg};
+              opacity: 0.45;
+              animation: leaflet-ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <div style="
+              position: relative;
+              background-color: ${bg};
+              width: 38px;
+              height: 38px;
+              border-radius: 50%;
+              border: 3.5px solid white;
+              box-shadow: 0 0 0 3px ${bg}, 0 6px 18px rgba(0, 0, 0, 0.45);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              transform: scale(1.1);
+              transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            ">
+              <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+          </div>
+        `,
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
+        popupAnchor: [0, -25],
+      });
     }
 
     return L.divIcon({
@@ -355,6 +442,7 @@ export default function PetaSebaranGps({
           align-items: center;
           justify-content: center;
           color: white;
+          transition: all 0.2s ease;
         ">
           <svg style="width: 15px; height: 15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
@@ -541,6 +629,18 @@ export default function PetaSebaranGps({
                 className="pl-8 pr-2.5 h-7.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 w-36 sm:w-44 shadow-none"
               />
             </div>
+
+            {/* Tombol Segarkan Peta */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="h-7.5 px-2.5 rounded-lg text-[11px] font-semibold bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition flex items-center gap-1.5 select-none shadow-none cursor-pointer"
+              title="Segarkan data presensi & titik peta"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${refreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{refreshing ? "Memuat..." : "Segarkan"}</span>
+            </button>
           </div>
         </div>
 
@@ -589,6 +689,9 @@ export default function PetaSebaranGps({
 
               {/* Auto bounds */}
               <ChangeMapView points={allCoordinates} />
+
+              {/* Fly to clicked/hovered person */}
+              <PanToSelectedPerson targetCoord={panTarget} />
 
               {/* 1. Marker Venue Acara Manual (Jika Disetel) */}
               {hasVenue && (
@@ -669,15 +772,49 @@ export default function PetaSebaranGps({
                 </>
               )}
 
-              {/* 3. Marker Personel / Pegawai yang Hadir */}
+              {/* 3. Marker Personel / Pegawai yang Hadir (Bereaksi saat di-hover) */}
               {filteredPeserta.map((p) => {
                 if (!p.latitude || !p.longitude) return null;
+                const isHovered = hoveredPersonId === p.id;
+                const isSelected = selectedPersonId === p.id;
+
                 return (
                   <Marker
                     key={p.id}
                     position={[p.latitude, p.longitude]}
-                    icon={createPersonIcon(p.isInsideRadius, p.isAnomaly)}
+                    icon={createPersonIcon(p.isInsideRadius, p.isAnomaly, isHovered || isSelected)}
+                    zIndexOffset={isHovered || isSelected ? 2000 : 1}
+                    eventHandlers={{
+                      mouseover: () => setHoveredPersonId(p.id),
+                      mouseout: () => setHoveredPersonId(null),
+                      click: () => {
+                        setSelectedPersonId(p.id);
+                        setPanTarget([p.latitude!, p.longitude!]);
+                      },
+                    }}
                   >
+                    {/* Floating Tooltip saat di-hover */}
+                    {(isHovered || isSelected) && (
+                      <Tooltip
+                        permanent
+                        direction="top"
+                        offset={[0, -22]}
+                        className="!bg-slate-900 !text-white !border-0 !rounded-lg !px-2.5 !py-1 !shadow-xl !text-xs !font-sans pointer-events-none z-[3000]"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {p.fotoUrl ? (
+                            <img src={p.fotoUrl} alt="" className="w-4 h-4 rounded-full object-cover shrink-0 border border-slate-700" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          )}
+                          <span className="font-bold text-[11px] whitespace-nowrap text-white">{p.nama}</span>
+                          {p.distanceMeters !== null && (
+                            <span className="text-[10px] text-slate-300 font-mono">({formatDistance(p.distanceMeters)})</span>
+                          )}
+                        </div>
+                      </Tooltip>
+                    )}
+
                     <Popup>
                       <div className="p-1.5 text-slate-800 min-w-[220px] max-w-[260px] space-y-2">
                         {p.fotoUrl && (
@@ -757,7 +894,7 @@ export default function PetaSebaranGps({
             </MapContainer>
           </div>
 
-          {/* SISI KANAN: Daftar Peserta Ber-GPS (Scrollable Panel) */}
+          {/* SISI KANAN: Daftar Peserta Ber-GPS (Scrollable Panel dengan Hover Reaktif) */}
           <div className="lg:col-span-5 xl:col-span-4 flex flex-col h-[380px] lg:h-full bg-white overflow-hidden">
             {/* Header Panel Daftar Peserta */}
             <div className="bg-slate-50/90 px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 shrink-0">
@@ -776,74 +913,120 @@ export default function PetaSebaranGps({
                   Tidak ada data peserta yang cocok dengan filter
                 </div>
               ) : (
-                filteredPeserta.map((p, idx) => (
-                  <div
-                    key={p.id}
-                    className="p-3 flex items-center justify-between hover:bg-slate-50/70 transition text-slate-700 gap-2"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-1">
-                      <span className="text-[10px] font-mono text-slate-400 w-3.5 shrink-0">
-                        {idx + 1}.
-                      </span>
-                      {p.fotoUrl ? (
-                        <img
-                          src={p.fotoUrl}
-                          alt={p.nama}
-                          className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
-                          <Users className="w-4 h-4" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-bold text-slate-900 text-xs truncate max-w-[130px] sm:max-w-[170px]">
-                            {p.nama}
+                filteredPeserta.map((p, idx) => {
+                  const isHovered = hoveredPersonId === p.id;
+                  const isSelected = selectedPersonId === p.id;
+
+                  return (
+                    <div
+                      key={p.id}
+                      id={`peserta-card-${p.id}`}
+                      onMouseEnter={() => setHoveredPersonId(p.id)}
+                      onMouseLeave={() => setHoveredPersonId(null)}
+                      onClick={() => {
+                        setSelectedPersonId(p.id);
+                        if (p.latitude && p.longitude) {
+                          setPanTarget([p.latitude, p.longitude]);
+                        }
+                      }}
+                      className={`p-3 flex items-center justify-between transition text-slate-700 gap-2 cursor-pointer border-l-[3px] ${
+                        isHovered || isSelected
+                          ? "bg-indigo-50/90 border-l-indigo-600 shadow-2xs"
+                          : "border-l-transparent hover:bg-slate-50/80"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                        <span className="text-[10px] font-mono text-slate-400 w-3.5 shrink-0">
+                          {idx + 1}.
+                        </span>
+                        {p.fotoUrl ? (
+                          <img
+                            src={p.fotoUrl}
+                            alt={p.nama}
+                            className={`w-8 h-8 rounded-full object-cover shrink-0 border transition ${
+                              isHovered || isSelected
+                                ? "border-indigo-600 ring-2 ring-indigo-200"
+                                : "border-slate-200"
+                            }`}
+                          />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${
+                            isHovered || isSelected
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "bg-slate-100 text-slate-500"
+                          }`}>
+                            <Users className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className={`font-bold text-xs truncate max-w-[130px] sm:max-w-[170px] transition ${
+                              isHovered || isSelected ? "text-indigo-900" : "text-slate-900"
+                            }`}>
+                              {p.nama}
+                            </p>
+                            {p.isAnomaly && (
+                              <span className="text-[8.5px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full shrink-0 flex items-center gap-1">
+                                <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
+                                Terlalu Jauh
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10.5px] text-slate-500 truncate max-w-[150px] sm:max-w-[200px]">
+                            {p.jabatan} • {p.instansi}
                           </p>
-                          {p.isAnomaly && (
-                            <span className="text-[8.5px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full shrink-0 flex items-center gap-1">
-                              <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
-                              Terlalu Jauh
-                            </span>
-                          )}
                         </div>
-                        <p className="text-[10.5px] text-slate-500 truncate max-w-[150px] sm:max-w-[200px]">
-                          {p.jabatan} • {p.instansi}
-                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 text-right">
+                        {p.distanceMeters !== null && (
+                          <span
+                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
+                              p.isAnomaly
+                                ? "bg-red-100 text-red-800"
+                                : p.isInsideRadius
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {formatDistance(p.distanceMeters)}
+                          </span>
+                        )}
+                        <a
+                          href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Buka di Google Maps"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0 text-right">
-                      {p.distanceMeters !== null && (
-                        <span
-                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
-                            p.isAnomaly
-                              ? "bg-red-100 text-red-800"
-                              : p.isInsideRadius
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {formatDistance(p.distanceMeters)}
-                        </span>
-                      )}
-                      <a
-                        href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Buka di Google Maps"
-                        className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
+
+        {/* Global Keyframes CSS untuk Animasi Ping Marker */}
+        <style jsx global>{`
+          @keyframes leaflet-ping {
+            0% {
+              transform: scale(0.85);
+              opacity: 0.85;
+            }
+            70%, 100% {
+              transform: scale(2.3);
+              opacity: 0;
+            }
+          }
+          .custom-person-icon-hovered {
+            z-index: 2000 !important;
+          }
+        `}</style>
 
         {/* Disclaimer Catatan Peta */}
         <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-400 italic flex items-center justify-between flex-wrap gap-2">

@@ -45,14 +45,14 @@ export default async function AgendaDetailPage({
           {(agenda.requirePhoto || agenda.requireLocation) && (
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {agenda.requirePhoto && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 shadow-2xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
                   <Camera className="w-3.5 h-3.5" />
                   Wajib Foto Selfie
                 </span>
               )}
 
               {agenda.requireLocation && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   <MapPin className="w-3.5 h-3.5" />
                   Wajib Kunci GPS
                 </span>
