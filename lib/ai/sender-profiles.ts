@@ -9,17 +9,65 @@ export interface SenderContact {
   peran?: string;
 }
 
-// 1. DAFTAR KONTAK & PANGGILAN KUSTOM
+// 1. DAFTAR KONTAK & PANGGILAN KUSTOM BESERTA NAMA LENGKAP RESMI DI DATABASE
 export const SENDER_PROFILES: Record<string, SenderContact> = {
-  "628115444166": { panggilan: "Tuaq Ucoy" },
-  "6282158148148": { panggilan: "Men Oboy" },
-  "6282251702012": { panggilan: "Njos" },
-  "6282253523350": { panggilan: "Bos Ap" },
-  "6282158120262": { panggilan: "Men Al" },
-  "6282254835097": { panggilan: "Dai" },
-  "628115819948": { panggilan: "B7R" },
-  "6281355139018": { panggilan: "Pak Pres" },
+  "628115444166": { panggilan: "Tuaq Ucoy", namaLengkap: "Husor Situmorang" },
+  "6282158148148": { panggilan: "Men Oboy", namaLengkap: "Ati Hayati" },
+  "6282251702012": { panggilan: "Njos", namaLengkap: "Agustaria Paramitha" },
+  "6282253523350": { panggilan: "Bos Ap", namaLengkap: "Rendi Rusti" },
+  "6282158120262": { panggilan: "Men Al", namaLengkap: "Ria Erdinda" },
+  "6282254835097": { panggilan: "Dai", namaLengkap: "Sundari Oktaviana" },
+  "628115819948": { panggilan: "B7R", namaLengkap: "Yudiansyah" },
+  "6281355139018": { panggilan: "Pak Pres", namaLengkap: "Irenius Brayen Luhat" },
 };
+
+/**
+ * Mapping Alias / Panggilan ke Nama Lengkap Resmi
+ */
+export const NICKNAME_TO_OFFICIAL_NAME: Record<string, string> = {
+  "pak pres": "Irenius Brayen Luhat",
+  "pres": "Irenius Brayen Luhat",
+  "brayen": "Irenius Brayen Luhat",
+  "irenius": "Irenius Brayen Luhat",
+  "tuaq ucoy": "Husor Situmorang",
+  "ucoy": "Husor Situmorang",
+  "husor": "Husor Situmorang",
+  "men oboy": "Ati Hayati",
+  "oboy": "Ati Hayati",
+  "ati": "Ati Hayati",
+  "njos": "Agustaria Paramitha",
+  "agustaria": "Agustaria Paramitha",
+  "paramitha": "Agustaria Paramitha",
+  "mita": "Agustaria Paramitha",
+  "bos ap": "Rendi Rusti",
+  "rendi": "Rendi Rusti",
+  "rusti": "Rendi Rusti",
+  "men al": "Ria Erdinda",
+  "ria": "Ria Erdinda",
+  "erdinda": "Ria Erdinda",
+  "dai": "Sundari Oktaviana",
+  "sundari": "Sundari Oktaviana",
+  "oktaviana": "Sundari Oktaviana",
+  "b7r": "Yudiansyah",
+  "yudiansyah": "Yudiansyah",
+  "yudi": "Yudiansyah",
+};
+
+/**
+ * Terjemahkan nama panggilan / alias ke nama resmi yang ada di database
+ */
+export function resolveOfficialName(nameOrNickname: string): string {
+  const clean = nameOrNickname.trim().toLowerCase();
+  if (NICKNAME_TO_OFFICIAL_NAME[clean]) {
+    return NICKNAME_TO_OFFICIAL_NAME[clean];
+  }
+  for (const [nick, official] of Object.entries(NICKNAME_TO_OFFICIAL_NAME)) {
+    if (clean.includes(nick) || nick.includes(clean)) {
+      return official;
+    }
+  }
+  return nameOrNickname;
+}
 
 /**
  * Normalisasi nomor HP ke format 62xxxxxxxxxxx

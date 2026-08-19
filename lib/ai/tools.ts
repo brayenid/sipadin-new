@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { generateSlug } from "@/lib/utils";
 import { formatWita, parseWitaInput, combineDateAndTimeWita, calculatePresensiWindow } from "@/lib/date-utils";
+import { resolveOfficialName } from "./sender-profiles";
 
 // ==========================================
 // 1. TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -630,7 +631,8 @@ export async function executeToolCall(
 
       // 5. LOOKUP NIP DIRECT
       case "lookup_nip_direct": {
-        const query = String(args.nama || "").trim();
+        const rawQuery = String(args.nama || "").trim();
+        const query = resolveOfficialName(rawQuery);
         const pegawais = await prisma.pegawai.findMany({
           where: {
             nama: { contains: query, mode: "insensitive" },
@@ -1358,7 +1360,8 @@ export async function executeToolCall(
 
       // 16. GET REKAP PERJALANAN DINAS (5 BESAR / PER PEGAWAI)
       case "get_rekap_perjalanan_dinas": {
-        const namaQuery = args.nama ? String(args.nama).trim() : "";
+        const rawNama = args.nama ? String(args.nama).trim() : "";
+        const namaQuery = rawNama ? resolveOfficialName(rawNama) : "";
         const tahunQuery = args.tahun ? String(args.tahun).trim() : "";
 
         const spjWhereFilter: any = {
