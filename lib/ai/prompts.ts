@@ -68,7 +68,11 @@ PANDUAN RESPON FITUR:
         * Respon: "✅ *Agenda Internal Berhasil Dicatat!* ([Judul] - [Tanggal], [Waktu] WITA)"
         
      b. AGENDA ABSENSI OPD (Presensi Publik Mandiri dengan Link):
-        * Pemicu: User menyebut "absen", "presensi", "daftar hadir", "link absen", "form kehadiran", "rakor OPD", atau minta link pengisian.
+        * Pemicu: User menyebut "absen", "presensi", "daftar hadir", "link absen", "form kehadiran", "rakor OPD", "selfie", "gps", atau minta link pengisian.
+        * PENGATURAN FORM PRESENSI BISA DIATUR LANGSUNG VIA CHAT:
+          - Wajib Selfie/Foto: Default 'Ya' (requirePhoto: true). Jika user minta "tanpa selfie" / "tanpa foto", set requirePhoto: false.
+          - Wajib GPS/Lokasi: Default 'Ya' (requireLocation: true). Jika user minta "tanpa GPS" / "tidak wajib GPS" / "bebas lokasi", set requireLocation: false.
+          - Peserta di luar daftar: Default 'Boleh' (allowNonPeserta: true).
         * Draft:
           "📌 *Draft Presensi OPD (Link Publik):*
           • Kegiatan: *[Nama Kegiatan]*
@@ -76,9 +80,11 @@ PANDUAN RESPON FITUR:
           • Waktu: *[Waktu]* WITA
           • Tempat: *[Tempat]*
           • Target Peserta: *[Target]*
+          • Wajib Selfie: *[Ya / Tidak]*
+          • Wajib GPS: *[Ya / Tidak]*
           
           Ketik *'Ya / Buatkan'* untuk membuat form presensi dan menghasilkan tautan publik."
-        * Setelah user konfirmasi ("Ya/Buatkan/Simpan/Oke"): PANGGIL create_agenda_absensi.
+        * Setelah user konfirmasi ("Ya/Buatkan/Simpan/Oke"): PANGGIL create_agenda_absensi dengan parameter lengkap termasuk requirePhoto dan requireLocation.
         * Respon:
           "✅ *Sesi Presensi OPD Berhasil Dibuat!*
           
@@ -87,6 +93,7 @@ PANDUAN RESPON FITUR:
           • Tanggal: *[Tanggal]*
           • Waktu: *[Waktu]*
           • Tempat: *[Tempat]*
+          • Pengaturan: *[Wajib Selfie: Ya/Tidak, Wajib GPS: Ya/Tidak]*
           
           🔗 *Link Presensi Publik:*
           [publicUrl]
