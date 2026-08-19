@@ -12,6 +12,7 @@ export type LaporanHasilAgendaData = {
   targetLatitude?: number | null;
   targetLongitude?: number | null;
   radiusMeter?: number | null;
+  enableCheckOut?: boolean;
   pic?: {
     nama?: string | null;
     nip?: string | null;
@@ -28,6 +29,7 @@ export type LaporanHasilAgendaData = {
     keterangan?: string | null;
     isSelfInput?: boolean;
     waktuInput?: string | null;
+    waktuPulang?: string | null;
     lokasiText?: string | null;
     latitude?: number | null;
     longitude?: number | null;
@@ -523,9 +525,18 @@ export default function LaporanHasilAgendaPdf({
                   </Text>
                   {row.waktuInput && (
                     <Text style={[styles.tdText, { textAlign: "center", fontSize: 5.5, marginTop: 1 }]}>
-                      {row.waktuInput}
+                      {data.enableCheckOut ? `Dtg: ${row.waktuInput}` : row.waktuInput}
                     </Text>
                   )}
+                  {row.waktuPulang ? (
+                    <Text style={[styles.tdText, { textAlign: "center", fontSize: 5.5, marginTop: 1, color: "#3730a3" }]}>
+                      Plg: {row.waktuPulang}
+                    </Text>
+                  ) : data.enableCheckOut && row.waktuInput ? (
+                    <Text style={[styles.tdText, { textAlign: "center", fontSize: 5, marginTop: 1, color: "#64748b" }]}>
+                      Plg: -
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             );

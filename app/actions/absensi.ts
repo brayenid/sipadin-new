@@ -428,6 +428,11 @@ export async function createAgendaAbsensi(payload: {
   requireLocation?: boolean;
   requirePhoto?: boolean;
   allowNonPeserta?: boolean;
+  enableCheckOut?: boolean;
+  waktuBukaPulang?: string;
+  waktuTutupPulang?: string;
+  jamBukaPulang?: string;
+  jamTutupPulang?: string;
   targetLatitude?: number | null;
   targetLongitude?: number | null;
   radiusMeter?: number | null;
@@ -458,6 +463,21 @@ export async function createAgendaAbsensi(payload: {
     waktuTutup = new Date(payload.waktuTutupAbsen);
   } else {
     waktuTutup = combineDateAndTimeWita(tanggalStr, effectiveJamTutup);
+  }
+
+  let waktuBukaPulang: Date | null = null;
+  let waktuTutupPulang: Date | null = null;
+  if (payload.enableCheckOut) {
+    if (payload.waktuBukaPulang) {
+      waktuBukaPulang = new Date(payload.waktuBukaPulang);
+    } else if (payload.jamBukaPulang) {
+      waktuBukaPulang = combineDateAndTimeWita(tanggalStr, payload.jamBukaPulang);
+    }
+    if (payload.waktuTutupPulang) {
+      waktuTutupPulang = new Date(payload.waktuTutupPulang);
+    } else if (payload.jamTutupPulang) {
+      waktuTutupPulang = combineDateAndTimeWita(tanggalStr, payload.jamTutupPulang);
+    }
   }
 
   // Filter pegawai sesuai kategori target binding
@@ -522,6 +542,9 @@ export async function createAgendaAbsensi(payload: {
         isPublicActive: true,
         waktuBukaAbsen: waktuBuka,
         waktuTutupAbsen: waktuTutup,
+        enableCheckOut: payload.enableCheckOut ?? false,
+        waktuBukaPulang,
+        waktuTutupPulang,
         requireLocation: payload.requireLocation ?? true,
         requirePhoto: payload.requirePhoto ?? true,
         allowNonPeserta: payload.allowNonPeserta ?? true,
@@ -574,6 +597,11 @@ export async function updateAgendaAbsensi(
     waktuTutupAbsen?: string | Date | null;
     jamBuka?: string;
     jamTutup?: string;
+    enableCheckOut?: boolean;
+    waktuBukaPulang?: string | Date | null;
+    waktuTutupPulang?: string | Date | null;
+    jamBukaPulang?: string;
+    jamTutupPulang?: string;
     requireLocation?: boolean;
     requirePhoto?: boolean;
     targetLatitude?: number | null;
@@ -593,7 +621,12 @@ export async function updateAgendaAbsensi(
     dataToUpdate.tanggal = parseWitaInput(payload.tanggal) || new Date();
   }
 
-  if (payload.jamBuka !== undefined || payload.jamTutup !== undefined) {
+  if (
+    payload.jamBuka !== undefined ||
+    payload.jamTutup !== undefined ||
+    payload.jamBukaPulang !== undefined ||
+    payload.jamTutupPulang !== undefined
+  ) {
     const currentAgenda = await prisma.agendaAbsensi.findUnique({
       where: { id },
       select: { tanggal: true },
@@ -606,8 +639,16 @@ export async function updateAgendaAbsensi(
     if (payload.jamTutup) {
       dataToUpdate.waktuTutupAbsen = combineDateAndTimeWita(baseDate, payload.jamTutup);
     }
+    if (payload.jamBukaPulang) {
+      dataToUpdate.waktuBukaPulang = combineDateAndTimeWita(baseDate, payload.jamBukaPulang);
+    }
+    if (payload.jamTutupPulang) {
+      dataToUpdate.waktuTutupPulang = combineDateAndTimeWita(baseDate, payload.jamTutupPulang);
+    }
     delete dataToUpdate.jamBuka;
     delete dataToUpdate.jamTutup;
+    delete dataToUpdate.jamBukaPulang;
+    delete dataToUpdate.jamTutupPulang;
   }
 
   if (typeof payload.waktuBukaAbsen === "string") {
@@ -615,6 +656,12 @@ export async function updateAgendaAbsensi(
   }
   if (typeof payload.waktuTutupAbsen === "string") {
     dataToUpdate.waktuTutupAbsen = new Date(payload.waktuTutupAbsen);
+  }
+  if (typeof payload.waktuBukaPulang === "string") {
+    dataToUpdate.waktuBukaPulang = new Date(payload.waktuBukaPulang);
+  }
+  if (typeof payload.waktuTutupPulang === "string") {
+    dataToUpdate.waktuTutupPulang = new Date(payload.waktuTutupPulang);
   }
   if (payload.publicToken !== undefined) {
     const cleanSlug = generateSlug(payload.publicToken).slice(0, 80);
@@ -731,6 +778,9 @@ export async function getPublicAgendaByToken(token: string) {
       isPublicActive: true,
       waktuBukaAbsen: true,
       waktuTutupAbsen: true,
+      enableCheckOut: true,
+      waktuBukaPulang: true,
+      waktuTutupPulang: true,
       requireLocation: true,
       requirePhoto: true,
       allowNonPeserta: true,
@@ -755,10 +805,22 @@ export async function getPublicAgendaByToken(token: string) {
     timeStatus = "CLOSED";
   }
 
+  let timeStatusPulang: "NOT_STARTED" | "OPEN" | "CLOSED" = "OPEN";
+  if (agenda.enableCheckOut) {
+    if (!agenda.isPublicActive) {
+      timeStatusPulang = "CLOSED";
+    } else if (agenda.waktuBukaPulang && now < agenda.waktuBukaPulang) {
+      timeStatusPulang = "NOT_STARTED";
+    } else if (agenda.waktuTutupPulang && now > agenda.waktuTutupPulang) {
+      timeStatusPulang = "CLOSED";
+    }
+  }
+
   return {
     ...agenda,
     serverTime: now.toISOString(),
     timeStatus,
+    timeStatusPulang,
   };
 }
 
@@ -800,6 +862,12 @@ export async function searchPublicPesertaAgenda(publicToken: string, query: stri
       status: true,
       isSelfInput: true,
       waktuInput: true,
+      waktuPulang: true,
+      fotoPulangUrl: true,
+      latitudePulang: true,
+      longitudePulang: true,
+      accuracyPulang: true,
+      lokasiPulangText: true,
     },
     orderBy: [
       { urutan: "asc" },
@@ -963,6 +1031,103 @@ export async function submitSelfAbsensi(payload: {
   };
 }
 
+export async function submitSelfAbsensiPulang(payload: {
+  publicToken: string;
+  pesertaId: string;
+  fotoPulangUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  lokasiText?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}) {
+  const { publicToken, pesertaId } = payload;
+  if (!publicToken || !pesertaId) throw new Error("Parameter presensi tidak valid");
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: { publicToken, isDeleted: false },
+  });
+
+  if (!agenda) throw new Error("Agenda presensi tidak ditemukan");
+
+  if (!agenda.enableCheckOut) {
+    throw new Error("Presensi pulang tidak diaktifkan pada kegiatan ini.");
+  }
+
+  if (agenda.status === StatusAgendaAbsensi.DIBATALKAN) {
+    throw new Error("Presensi tidak dapat dilakukan karena kegiatan telah DIBATALKAN");
+  }
+
+  if (!agenda.isPublicActive) {
+    throw new Error("Pengisian presensi online saat ini dinonaktifkan oleh Administrator");
+  }
+
+  const now = new Date();
+
+  // Validasi batas akhir presensi agenda
+  if (agenda.waktuTutupAbsen && now > agenda.waktuTutupAbsen) {
+    throw new Error(
+      `Waktu presensi kegiatan telah berakhir pada ${formatWita(agenda.waktuTutupAbsen, "dd MMMM yyyy HH:mm")} WITA`
+    );
+  }
+
+  const peserta = await prisma.kehadiranPeserta.findUnique({
+    where: { id: pesertaId },
+  });
+
+  if (!peserta || peserta.agendaId !== agenda.id) {
+    throw new Error("Data peserta tidak ditemukan");
+  }
+
+  if (!peserta.waktuInput || peserta.status === StatusKehadiran.TIDAK_HADIR) {
+    throw new Error("Anda belum melakukan presensi datang. Silakan isi presensi datang terlebih dahulu.");
+  }
+
+  // Validasi foto jika diwajibkan
+  if (agenda.requirePhoto && !payload.fotoPulangUrl) {
+    throw new Error("Foto selfie bukti presensi pulang wajib diambil dan diunggah");
+  }
+
+  // Validasi geotag jika diwajibkan
+  if (
+    agenda.requireLocation &&
+    (payload.latitude === undefined ||
+      payload.longitude === undefined ||
+      payload.latitude === null ||
+      payload.longitude === null)
+  ) {
+    throw new Error("Izin lokasi (Geotag/GPS) wajib diaktifkan untuk presensi pulang");
+  }
+
+  // Hapus foto pulang lama jika ada penggantian foto
+  if (payload.fotoPulangUrl && peserta.fotoPulangUrl && peserta.fotoPulangUrl !== payload.fotoPulangUrl) {
+    await deleteFromR2OrLocal(peserta.fotoPulangUrl);
+  }
+
+  const updatedPeserta = await prisma.kehadiranPeserta.update({
+    where: { id: pesertaId },
+    data: {
+      waktuPulang: now,
+      fotoPulangUrl: payload.fotoPulangUrl || null,
+      latitudePulang: payload.latitude || null,
+      longitudePulang: payload.longitude || null,
+      accuracyPulang: payload.accuracy || null,
+      lokasiPulangText: payload.lokasiText || null,
+    },
+  });
+
+  revalidatePath(`/p/absensi/${publicToken}`);
+  revalidatePath(`/dashboard/absensi/${agenda.id}`);
+  revalidatePath("/dashboard/absensi");
+  revalidatePath("/dashboard/absensi/rekap");
+
+  return {
+    success: true,
+    data: updatedPeserta,
+  };
+}
+
 // ==========================================
 // 3. PENGISIAN KEHADIRAN PESERTA
 // ==========================================
@@ -975,6 +1140,7 @@ export async function updateKehadiranPesertaBatch(
     namaPerwakilan?: string | null;
     jabatanPerwakilan?: string | null;
     keterangan?: string | null;
+    waktuPulang?: Date | string | null;
   }[],
   extraAgendaData?: {
     driveUrl?: string;
@@ -988,6 +1154,7 @@ export async function updateKehadiranPesertaBatch(
     jamTutup?: string;
     waktuBukaAbsen?: string | Date;
     waktuTutupAbsen?: string | Date;
+    enableCheckOut?: boolean;
     targetLatitude?: number | null;
     targetLongitude?: number | null;
     radiusMeter?: number | null;
@@ -1014,19 +1181,27 @@ export async function updateKehadiranPesertaBatch(
 
   await prisma.$transaction(async (tx) => {
     for (const item of pesertaList) {
+      const updateData: any = {
+        status: item.status,
+        namaPerwakilan: item.status === "MEWAKILI" ? item.namaPerwakilan : null,
+        jabatanPerwakilan: item.status === "MEWAKILI" ? item.jabatanPerwakilan : null,
+        keterangan: item.keterangan || null,
+      };
+      if (item.waktuPulang !== undefined) {
+        updateData.waktuPulang = item.waktuPulang ? new Date(item.waktuPulang) : null;
+      }
       await tx.kehadiranPeserta.update({
         where: { id: item.id, agendaId },
-        data: {
-          status: item.status,
-          namaPerwakilan: item.status === "MEWAKILI" ? item.namaPerwakilan : null,
-          jabatanPerwakilan: item.status === "MEWAKILI" ? item.jabatanPerwakilan : null,
-          keterangan: item.keterangan || null,
-        },
+        data: updateData,
       });
     }
 
     if (extraAgendaData) {
       const agendaUpdatePayload: any = {};
+
+      if (extraAgendaData.enableCheckOut !== undefined) {
+        agendaUpdatePayload.enableCheckOut = extraAgendaData.enableCheckOut;
+      }
 
       if (extraAgendaData.targetKategori !== undefined) {
         agendaUpdatePayload.targetKategori = extraAgendaData.targetKategori;
@@ -1304,6 +1479,11 @@ export async function getRekapKehadiranOpd(params?: {
     longitude?: number | null;
     isSelfInput?: boolean;
     waktuInput?: Date | null;
+    waktuPulang?: Date | null;
+    fotoPulangUrl?: string | null;
+    lokasiPulangText?: string | null;
+    latitudePulang?: number | null;
+    longitudePulang?: number | null;
   };
 
   // Akumulasi per Instansi / Perangkat Daerah dan Pegawai
@@ -1402,6 +1582,11 @@ export async function getRekapKehadiranOpd(params?: {
             longitude: p.longitude,
             isSelfInput: p.isSelfInput,
             waktuInput: p.waktuInput,
+            waktuPulang: p.waktuPulang,
+            fotoPulangUrl: p.fotoPulangUrl,
+            lokasiPulangText: p.lokasiPulangText,
+            latitudePulang: p.latitudePulang,
+            longitudePulang: p.longitudePulang,
           };
         }
       } else {
@@ -1427,6 +1612,11 @@ export async function getRekapKehadiranOpd(params?: {
           longitude: p.longitude,
           isSelfInput: p.isSelfInput,
           waktuInput: p.waktuInput,
+          waktuPulang: p.waktuPulang,
+          fotoPulangUrl: p.fotoPulangUrl,
+          lokasiPulangText: p.lokasiPulangText,
+          latitudePulang: p.latitudePulang,
+          longitudePulang: p.longitudePulang,
         });
       }
 
@@ -1468,6 +1658,11 @@ export async function getRekapKehadiranOpd(params?: {
         longitude: p.longitude,
         isSelfInput: p.isSelfInput,
         waktuInput: p.waktuInput,
+        waktuPulang: p.waktuPulang,
+        fotoPulangUrl: p.fotoPulangUrl,
+        lokasiPulangText: p.lokasiPulangText,
+        latitudePulang: p.latitudePulang,
+        longitudePulang: p.longitudePulang,
       });
     }
   }

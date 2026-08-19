@@ -44,6 +44,7 @@ import {
   Settings,
   Users,
   RefreshCw,
+  LogOut,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -82,6 +83,12 @@ type Peserta = {
   keterangan: string | null;
   fotoUrl: string | null;
   waktuInput: Date | string | null;
+  waktuPulang?: Date | string | null;
+  fotoPulangUrl?: string | null;
+  latitudePulang?: number | null;
+  longitudePulang?: number | null;
+  accuracyPulang?: number | null;
+  lokasiPulangText?: string | null;
   latitude: number | null;
   longitude: number | null;
   accuracy: number | null;
@@ -104,6 +111,9 @@ type Agenda = {
   isPublicActive: boolean;
   waktuBukaAbsen: Date | null;
   waktuTutupAbsen: Date | null;
+  enableCheckOut?: boolean;
+  waktuBukaPulang?: Date | null;
+  waktuTutupPulang?: Date | null;
   requireLocation: boolean;
   requirePhoto: boolean;
   allowNonPeserta?: boolean;
@@ -164,6 +174,7 @@ export default function ChecklistForm({
   const [requireLocation, setRequireLocation] = useState<boolean>(agenda.requireLocation ?? true);
   const [requirePhoto, setRequirePhoto] = useState<boolean>(agenda.requirePhoto ?? true);
   const [allowNonPeserta, setAllowNonPeserta] = useState<boolean>(agenda.allowNonPeserta ?? true);
+  const [enableCheckOut, setEnableCheckOut] = useState<boolean>(agenda.enableCheckOut ?? false);
   const [targetKategori, setTargetKategori] = useState<string>(agenda.targetKategori || "SEMUA_OPD");
   const [targetPeserta, setTargetPeserta] = useState<string>(
     agenda.targetPeserta || "Seluruh Perangkat Daerah / Pegawai"
@@ -193,14 +204,68 @@ export default function ChecklistForm({
   };
 
   const handleTargetKategoriChange = (kat: string) => {
-    setTargetKategori(kat);
     let targetLabel = "Seluruh Perangkat Daerah / Pegawai";
     if (kat === "SEMUA_OPD") targetLabel = "Seluruh Perangkat Daerah / Pegawai";
     else if (kat === "ESELON_2_3") targetLabel = "OPD Utama (Eselon II & III)";
     else if (kat === "ESELON_2") targetLabel = "Khusus Pegawai Eselon II (Kepala OPD)";
     else if (kat === "ESELON_3") targetLabel = "Khusus Pegawai Eselon III (Sekretaris / Kabid)";
     else if (kat === "KECAMATAN") targetLabel = "Camat dan Perangkat Kecamatan";
+
+    setTargetKategori(kat);
     setTargetPeserta(targetLabel);
+  };
+
+  // Sync state saat prop agenda berubah
+  React.useEffect(() => {
+    setPesertaList(agenda.peserta || []);
+    setIsPublicActive(agenda.isPublicActive);
+    setStatusAgenda(agenda.status);
+    setDriveUrl(agenda.driveUrl || "");
+    setTanggal(agenda.tanggal ? new Date(agenda.tanggal).toISOString().split("T")[0] : "");
+    const parts = parseWaktuParts(agenda.waktu);
+    setJamMulai(parts.jamMulai);
+    setJamSelesai(parts.jamSelesai);
+    setWaktu(agenda.waktu || "09:00 WITA");
+    setTempat(agenda.tempat || "");
+    setDeskripsi(agenda.deskripsi || "");
+    setTargetLatitude(agenda.targetLatitude ?? null);
+    setTargetLongitude(agenda.targetLongitude ?? null);
+    setRadiusMeter(agenda.radiusMeter || 100);
+    setRequireLocation(agenda.requireLocation ?? true);
+    setRequirePhoto(agenda.requirePhoto ?? true);
+    setAllowNonPeserta(agenda.allowNonPeserta ?? true);
+    setEnableCheckOut(agenda.enableCheckOut ?? false);
+    setTargetKategori(agenda.targetKategori || "SEMUA_OPD");
+    setTargetPeserta(agenda.targetPeserta || "Seluruh Perangkat Daerah / Pegawai");
+    setPublicToken(agenda.publicToken || "");
+    setPicPegawaiId(agenda.picPegawaiId || null);
+    setPicNama(agenda.picNama || "");
+    setPicNip(agenda.picNip || "");
+    setPicJabatan(agenda.picJabatan || "");
+    setJamBuka(agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30");
+    setJamTutup(agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00");
+  }, [agenda]);
+
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/absensi/${agenda.publicToken}` : "";
+
+  // Ubah status kehadiran satuan
+  const handleStatusChange = (id: string, newStatus: StatusKehadiran) => {
+    setPesertaList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
+    );
+  };
+
+  // Set / Hapus Waktu Pulang Manual Satuan
+  const handleSetPulangManual = (id: string, waktuPulangVal: Date | null) => {
+    setPesertaList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, waktuPulang: waktuPulangVal } : p))
+    );
+    if (waktuPulangVal) {
+      toast.success("Waktu kepulangan peserta berhasil disetel");
+    } else {
+      toast.info("Waktu kepulangan peserta dibatalkan");
+    }
   };
 
   const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA">("EDIT_AGENDA");
@@ -294,46 +359,6 @@ export default function ChecklistForm({
       setRefreshing(false);
       toast.success("Data presensi berhasil disegarkan");
     }, 600);
-  };
-
-  // Sync state ketika agenda props berubah
-  React.useEffect(() => {
-    setPesertaList(agenda.peserta);
-    setIsPublicActive(agenda.isPublicActive ?? true);
-    setStatusAgenda(agenda.status);
-    setDriveUrl(agenda.driveUrl || "");
-    setTanggal(agenda.tanggal ? formatWita(agenda.tanggal, "yyyy-MM-dd") : "");
-    const parts = parseWaktuParts(agenda.waktu);
-    setJamMulai(parts.jamMulai);
-    setJamSelesai(parts.jamSelesai);
-    setWaktu(agenda.waktu || "09:00 WITA");
-    setTempat(agenda.tempat || "");
-    setDeskripsi(agenda.deskripsi || "");
-    setTargetLatitude(agenda.targetLatitude ?? null);
-    setTargetLongitude(agenda.targetLongitude ?? null);
-    setRadiusMeter(agenda.radiusMeter || 100);
-    setRequireLocation(agenda.requireLocation ?? true);
-    setRequirePhoto(agenda.requirePhoto ?? true);
-    setAllowNonPeserta(agenda.allowNonPeserta ?? true);
-    setTargetKategori(agenda.targetKategori || "SEMUA_OPD");
-    setTargetPeserta(agenda.targetPeserta || "Seluruh Perangkat Daerah / Pegawai");
-    setPublicToken(agenda.publicToken || "");
-    setPicPegawaiId(agenda.picPegawaiId || null);
-    setPicNama(agenda.picNama || "");
-    setPicNip(agenda.picNip || "");
-    setPicJabatan(agenda.picJabatan || "");
-    setJamBuka(agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30");
-    setJamTutup(agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00");
-  }, [agenda]);
-
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/absensi/${agenda.publicToken}` : "";
-
-  // Ubah status kehadiran satuan
-  const handleStatusChange = (id: string, newStatus: StatusKehadiran) => {
-    setPesertaList((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
-    );
   };
 
   // Ubah perwakilan & simpan
@@ -461,6 +486,7 @@ export default function ChecklistForm({
           namaPerwakilan: p.namaPerwakilan,
           jabatanPerwakilan: p.jabatanPerwakilan,
           keterangan: p.keterangan,
+          waktuPulang: p.waktuPulang,
         })),
         {
           driveUrl: driveUrl.trim() || undefined,
@@ -471,6 +497,7 @@ export default function ChecklistForm({
           deskripsi: deskripsi.trim() || null,
           jamBuka: jamBuka.trim() || undefined,
           jamTutup: jamTutup.trim() || undefined,
+          enableCheckOut,
           targetLatitude: targetLatitude ?? null,
           targetLongitude: targetLongitude ?? null,
           radiusMeter: radiusMeter || 100,
@@ -586,9 +613,12 @@ export default function ChecklistForm({
       "Jabatan Perwakilan",
       "Keterangan",
       "Metode Presensi",
-      "Waktu Presensi",
-      "Lokasi / Geotag",
-      "URL Foto Bukti",
+      "Waktu Datang",
+      "Lokasi Datang (GPS)",
+      "URL Foto Datang",
+      "Waktu Pulang",
+      "Lokasi Pulang (GPS)",
+      "URL Foto Pulang",
     ];
 
     const dataRows = pesertaList.map((p, idx) => {
@@ -601,18 +631,32 @@ export default function ChecklistForm({
           ? "IZIN"
           : "TIDAK HADIR";
 
-      // Plain URL Foto Bukti
+      // Plain URL Foto Bukti Datang
       const fotoUrlPlain = p.fotoUrl
         ? p.fotoUrl.startsWith("http")
           ? p.fotoUrl
           : `${origin}${p.fotoUrl}`
         : "-";
 
-      // Plain URL Lokasi Maps
+      // Plain URL Lokasi Maps Datang
       let lokasiPlain = p.lokasiText || "-";
       if (p.latitude && p.longitude) {
         const mapsUrl = `https://www.google.com/maps?q=${p.latitude},${p.longitude}`;
         lokasiPlain = p.lokasiText ? `${p.lokasiText} (${mapsUrl})` : mapsUrl;
+      }
+
+      // Plain URL Foto Bukti Pulang
+      const fotoPulangUrlPlain = p.fotoPulangUrl
+        ? p.fotoPulangUrl.startsWith("http")
+          ? p.fotoPulangUrl
+          : `${origin}${p.fotoPulangUrl}`
+        : "-";
+
+      // Plain URL Lokasi Maps Pulang
+      let lokasiPulangPlain = p.lokasiPulangText || "-";
+      if (p.latitudePulang && p.longitudePulang) {
+        const mapsUrl = `https://www.google.com/maps?q=${p.latitudePulang},${p.longitudePulang}`;
+        lokasiPulangPlain = p.lokasiPulangText ? `${p.lokasiPulangText} (${mapsUrl})` : mapsUrl;
       }
 
       return {
@@ -627,9 +671,12 @@ export default function ChecklistForm({
         jabatanPerwakilan: p.jabatanPerwakilan || "-",
         keterangan: p.keterangan || "-",
         metode: p.isSelfInput ? "Self-Input Mandiri (Online)" : "Input Manual Admin",
-        waktu: p.waktuInput ? `${formatWita(p.waktuInput, "dd/MM/yyyy HH:mm")} WITA` : "-",
+        waktuDatang: p.waktuInput ? `${formatWita(p.waktuInput, "dd/MM/yyyy HH:mm")} WITA` : "-",
         lokasiPlain,
         fotoUrlPlain,
+        waktuPulang: p.waktuPulang ? `${formatWita(p.waktuPulang, "dd/MM/yyyy HH:mm")} WITA` : (agenda.enableCheckOut ? "Belum Pulang" : "-"),
+        lokasiPulangPlain,
+        fotoPulangUrlPlain,
       };
     });
 
@@ -647,9 +694,12 @@ export default function ChecklistForm({
         r.jabatanPerwakilan,
         r.keterangan,
         r.metode,
-        r.waktu,
+        r.waktuDatang,
         r.lokasiPlain,
         r.fotoUrlPlain,
+        r.waktuPulang,
+        r.lokasiPulangPlain,
+        r.fotoPulangUrlPlain,
       ]);
     });
 
@@ -667,9 +717,12 @@ export default function ChecklistForm({
       { wch: 25 },
       { wch: 25 },
       { wch: 28 },
-      { wch: 25 },
+      { wch: 22 },
       { wch: 45 },
-      { wch: 50 },
+      { wch: 45 },
+      { wch: 22 },
+      { wch: 45 },
+      { wch: 45 },
     ];
     worksheet["!cols"] = colWidths;
 
@@ -1028,6 +1081,29 @@ export default function ChecklistForm({
                 </div>
               </div>
 
+              {/* Opsi Presensi Pulang (Check-out) - Terintegrasi dengan Konteks Waktu */}
+              <div className="p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-100/90 text-xs">
+                <label className="flex items-start justify-between cursor-pointer gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-100/80 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <LogOut className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block">Aktifkan Presensi Pulang (Check-out)</span>
+                      <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                        Peserta yang telah melakukan presensi Datang dapat membuka kembali link/QR untuk mengirim presensi kepulangan saat acara selesai.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableCheckOut}
+                    onChange={(e) => setEnableCheckOut(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0 mt-1"
+                  />
+                </label>
+              </div>
+
               {/* Lokasi & Geofencing */}
               <div className="space-y-2 pt-1 border-t border-slate-100">
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
@@ -1195,7 +1271,7 @@ export default function ChecklistForm({
                 </p>
               </div>
 
-              {/* Opsi Validasi Selfie & GPS */}
+              {/* Opsi Validasi Selfie, GPS & Presensi Pulang */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
@@ -1669,9 +1745,12 @@ export default function ChecklistForm({
 
                         {/* Bukti Foto, Waktu & GPS */}
                         <TableCell className="text-xs">
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {p.waktuInput ? (
                               <div className="font-mono text-[11px] text-slate-700 flex items-center gap-1">
+                                {agenda.enableCheckOut && (
+                                  <span className="px-1 py-0.2 bg-slate-100 text-slate-600 rounded text-[9px] font-bold">Dtg</span>
+                                )}
                                 <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                                 {formatWita(p.waktuInput, "HH:mm:ss")} WITA
                               </div>
@@ -1679,7 +1758,41 @@ export default function ChecklistForm({
                               <span className="text-slate-300 text-xs italic">-</span>
                             )}
 
-                            <div className="flex items-center gap-2 pt-0.5">
+                            {/* Info Presensi Pulang jika diaktifkan */}
+                            {(enableCheckOut || agenda.enableCheckOut) && (
+                              p.waktuPulang ? (
+                                <div className="font-mono text-[11px] text-indigo-700 font-semibold flex items-center gap-1">
+                                  <span className="px-1 py-0.2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[9px] font-bold">Plg</span>
+                                  <Clock className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  {formatWita(p.waktuPulang, "HH:mm:ss")} WITA
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPulangManual(p.id, null)}
+                                    className="text-slate-300 hover:text-rose-600 font-bold ml-1 text-xs px-1 leading-none transition"
+                                    title="Batalkan/Hapus Jam Pulang"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ) : p.waktuInput ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-400 text-[10px] italic flex items-center gap-1">
+                                    <span className="px-1 py-0.2 bg-slate-100 text-slate-400 rounded text-[9px]">Plg</span>
+                                    Belum Pulang
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPulangManual(p.id, new Date())}
+                                    className="text-[9.5px] font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.2 rounded transition cursor-pointer"
+                                    title="Tandai peserta sudah pulang saat ini"
+                                  >
+                                    + Set Pulang
+                                  </button>
+                                </div>
+                              ) : null
+                            )}
+
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                               {p.fotoUrl && (
                                 <button
                                   type="button"
@@ -1687,7 +1800,18 @@ export default function ChecklistForm({
                                   className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-semibold rounded border border-slate-300 transition"
                                 >
                                   <Camera className="w-3 h-3 text-indigo-600" />
-                                  Foto
+                                  Foto {agenda.enableCheckOut ? "Datang" : ""}
+                                </button>
+                              )}
+
+                              {p.fotoPulangUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedFotoPeserta({ ...p, fotoUrl: p.fotoPulangUrl } as any)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-[10px] font-semibold rounded border border-indigo-200 transition"
+                                >
+                                  <Camera className="w-3 h-3 text-indigo-600" />
+                                  Foto Pulang
                                 </button>
                               )}
 

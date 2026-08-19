@@ -108,20 +108,26 @@ export default function QrCodeModal({
       // 3. Setup Layout & Dimensi Canvas
       const canvasWidth = 720;
       const topPadding = 36; // Jarak pinggir atas ke logo Kutai Barat
-      const kubarTargetHeight = 98; // Logo Kubar diperbesar lebih gagah
+      const kubarTargetHeight = 96; // Logo Kubar proporsional & gagah
       const kubarTargetWidth = kubarLoaded && kubarImg.height > 0
         ? (kubarImg.width / kubarImg.height) * kubarTargetHeight
-        : 82;
+        : 80;
       const kubarX = (canvasWidth - kubarTargetWidth) / 2;
 
-      // Teks Judul FORMULIR KEHADIRAN di bawah logo Kubar (dijauhkan agar proporsional)
-      const textHeaderY = topPadding + kubarTargetHeight + 38;
+      // Teks Judul FORMULIR KEHADIRAN di bawah logo Kubar
+      const textHeaderY = topPadding + kubarTargetHeight + 36;
 
-      // Jarak teks Header ke QR
-      const gapToQr = 26;
-      const qrY = textHeaderY + gapToQr;
-      const qrSize = 480;
-      const qrX = (canvasWidth - qrSize) / 2;
+      // Dimensi Card QR Code dengan Gradient Aksen
+      const qrSize = 460;
+      const qrCardPadding = 20;
+      const qrCardW = qrSize + qrCardPadding * 2;
+      const qrCardH = qrSize + qrCardPadding * 2;
+      const qrCardX = (canvasWidth - qrCardW) / 2;
+      const qrCardY = textHeaderY + 26; // Jarak aman di bawah FORMULIR KEHADIRAN
+
+      const qrX = qrCardX + qrCardPadding;
+      const qrY = qrCardY + qrCardPadding;
+      const qrCardBottom = qrCardY + qrCardH;
 
       // Dummy canvas untuk mengukur ketinggian teks dinamis
       const maxTextWidth = canvasWidth - 80;
@@ -172,8 +178,8 @@ export default function QrCodeModal({
         titleLines = [namaKegiatan];
       }
 
-      // Hitung posisi Y masing-masing elemen
-      const startInstY = qrY + qrSize + 32;
+      // Hitung posisi Y masing-masing elemen dengan jarak lega dari batas bawah card (qrCardBottom)
+      const startInstY = qrCardBottom + 36;
       const startTitleY = startInstY + (instructionLines.length * instLineHeight) + 14;
       const startMetaY = startTitleY + (titleLines.length * titleLineHeight) + 14;
       
@@ -182,16 +188,17 @@ export default function QrCodeModal({
       if (tempat) metaCount++;
       const endMetaY = startMetaY + (metaCount * 26);
 
-      // Dimensi Logo SIPADIN di Bagian Bawah Kecil (Dijauhkan lagi ke bawah dengan gap lega)
-      const gapToSipadin = 68;
-      const sipadinTargetWidth = 100;
+      // Dimensi Logo SIPADIN di Bagian Bawah (Diperbesar sedikit dan diberi teks Bagian Organisasi)
+      const gapToSipadin = 60;
+      const sipadinTargetWidth = 140;
       const sipadinTargetHeight = sipadinLoaded && sipadinImg.width > 0
         ? (sipadinImg.height / sipadinImg.width) * sipadinTargetWidth
-        : 26;
+        : 36;
       const sipadinX = (canvasWidth - sipadinTargetWidth) / 2;
       const sipadinY = endMetaY + gapToSipadin;
+      const textOrgY = sipadinY + sipadinTargetHeight + 16;
 
-      const totalCanvasHeight = Math.max(1070, sipadinY + sipadinTargetHeight + 45);
+      const totalCanvasHeight = Math.max(1090, textOrgY + 45);
 
       // Render Final Canvas
       const canvas = document.createElement("canvas");
@@ -204,20 +211,48 @@ export default function QrCodeModal({
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvasWidth, totalCanvasHeight);
 
-      // 1. Gambar Logo Lambang Kutai Barat di Atas (Lebih Besar & Tajam)
+      // 1. Gambar Logo Lambang Kutai Barat di Atas
       if (kubarLoaded && kubarImg.width > 0) {
         ctx.drawImage(kubarImg, kubarX, topPadding, kubarTargetWidth, kubarTargetHeight);
       }
 
-      // 2. Teks FORMULIR KEHADIRAN di bawah Logo Atas (Font Lebih Besar & Warna Soft Elegan)
+      // 2. Teks FORMULIR KEHADIRAN di bawah Logo Atas
       ctx.save();
-      ctx.fillStyle = "#475569"; // Soft slate (tidak terlalu hitam)
+      ctx.fillStyle = "#475569"; // Soft slate
       ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("FORMULIR KEHADIRAN", canvasWidth / 2, textHeaderY);
       ctx.restore();
 
-      // 3. Gambar QR Code di Tengah
+      // 3. Gambar Card Aksen Gradient di Belakang QR Code
+      const qrCardRadius = 24;
+
+      ctx.save();
+      const qrCardGrad = ctx.createLinearGradient(qrCardX, qrCardY, qrCardX + qrCardW, qrCardY + qrCardH);
+      qrCardGrad.addColorStop(0, "#f8faff");
+      qrCardGrad.addColorStop(0.5, "#ffffff");
+      qrCardGrad.addColorStop(1, "#eff4ff");
+
+      ctx.beginPath();
+      if (typeof (ctx as any).roundRect === "function") {
+        (ctx as any).roundRect(qrCardX, qrCardY, qrCardW, qrCardH, qrCardRadius);
+      } else {
+        const r = qrCardRadius;
+        ctx.moveTo(qrCardX + r, qrCardY);
+        ctx.arcTo(qrCardX + qrCardW, qrCardY, qrCardX + qrCardW, qrCardY + qrCardH, r);
+        ctx.arcTo(qrCardX + qrCardW, qrCardY + qrCardH, qrCardX, qrCardY + qrCardH, r);
+        ctx.arcTo(qrCardX, qrCardY + qrCardH, qrCardX, qrCardY, r);
+        ctx.arcTo(qrCardX, qrCardY, qrCardX + qrCardW, qrCardY, r);
+        ctx.closePath();
+      }
+      ctx.fillStyle = qrCardGrad;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(199, 210, 254, 0.8)";
+      ctx.stroke();
+      ctx.restore();
+
+      // Gambar QR Code di Tengah Card
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
       // 4. Gambar Keterangan Singkat Absen
@@ -257,14 +292,22 @@ export default function QrCodeModal({
       }
       ctx.restore();
 
-      // 7. Gambar Logo SIPADIN Kecil di Bagian Bawah (Dijauhkan ke bawah, Grayscale 100% & Opacity Sangat Rendah / Halus)
+      // 7. Gambar Logo SIPADIN di Bagian Bawah (Diperbesar & Opacity Lembut)
       if (sipadinLoaded && sipadinImg.width > 0) {
         ctx.save();
-        ctx.globalAlpha = 0.08; // Opasitas sangat rendah / ultra subtle
-        ctx.filter = "grayscale(100%)"; // Filter Black & White
+        ctx.globalAlpha = 0.22;
+        ctx.filter = "grayscale(100%)";
         ctx.drawImage(sipadinImg, sipadinX, sipadinY, sipadinTargetWidth, sipadinTargetHeight);
         ctx.restore();
       }
+
+      // 8. Teks "Bagian Organisasi" di Bawah Logo SIPADIN
+      ctx.save();
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "600 13px system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Bagian Organisasi", canvasWidth / 2, textOrgY);
+      ctx.restore();
 
       // Download file PNG
       const finalDataUrl = canvas.toDataURL("image/png");
@@ -308,11 +351,11 @@ export default function QrCodeModal({
         {/* QR Display Card */}
         <div className="mt-3.5 mb-1 flex flex-col items-center justify-center">
           {qrDataUrl ? (
-            <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-2xs">
+            <div className="p-3 bg-gradient-to-br from-indigo-50/90 via-white to-slate-50 border border-indigo-100/90 rounded-2xl shadow-xs">
               <img
                 src={qrDataUrl}
                 alt="QR Code Presensi"
-                className="w-44 h-44 sm:w-48 sm:h-48 object-contain rounded-xl bg-white"
+                className="w-44 h-44 sm:w-48 sm:h-48 object-contain rounded-xl bg-white shadow-2xs"
               />
             </div>
           ) : (

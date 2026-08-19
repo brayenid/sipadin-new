@@ -45,11 +45,13 @@ type HistoryItem = {
   namaPerwakilan?: string | null;
   jabatanPerwakilan?: string | null;
   fotoUrl?: string | null;
+  fotoPulangUrl?: string | null;
   lokasiText?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   isSelfInput?: boolean;
   waktuInput?: Date | null;
+  waktuPulang?: Date | null;
 };
 
 type OpdSummaryItem = {
@@ -658,7 +660,14 @@ export default function RekapKehadiranView({
                                             {h.fotoUrl && (
                                               <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
                                                 <Camera className="w-2.5 h-2.5" />
-                                                Foto
+                                                Foto {h.fotoPulangUrl ? "Dtg" : ""}
+                                              </span>
+                                            )}
+
+                                            {h.fotoPulangUrl && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Camera className="w-2.5 h-2.5" />
+                                                Foto Plg
                                               </span>
                                             )}
 
@@ -669,11 +678,14 @@ export default function RekapKehadiranView({
                                               </span>
                                             )}
 
-                                            {h.waktuInput && (
-                                              <span className="text-[10px] text-slate-400 ml-auto">
-                                                {formatWita(h.waktuInput, "HH:mm")} WITA
-                                              </span>
-                                            )}
+                                            <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
+                                              {h.waktuInput && (
+                                                <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
+                                              )}
+                                              {h.waktuPulang && (
+                                                <span className="text-indigo-600 font-semibold">• Plg: {formatWita(h.waktuPulang, "HH:mm")}</span>
+                                              )}
+                                            </div>
                                           </div>
                                         </Link>
                                       ))}
@@ -874,7 +886,14 @@ export default function RekapKehadiranView({
                                             {h.fotoUrl && (
                                               <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
                                                 <Camera className="w-2.5 h-2.5" />
-                                                Foto
+                                                Foto {h.fotoPulangUrl ? "Dtg" : ""}
+                                              </span>
+                                            )}
+
+                                            {h.fotoPulangUrl && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Camera className="w-2.5 h-2.5" />
+                                                Foto Plg
                                               </span>
                                             )}
 
@@ -885,11 +904,14 @@ export default function RekapKehadiranView({
                                               </span>
                                             )}
 
-                                            {h.waktuInput && (
-                                              <span className="text-[10px] text-slate-400 ml-auto">
-                                                {formatWita(h.waktuInput, "HH:mm")} WITA
-                                              </span>
-                                            )}
+                                            <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
+                                              {h.waktuInput && (
+                                                <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
+                                              )}
+                                              {h.waktuPulang && (
+                                                <span className="text-indigo-600 font-semibold">• Plg: {formatWita(h.waktuPulang, "HH:mm")}</span>
+                                              )}
+                                            </div>
                                           </div>
                                         </Link>
                                       ))}

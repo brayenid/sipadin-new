@@ -19,11 +19,13 @@ import {
   ChevronDown,
   AlertCircle,
   ShieldCheck,
+  LogOut,
+  Users,
 } from "lucide-react";
 import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-compression";
-import { submitSelfAbsensi, searchPublicPesertaAgenda } from "@/app/actions/absensi";
+import { submitSelfAbsensi, submitSelfAbsensiPulang, searchPublicPesertaAgenda } from "@/app/actions/absensi";
 
 interface PesertaItem {
   id: string;
@@ -36,7 +38,16 @@ interface PesertaItem {
   urutan: number;
   status: StatusKehadiran;
   isSelfInput?: boolean;
+  fotoUrl?: string | null;
+  namaPerwakilan?: string | null;
+  jabatanPerwakilan?: string | null;
   waktuInput?: Date | string | null;
+  waktuPulang?: Date | string | null;
+  fotoPulangUrl?: string | null;
+  latitudePulang?: number | null;
+  longitudePulang?: number | null;
+  accuracyPulang?: number | null;
+  lokasiPulangText?: string | null;
 }
 
 interface PublicAgendaData {
@@ -54,6 +65,9 @@ interface PublicAgendaData {
   isPublicActive: boolean;
   waktuBukaAbsen: Date | string | null;
   waktuTutupAbsen: Date | string | null;
+  enableCheckOut?: boolean;
+  waktuBukaPulang?: Date | string | null;
+  waktuTutupPulang?: Date | string | null;
   requireLocation: boolean;
   requirePhoto: boolean;
   allowNonPeserta?: boolean;
@@ -63,6 +77,7 @@ interface PublicAgendaData {
   peserta?: PesertaItem[];
   serverTime: string;
   timeStatus: "NOT_STARTED" | "OPEN" | "CLOSED";
+  timeStatusPulang?: "NOT_STARTED" | "OPEN" | "CLOSED";
 }
 
 export default function PublicAbsensiForm({
@@ -388,12 +403,41 @@ export default function PublicAbsensiForm({
     });
   };
 
+  const isAlreadyCheckedIn = Boolean(
+    activePeserta &&
+    activePeserta.waktuInput &&
+    activePeserta.status !== "TIDAK_HADIR"
+  );
+  const isAlreadyCheckedOut = Boolean(
+    activePeserta &&
+    activePeserta.waktuPulang
+  );
+  const isCheckOutMode = Boolean(
+    agenda.enableCheckOut &&
+    isAlreadyCheckedIn &&
+    !isAlreadyCheckedOut
+  );
+
   // Submit Flow: Validasi Form & Buka Modal Persetujuan
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isCustomPeserta && !selectedPesertaId) {
       toast.error("Pilih nama Anda atau instansi terlebih dahulu");
+      return;
+    }
+
+    if (isAlreadyCheckedOut) {
+      toast.info("Anda sudah melengkapi seluruh presensi (datang & pulang) pada kegiatan ini.");
+      return;
+    }
+
+    if (isCheckOutMode) {
+      if (agenda.requirePhoto && !photoBlob && !photoDataUrl) {
+        toast.error("Foto selfie presensi pulang wajib diambil secara langsung dari kamera");
+        return;
+      }
+      setShowConsentModal(true);
       return;
     }
 
@@ -447,6 +491,67 @@ export default function PublicAbsensiForm({
       return;
     }
 
+    // ALUR 1: SUBMIT PRESENSI PULANG
+    if (isCheckOutMode) {
+      try {
+        let uploadedPhotoUrl: string | null = null;
+        if (photoBlob) {
+          if (photoBlob.size > 5 * 1024 * 1024) {
+            throw new Error("Ukuran foto melebihi batas maksimal 5MB. Silakan ambil ulang foto.");
+          }
+          const formData = new FormData();
+          formData.append("file", photoBlob, "selfie-pulang.jpg");
+          formData.append("agendaId", agenda.id);
+          formData.append("nama", `${activePeserta?.nama || "peserta"}-pulang`);
+
+          const uploadRes = await fetch("/api/absensi/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json();
+            throw new Error(errData.error || "Gagal mengunggah foto pulang");
+          }
+
+          const uploadJson = await uploadRes.json();
+          uploadedPhotoUrl = uploadJson.url;
+        }
+
+        const res = await submitSelfAbsensiPulang({
+          publicToken: agenda.publicToken!,
+          pesertaId: selectedPesertaId,
+          fotoPulangUrl: uploadedPhotoUrl,
+          latitude: currentGps?.lat || null,
+          longitude: currentGps?.lng || null,
+          accuracy: currentGps?.accuracy || null,
+          lokasiText: currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null,
+          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+        });
+
+        toast.success("Presensi pulang berhasil dicatat & diverifikasi!");
+        setShowConsentModal(false);
+        setSubmittedData({
+          ...res.data,
+          isPulang: true,
+          nama: activePeserta?.nama,
+          instansi: activePeserta?.instansi,
+          jabatan: activePeserta?.jabatan,
+          status: activePeserta?.status,
+          waktuInput: activePeserta?.waktuInput,
+          fotoUrl: activePeserta?.fotoUrl,
+          waktuPulang: new Date(),
+          fotoPulangUrl: uploadedPhotoUrl,
+        });
+      } catch (err: any) {
+        toast.error(err.message || "Gagal mengirim presensi pulang");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // ALUR 2: SUBMIT PRESENSI DATANG
     try {
       let uploadedPhotoUrl: string | null = null;
 
@@ -521,6 +626,8 @@ export default function PublicAbsensiForm({
 
   // 1. TAMPILAN BUKTI DIGITAL
   if (submittedData) {
+    const isPulangReceipt = Boolean(submittedData.isPulang || submittedData.waktuPulang);
+
     return (
       <div className="min-h-screen bg-slate-50/60 py-8 px-4 flex justify-center items-center">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/80 text-center p-6 sm:p-8">
@@ -529,7 +636,7 @@ export default function PublicAbsensiForm({
           </div>
 
           <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 uppercase tracking-wider">
-            Presensi Berhasil Dicatat
+            {isPulangReceipt ? "Presensi Pulang Berhasil Dicatat" : "Presensi Berhasil Dicatat"}
           </span>
 
           <h2 className="text-lg font-bold text-slate-900 mt-3 mb-1">
@@ -583,22 +690,47 @@ export default function PublicAbsensiForm({
               </div>
             )}
 
+            {/* Waktu Presensi Datang */}
             <div className="flex justify-between items-center pt-1">
-              <span className="text-slate-500">Waktu Presensi:</span>
+              <span className="text-slate-500">Waktu Datang:</span>
               <span className="font-mono text-slate-700">
-                {formatWita(submittedData.waktuInput, "dd MMM yyyy, HH:mm")} WITA
+                {submittedData.waktuInput ? `${formatWita(submittedData.waktuInput, "dd MMM yyyy, HH:mm")} WITA` : "-"}
               </span>
             </div>
 
-            {submittedData.fotoUrl && (
-              <div className="pt-2 text-center">
-                <img
-                  src={submittedData.fotoUrl}
-                  alt="Bukti Kehadiran"
-                  className="w-20 h-20 object-cover rounded-lg mx-auto border border-slate-200"
-                />
+            {/* Waktu Presensi Pulang */}
+            {submittedData.waktuPulang && (
+              <div className="flex justify-between items-center pt-1 border-t border-slate-200/70">
+                <span className="text-indigo-700 font-semibold">Waktu Pulang:</span>
+                <span className="font-mono text-indigo-900 font-bold">
+                  {formatWita(submittedData.waktuPulang, "dd MMM yyyy, HH:mm")} WITA
+                </span>
               </div>
             )}
+
+            {/* Foto Bukti */}
+            <div className="flex justify-center items-center gap-3 pt-2">
+              {submittedData.fotoUrl && (
+                <div className="text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">Foto Datang</span>
+                  <img
+                    src={submittedData.fotoUrl}
+                    alt="Bukti Datang"
+                    className="w-20 h-20 object-cover rounded-lg mx-auto border border-slate-200"
+                  />
+                </div>
+              )}
+              {submittedData.fotoPulangUrl && (
+                <div className="text-center">
+                  <span className="text-[10px] text-indigo-600 font-semibold block mb-1">Foto Pulang</span>
+                  <img
+                    src={submittedData.fotoPulangUrl}
+                    alt="Bukti Pulang"
+                    className="w-20 h-20 object-cover rounded-lg mx-auto border-2 border-indigo-200"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -703,8 +835,15 @@ export default function PublicAbsensiForm({
           </h1>
 
           {/* Subjudul: Tag Badge Persyaratan Presensi (Hanya muncul jika dicentang) */}
-          {(agenda.requirePhoto || agenda.requireLocation) && (
+          {(agenda.requirePhoto || agenda.requireLocation || agenda.enableCheckOut) && (
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {agenda.enableCheckOut && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <LogOut className="w-3 h-3" />
+                  Presensi Datang & Pulang
+                </span>
+              )}
+
               {agenda.requirePhoto && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-200">
                   <Camera className="w-3 h-3" />
@@ -713,7 +852,7 @@ export default function PublicAbsensiForm({
               )}
 
               {agenda.requireLocation && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                   <MapPin className="w-3 h-3" />
                   Wajib Kunci GPS
                 </span>
@@ -747,6 +886,44 @@ export default function PublicAbsensiForm({
 
         {/* Form Isi */}
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Banner Status Presensi Pulang */}
+          {isCheckOutMode && (
+            <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-2xl p-4 text-xs space-y-1.5 shadow-2xs animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-indigo-950 font-bold">
+                <LogOut className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>Konfirmasi Presensi Kepulangan</span>
+              </div>
+              <p className="text-indigo-800 text-[11.5px] leading-relaxed">
+                Anda tercatat hadir (<strong>Datang</strong>) pada{" "}
+                <span className="font-bold text-indigo-950 font-mono">
+                  {formatWita(activePeserta?.waktuInput, "HH:mm")} WITA
+                </span>
+                . Silakan ambil foto selfie kepulangan untuk menyelesaikan presensi.
+              </p>
+            </div>
+          )}
+
+          {/* Banner Jika Sudah Lengkap Datang & Pulang */}
+          {isAlreadyCheckedOut && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs space-y-2 text-emerald-900 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 font-bold text-emerald-950">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Presensi Anda Sudah Lengkap</span>
+              </div>
+              <p className="text-[11.5px] text-emerald-800 leading-relaxed">
+                Data kehadiran dan kepulangan Anda pada kegiatan ini sudah tercatat di sistem:
+              </p>
+              <div className="flex flex-wrap gap-2 text-[11px] font-mono">
+                <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-slate-800">
+                  🟢 Datang: {formatWita(activePeserta?.waktuInput, "HH:mm")} WITA
+                </span>
+                <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-indigo-800 font-bold">
+                  🔵 Pulang: {formatWita(activePeserta?.waktuPulang, "HH:mm")} WITA
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Peringatan Validasi Lokasi (Hadir jika aturan GPS diaktifkan) */}
           {agenda.requireLocation && status !== "IZIN" && (
             <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] animate-in fade-in duration-200">
@@ -771,7 +948,7 @@ export default function PublicAbsensiForm({
                 Nama Pegawai <span className="text-red-500">*</span>
               </label>
 
-              {agenda.allowNonPeserta !== false && (
+              {agenda.allowNonPeserta !== false && !isCheckOutMode && !isAlreadyCheckedOut && (
                 <button
                   type="button"
                   onClick={() => {
@@ -796,7 +973,12 @@ export default function PublicAbsensiForm({
                     <div className="truncate text-left flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-900">{activePeserta.nama}</span>
-                        {activePeserta.status !== "TIDAK_HADIR" && (
+                        {activePeserta.waktuPulang ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Lengkap (Datang & Pulang)
+                          </span>
+                        ) : activePeserta.status !== "TIDAK_HADIR" ? (
                           <span
                             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
                               activePeserta.status === "HADIR"
@@ -807,9 +989,9 @@ export default function PublicAbsensiForm({
                             }`}
                           >
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            Sudah Absen ({activePeserta.status === "HADIR" ? "Hadir" : activePeserta.status === "MEWAKILI" ? "Mewakili" : "Izin"})
+                            Sudah Datang ({activePeserta.status === "HADIR" ? "Hadir" : activePeserta.status === "MEWAKILI" ? "Mewakili" : "Izin"})
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <div className="text-slate-500 text-[11px] truncate mt-0.5">
                         {activePeserta.jabatan} • {activePeserta.instansi}
@@ -873,7 +1055,12 @@ export default function PublicAbsensiForm({
                             <div className="min-w-0 pr-2">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold">{p.nama}</span>
-                                {p.status !== "TIDAK_HADIR" && (
+                                {p.waktuPulang ? (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9.5px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                    Lengkap
+                                  </span>
+                                ) : p.status !== "TIDAK_HADIR" ? (
                                   <span
                                     className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9.5px] font-semibold border ${
                                       p.status === "HADIR"
@@ -886,7 +1073,7 @@ export default function PublicAbsensiForm({
                                     <CheckCircle2 className="w-2.5 h-2.5" />
                                     {p.status === "HADIR" ? "Hadir" : p.status === "MEWAKILI" ? "Mewakili" : "Izin"}
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               <div className="text-[11px] text-slate-500 truncate mt-0.5">
                                 {p.jabatan} • {p.instansi}
@@ -964,92 +1151,93 @@ export default function PublicAbsensiForm({
             )}
           </div>
 
-          {/* Card 2: Status Kehadiran */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
-            <label className="block text-xs font-bold text-slate-800">
-              Status Kehadiran <span className="text-red-500">*</span>
-            </label>
+          {/* Card 2: Status Kehadiran (Hanya untuk presensi Datang) */}
+          {!isCheckOutMode && !isAlreadyCheckedOut && (
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
+              <label className="block text-xs font-bold text-slate-800">
+                Status Kehadiran <span className="text-red-500">*</span>
+              </label>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setStatus("HADIR")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-                  status === "HADIR"
-                    ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <Check className="w-3.5 h-3.5" />
-                Hadir
-              </button>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStatus("HADIR")}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                    status === "HADIR"
+                      ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Hadir
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setStatus("MEWAKILI")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-                  status === "MEWAKILI"
-                    ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                Mewakili
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setStatus("MEWAKILI")}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                    status === "MEWAKILI"
+                      ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Mewakili
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus("IZIN");
-                  stopCamera();
-                }}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-                  status === "IZIN"
-                    ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                Izin
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("IZIN");
+                    stopCamera();
+                  }}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                    status === "IZIN"
+                      ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  Izin
+                </button>
+              </div>
 
-            {/* Field Mewakili */}
-            {status === "MEWAKILI" && (
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 pt-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Nama Yang Mewakili <span className="text-red-500">*</span>:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nama pegawai / staf pengganti"
-                    value={namaPerwakilan}
-                    onChange={(e) => setNamaPerwakilan(e.target.value)}
-                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
+              {/* Field Mewakili */}
+              {status === "MEWAKILI" && (
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 pt-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nama Yang Mewakili <span className="text-red-500">*</span>:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nama pegawai / staf pengganti"
+                      value={namaPerwakilan}
+                      onChange={(e) => setNamaPerwakilan(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Jabatan Yang Mewakili:
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Sekretaris / Kepala Bidang"
-                    value={jabatanPerwakilan}
-                    onChange={(e) => setJabatanPerwakilan(e.target.value)}
-                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Jabatan Yang Mewakili:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Sekretaris / Kepala Bidang"
+                      value={jabatanPerwakilan}
+                      onChange={(e) => setJabatanPerwakilan(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Keterangan / Nomor Surat Tugas:
-                  </label>
-                  <input
-                    type="text"
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Keterangan / Nomor Surat Tugas:
+                    </label>
+                    <input
+                      type="text"
                     placeholder="Catatan perwakilan..."
                     value={keterangan}
                     onChange={(e) => setKeterangan(e.target.value)}
@@ -1076,13 +1264,14 @@ export default function PublicAbsensiForm({
               </div>
             )}
           </div>
+          )}
 
           {/* Card 3: Foto Selfie Real-time (Wajib Kamera Langsung hanya untuk HADIR & MEWAKILI) */}
-          {agenda.requirePhoto && status !== "IZIN" && (
+          {agenda.requirePhoto && (status !== "IZIN" || isCheckOutMode) && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-800">
-                  Foto Selfie Kehadiran <span className="text-red-500">*</span>
+                  {isCheckOutMode ? "Foto Selfie Presensi Pulang" : "Foto Selfie Kehadiran"} <span className="text-red-500">*</span>
                 </label>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                   Pastikan foto selfie diambil langsung di lokasi kegiatan, wajah terlihat jelas menghadap kamera, tanpa masker/kacamata hitam, serta pencahayaan memadai.
@@ -1195,13 +1384,23 @@ export default function PublicAbsensiForm({
           <div className="pt-1">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isAlreadyCheckedOut}
               className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-[0_2px_8px_-3px_rgba(79,70,229,0.35)] transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Menyimpan Presensi...
+                </>
+              ) : isAlreadyCheckedOut ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Presensi Lengkap (Selesai)
+                </>
+              ) : isCheckOutMode ? (
+                <>
+                  <LogOut className="w-4 h-4" />
+                  Kirim Presensi Pulang
                 </>
               ) : (
                 <>
@@ -1220,6 +1419,9 @@ export default function PublicAbsensiForm({
             alt="SIPADIN"
             className="h-8 sm:h-9 w-auto object-contain grayscale opacity-20"
           />
+          <span className="text-[10.5px] font-medium text-slate-400/90 tracking-wide">
+            Bagian Organisasi
+          </span>
         </div>
       </div>
 
@@ -1292,7 +1494,9 @@ export default function PublicAbsensiForm({
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Konfirmasi & Persetujuan Presensi</h3>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {isCheckOutMode ? "Konfirmasi Presensi Pulang" : "Konfirmasi & Persetujuan Presensi"}
+                </h3>
                 <p className="text-[11px] text-slate-500">Pernyataan pengambilan data bukti kehadiran</p>
               </div>
             </div>
@@ -1313,15 +1517,41 @@ export default function PublicAbsensiForm({
                     : `${activePeserta?.jabatan} • ${activePeserta?.instansi}`}
                 </span>
               </div>
-              <div className="border-t border-slate-200/60 pt-1.5 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500">Status Kehadiran:</span>
-                <span className="font-semibold text-indigo-700">
-                  {status === "HADIR"
-                    ? "Hadir Langsung"
-                    : status === "MEWAKILI"
-                    ? `Mewakili (${namaPerwakilan})`
-                    : "Izin"}
+              {/* Jenis Presensi: Menonjol di Tengah & Berukuran Lebih Besar */}
+              <div className="border-t border-slate-200/60 pt-3 flex flex-col items-center justify-center text-center gap-1.5 pb-1">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Jenis Presensi
                 </span>
+                <div
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-sm sm:text-base border shadow-2xs ${
+                    isCheckOutMode
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                      : status === "HADIR"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      : status === "MEWAKILI"
+                      ? "bg-amber-50 border-amber-200 text-amber-800"
+                      : "bg-rose-50 border-rose-200 text-rose-800"
+                  }`}
+                >
+                  {isCheckOutMode ? (
+                    <>
+                      <LogOut className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>Presensi Pulang (Check-out)</span>
+                    </>
+                  ) : status === "HADIR" ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Presensi Datang (Hadir)</span>
+                    </>
+                  ) : status === "MEWAKILI" ? (
+                    <>
+                      <Users className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Presensi Datang (Mewakili: {namaPerwakilan})</span>
+                    </>
+                  ) : (
+                    <span>Izin / Tidak Hadir</span>
+                  )}
+                </div>
               </div>
             </div>
 

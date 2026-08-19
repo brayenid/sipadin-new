@@ -41,6 +41,7 @@ export default function ExportLaporanAgendaModal({
     targetLatitude?: number | null;
     targetLongitude?: number | null;
     radiusMeter?: number | null;
+    enableCheckOut?: boolean;
     picNama?: string | null;
     picNip?: string | null;
     picJabatan?: string | null;
@@ -55,6 +56,7 @@ export default function ExportLaporanAgendaModal({
       keterangan?: string | null;
       isSelfInput?: boolean;
       waktuInput?: Date | string | null;
+      waktuPulang?: Date | string | null;
       lokasiText?: string | null;
       latitude?: number | null;
       longitude?: number | null;
@@ -75,6 +77,7 @@ export default function ExportLaporanAgendaModal({
     targetLatitude: agenda.targetLatitude,
     targetLongitude: agenda.targetLongitude,
     radiusMeter: agenda.radiusMeter,
+    enableCheckOut: agenda.enableCheckOut,
     pic: agenda.picNama
       ? {
           nama: agenda.picNama,
@@ -93,6 +96,7 @@ export default function ExportLaporanAgendaModal({
       keterangan: p.keterangan,
       isSelfInput: p.isSelfInput,
       waktuInput: p.waktuInput ? `${formatWita(p.waktuInput, "HH:mm")} WITA` : null,
+      waktuPulang: p.waktuPulang ? `${formatWita(p.waktuPulang, "HH:mm")} WITA` : null,
       lokasiText: p.lokasiText,
       latitude: p.latitude,
       longitude: p.longitude,

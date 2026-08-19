@@ -343,6 +343,11 @@ model AgendaAbsensi {
   requirePhoto    Boolean              @default(true) // Wajib Selfie Foto
   allowNonPeserta Boolean              @default(true) // Izinkan peserta di luar daftar mengisi absen
 
+  // Fitur Presensi Pulang (Opsional)
+  enableCheckOut   Boolean             @default(false) // Saklar aktifkan presensi pulang
+  waktuBukaPulang  DateTime?           // Waktu mulai form presensi pulang dibuka
+  waktuTutupPulang DateTime?           // Waktu batas akhir form presensi pulang ditutup
+
   // Titik Lokasi Kegiatan & Geofencing (Opsional)
   targetLatitude  Float?
   targetLongitude Float?
@@ -395,9 +400,9 @@ model KehadiranPeserta {
   jabatanPerwakilan String?
   keterangan        String?
 
-  // Self Input Publik, Geotag, Foto, dan Waktu
+  // Self Input Publik, Geotag, Foto, dan Waktu (Presensi Datang)
   isSelfInput       Boolean         @default(false)
-  waktuInput        DateTime?       // Waktu saat melakukan submit absen
+  waktuInput        DateTime?       // Waktu saat melakukan submit absen datang
   latitude          Float?
   longitude         Float?
   accuracy          Float?          // Akurasi GPS dalam meter
@@ -405,6 +410,14 @@ model KehadiranPeserta {
   fotoUrl           String?         // URL foto bukti di Cloudflare R2
   ipAddress         String?
   userAgent         String?
+
+  // Presensi Pulang (Opsional)
+  waktuPulang       DateTime?       // Waktu saat melakukan submit absen pulang
+  fotoPulangUrl     String?         // URL foto bukti selfie pulang
+  latitudePulang    Float?
+  longitudePulang   Float?
+  accuracyPulang    Float?
+  lokasiPulangText  String?
   
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

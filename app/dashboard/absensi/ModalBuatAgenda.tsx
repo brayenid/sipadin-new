@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createAgendaAbsensi } from "@/app/actions/absensi";
 import { calculatePresensiWindow } from "@/lib/date-utils";
-import { Loader2, CalendarPlus, Info, Clock, MapPin, Camera, Users, ShieldCheck } from "lucide-react";
+import { Loader2, CalendarPlus, Info, Clock, MapPin, Camera, Users, ShieldCheck, LogOut } from "lucide-react";
 import Link from "next/link";
 
 export default function ModalBuatAgenda({
@@ -46,6 +46,7 @@ export default function ModalBuatAgenda({
     targetKategori: "SEMUA_OPD",
     jamBuka: "08:00",
     jamTutup: "13:00",
+    enableCheckOut: false,
     requireLocation: true,
     requirePhoto: true,
     allowNonPeserta: true,
@@ -70,7 +71,7 @@ export default function ModalBuatAgenda({
       jamMulai: newMulai,
       waktu: formattedWaktu,
       jamBuka: windowTimes.jamBuka,
-      jamTutup: windowTimes.jamTutup,
+      jamTutup: prev.enableCheckOut ? (prev.jamSelesai ? prev.jamSelesai : "18:00") : windowTimes.jamTutup,
     }));
   };
 
@@ -81,7 +82,7 @@ export default function ModalBuatAgenda({
       ...prev,
       jamSelesai: newSelesai,
       waktu: formattedWaktu,
-      jamTutup: windowTimes.jamTutup,
+      jamTutup: prev.enableCheckOut ? (newSelesai ? newSelesai : "18:00") : windowTimes.jamTutup,
     }));
   };
 
@@ -120,6 +121,7 @@ export default function ModalBuatAgenda({
         targetKategori: form.targetKategori,
         jamBuka: form.jamBuka,
         jamTutup: form.jamTutup,
+        enableCheckOut: form.enableCheckOut,
         requireLocation: form.requireLocation,
         requirePhoto: form.requirePhoto,
         allowNonPeserta: form.allowNonPeserta,
@@ -255,19 +257,19 @@ export default function ModalBuatAgenda({
             </div>
           </div>
 
-          {/* RENTANG WAKTU PENGISIAN ABSEN (TIME WINDOW) */}
-          <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-2.5">
+          {/* RENTANG WAKTU PENGISIAN ABSEN (TIME WINDOW) & PRESENSI PULANG */}
+          <div className="p-3.5 bg-indigo-50/50 border border-indigo-100/90 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
+              <div className="flex items-center gap-2 text-xs font-bold text-indigo-950">
                 <Clock className="w-4 h-4 text-indigo-600" />
                 <span>Rentang Waktu Presensi Mandiri (WITA)</span>
               </div>
-              <span className="text-[10px] text-indigo-600 font-semibold bg-white/90 border border-indigo-200 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] text-indigo-700 font-semibold bg-white/90 border border-indigo-200 px-2 py-0.5 rounded-full">
                 Otomatis: H-1 Jam s/d H+4 Jam
               </span>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Form presensi publik otomatis dibuka 1 jam sebelum acara (H-1) dan ditutup 4 jam setelah acara dimulai (H+4). Anda tetap dapat menyesuaikan jam jika diperlukan.
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Form presensi publik otomatis dibuka 1 jam sebelum acara (H-1) dan ditutup setelah acara selesai. Anda tetap dapat menyesuaikan jam jika diperlukan.
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -296,6 +298,42 @@ export default function ModalBuatAgenda({
                   className="mt-1 text-xs bg-white font-semibold"
                 />
               </div>
+            </div>
+
+            {/* TOGGLE PRESENSI PULANG (DALAM SATU KONTEKS WAKTU) */}
+            <div className="pt-2.5 border-t border-indigo-100/80">
+              <label className="flex items-start justify-between cursor-pointer gap-3">
+                <div className="flex items-start gap-2">
+                  <LogOut className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-900 text-xs block">
+                      Aktifkan Presensi Pulang (Check-out)
+                    </span>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                      Peserta yang telah absen Datang dapat membuka kembali link/QR untuk mengirim presensi kepulangan saat acara selesai.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.enableCheckOut}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setForm((prev) => {
+                      let newJamTutup = prev.jamTutup;
+                      if (isChecked && prev.jamTutup < "17:00") {
+                        newJamTutup = prev.jamSelesai ? prev.jamSelesai : "18:00";
+                      }
+                      return {
+                        ...prev,
+                        enableCheckOut: isChecked,
+                        jamTutup: newJamTutup,
+                      };
+                    });
+                  }}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
             </div>
           </div>
 
