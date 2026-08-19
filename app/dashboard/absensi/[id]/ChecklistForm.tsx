@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ import * as XLSX from "xlsx";
 import {
   updateKehadiranPesertaBatch,
   deletePesertaFromAgenda,
+  bulkDeletePesertaFromAgenda,
   togglePublicAbsensiActive,
   updateAgendaAbsensi,
   deleteAgendaAbsensi,
@@ -56,6 +57,7 @@ import {
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
 import { formatWita, calculatePresensiWindow } from "@/lib/date-utils";
 import { generateSlug } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
 import CetakModal from "./CetakModal";
 import ExportLaporanAgendaModal from "./ExportLaporanAgendaModal";
@@ -276,6 +278,15 @@ export default function ChecklistForm({
   const [deletingPeserta, setDeletingPeserta] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Bulk selection & remove state
+  const [selectedPesertaIds, setSelectedPesertaIds] = useState<string[]>([]);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [deletingBulk, setDeletingBulk] = useState(false);
+
+  // Lazy loading state
+  const [visibleCount, setVisibleCount] = useState(50);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
   const handleRefresh = () => {
     setRefreshing(true);
     router.refresh();
@@ -362,12 +373,30 @@ export default function ChecklistForm({
     try {
       await deletePesertaFromAgenda(agenda.id, deletePesertaTarget.id);
       setPesertaList((prev) => prev.filter((p) => p.id !== deletePesertaTarget.id));
+      setSelectedPesertaIds((prev) => prev.filter((id) => id !== deletePesertaTarget.id));
       toast.success(`Peserta ${deletePesertaTarget.nama} berhasil dihapus`);
       setDeletePesertaTarget(null);
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus peserta");
     } finally {
       setDeletingPeserta(false);
+    }
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedPesertaIds.length === 0) return;
+    setDeletingBulk(true);
+    try {
+      const count = selectedPesertaIds.length;
+      await bulkDeletePesertaFromAgenda(agenda.id, selectedPesertaIds);
+      setPesertaList((prev) => prev.filter((p) => !selectedPesertaIds.includes(p.id)));
+      setSelectedPesertaIds([]);
+      setIsBulkDeleteOpen(false);
+      toast.success(`${count} peserta berhasil dihapus dari agenda`);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus peserta terpilih");
+    } finally {
+      setDeletingBulk(false);
     }
   };
 
@@ -492,6 +521,55 @@ export default function ChecklistForm({
 
     return matchSearch && matchStatus;
   });
+
+  // Reset visible count saat filter/search berubah
+  React.useEffect(() => {
+    setVisibleCount(50);
+  }, [search, filterStatus]);
+
+  // Observer untuk auto load more (infinite scroll)
+  React.useEffect(() => {
+    if (activeTab !== "DAFTAR_HADIR") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 50, filteredPeserta.length));
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [activeTab, filteredPeserta.length]);
+
+  const displayedPeserta = filteredPeserta.slice(0, visibleCount);
+
+  // Status Seleksi
+  const allFilteredSelected =
+    filteredPeserta.length > 0 &&
+    filteredPeserta.every((p) => selectedPesertaIds.includes(p.id));
+
+  const handleToggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allFilteredIds = filteredPeserta.map((p) => p.id);
+      setSelectedPesertaIds(Array.from(new Set([...selectedPesertaIds, ...allFilteredIds])));
+    } else {
+      const filteredIdSet = new Set(filteredPeserta.map((p) => p.id));
+      setSelectedPesertaIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPesertaIds((prev) => [...prev, id]);
+    } else {
+      setSelectedPesertaIds((prev) => prev.filter((x) => x !== id));
+    }
+  };
 
   const handleExportExcel = () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -1409,11 +1487,71 @@ export default function ChecklistForm({
             </select>
           </div>
 
+          {/* Bulk Selection Action Bar */}
+          {selectedPesertaIds.length > 0 && (
+            <div className="bg-indigo-50/90 border border-indigo-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {selectedPesertaIds.length}
+                </span>
+                <span className="text-xs font-semibold text-indigo-950">
+                  peserta dipilih {filteredPeserta.length > 0 && `(dari ${filteredPeserta.length} hasil filter)`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {!allFilteredSelected && filteredPeserta.length > selectedPesertaIds.length && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleSelectAll(true)}
+                    className="h-8 text-xs bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-semibold"
+                  >
+                    Pilih Semua {filteredPeserta.length} Peserta
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedPesertaIds([])}
+                  className="h-8 text-xs text-slate-600 hover:bg-slate-100"
+                >
+                  Batal Pilih
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsBulkDeleteOpen(true)}
+                  disabled={deletingBulk}
+                  className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs"
+                >
+                  {deletingBulk ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Hapus {selectedPesertaIds.length} Terpilih
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
+                  <TableHead className="w-12 text-center text-xs">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={allFilteredSelected}
+                        onCheckedChange={(checked) => handleToggleSelectAll(Boolean(checked))}
+                        aria-label="Pilih Semua Peserta"
+                        className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                      />
+                    </div>
+                  </TableHead>
                   <TableHead className="w-10 text-center text-xs">No</TableHead>
                   <TableHead className="text-xs min-w-[200px]">Pegawai & OPD</TableHead>
                   <TableHead className="text-xs w-44 text-center">Status Kehadiran</TableHead>
@@ -1423,27 +1561,42 @@ export default function ChecklistForm({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPeserta.length === 0 ? (
+                {displayedPeserta.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-400 text-xs">
+                    <TableCell colSpan={7} className="h-32 text-center text-slate-400 text-xs">
                       Tidak ada peserta yang cocok dengan pencarian
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPeserta.map((p, idx) => {
+                  displayedPeserta.map((p, idx) => {
                     const isMewakili = p.status === "MEWAKILI";
+                    const isSelected = selectedPesertaIds.includes(p.id);
 
                     return (
                       <TableRow
                         key={p.id}
                         className={`transition-colors ${
-                          p.status === "HADIR"
+                          isSelected
+                            ? "bg-indigo-50/50"
+                            : p.status === "HADIR"
                             ? "bg-emerald-50/20 hover:bg-emerald-50/40"
                             : p.status === "MEWAKILI"
                             ? "bg-blue-50/20 hover:bg-amber-50/40"
                             : "hover:bg-slate-50/60"
                         }`}
                       >
+                        {/* Checkbox Kolom */}
+                        <TableCell className="text-center text-xs">
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleToggleSelectOne(p.id, Boolean(checked))}
+                              aria-label={`Pilih ${p.nama}`}
+                              className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                            />
+                          </div>
+                        </TableCell>
+
                         <TableCell className="text-center text-xs font-medium text-slate-500">
                           {idx + 1}
                         </TableCell>
@@ -1553,7 +1706,7 @@ export default function ChecklistForm({
                           </div>
                         </TableCell>
 
-                        {/* Hapus */}
+                        {/* Hapus Satuan */}
                         <TableCell className="text-right text-xs">
                           <Button
                             size="sm"
@@ -1572,6 +1725,23 @@ export default function ChecklistForm({
               </TableBody>
             </Table>
           </div>
+
+          {/* Sentinel Auto Load More (Lazy Loading) */}
+          {visibleCount < filteredPeserta.length ? (
+            <div
+              ref={loadMoreRef}
+              className="py-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2"
+            >
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+              <span>
+                Memuat peserta lainnya... ({displayedPeserta.length} dari {filteredPeserta.length})
+              </span>
+            </div>
+          ) : filteredPeserta.length > 50 ? (
+            <div className="py-2.5 text-center text-[11px] text-slate-400">
+              Semua {filteredPeserta.length} peserta telah dimuat
+            </div>
+          ) : null}
 
           {/* Bottom Info & Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t">
@@ -1748,6 +1918,38 @@ export default function ChecklistForm({
                 <Trash2 className="w-4 h-4 mr-1.5" />
               )}
               Hapus Peserta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Konfirmasi Hapus Massal Peserta Terpilih */}
+      <AlertDialog
+        open={isBulkDeleteOpen}
+        onOpenChange={(open) => !open && setIsBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus {selectedPesertaIds.length} Peserta Terpilih?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus{" "}
+              <strong className="text-rose-600 font-bold">{selectedPesertaIds.length} peserta</strong> yang
+              telah Anda pilih dari daftar agenda ini? Foto selfie kehadiran dan riwayat terkait pada agenda ini akan dihapus permanen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBulk}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBulkDelete}
+              disabled={deletingBulk}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+            >
+              {deletingBulk ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-1.5" />
+              )}
+              Ya, Hapus {selectedPesertaIds.length} Peserta
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

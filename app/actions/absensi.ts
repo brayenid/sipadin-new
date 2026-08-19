@@ -1218,6 +1218,42 @@ export async function deletePesertaFromAgenda(agendaId: string, pesertaId: strin
   return { success: true };
 }
 
+export async function bulkDeletePesertaFromAgenda(agendaId: string, pesertaIds: string[]) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  if (!pesertaIds || pesertaIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const pesertas = await prisma.kehadiranPeserta.findMany({
+    where: {
+      id: { in: pesertaIds },
+      agendaId,
+    },
+    select: { id: true, fotoUrl: true },
+  });
+
+  for (const p of pesertas) {
+    if (p.fotoUrl) {
+      try {
+        await deleteFromR2OrLocal(p.fotoUrl);
+      } catch (err) {
+        console.error("Error deleting foto:", err);
+      }
+    }
+  }
+
+  const res = await prisma.kehadiranPeserta.deleteMany({
+    where: {
+      id: { in: pesertaIds },
+      agendaId,
+    },
+  });
+
+  revalidatePath(`/dashboard/absensi/${agendaId}`);
+  return { success: true, count: res.count };
+}
+
 // ==========================================
 // 4. REKAPITULASI KEHADIRAN PERANGKAT DAERAH
 // ==========================================
