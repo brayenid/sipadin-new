@@ -337,9 +337,9 @@ export async function getAgendaAbsensiList(filter?: {
 
   const agendas = await prisma.agendaAbsensi.findMany({
     where: whereClause,
-    orderBy: {
-      tanggal: "desc",
-    },
+    orderBy: [
+      { createdAt: "desc" },
+    ],
     include: {
       peserta: {
         select: {
