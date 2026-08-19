@@ -1038,13 +1038,8 @@ export async function executeToolCall(
       // 13.5 CREATE AGENDA ABSENSI OPD (PRESENSI PUBLIK MANDIRI)
       case "create_agenda_absensi": {
         const namaKegiatan = String(args.namaKegiatan || "").trim();
-        let tanggalStr = String(args.tanggal || "").trim();
-
-        if (!tanggalStr) {
-          tanggalStr = formatWitaDate(new Date());
-        }
-
-        const tglMulai = parseWitaDate(tanggalStr);
+        const inputTanggal = args.tanggal ? String(args.tanggal).trim() : formatWitaDate(new Date());
+        const tglMulai = parseWitaDate(inputTanggal);
         const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
         const waktuSelesai = args.waktuSelesai ? String(args.waktuSelesai).trim() : null;
         const tempat = args.tempat ? String(args.tempat).trim() : "Aula Kantor";
@@ -1086,10 +1081,10 @@ export async function executeToolCall(
           ? `${waktuMulai}${waktuSelesai ? ` - ${waktuSelesai}` : ""} WITA`
           : "09:00 WITA";
 
-        const tanggalStr = tglMulai.toISOString().split("T")[0];
+        const baseDateStr = tglMulai.toISOString().split("T")[0];
         const windowTimes = calculatePresensiWindow(waktuMulai || "09:00", waktuSelesai);
-        const waktuBuka = combineDateAndTimeWita(tanggalStr, windowTimes.jamBuka);
-        const waktuTutup = combineDateAndTimeWita(tanggalStr, windowTimes.jamTutup);
+        const waktuBuka = combineDateAndTimeWita(baseDateStr, windowTimes.jamBuka);
+        const waktuTutup = combineDateAndTimeWita(baseDateStr, windowTimes.jamTutup);
 
         // Hitung nama hari dalam Bahasa Indonesia
         const hariNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
