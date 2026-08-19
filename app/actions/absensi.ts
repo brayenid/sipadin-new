@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseWitaInput, formatWita, combineDateAndTimeWita } from "@/lib/date-utils";
+import { parseWitaInput, formatWita, combineDateAndTimeWita, calculatePresensiWindow } from "@/lib/date-utils";
 import { deleteFromR2OrLocal } from "@/lib/r2";
 import { generateSlug } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
@@ -256,27 +256,25 @@ export async function createAgendaAbsensi(payload: {
   const parsedTanggal = parseWitaInput(payload.tanggal) || new Date();
   const hariComputed = payload.hari || formatWita(parsedTanggal, "EEEE");
 
-  // Format waktu buka & tutup absen dengan default cerdas jika tidak diisi manual
+  // Format waktu buka & tutup absen otomatis (H-1 jam dan H+4 jam) jika tidak diisi manual
   const tanggalStr = payload.tanggal.split("T")[0];
   let waktuBuka: Date | null = null;
   let waktuTutup: Date | null = null;
 
+  const defaultWindow = calculatePresensiWindow(payload.waktu || "09:00");
+  const effectiveJamBuka = payload.jamBuka || defaultWindow.jamBuka;
+  const effectiveJamTutup = payload.jamTutup || defaultWindow.jamTutup;
+
   if (payload.waktuBukaAbsen) {
     waktuBuka = new Date(payload.waktuBukaAbsen);
-  } else if (payload.jamBuka) {
-    waktuBuka = combineDateAndTimeWita(tanggalStr, payload.jamBuka);
   } else {
-    // Default buka: 07:30 WITA pada hari H
-    waktuBuka = combineDateAndTimeWita(tanggalStr, "07:30");
+    waktuBuka = combineDateAndTimeWita(tanggalStr, effectiveJamBuka);
   }
 
   if (payload.waktuTutupAbsen) {
     waktuTutup = new Date(payload.waktuTutupAbsen);
-  } else if (payload.jamTutup) {
-    waktuTutup = combineDateAndTimeWita(tanggalStr, payload.jamTutup);
   } else {
-    // Default tutup: 14:00 WITA pada hari H
-    waktuTutup = combineDateAndTimeWita(tanggalStr, "14:00");
+    waktuTutup = combineDateAndTimeWita(tanggalStr, effectiveJamTutup);
   }
 
   // Filter pegawai sesuai kategori target binding

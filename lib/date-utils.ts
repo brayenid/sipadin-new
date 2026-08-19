@@ -66,3 +66,39 @@ export function combineDateAndTimeWita(dateString: string, timeString: string): 
   }
 }
 
+/**
+ * Menghitung jam buka presensi (H-1 jam) dan jam tutup presensi (H+4 jam)
+ * berdasarkan jam mulai kegiatan (format HH:mm, e.g. "09:00").
+ */
+export function calculatePresensiWindow(
+  jamMulaiStr: string,
+  jamSelesaiStr?: string | null
+): { jamBuka: string; jamTutup: string } {
+  const cleanMulai = (jamMulaiStr || "").trim();
+  const match = cleanMulai.match(/(\d{1,2})[:.](\d{2})/);
+
+  let hours = 9;
+  let minutes = 0;
+  if (match) {
+    hours = parseInt(match[1], 10);
+    minutes = parseInt(match[2], 10);
+  }
+
+  // H-1 jam
+  const bukaHours = Math.max(0, hours - 1);
+  const jamBuka = `${String(bukaHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  // H+4 jam dari jam mulai
+  let tutupHours = Math.min(23, hours + 4);
+  if (jamSelesaiStr) {
+    const matchSelesai = jamSelesaiStr.match(/(\d{1,2})[:.](\d{2})/);
+    if (matchSelesai) {
+      const selesaiHours = parseInt(matchSelesai[1], 10);
+      tutupHours = Math.min(23, Math.max(tutupHours, selesaiHours + 1));
+    }
+  }
+  const jamTutup = `${String(tutupHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  return { jamBuka, jamTutup };
+}
+

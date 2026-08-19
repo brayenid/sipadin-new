@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { generateSlug } from "@/lib/utils";
+import { combineDateAndTimeWita, calculatePresensiWindow } from "@/lib/date-utils";
 
 // ==========================================
 // 1. TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -1080,10 +1081,15 @@ export async function executeToolCall(
         const cleanBaseUrl = rawBaseUrl.replace(/\/$/, "");
         const publicUrl = `${cleanBaseUrl}/p/absensi/${publicSlugToken}`;
 
-        // Format label waktu
+        // Format label waktu baku & hitung rentang buka/tutup presensi (H-1 jam dan H+4 jam)
         const waktuTeks = waktuMulai
           ? `${waktuMulai}${waktuSelesai ? ` - ${waktuSelesai}` : ""} WITA`
           : "09:00 WITA";
+
+        const tanggalStr = tglMulai.toISOString().split("T")[0];
+        const windowTimes = calculatePresensiWindow(waktuMulai || "09:00", waktuSelesai);
+        const waktuBuka = combineDateAndTimeWita(tanggalStr, windowTimes.jamBuka);
+        const waktuTutup = combineDateAndTimeWita(tanggalStr, windowTimes.jamTutup);
 
         // Hitung nama hari dalam Bahasa Indonesia
         const hariNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
@@ -1103,6 +1109,8 @@ export async function executeToolCall(
             targetKategori,
             isPublicActive: true,
             status: "BERLANGSUNG",
+            waktuBukaAbsen: waktuBuka,
+            waktuTutupAbsen: waktuTutup,
             requireLocation,
             requirePhoto,
             allowNonPeserta,

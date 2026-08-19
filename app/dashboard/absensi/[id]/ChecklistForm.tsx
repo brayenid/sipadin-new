@@ -54,7 +54,7 @@ import {
   deleteAgendaAbsensi,
 } from "@/app/actions/absensi";
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
-import { formatWita } from "@/lib/date-utils";
+import { formatWita, calculatePresensiWindow } from "@/lib/date-utils";
 import { generateSlug } from "@/lib/utils";
 import { Combobox } from "@/components/ui/combobox";
 import CetakModal from "./CetakModal";
@@ -139,7 +139,21 @@ export default function ChecklistForm({
   const [tanggal, setTanggal] = useState<string>(
     agenda.tanggal ? formatWita(agenda.tanggal, "yyyy-MM-dd") : ""
   );
-  const [waktu, setWaktu] = useState<string>(agenda.waktu || "");
+  const parseWaktuParts = (waktuStr: string | null | undefined): { jamMulai: string; jamSelesai: string } => {
+    if (!waktuStr) return { jamMulai: "09:00", jamSelesai: "" };
+    const matches = waktuStr.match(/(\d{1,2}[:.]\d{2})/g);
+    if (matches && matches.length >= 2) {
+      return { jamMulai: matches[0].replace(".", ":"), jamSelesai: matches[1].replace(".", ":") };
+    } else if (matches && matches.length === 1) {
+      return { jamMulai: matches[0].replace(".", ":"), jamSelesai: "" };
+    }
+    return { jamMulai: "09:00", jamSelesai: "" };
+  };
+
+  const initialWaktuParts = parseWaktuParts(agenda.waktu);
+  const [jamMulai, setJamMulai] = useState<string>(initialWaktuParts.jamMulai);
+  const [jamSelesai, setJamSelesai] = useState<string>(initialWaktuParts.jamSelesai);
+  const [waktu, setWaktu] = useState<string>(agenda.waktu || "09:00 WITA");
   const [tempat, setTempat] = useState<string>(agenda.tempat || "");
   const [deskripsi, setDeskripsi] = useState<string>(agenda.deskripsi || "");
   const [targetLatitude, setTargetLatitude] = useState<number | null>(agenda.targetLatitude ?? null);
@@ -158,6 +172,23 @@ export default function ChecklistForm({
   const [picNip, setPicNip] = useState<string>(agenda.picNip || "");
   const [picJabatan, setPicJabatan] = useState<string>(agenda.picJabatan || "");
   const [gettingVenueGps, setGettingVenueGps] = useState(false);
+
+  const handleJamMulaiChange = (newMulai: string) => {
+    setJamMulai(newMulai);
+    const formattedWaktu = `${newMulai}${jamSelesai ? ` - ${jamSelesai}` : ""} WITA`;
+    setWaktu(formattedWaktu);
+    const windowTimes = calculatePresensiWindow(newMulai, jamSelesai);
+    setJamBuka(windowTimes.jamBuka);
+    setJamTutup(windowTimes.jamTutup);
+  };
+
+  const handleJamSelesaiChange = (newSelesai: string) => {
+    setJamSelesai(newSelesai);
+    const formattedWaktu = `${jamMulai}${newSelesai ? ` - ${newSelesai}` : ""} WITA`;
+    setWaktu(formattedWaktu);
+    const windowTimes = calculatePresensiWindow(jamMulai, newSelesai);
+    setJamTutup(windowTimes.jamTutup);
+  };
 
   const handleTargetKategoriChange = (kat: string) => {
     setTargetKategori(kat);
@@ -261,7 +292,10 @@ export default function ChecklistForm({
     setStatusAgenda(agenda.status);
     setDriveUrl(agenda.driveUrl || "");
     setTanggal(agenda.tanggal ? formatWita(agenda.tanggal, "yyyy-MM-dd") : "");
-    setWaktu(agenda.waktu || "");
+    const parts = parseWaktuParts(agenda.waktu);
+    setJamMulai(parts.jamMulai);
+    setJamSelesai(parts.jamSelesai);
+    setWaktu(agenda.waktu || "09:00 WITA");
     setTempat(agenda.tempat || "");
     setDeskripsi(agenda.deskripsi || "");
     setTargetLatitude(agenda.targetLatitude ?? null);
@@ -747,16 +781,37 @@ export default function ChecklistForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Waktu Acara
-                  </Label>
-                  <Input
-                    type="text"
-                    placeholder="Contoh: 09:00 WITA - Selesai"
-                    value={waktu}
-                    onChange={(e) => setWaktu(e.target.value)}
-                    className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Waktu Acara (WITA)
+                    </Label>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
+                      {waktu || `${jamMulai} WITA`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <Input
+                        type="time"
+                        required
+                        value={jamMulai}
+                        onChange={(e) => handleJamMulaiChange(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
+                        title="Jam Mulai Acara"
+                      />
+                      <span className="text-[10px] text-slate-500">Mulai</span>
+                    </div>
+                    <div>
+                      <Input
+                        type="time"
+                        value={jamSelesai}
+                        onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
+                        title="Jam Selesai (Opsional)"
+                      />
+                      <span className="text-[10px] text-slate-500">Selesai (Opsional)</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">

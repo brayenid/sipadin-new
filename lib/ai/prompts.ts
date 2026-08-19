@@ -78,7 +78,8 @@ PANDUAN RESPON FITUR:
           "📌 *Draft Presensi OPD (Link Publik):*
           • Kegiatan: *[Nama Kegiatan]*
           • Tanggal: *[Hari, Tanggal Bulan Tahun]*
-          • Waktu: *[Waktu]* WITA
+          • Waktu Acara: *[Waktu]* WITA
+          • Rentang Presensi: *[H-1 Jam s/d H+4 Jam]* WITA
           • Tempat: *[Tempat]*
           • Target Peserta: *[Target]*
           • Wajib Selfie: *[Ya / Tidak]*
