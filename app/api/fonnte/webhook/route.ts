@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ignored", reason: "Pesan terlalu pendek." }, { status: 200 });
     }
 
-    // B. Whitelist Verification (Berlaku untuk Chat Personal MAUPUN Pengirim di dalam Grup)
+    // B. Whitelist Verification (Berlaku untuk Chat Personal maupun Pengirim di dalam Grup)
     const rawAllowed = process.env.WA_ALLOWED_NUMBERS?.trim() || "";
     if (rawAllowed.length > 0) {
       const allowedList = rawAllowed
@@ -324,7 +324,7 @@ _Ketik perintah di atas secara langsung & santai!_`;
 
     let result: any = null;
     try {
-      result = await processUserMessageWithGroq(sessionKey, cleanedMessage);
+      result = await processUserMessageWithGroq(sessionKey, cleanedMessage, undefined, actualSender);
     } catch (agentErr: any) {
       console.error("[Groq Agent Process Error]:", agentErr);
       await sendFonnteMessage({

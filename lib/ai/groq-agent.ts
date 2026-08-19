@@ -207,7 +207,8 @@ async function runOpenAICompatibleEngine(
  */
 async function callGeminiNativeFallback(
   prompt: string,
-  contextTeamId?: string
+  contextTeamId?: string,
+  senderNumber?: string
 ): Promise<AgentProcessResult> {
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   if (!geminiKey) throw new Error("GEMINI_API_KEY not found");
@@ -262,7 +263,7 @@ async function callGeminiNativeFallback(
               role: "user",
               parts: [
                 {
-                  text: `${getSystemPrompt()}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
+                  text: `${getSystemPrompt(undefined, senderNumber)}\n\nDATA DARI DATABASE:\n${directDataText}\n\nPERTANYAAN USER: "${prompt}"\n\nJawab dengan gaya Sipadin (santai, singkat, to the point, format WhatsApp):`,
                 },
               ],
             },
@@ -302,7 +303,8 @@ async function callGeminiNativeFallback(
 export async function processUserMessageWithGroq(
   sessionKey: string,
   userMessageText: string,
-  contextTeamId?: string
+  contextTeamId?: string,
+  senderNumber?: string
 ): Promise<AgentProcessResult> {
   const session = getSession(sessionKey);
   const userMsg: ChatMessage = { role: "user", content: userMessageText };
@@ -310,7 +312,7 @@ export async function processUserMessageWithGroq(
 
   const recentMessages = session.messages.slice(-4).filter((m) => m.content !== null || (m.tool_calls && m.tool_calls.length > 0));
   const conversation: ChatMessage[] = [
-    { role: "system", content: getSystemPrompt() },
+    { role: "system", content: getSystemPrompt(undefined, senderNumber) },
     ...recentMessages,
   ];
 
@@ -366,7 +368,7 @@ export async function processUserMessageWithGroq(
   if (geminiKey) {
     try {
       console.log("[AI Dispatcher] Menggunakan Fallback: Google Gemini Flash Native...");
-      const geminiRes = await callGeminiNativeFallback(userMessageText, contextTeamId);
+      const geminiRes = await callGeminiNativeFallback(userMessageText, contextTeamId, senderNumber);
       return geminiRes;
     } catch (geminiErr: any) {
       console.warn("[AI Dispatcher] Gemini Flash gagal:", geminiErr?.message);
