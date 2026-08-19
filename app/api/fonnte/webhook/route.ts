@@ -162,12 +162,22 @@ export async function POST(req: NextRequest) {
       if (!keywords.includes("sipadin")) keywords.push("sipadin");
 
       const lowerMsg = rawMessage.toLowerCase();
+      const normalizedMsg = lowerMsg.replace(/[\s\-\+\(\)]/g, "");
 
       // Cek Mention:
-      // a. Terdapat mention nomor bot spesifik di teks pesan (misal: @628197962899 atau @08197962899)
+      // a. Terdapat mention nomor bot spesifik di teks pesan (misal: @628197962899, @08197962899, @62 819-7962-899)
       const hasBotNumberMention = botNumbers.some((bNum) => {
         const shortNum = bNum.replace(/^62/, "0");
-        return lowerMsg.includes(`@${bNum}`) || lowerMsg.includes(`@${shortNum}`);
+        const coreDigits = bNum.slice(-9); // misal: 8197962899
+        return (
+          normalizedMsg.includes(`@${bNum}`) ||
+          normalizedMsg.includes(`@${shortNum}`) ||
+          normalizedMsg.includes(`@+${bNum}`) ||
+          normalizedMsg.includes(`@${coreDigits}`) ||
+          (normalizedMsg.includes("@") && normalizedMsg.includes(coreDigits)) ||
+          lowerMsg.includes(bNum) ||
+          lowerMsg.includes(shortNum)
+        );
       });
 
       // b. Metadata mentioned dari payload resmi Fonnte
@@ -177,11 +187,12 @@ export async function POST(req: NextRequest) {
           ? body.mentioned.map((m: any) => String(m).split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62"))
           : [String(body.mentioned).split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62")];
 
-        if (botNumbers.length > 0) {
-          isMentionedInPayload = payloadMentioned.some((pNum: string) =>
-            botNumbers.some((bNum) => pNum.includes(bNum) || bNum.includes(pNum))
-          );
-        }
+        isMentionedInPayload = payloadMentioned.length > 0 && (
+          payloadMentioned.some((pNum: string) =>
+            botNumbers.some((bNum) => pNum.includes(bNum) || bNum.includes(pNum) || pNum.slice(-8) === bNum.slice(-8))
+          ) ||
+          payloadMentioned.some((pNum: string) => pNum.includes("8197962899"))
+        );
       }
 
       // c. Reply / Quote terhadap pesan bot di grup
@@ -200,19 +211,23 @@ export async function POST(req: NextRequest) {
         .replace(/^0/, "62");
 
       if (quotedSender && botNumbers.length > 0) {
-        isQuotingBot = botNumbers.some((bNum) => quotedSender.includes(bNum) || bNum.includes(quotedSender));
+        isQuotingBot = botNumbers.some((bNum) => quotedSender.includes(bNum) || bNum.includes(quotedSender) || quotedSender.includes("8197962899"));
       }
 
-      // d. Explicit tag / command / prefix trigger khusus nama bot (dengan boundary kata yang presisi)
+      // d. Kata kunci bot di mana saja di dalam pesan (misal: "sipadin", "@sipadin", "!sipadin", "/sipadin", dsb.)
+      const isKeywordMention = keywords.some((k) => lowerMsg.includes(k.toLowerCase()));
+
       const isExplicitTagOrCommand =
+        isKeywordMention ||
         lowerMsg.includes("@sipadin") ||
         lowerMsg.includes("@bot") ||
         lowerMsg.includes("!sipadin") ||
         lowerMsg.includes("/sipadin") ||
-        /^(?:@?sipadin|!sipadin|\/sipadin)\b/i.test(lowerMsg) ||
-        /^(?:sipadin|din)[,:\s]+/i.test(lowerMsg);
+        /@\d{8,16}/.test(lowerMsg);
 
       const isMentioned = hasBotNumberMention || isMentionedInPayload || isQuotingBot || isExplicitTagOrCommand;
+
+      console.log(`[Group Mention Check] hasBotNumberMention: ${hasBotNumberMention}, isMentionedInPayload: ${isMentionedInPayload}, isQuotingBot: ${isQuotingBot}, isKeywordMention: ${isKeywordMention}, isExplicitTagOrCommand: ${isExplicitTagOrCommand}`);
 
       if (!isMentioned) {
         console.log(`[Group Filter] Pesan di grup ${sender} dari ${actualSender} diabaikan karena bot (${defaultBotNumber}) tidak di-mention.`);
