@@ -60,6 +60,13 @@ function calculateDistanceMeters(
   return Math.round(R * c);
 }
 
+function formatDistanceMeters(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)} m`;
+  }
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
 const styles = StyleSheet.create({
   page: {
     paddingTop: 36,
@@ -118,36 +125,36 @@ const styles = StyleSheet.create({
 
   // ── Kotak Analisis Geolokasi Kedinasan ────────────────────
   analysisBox: {
-    marginBottom: 12,
-    padding: 7,
-    borderWidth: 1,
+    marginBottom: 8,
+    padding: 5,
+    borderWidth: 0.25,
     borderColor: "#000000",
     backgroundColor: "#ffffff",
   },
   analysisHeader: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 8.5,
+    fontSize: 7,
     textTransform: "uppercase",
-    marginBottom: 5,
-    borderBottomWidth: 1,
+    marginBottom: 3.5,
+    borderBottomWidth: 0.25,
     borderBottomColor: "#000000",
-    paddingBottom: 2.5,
+    paddingBottom: 1.5,
   },
   analysisItem: {
     flexDirection: "row",
-    marginBottom: 2.5,
+    marginBottom: 1.8,
     alignItems: "flex-start",
   },
   analysisNumber: {
-    width: 14,
+    width: 11,
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 8,
+    fontSize: 6.5,
   },
   analysisContent: {
     flex: 1,
-    fontSize: 8,
+    fontSize: 6.5,
     lineHeight: 1.25,
   },
   analysisBold: {
@@ -162,30 +169,30 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
+    borderTopWidth: 0.25,
+    borderBottomWidth: 0.25,
+    borderLeftWidth: 0.25,
+    borderRightWidth: 0.25,
     borderColor: "#000000",
-    minHeight: 22,
+    minHeight: 18,
     backgroundColor: "#ffffff",
   },
   dataRow: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
+    borderBottomWidth: 0.25,
+    borderLeftWidth: 0.25,
+    borderRightWidth: 0.25,
     borderColor: "#000000",
-    minHeight: 26,
+    minHeight: 20,
     backgroundColor: "#ffffff",
   },
   thCell: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 8,
+    fontSize: 7,
     textAlign: "center",
     textTransform: "uppercase",
-    paddingVertical: 4,
+    paddingVertical: 3,
     paddingHorizontal: 2,
     justifyContent: "center",
     alignItems: "center",
@@ -193,17 +200,17 @@ const styles = StyleSheet.create({
   thText: {
     fontFamily: "Arial",
     fontWeight: "bold",
-    fontSize: 8,
+    fontSize: 7,
     textAlign: "center",
     textTransform: "uppercase",
   },
   tdCell: {
-    paddingVertical: 3.5,
-    paddingHorizontal: 3.5,
+    paddingVertical: 2.5,
+    paddingHorizontal: 3,
     justifyContent: "center",
   },
   tdText: {
-    fontSize: 8,
+    fontSize: 6.5,
     color: "#000000",
   },
   tdBold: {
@@ -211,7 +218,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   borderRight: {
-    borderRightWidth: 1,
+    borderRightWidth: 0.25,
     borderColor: "#000000",
   },
 
@@ -424,9 +431,7 @@ export default function LaporanHasilAgendaPdf({
                 "Seluruh data kehadiran dicatat secara manual oleh admin / operator absensi."
               ) : countOutside > 0 ? (
                 <>
-                  Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> yang terdeteksi melakukan presensi di luar batas radius lokasi (
-                  {anomalousPeserta.slice(0, 3).map((a, i) => `${a.nama} [${(a.dist / 1000).toFixed(1)} km]`).join(", ")}
-                  {anomalousPeserta.length > 3 ? ` dan ${anomalousPeserta.length - 3} lainnya` : ""}). Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
+                  Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> yang terdeteksi melakukan presensi di luar batas radius lokasi (rincian jarak terlampir pada tabel di bawah). Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
                 </>
               ) : (
                 "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan."
@@ -470,43 +475,54 @@ export default function LaporanHasilAgendaPdf({
                 ? "IZIN"
                 : "TIDAK HADIR";
 
+            const hasGps = typeof row.latitude === "number" && typeof row.longitude === "number";
+            const dist = hasGps && centerLat !== null && centerLng !== null
+              ? calculateDistanceMeters(centerLat, centerLng, row.latitude!, row.longitude!)
+              : null;
+            const isOutside = dist !== null && dist > effectiveRadius;
+
             return (
               <View key={idx} wrap={false} style={styles.dataRow}>
                 <View style={[styles.tdCell, styles.borderRight, styles.colNo]}>
-                  <Text style={[styles.tdText, { textAlign: "center" }]}>{idx + 1}</Text>
+                  <Text style={[styles.tdText, { textAlign: "center", fontSize: 6.5 }]}>{idx + 1}</Text>
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colNama]}>
-                  <Text style={[styles.tdText, styles.tdBold]}>{row.nama}</Text>
-                  {row.nip && <Text style={[styles.tdText, { fontSize: 7, marginTop: 1 }]}>NIP: {row.nip}</Text>}
+                  <Text style={[styles.tdText, styles.tdBold, { fontSize: 7 }]}>{row.nama}</Text>
+                  {row.nip && <Text style={[styles.tdText, { fontSize: 6, marginTop: 1 }]}>NIP: {row.nip}</Text>}
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colJabatan]}>
-                  <Text style={styles.tdText}>{row.jabatan}</Text>
-                  <Text style={[styles.tdText, { fontSize: 7.5, marginTop: 1 }]}>{row.instansi}</Text>
+                  <Text style={[styles.tdText, { fontSize: 6.5 }]}>{row.jabatan}</Text>
+                  <Text style={[styles.tdText, { fontSize: 6, marginTop: 1 }]}>{row.instansi}</Text>
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colStatus]}>
-                  <Text style={[styles.tdText, styles.tdBold, { textAlign: "center" }]}>
+                  <Text style={[styles.tdText, { textAlign: "center", fontSize: 6.5 }]}>
                     {statusLabel}
                   </Text>
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colKeterangan]}>
                   {row.status === "MEWAKILI" && row.namaPerwakilan ? (
-                    <Text style={styles.tdText}>
+                    <Text style={[styles.tdText, { fontSize: 6 }]}>
                       Wkl: {row.namaPerwakilan} {row.jabatanPerwakilan ? `(${row.jabatanPerwakilan})` : ""}
                     </Text>
                   ) : null}
                   {row.keterangan ? (
-                    <Text style={[styles.tdText, { fontSize: 7.5 }]}>
+                    <Text style={[styles.tdText, { fontSize: 6 }]}>
                       Ket: {row.keterangan}
                     </Text>
                   ) : null}
-                  {!row.namaPerwakilan && !row.keterangan && <Text style={styles.tdText}>-</Text>}
+                  {isOutside && (
+                    <Text style={[styles.tdText, { fontSize: 6, color: "#b91c1c", marginTop: 1 }]}>
+                      Luar Radius: {formatDistanceMeters(dist!)}
+                    </Text>
+                  )}
+                  {!row.namaPerwakilan && !row.keterangan && !isOutside && <Text style={[styles.tdText, { fontSize: 6.5 }]}>-</Text>}
                 </View>
                 <View style={[styles.tdCell, styles.colWaktu]}>
-                  <Text style={[styles.tdText, { textAlign: "center", fontSize: 7.5 }]}>
+                  <Text style={[styles.tdText, { textAlign: "center", fontSize: 6 }]}>
                     {row.isSelfInput ? "Online" : "Manual"}
                   </Text>
                   {row.waktuInput && (
-                    <Text style={[styles.tdText, { textAlign: "center", fontSize: 7, marginTop: 1 }]}>
+                    <Text style={[styles.tdText, { textAlign: "center", fontSize: 5.5, marginTop: 1 }]}>
                       {row.waktuInput}
                     </Text>
                   )}

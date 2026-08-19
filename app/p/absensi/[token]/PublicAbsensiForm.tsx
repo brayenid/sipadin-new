@@ -57,6 +57,9 @@ interface PublicAgendaData {
   requireLocation: boolean;
   requirePhoto: boolean;
   allowNonPeserta?: boolean;
+  targetLatitude?: number | null;
+  targetLongitude?: number | null;
+  radiusMeter?: number | null;
   peserta?: PesertaItem[];
   serverTime: string;
   timeStatus: "NOT_STARTED" | "OPEN" | "CLOSED";
@@ -744,6 +747,23 @@ export default function PublicAbsensiForm({
 
         {/* Form Isi */}
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Peringatan Validasi Lokasi (Hadir jika aturan GPS diaktifkan) */}
+          {agenda.requireLocation && status !== "IZIN" && (
+            <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-amber-900 font-bold">
+                <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Peringatan Validasi Lokasi GPS</span>
+              </div>
+              <p className="text-amber-800/90 leading-relaxed text-[11.5px]">
+                Lokasi presensi Anda diperhitungkan dalam batas radius{" "}
+                <span className="font-bold text-amber-950">
+                  ±{agenda.radiusMeter || 100} meter
+                </span>{" "}
+                dari lokasi kegiatan{agenda.tempat ? ` (${agenda.tempat})` : ""}. Pastikan Anda mengaktifkan GPS dan berada di lokasi saat mengisi daftar hadir.
+              </p>
+            </div>
+          )}
+
           {/* Card 1: Nama & OPD */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
             <div className="flex items-center justify-between">
@@ -761,7 +781,7 @@ export default function PublicAbsensiForm({
                   }}
                   className="text-[11px] font-semibold text-indigo-600 hover:underline"
                 >
-                  {isCustomPeserta ? "Kembali ke Daftar OPD" : "Nama Tidak Ada di Daftar?"}
+                  {isCustomPeserta ? "Kembali ke Daftar Pegawai" : "Nama Tidak Ada di Daftar?"}
                 </button>
               )}
             </div>
@@ -798,84 +818,64 @@ export default function PublicAbsensiForm({
                   ) : (
                     <span className="text-slate-400 flex items-center gap-2">
                       <Search className="w-4 h-4 text-slate-400" />
-                      Pilih nama Anda atau OPD...
+                      Cari Nama Pegawai / NIP...
                     </span>
                   )}
-                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
                 </div>
 
                 {isDropdownOpen && (
-                  <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-300 rounded-xl shadow-lg max-h-64 overflow-y-auto p-1.5 space-y-1">
-                    <div className="sticky top-0 bg-white pb-1.5 z-10">
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-slate-200/80 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="p-2.5 border-b border-slate-100 bg-slate-50/70">
                       <div className="relative">
-                        {isSearching ? (
-                          <Loader2 className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-indigo-600 animate-spin" />
-                        ) : (
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                        )}
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                         <input
                           type="text"
-                          placeholder="Ketik untuk mencari nama / instansi..."
+                          autoFocus
+                          placeholder="Ketik min. 2 huruf nama/NIP..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          autoFocus
+                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
                     </div>
 
-                    {!hasSearch ? (
-                      <div className="p-4 text-center text-xs text-slate-400 space-y-1">
-                        <Search className="w-5 h-5 mx-auto text-slate-300 mb-1" />
-                        <p className="font-medium text-slate-600">Ketik nama pegawai atau instansi</p>
-                        <p className="text-[11px] text-slate-400">
-                          Daftar nama akan dicari dan muncul (maks. 10 hasil)
-                        </p>
-                      </div>
-                    ) : isSearching ? (
-                      <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                        Mencari data pegawai...
-                      </div>
-                    ) : filteredPeserta.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-slate-500 space-y-1.5">
-                        <p className="font-medium">Nama "{debouncedQuery}" tidak ditemukan.</p>
-                        {agenda.allowNonPeserta !== false ? (
-                          <p className="text-[11px] text-slate-400">
-                            Silakan klik opsi <b className="text-indigo-600">"Nama Tidak Ada di Daftar?"</b> di atas untuk mengisi data secara mandiri.
-                          </p>
-                        ) : (
-                          <p className="text-[11px] text-slate-400">
-                            Hanya peserta yang telah didaftarkan dalam undangan yang dapat mengisi presensi pada kegiatan ini.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      filteredPeserta.map((p) => {
-                        const isAlreadyAbsen = p.status !== "TIDAK_HADIR" || !!p.waktuInput;
-                        return (
+                    <div className="max-h-60 overflow-y-auto p-1 divide-y divide-slate-50">
+                      {isSearching ? (
+                        <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                          Mencari data pegawai...
+                        </div>
+                      ) : !hasSearch ? (
+                        <div className="p-4 text-center text-xs text-slate-400">
+                          Ketik nama pegawai atau NIP untuk mencari
+                        </div>
+                      ) : filteredPeserta.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400">
+                          Tidak menemukan nama yang cocok
+                        </div>
+                      ) : (
+                        filteredPeserta.map((p) => (
                           <div
                             key={p.id}
                             onClick={() => {
-                              setSelectedPeserta(p);
                               setSelectedPesertaId(p.id);
+                              setSelectedPeserta(p);
                               setIsDropdownOpen(false);
                               setSearchQuery("");
                             }}
-                            className={`p-2.5 rounded-lg cursor-pointer text-xs flex items-center justify-between transition ${
+                            className={`p-2.5 rounded-lg cursor-pointer text-xs transition flex items-center justify-between ${
                               selectedPesertaId === p.id
                                 ? "bg-indigo-50 text-indigo-900 font-semibold"
-                                : isAlreadyAbsen
-                                ? "hover:bg-slate-50 text-slate-800 bg-slate-50/50"
-                                : "hover:bg-slate-50 text-slate-800"
+                                : "hover:bg-slate-50 text-slate-700"
                             }`}
                           >
-                            <div className="truncate pr-2 min-w-0 flex-1">
+                            <div className="min-w-0 pr-2">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-slate-900">{p.nama}</span>
-                                {isAlreadyAbsen && (
+                                <span className="font-bold">{p.nama}</span>
+                                {p.status !== "TIDAK_HADIR" && (
                                   <span
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9.5px] font-semibold border ${
                                       p.status === "HADIR"
                                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                         : p.status === "MEWAKILI"
@@ -883,8 +883,8 @@ export default function PublicAbsensiForm({
                                         : "bg-amber-50 text-amber-700 border-amber-200"
                                     }`}
                                   >
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    Sudah Absen ({p.status === "HADIR" ? "Hadir" : p.status === "MEWAKILI" ? "Mewakili" : "Izin"})
+                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                    {p.status === "HADIR" ? "Hadir" : p.status === "MEWAKILI" ? "Mewakili" : "Izin"}
                                   </span>
                                 )}
                               </div>
@@ -892,11 +892,13 @@ export default function PublicAbsensiForm({
                                 {p.jabatan} • {p.instansi}
                               </div>
                             </div>
-                            {selectedPesertaId === p.id && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                            {selectedPesertaId === p.id && (
+                              <Check className="w-4 h-4 text-indigo-600 shrink-0" />
+                            )}
                           </div>
-                        );
-                      })
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1078,9 +1080,14 @@ export default function PublicAbsensiForm({
           {/* Card 3: Foto Selfie Real-time (Wajib Kamera Langsung hanya untuk HADIR & MEWAKILI) */}
           {agenda.requirePhoto && status !== "IZIN" && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
-              <label className="block text-xs font-bold text-slate-800">
-                Foto Selfie Kehadiran <span className="text-red-500">*</span>
-              </label>
+              <div>
+                <label className="block text-xs font-bold text-slate-800">
+                  Foto Selfie Kehadiran <span className="text-red-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  Pastikan foto selfie diambil langsung di lokasi kegiatan, wajah terlihat jelas menghadap kamera, tanpa masker/kacamata hitam, serta pencahayaan memadai.
+                </p>
+              </div>
 
               <div className="bg-slate-950 rounded-2xl overflow-hidden aspect-[3/4] max-w-xs sm:max-w-sm mx-auto flex items-center justify-center relative shadow-inner">
                 {isCameraActive ? (
@@ -1098,11 +1105,26 @@ export default function PublicAbsensiForm({
                       muted
                       className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
                     />
-                    <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-3 z-10 px-4">
+
+                    {/* Layer Panduan Siluet / Posisi Wajah (Face Oval Guide Overlay) */}
+                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6 z-10">
+                      {/* Oval Border with dashed/soft stroke & corner markers */}
+                      <div className="w-[175px] h-[230px] sm:w-[195px] sm:h-[250px] rounded-[50%] border-2 border-dashed border-white/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center relative">
+                        {/* Upper Crosshair mark */}
+                        <div className="w-2.5 h-0.5 bg-white/70 absolute top-2 rounded-full" />
+                        {/* Lower Crosshair mark */}
+                        <div className="w-2.5 h-0.5 bg-white/70 absolute bottom-2 rounded-full" />
+                      </div>
+                      <div className="mt-3 px-3 py-1 bg-black/60 backdrop-blur-xs rounded-full border border-white/20 text-[10.5px] text-white/90 font-medium tracking-wide shadow-sm">
+                        Posisikan Wajah di Dalam Garis
+                      </div>
+                    </div>
+
+                    <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-3 z-20 px-4">
                       <button
                         type="button"
                         onClick={toggleCameraFacing}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition"
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition cursor-pointer"
                         title="Putar Kamera"
                       >
                         <SwitchCamera className="w-4 h-4" />
@@ -1111,7 +1133,7 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition"
+                        className="p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer"
                         title="Ambil Foto"
                       >
                         <Camera className="w-6 h-6" />
@@ -1120,7 +1142,7 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs"
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs cursor-pointer"
                       >
                         Batal
                       </button>
@@ -1133,11 +1155,11 @@ export default function PublicAbsensiForm({
                       alt="Hasil Foto"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute bottom-3 inset-x-0 flex justify-center">
+                    <div className="absolute bottom-3 inset-x-0 flex justify-center z-10">
                       <button
                         type="button"
                         onClick={() => startCamera(facingMode)}
-                        className="px-3.5 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition flex items-center gap-1.5"
+                        className="px-3.5 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition flex items-center gap-1.5 cursor-pointer"
                       >
                         <RefreshCw className="w-3 h-3" />
                         Ambil Ulang Foto

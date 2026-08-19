@@ -553,6 +553,9 @@ export async function getPublicAgendaByToken(token: string) {
       requireLocation: true,
       requirePhoto: true,
       allowNonPeserta: true,
+      targetLatitude: true,
+      targetLongitude: true,
+      radiusMeter: true,
     },
   });
 
