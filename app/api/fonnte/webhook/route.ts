@@ -143,14 +143,15 @@ export async function POST(req: NextRequest) {
     let cleanedMessage = rawMessage;
 
     if (isGroup) {
-      // Identifikasi nomor WhatsApp Bot (dari payload Fonnte body.device atau environment variable)
+      // Identifikasi nomor WhatsApp Bot (Default: 628197962899, payload Fonnte body.device, atau env variable)
+      const defaultBotNumber = "628197962899";
       const deviceNumber = String(body.device || "").split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0/, "62");
       const envBotNumber = String(process.env.FONNTE_BOT_NUMBER || process.env.WA_BOT_NUMBER || "")
         .split("@")[0]
         .split(":")[0]
         .replace(/\D/g, "")
         .replace(/^0/, "62");
-      const botNumbers = [deviceNumber, envBotNumber].filter(Boolean);
+      const botNumbers = Array.from(new Set([defaultBotNumber, deviceNumber, envBotNumber].filter(Boolean)));
 
       // Daftar kata kunci trigger nama bot
       const rawKeywords = process.env.FONNTE_BOT_KEYWORD || "sipadin";
@@ -159,16 +160,17 @@ export async function POST(req: NextRequest) {
         .map((k) => k.trim().toLowerCase())
         .filter(Boolean);
       if (!keywords.includes("sipadin")) keywords.push("sipadin");
-      if (!keywords.includes("bot")) keywords.push("bot");
-      if (!keywords.includes("ai")) keywords.push("ai");
 
       const lowerMsg = rawMessage.toLowerCase();
 
       // Cek Mention:
-      // a. Terdapat mention tag @ di teks pesan (misal: @Sipadin, @Sipadin X, @628xxx)
-      const hasAtMention = rawMessage.includes("@");
+      // a. Terdapat mention nomor bot spesifik di teks pesan (misal: @628197962899 atau @08197962899)
+      const hasBotNumberMention = botNumbers.some((bNum) => {
+        const shortNum = bNum.replace(/^62/, "0");
+        return lowerMsg.includes(`@${bNum}`) || lowerMsg.includes(`@${shortNum}`);
+      });
 
-      // b. Metadata mentioned dari payload Fonnte
+      // b. Metadata mentioned dari payload resmi Fonnte
       let isMentionedInPayload = false;
       if (body.mentioned) {
         const payloadMentioned = Array.isArray(body.mentioned)
@@ -179,8 +181,6 @@ export async function POST(req: NextRequest) {
           isMentionedInPayload = payloadMentioned.some((pNum: string) =>
             botNumbers.some((bNum) => pNum.includes(bNum) || bNum.includes(pNum))
           );
-        } else if (payloadMentioned.length > 0) {
-          isMentionedInPayload = true;
         }
       }
 
@@ -203,43 +203,43 @@ export async function POST(req: NextRequest) {
         isQuotingBot = botNumbers.some((bNum) => quotedSender.includes(bNum) || bNum.includes(quotedSender));
       }
 
-      // d. Keyword trigger nama bot
-      const isKeywordTriggered = keywords.some((kw) => {
-        return (
-          lowerMsg.includes(`@${kw}`) ||
-          lowerMsg.includes(`!${kw}`) ||
-          lowerMsg.includes(`/${kw}`) ||
-          lowerMsg.startsWith(kw)
-        );
-      });
+      // d. Explicit tag / command / prefix trigger khusus nama bot (dengan boundary kata yang presisi)
+      const isExplicitTagOrCommand =
+        lowerMsg.includes("@sipadin") ||
+        lowerMsg.includes("@bot") ||
+        lowerMsg.includes("!sipadin") ||
+        lowerMsg.includes("/sipadin") ||
+        /^(?:@?sipadin|!sipadin|\/sipadin)\b/i.test(lowerMsg) ||
+        /^(?:sipadin|din)[,:\s]+/i.test(lowerMsg);
 
-      const isMentioned = hasAtMention || isMentionedInPayload || isQuotingBot || isKeywordTriggered;
+      const isMentioned = hasBotNumberMention || isMentionedInPayload || isQuotingBot || isExplicitTagOrCommand;
 
       if (!isMentioned) {
-        console.log(`[Group Filter] Pesan di grup ${sender} dari ${actualSender} diabaikan karena bot tidak di-mention.`);
-        return NextResponse.json({ status: "ignored", reason: "Bukan pesan yang ditujukan untuk bot di grup." }, { status: 200 });
+        console.log(`[Group Filter] Pesan di grup ${sender} dari ${actualSender} diabaikan karena bot (${defaultBotNumber}) tidak di-mention.`);
+        return NextResponse.json({ status: "ignored", reason: "Bot tidak di-mention di dalam grup." }, { status: 200 });
       }
 
-      // Bersihkan mention (@Sipadin X, @Sipadin, @628xxx, !sipadin, /sipadin) dari teks agar prompt AI bersih
+      // Bersihkan mention (@Sipadin X, @Sipadin, @628197962899, !sipadin, /sipadin) dari teks agar prompt AI bersih
       let cleaned = rawMessage;
 
-      // 1. Hapus mention nomor WhatsApp (@628xxx atau @08xxx)
+      // 1. Hapus mention nomor WhatsApp
+      botNumbers.forEach((bNum) => {
+        const shortNum = bNum.replace(/^62/, "0");
+        cleaned = cleaned.replace(new RegExp(`@${bNum}(?:@s\\.whatsapp\\.net)?`, "gi"), "");
+        cleaned = cleaned.replace(new RegExp(`@${shortNum}(?:@s\\.whatsapp\\.net)?`, "gi"), "");
+      });
       cleaned = cleaned.replace(/@\d{8,16}(?:@s\.whatsapp\.net)?/gi, "");
 
-      // 2. Hapus tag mention @ di awal pesan (misal: "@Sipadin ")
-      cleaned = cleaned.replace(/^@[^\s]+\s*/, "");
+      // 2. Hapus tag mention @ / prefix bot
+      cleaned = cleaned
+        .replace(/@sipadin\b/gi, "")
+        .replace(/@bot\b/gi, "")
+        .replace(/!sipadin\b/gi, "")
+        .replace(/\/sipadin\b/gi, "")
+        .replace(/^(?:@?sipadin|din)[:,.\s]+/gi, "");
 
       // 3. Hapus sisa kata alias kontak di awal jika ada (misal: "X " dari "@Sipadin X ping")
       cleaned = cleaned.replace(/^[a-zA-Z0-9_]+\s+(?=(?:ping|pong|info|cek|apa|tolong|bagaimana|buat|data|sisa|daftar|baca|bayar|link|nip|agenda|absensi|spj|halo|hai|\/|!|\?|[a-zA-Z]))/i, "");
-
-      // 4. Hapus prefix keyword bot
-      keywords.forEach((kw) => {
-        cleaned = cleaned
-          .replace(new RegExp(`@${kw}`, "gi"), "")
-          .replace(new RegExp(`!${kw}`, "gi"), "")
-          .replace(new RegExp(`/${kw}`, "gi"), "")
-          .replace(new RegExp(`^${kw}[:,\\s]*`, "gi"), "");
-      });
 
       cleanedMessage = cleaned.trim();
       

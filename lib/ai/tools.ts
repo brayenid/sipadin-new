@@ -3,6 +3,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { generateSlug } from "@/lib/utils";
 
 // ==========================================
 // 1. TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -176,19 +177,42 @@ export const AI_TOOLS_SCHEMA = [
     type: "function",
     function: {
       name: "create_agenda_tim",
-      description: "Buat agenda baru ke kalender tim.",
+      description: "Catat jadwal kegiatan/rapat/perjadin ke kalender kerja internal tim (tanpa form presensi mandiri publik).",
       parameters: {
         type: "object",
         properties: {
-          judul: { type: "string", description: "Nama / judul kegiatan agenda." },
+          judul: { type: "string", description: "Nama / judul kegiatan agenda internal tim." },
           tanggalMulai: { type: "string", description: "Tanggal mulai format YYYY-MM-DD." },
           tanggalSelesai: { type: "string", description: "Tanggal selesai format YYYY-MM-DD (opsional)." },
           waktuMulai: { type: "string", description: "Waktu mulai misal '09:00' atau '19:00' (opsional)." },
+          waktuSelesai: { type: "string", description: "Waktu selesai misal '12:00' atau '22:00' (opsional)." },
           lokasi: { type: "string", description: "Tempat atau lokasi kegiatan (opsional)." },
+          deskripsi: { type: "string", description: "Deskripsi atau agenda pembahasan (opsional)." },
           kategori: { type: "string", enum: ["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "LAINNYA"], description: "Kategori agenda." },
           pic: { type: "string", description: "Nama penanggung jawab / PIC (opsional)." },
         },
         required: ["judul", "tanggalMulai"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_agenda_absensi",
+      description: "Buat agenda presensi / absensi resmi OPD yang menghasilkan tautan link publik mandiri dengan slug otomatis dari judul kegiatan.",
+      parameters: {
+        type: "object",
+        properties: {
+          namaKegiatan: { type: "string", description: "Nama kegiatan / acara presensi OPD." },
+          tanggal: { type: "string", description: "Tanggal pelaksanaan kegiatan format YYYY-MM-DD." },
+          waktuMulai: { type: "string", description: "Waktu mulai misal '09:00' (opsional)." },
+          waktuSelesai: { type: "string", description: "Waktu selesai misal '12:00' (opsional)." },
+          tempat: { type: "string", description: "Tempat / lokasi acara presensi." },
+          deskripsi: { type: "string", description: "Keterangan atau deskripsi kegiatan (opsional)." },
+          targetPeserta: { type: "string", description: "Target peserta, default 'Eselon II.b dan III.a' (opsional)." },
+          targetKategori: { type: "string", enum: ["ESELON_2", "ESELON_3", "ESELON_2_3", "SEMUA_OPD", "KECAMATAN", "CUSTOM"], description: "Kategori binding peserta OPD." },
+        },
+        required: ["namaKegiatan", "tanggal", "tempat"],
       },
     },
   },
@@ -942,7 +966,7 @@ export async function executeToolCall(
         });
       }
 
-      // 13. CREATE AGENDA TIM
+      // 13. CREATE AGENDA TIM (KALENDER KERJA INTERNAL)
       case "create_agenda_tim": {
         const judul = String(args.judul || "").trim();
         let tglMulaiStr = String(args.tanggalMulai || "").trim();
@@ -954,11 +978,13 @@ export async function executeToolCall(
         const tglMulai = parseWitaDate(tglMulaiStr);
         const tglSelesai = args.tanggalSelesai ? parseWitaDate(args.tanggalSelesai) : null;
         const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
+        const waktuSelesai = args.waktuSelesai ? String(args.waktuSelesai).trim() : null;
         const lokasi = args.lokasi ? String(args.lokasi).trim() : null;
+        const deskripsi = args.deskripsi ? String(args.deskripsi).trim() : null;
         const pic = args.pic ? String(args.pic).trim() : null;
         const kategori = inferKategoriAgenda(judul, args.kategori);
 
-        // Ambil default Team & User
+        // Ambil default Team & User jika contextTeamId belum tersedia
         const defaultTeam = await prisma.team.findFirst();
         const defaultUser = await prisma.user.findFirst();
 
@@ -969,29 +995,177 @@ export async function executeToolCall(
           });
         }
 
-        const created = await prisma.agendaTim.create({
+        const effectiveTeamId = contextTeamId || defaultTeam.id;
+        const effectiveUserId = defaultUser.id;
+
+        const createdAgendaTim = await prisma.agendaTim.create({
           data: {
             judul,
             kategori,
             tanggalMulai: tglMulai,
             tanggalSelesai: tglSelesai,
             waktuMulai,
+            waktuSelesai,
             lokasi,
+            deskripsi,
             pic,
-            teamId: contextTeamId || defaultTeam.id,
-            createdById: defaultUser.id,
+            teamId: effectiveTeamId,
+            createdById: effectiveUserId,
           },
         });
 
+        const waktuTeks = waktuMulai
+          ? `${waktuMulai}${waktuSelesai ? ` - ${waktuSelesai}` : ""} WITA`
+          : "-";
+
         return JSON.stringify({
           status: "SUCCESS",
-          id: created.id.slice(0, 6),
-          judul: created.judul,
-          kategori: created.kategori.replace(/_/g, " "),
-          tanggal: formatWitaDate(created.tanggalMulai),
-          waktu: created.waktuMulai || "-",
-          lokasi: created.lokasi || "-",
-          message: `Agenda tim (${created.kategori.replace(/_/g, " ")}) berhasil dicatat ke kalender.`,
+          id: createdAgendaTim.id.slice(0, 6),
+          judul: createdAgendaTim.judul,
+          kategori: createdAgendaTim.kategori.replace(/_/g, " "),
+          tanggal: formatWitaDate(createdAgendaTim.tanggalMulai),
+          waktu: waktuTeks,
+          lokasi: createdAgendaTim.lokasi || "-",
+          pic: createdAgendaTim.pic || "-",
+          message: `Agenda internal tim '${createdAgendaTim.judul}' (${createdAgendaTim.kategori.replace(/_/g, " ")}) berhasil dicatat ke kalender kerja.`,
+        });
+      }
+
+      // 13.5 CREATE AGENDA ABSENSI OPD (PRESENSI PUBLIK MANDIRI)
+      case "create_agenda_absensi": {
+        const namaKegiatan = String(args.namaKegiatan || "").trim();
+        let tanggalStr = String(args.tanggal || "").trim();
+
+        if (!tanggalStr) {
+          tanggalStr = formatWitaDate(new Date());
+        }
+
+        const tglMulai = parseWitaDate(tanggalStr);
+        const waktuMulai = args.waktuMulai ? String(args.waktuMulai).trim() : null;
+        const waktuSelesai = args.waktuSelesai ? String(args.waktuSelesai).trim() : null;
+        const tempat = args.tempat ? String(args.tempat).trim() : "Aula Kantor";
+        const deskripsi = args.deskripsi ? String(args.deskripsi).trim() : null;
+        const targetPeserta = args.targetPeserta ? String(args.targetPeserta).trim() : "Eselon II.b dan III.a";
+        const targetKategori = args.targetKategori || "ESELON_2_3";
+
+        // Ambil default Team & User jika contextTeamId belum tersedia
+        const defaultTeam = await prisma.team.findFirst();
+        const defaultUser = await prisma.user.findFirst();
+
+        if (!defaultTeam || !defaultUser) {
+          return JSON.stringify({
+            status: "ERROR",
+            message: "Data Team atau User belum tersedia di database.",
+          });
+        }
+
+        const effectiveTeamId = contextTeamId || defaultTeam.id;
+        const effectiveUserId = defaultUser.id;
+
+        // Generate slug rapi dari nama kegiatan + kode unik 4 karakter di ujung
+        const baseSlug = generateSlug(namaKegiatan).slice(0, 40) || "absensi-kegiatan";
+        const randomSuffix = Math.random().toString(36).substring(2, 6);
+        const publicSlugToken = `${baseSlug}-${randomSuffix}`;
+
+        // Base URL SIPADIN untuk link publik
+        const rawBaseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://sipadin.id";
+        const cleanBaseUrl = rawBaseUrl.replace(/\/$/, "");
+        const publicUrl = `${cleanBaseUrl}/p/absensi/${publicSlugToken}`;
+
+        // Format label waktu
+        const waktuTeks = waktuMulai
+          ? `${waktuMulai}${waktuSelesai ? ` - ${waktuSelesai}` : ""} WITA`
+          : "09:00 WITA";
+
+        // Hitung nama hari dalam Bahasa Indonesia
+        const hariNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const hariIndo = hariNames[tglMulai.getDay()] || "Senin";
+
+        // 1. Simpan ke AgendaAbsensi
+        const createdAbsensi = await prisma.agendaAbsensi.create({
+          data: {
+            publicToken: publicSlugToken,
+            namaKegiatan,
+            hari: hariIndo,
+            tanggal: tglMulai,
+            waktu: waktuTeks,
+            tempat,
+            deskripsi,
+            targetPeserta,
+            targetKategori,
+            isPublicActive: true,
+            status: "BERLANGSUNG",
+            requireLocation: true,
+            requirePhoto: true,
+            allowNonPeserta: true,
+            teamId: effectiveTeamId,
+            createdById: effectiveUserId,
+          },
+        });
+
+        // 2. Simpan juga ke AgendaTim untuk visibilitas kalender
+        try {
+          await prisma.agendaTim.create({
+            data: {
+              judul: namaKegiatan,
+              kategori: "RAPAT",
+              tanggalMulai: tglMulai,
+              waktuMulai,
+              waktuSelesai,
+              lokasi: tempat,
+              deskripsi,
+              teamId: effectiveTeamId,
+              createdById: effectiveUserId,
+            },
+          });
+        } catch (calErr) {
+          console.warn("[create_agenda_absensi] Sync ke kalender tim gagal:", calErr);
+        }
+
+        // 3. Pre-populate daftar pejabat eselon/OPD
+        try {
+          const pejabatTerdaftar = await prisma.pegawai.findMany({
+            where: {
+              teamId: effectiveTeamId,
+              OR: [
+                { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
+                { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
+                { wajibAbsenOpd: true },
+              ],
+            },
+            orderBy: [{ urutanOpd: "asc" }, { instansi: "asc" }, { nama: "asc" }],
+          });
+
+          if (pejabatTerdaftar.length > 0) {
+            await prisma.kehadiranPeserta.createMany({
+              data: pejabatTerdaftar.map((p, idx) => ({
+                agendaId: createdAbsensi.id,
+                pegawaiId: p.id,
+                nama: p.nama,
+                nip: p.nip || null,
+                jabatan: p.jabatan,
+                instansi: p.instansi,
+                eselon: p.eselon || "II.b",
+                urutan: p.urutanOpd ?? idx + 1,
+                status: "TIDAK_HADIR" as any,
+                isSelfInput: false,
+              })),
+            });
+          }
+        } catch (err) {
+          console.warn("[create_agenda_absensi] Gagal pre-populate peserta:", err);
+        }
+
+        return JSON.stringify({
+          status: "SUCCESS",
+          id: createdAbsensi.id.slice(0, 6),
+          namaKegiatan: createdAbsensi.namaKegiatan,
+          tanggal: formatWitaDate(createdAbsensi.tanggal),
+          waktu: waktuTeks,
+          tempat: createdAbsensi.tempat,
+          publicUrl: publicUrl,
+          slugToken: publicSlugToken,
+          message: `Sesi presensi OPD '${createdAbsensi.namaKegiatan}' berhasil dibuat dan link publik presensi aktif.`,
         });
       }
 
