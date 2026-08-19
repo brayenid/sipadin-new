@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createPegawai, deletePegawai, bulkUpsertPegawai } from "@/app/actions/pegawai";
-import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { createPegawai, deletePegawai, bulkUpsertPegawai, getPegawaisPaginated } from "@/app/actions/pegawai";
+import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
 import PegawaiExcelActions from "./PegawaiExcelActions";
@@ -73,12 +73,76 @@ export default function PegawaiList({
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Sync state when server sends new initialData
+  // Auto Load More (Infinite Scroll) state
+  const [page, setPage] = useState(pagination?.page || 1);
+  const [hasMore, setHasMore] = useState((pagination?.totalPages || 1) > (pagination?.page || 1));
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const observerRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync state when initialData changes from URL search / router
   useEffect(() => {
     setData(initialData);
     setBulkData(initialData.map((p) => ({ ...p })));
+    setPage(pagination?.page || 1);
+    setHasMore((pagination?.totalPages || 1) > (pagination?.page || 1));
     setDeleteIds([]);
-  }, [initialData]);
+  }, [initialData, pagination]);
+
+  // Load more next batch of rows
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await getPegawaisPaginated({
+        page: nextPage,
+        limit: 50,
+        search: searchParams.get("search") || undefined,
+        sort: (searchParams.get("sort") as any) || undefined,
+        direction: (searchParams.get("dir") as any) || undefined,
+      });
+
+      if (res.items && res.items.length > 0) {
+        setData((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const fresh = res.items.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...fresh];
+        });
+        setBulkData((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const fresh = res.items.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...fresh.map((p) => ({ ...p }))];
+        });
+        setPage(nextPage);
+        setHasMore(nextPage < res.pagination.totalPages);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[AutoLoadMore Error]:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Setup IntersectionObserver for auto load more
+  useEffect(() => {
+    const el = observerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !isPending) {
+          handleLoadMore();
+        }
+      },
+      { rootMargin: "350px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, isPending]);
 
   // Single Card Mode State
   const [isOpen, setIsOpen] = useState(false);
@@ -233,11 +297,6 @@ export default function PegawaiList({
     updateUrl({ sort: field, dir: nextDir, page: "1" });
   };
 
-  const page = pagination?.page || 1;
-  const totalPages = pagination?.totalPages || 1;
-  const totalItems = pagination?.totalItems ?? data.length;
-  const limit = pagination?.limit || 50;
-
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
       {/* Header Search & Actions */}
@@ -259,27 +318,11 @@ export default function PegawaiList({
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <TabsList>
             <TabsTrigger value="kartu" className="text-xs">Mode Kartu</TabsTrigger>
             <TabsTrigger value="tabel" className="text-xs">Mode Tabel (Cepat)</TabsTrigger>
           </TabsList>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span>Ditemukan <strong>{totalItems.toLocaleString("id-ID")}</strong> pegawai</span>
-            <span>•</span>
-            <span>Tampilkan:</span>
-            <select
-              value={limit}
-              onChange={(e) => updateUrl({ limit: e.target.value, page: "1" })}
-              className="text-xs border border-slate-200 rounded px-2 py-0.5 bg-white font-medium text-slate-700 h-7"
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
-          </div>
         </div>
 
         {/* ================= MODE KARTU ================= */}
@@ -400,59 +443,18 @@ export default function PegawaiList({
             </div>
           )}
 
-          {/* Pagination Controls Kartu */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-              <div className="text-xs text-slate-500">
-                Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong> (Total {totalItems.toLocaleString("id-ID")} pegawai)
+          {/* Infinite Scroll Sentinel & Indicator */}
+          <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px]">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-full px-4 py-1.5 shadow-xs">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memuat data pegawai selanjutnya...</span>
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateUrl({ page: String(Math.max(1, page - 1)) })}
-                  disabled={page <= 1 || isPending}
-                  className="h-8 text-xs px-2.5"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Sebelumnya
-                </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum = i + 1;
-                    if (totalPages > 5 && page > 3) {
-                      pageNum = Math.min(totalPages - 4 + i, page - 2 + i);
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={page === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => updateUrl({ page: String(pageNum) })}
-                        disabled={isPending}
-                        className={`h-8 w-8 text-xs p-0 ${
-                          page === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white font-bold" : ""
-                        }`}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateUrl({ page: String(Math.min(totalPages, page + 1)) })}
-                  disabled={page >= totalPages || isPending}
-                  className="h-8 text-xs px-2.5"
-                >
-                  Selanjutnya <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+            {!hasMore && data.length > 0 && (
+              <p className="text-xs text-slate-400 font-medium">Semua data pegawai ({data.length}) telah dimuat</p>
+            )}
+          </div>
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
@@ -629,59 +631,18 @@ export default function PegawaiList({
                 </Table>
               </div>
 
-              {/* Pagination Controls Mode Tabel */}
-              {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50">
-                  <div className="text-xs text-slate-500">
-                    Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong> (Total {totalItems.toLocaleString("id-ID")} pegawai)
+              {/* Infinite Scroll Sentinel & Indicator for Mode Tabel */}
+              <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px] border-t border-slate-100 bg-slate-50/30">
+                {loadingMore && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-full px-4 py-1.5 shadow-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memuat baris selanjutnya...</span>
                   </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateUrl({ page: String(Math.max(1, page - 1)) })}
-                      disabled={page <= 1 || isPending}
-                      className="h-8 text-xs px-2.5"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Sebelumnya
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum = i + 1;
-                        if (totalPages > 5 && page > 3) {
-                          pageNum = Math.min(totalPages - 4 + i, page - 2 + i);
-                        }
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={page === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateUrl({ page: String(pageNum) })}
-                            disabled={isPending}
-                            className={`h-8 w-8 text-xs p-0 ${
-                              page === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white font-bold" : ""
-                            }`}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateUrl({ page: String(Math.min(totalPages, page + 1)) })}
-                      disabled={page >= totalPages || isPending}
-                      className="h-8 text-xs px-2.5"
-                    >
-                      Selanjutnya <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+                )}
+                {!hasMore && bulkData.length > 0 && (
+                  <p className="text-xs text-slate-400 font-medium">Semua data pegawai ({bulkData.length}) telah dimuat</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

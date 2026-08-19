@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useState, useEffect, useRef, useTransition } from "react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,10 @@ import {
   Building2,
   Save,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   UserCheck,
   UserX,
 } from "lucide-react";
-import { bulkUpdateBindingPejabat } from "@/app/actions/absensi";
+import { bulkUpdateBindingPejabat, getPegawaiForBindingPaginated } from "@/app/actions/absensi";
 
 type Pegawai = {
   id: string;
@@ -62,15 +60,22 @@ export default function PejabatBindingList({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Local state for items on current page (allows immediate inline toggle)
+  // Local state for items
   const [internalList, setInternalList] = useState<Pegawai[]>(
     initialItems.map((p) => ({ ...p }))
   );
+  const [page, setPage] = useState(pagination.page || 1);
+  const [hasMore, setHasMore] = useState(pagination.totalPages > pagination.page);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const observerRef = useRef<HTMLDivElement | null>(null);
 
   // Sync internalList when initialItems updates from server
   useEffect(() => {
     setInternalList(initialItems.map((p) => ({ ...p })));
-  }, [initialItems]);
+    setPage(pagination.page || 1);
+    setHasMore(pagination.totalPages > pagination.page);
+  }, [initialItems, pagination]);
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const filterEselon = searchParams.get("eselon") || "ALL";
@@ -103,6 +108,56 @@ export default function PejabatBindingList({
     });
   };
 
+  // Auto Load More next batch
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await getPegawaiForBindingPaginated({
+        page: nextPage,
+        limit: 50,
+        search: searchParams.get("search") || undefined,
+        eselon: (searchParams.get("eselon") as any) || undefined,
+        status: (searchParams.get("status") as any) || undefined,
+      });
+
+      if (res.items && res.items.length > 0) {
+        setInternalList((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const fresh = res.items.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...fresh.map((p) => ({ ...p }))];
+        });
+        setPage(nextPage);
+        setHasMore(nextPage < res.pagination.totalPages);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[AutoLoadMore Error]:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Setup IntersectionObserver for auto load more
+  useEffect(() => {
+    const el = observerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !isPending) {
+          handleLoadMore();
+        }
+      },
+      { rootMargin: "350px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, isPending]);
+
   // Deteksi perubahan lokal
   const getDirtyItems = () => {
     return internalList.filter((item) => {
@@ -118,245 +173,210 @@ export default function PejabatBindingList({
 
   const dirtyCount = getDirtyItems().length;
 
-  const handleCheckboxChange = (id: string, checked: boolean) => {
+  const handleToggleSingle = (id: string, currentVal: boolean) => {
     setInternalList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              wajibAbsenOpd: checked,
-            }
-          : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, wajibAbsenOpd: !currentVal } : item))
     );
   };
 
-  const handleEselonSelectChange = (id: string, val: string) => {
+  const handleEselonChange = (id: string, newEselon: string) => {
     setInternalList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              eselon: val === "NON_ESELON" ? null : val,
-            }
-          : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, eselon: newEselon === "NON_ESELON" ? "" : newEselon } : item))
     );
   };
 
-  const handleKategoriSelectChange = (id: string, val: string) => {
+  const handleKategoriChange = (id: string, newKat: string) => {
     setInternalList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              kategoriPegawai: val === "NONE" ? null : val,
-            }
-          : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, kategoriPegawai: newKat || null } : item))
     );
   };
+
+  // Toggle Semua Data yang Sedang Tampil
+  const handleSelectAllCurrentPage = (checked: boolean) => {
+    setInternalList((prev) =>
+      prev.map((item) => ({
+        ...item,
+        wajibAbsenOpd: checked,
+      }))
+    );
+  };
+
+  const allCurrentPageSelected =
+    internalList.length > 0 && internalList.every((item) => item.wajibAbsenOpd);
+  const someCurrentPageSelected =
+    internalList.some((item) => item.wajibAbsenOpd);
 
   const handleSaveBulk = async () => {
-    const dirtyItems = getDirtyItems();
-    if (dirtyItems.length === 0) {
-      toast.info("Tidak ada perubahan untuk disimpan");
+    const dirty = getDirtyItems();
+    if (dirty.length === 0) {
+      toast.info("Tidak ada perubahan yang perlu disimpan.");
       return;
     }
 
     setSaving(true);
     try {
-      await bulkUpdateBindingPejabat(
-        dirtyItems.map((item) => ({
-          pegawaiId: item.id,
-          wajibAbsenOpd: item.wajibAbsenOpd,
-          eselon: item.eselon,
-          kategoriPegawai: item.kategoriPegawai,
-          urutanOpd: item.urutanOpd ?? 0,
-        }))
-      );
+      const payload = dirty.map((d) => ({
+        pegawaiId: d.id,
+        wajibAbsenOpd: d.wajibAbsenOpd,
+        eselon: d.eselon || null,
+        kategoriPegawai: d.kategoriPegawai || null,
+      }));
 
-      toast.success(`Berhasil memperbarui binding untuk ${dirtyItems.length} pegawai`);
+      await bulkUpdateBindingPejabat(payload);
+      toast.success(`Berhasil memperbarui ${dirty.length} data pegawai.`);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan perubahan binding");
+      toast.error(err.message || "Terjadi kesalahan saat menyimpan.");
     } finally {
       setSaving(false);
     }
   };
 
-  // Status Select All pada halaman saat ini
-  const allCurrentPageSelected = internalList.length > 0 && internalList.every((p) => p.wajibAbsenOpd);
-  const someCurrentPageSelected = internalList.some((p) => p.wajibAbsenOpd);
-
-  // Handler Select All / Unselect All pada halaman saat ini
-  const handleSelectAllCurrentPage = (checked: boolean) => {
-    setInternalList((prev) =>
-      prev.map((item) => ({ ...item, wajibAbsenOpd: checked }))
-    );
-    toast.info(
-      checked
-        ? `Menandai ${internalList.length} pegawai di halaman ini sebagai Wajib Absen.`
-        : `Menghapus centang Wajib Absen untuk ${internalList.length} pegawai di halaman ini.`
-    );
-  };
-
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
-      {/* Statistik Ringkas */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
-                Total Wajib Absen
-              </p>
-              <p className="text-2xl font-black text-indigo-950 mt-0.5">{stats.totalBound}</p>
-              <p className="text-[11px] text-indigo-600/80 mt-0.5">Dari {stats.totalPegawai.toLocaleString("id-ID")} total pegawai</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+      {/* Kartu Ringkasan Atas */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="p-4 bg-white border-slate-200/70 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
               <Users className="w-5 h-5" />
             </div>
-          </CardContent>
+            <div>
+              <p className="text-[11px] font-medium text-slate-500">Total Wajib Absen</p>
+              <h3 className="text-xl font-bold text-slate-900">{stats.totalBound}</h3>
+            </div>
+          </div>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
-                Eselon II (Kepala OPD)
-              </p>
-              <p className="text-2xl font-black text-emerald-950 mt-0.5">{stats.countEselon2}</p>
-              <p className="text-[11px] text-emerald-600/80 mt-0.5">Kadis / Kaban / Asisten</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <Card className="p-4 bg-white border-slate-200/70 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
               <Building2 className="w-5 h-5" />
             </div>
-          </CardContent>
+            <div>
+              <p className="text-[11px] font-medium text-slate-500">Eselon II (Kadis/Kaban)</p>
+              <h3 className="text-xl font-bold text-slate-900">{stats.countEselon2}</h3>
+            </div>
+          </div>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
-                Eselon III (Kabag / Camat)
-              </p>
-              <p className="text-2xl font-black text-amber-950 mt-0.5">{stats.countEselon3}</p>
-              <p className="text-[11px] text-amber-600/80 mt-0.5">Kabag Setda & Camat</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+        <Card className="p-4 bg-white border-slate-200/70 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
               <Building2 className="w-5 h-5" />
             </div>
-          </CardContent>
+            <div>
+              <p className="text-[11px] font-medium text-slate-500">Eselon III (Kabid/Sek)</p>
+              <h3 className="text-xl font-bold text-slate-900">{stats.countEselon3}</h3>
+            </div>
+          </div>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-sky-700 uppercase tracking-wider">
-                Non-Eselon / Staf
-              </p>
-              <p className="text-2xl font-black text-sky-950 mt-0.5">{stats.countNonEselon}</p>
-              <p className="text-[11px] text-sky-600/80 mt-0.5">Staf Pelaksana / Fungsional</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-600">
+        <Card className="p-4 bg-white border-slate-200/70 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
               <Users className="w-5 h-5" />
             </div>
-          </CardContent>
+            <div>
+              <p className="text-[11px] font-medium text-slate-500">Non-Eselon / Staf</p>
+              <h3 className="text-xl font-bold text-slate-900">{stats.countNonEselon}</h3>
+            </div>
+          </div>
         </Card>
       </div>
 
-      {/* Kontrol & Filter */}
-      <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <CardHeader className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 bg-slate-50/40">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                Daftar Pegawai Wajib Absen Default
-                {isPending && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-0.5">
-                Centang pegawai untuk memasukkan mereka secara default ke setiap agenda baru yang dibuat. Data dimuat secara lazy/server-paginated untuk kecepatan tinggi.
-              </CardDescription>
-            </div>
+      {/* Kontrol Utama & Tabel */}
+      <Card className="bg-white border-slate-200/70 shadow-xs overflow-hidden">
+        <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-base font-bold text-slate-900">
+              Daftar Pegawai Wajib Absen Apel/Upacara
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 mt-1">
+              Pilih pegawai yang wajib terdaftar dalam presensi default apel gabungan OPD.
+            </CardDescription>
+          </div>
 
-            <div className="hidden lg:flex items-center gap-2">
-              <Button
-                onClick={handleSaveBulk}
-                disabled={saving || dirtyCount === 0}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0 font-semibold shadow-sm"
-                size="sm"
-              >
-                {saving ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5 mr-1.5" />
-                )}
-                Simpan Perubahan {dirtyCount > 0 ? `(${dirtyCount})` : ""}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            {dirtyCount > 0 && (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs py-1 px-2.5">
+                {dirtyCount} perubahan belum disimpan
+              </Badge>
+            )}
+            <Button
+              onClick={handleSaveBulk}
+              disabled={saving || dirtyCount === 0}
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-xs"
+            >
+              {saving ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Simpan Perubahan
+            </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3 my-4">
-            {/* Search */}
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          {/* Filter Bar */}
+          <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
-                placeholder="Cari nama, jabatan, atau instansi..."
+                placeholder="Cari nama pegawai, jabatan, atau instansi/OPD..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 text-xs h-9"
               />
+              {isPending && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                </div>
+              )}
             </div>
 
-            {/* Filter Group */}
-            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2.5 w-full md:w-auto">
-              {/* Filter Status Binding */}
-              <select
-                value={filterStatus}
-                onChange={(e) => updateUrl({ status: e.target.value, page: "1" })}
-                className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 h-9 font-medium"
-              >
-                <option value="ALL">Semua Status ({stats.totalPegawai.toLocaleString("id-ID")})</option>
-                <option value="BINDING">Wajib Absen ({stats.totalBound.toLocaleString("id-ID")})</option>
-                <option value="UNBOUND">Tidak Wajib Absen ({(stats.totalPegawai - stats.totalBound).toLocaleString("id-ID")})</option>
-              </select>
-
-              {/* Filter Eselon & Non-Eselon */}
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
               <select
                 value={filterEselon}
                 onChange={(e) => updateUrl({ eselon: e.target.value, page: "1" })}
-                className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 h-9 font-medium"
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-700 h-9"
               >
                 <option value="ALL">Semua (Termasuk Non-Eselon)</option>
                 <option value="ESELON_ONLY">Semua yang Ber-Eselon</option>
-                <option value="NON_ESELON">Khusus Non-Eselon / Staf</option>
                 <option value="II.a">Eselon II.a</option>
                 <option value="II.b">Eselon II.b</option>
                 <option value="III.a">Eselon III.a</option>
                 <option value="III.b">Eselon III.b</option>
                 <option value="IV.a">Eselon IV.a</option>
                 <option value="IV.b">Eselon IV.b</option>
+                <option value="NON_ESELON">Khusus Non-Eselon / Staf</option>
               </select>
 
-              {/* Quick Batch Actions Buttons */}
-              <div className="flex items-center gap-1.5">
+              <select
+                value={filterStatus}
+                onChange={(e) => updateUrl({ status: e.target.value, page: "1" })}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-700 h-9"
+              >
+                <option value="ALL">Semua Status</option>
+                <option value="WAJIB">Hanya Wajib Absen</option>
+                <option value="TIDAK_WAJIB">Belum Wajib Absen</option>
+              </select>
+
+              <div className="flex items-center gap-1 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60">
                 <Button
-                  type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => handleSelectAllCurrentPage(true)}
                   disabled={internalList.length === 0 || allCurrentPageSelected}
-                  className="h-9 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 bg-indigo-50/40 font-medium"
+                  className="h-9 text-xs text-indigo-700 hover:bg-white hover:text-indigo-800 font-medium"
                 >
                   <UserCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  Pilih Halaman Ini ({internalList.length})
+                  Pilih Halaman Ini
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => handleSelectAllCurrentPage(false)}
                   disabled={internalList.length === 0 || !someCurrentPageSelected}
@@ -366,37 +386,6 @@ export default function PejabatBindingList({
                   Batal Semua
                 </Button>
               </div>
-            </div>
-          </div>
-
-          {/* Bar Info Filter & Selection */}
-          <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-600">
-            <div>
-              Ditemukan <strong>{pagination.totalItems.toLocaleString("id-ID")}</strong> pegawai{" "}
-              {search && <span>dengan pencarian &quot;{search}&quot;</span>}
-              {filterEselon !== "ALL" && (
-                <Badge variant="secondary" className="ml-1.5 text-[10px] font-semibold bg-white border border-slate-200 text-slate-700">
-                  {filterEselon === "ESELON_ONLY"
-                    ? "Ber-Eselon"
-                    : filterEselon === "NON_ESELON"
-                    ? "Non-Eselon"
-                    : `Eselon ${filterEselon}`}
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-500">Per halaman:</span>
-              <select
-                value={pagination.limit}
-                onChange={(e) => updateUrl({ limit: e.target.value, page: "1" })}
-                className="text-xs border border-slate-200 rounded px-2 py-0.5 bg-white font-medium text-slate-700 h-7"
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-              </select>
             </div>
           </div>
 
@@ -411,26 +400,12 @@ export default function PejabatBindingList({
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
                   <TableHead className="w-12 text-center text-xs">No</TableHead>
-                  <TableHead className="w-36 text-center text-xs">
-                    <div
-                      className="flex items-center justify-center gap-1.5 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
-                      onClick={() => handleSelectAllCurrentPage(!allCurrentPageSelected)}
-                      title={allCurrentPageSelected ? "Hapus centang halaman ini" : "Centang semua halaman ini"}
-                    >
-                      <Checkbox
-                        checked={allCurrentPageSelected}
-                        onCheckedChange={(checked) => handleSelectAllCurrentPage(Boolean(checked))}
-                        aria-label="Pilih Semua Halaman Ini"
-                        className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
-                      />
-                      <span className="font-bold">Wajib Absen?</span>
-                    </div>
-                  </TableHead>
+                  <TableHead className="w-20 text-center text-xs">Pilih</TableHead>
                   <TableHead className="text-xs">Nama Pegawai</TableHead>
                   <TableHead className="text-xs">Jabatan</TableHead>
-                  <TableHead className="text-xs">Perangkat Daerah / OPD</TableHead>
-                  <TableHead className="text-xs text-center w-36">Eselon</TableHead>
-                  <TableHead className="text-xs text-center w-36">Kategori Grup</TableHead>
+                  <TableHead className="text-xs">OPD</TableHead>
+                  <TableHead className="text-center w-32 text-xs">Eselon</TableHead>
+                  <TableHead className="text-center w-32 text-xs">Grup</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -441,43 +416,55 @@ export default function PejabatBindingList({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  internalList.map((p, idx) => {
-                    const rowNumber = (pagination.page - 1) * pagination.limit + idx + 1;
+                  internalList.map((item, idx) => {
+                    const original = initialItems.find((p) => p.id === item.id);
+                    const isDirty =
+                      original &&
+                      (original.wajibAbsenOpd !== item.wajibAbsenOpd ||
+                        original.eselon !== item.eselon ||
+                        original.kategoriPegawai !== item.kategoriPegawai);
+
                     return (
                       <TableRow
-                        key={p.id}
-                        className={`hover:bg-slate-50/60 transition-colors ${
-                          p.wajibAbsenOpd ? "bg-indigo-50/15" : ""
+                        key={item.id}
+                        className={`transition-colors text-xs ${
+                          isDirty
+                            ? "bg-amber-50/40 hover:bg-amber-50/60"
+                            : item.wajibAbsenOpd
+                            ? "bg-indigo-50/15 hover:bg-indigo-50/30"
+                            : "hover:bg-slate-50/50"
                         }`}
                       >
-                        <TableCell className="text-center text-xs font-medium text-slate-500">
-                          {rowNumber}
+                        <TableCell className="text-center font-mono text-slate-400 text-[11px]">
+                          {idx + 1}
                         </TableCell>
-                        
-                        {/* Checkbox Binding */}
                         <TableCell className="text-center">
-                          <Checkbox
-                            checked={p.wajibAbsenOpd}
-                            onCheckedChange={(checked) => handleCheckboxChange(p.id, Boolean(checked))}
-                            className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
-                          />
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={item.wajibAbsenOpd}
+                              onCheckedChange={() => handleToggleSingle(item.id, item.wajibAbsenOpd)}
+                              className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                            />
+                          </div>
                         </TableCell>
-
-                        <TableCell className="text-xs font-semibold text-slate-900">
-                          {p.nama}
-                          {p.nip && <p className="text-[10px] text-slate-400 font-normal">NIP: {p.nip}</p>}
+                        <TableCell className="font-medium text-slate-900">
+                          <div>
+                            <span>{item.nama}</span>
+                            {item.nip && (
+                              <span className="block text-[11px] text-slate-400 font-mono">
+                                NIP: {item.nip}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-xs text-slate-700">{p.jabatan}</TableCell>
-                        <TableCell className="text-xs text-slate-600 font-medium">{p.instansi}</TableCell>
-                        
-                        {/* Selector Eselon */}
-                        <TableCell className="text-center text-xs">
+                        <TableCell className="text-slate-600">{item.jabatan}</TableCell>
+                        <TableCell className="text-slate-600">{item.instansi || "-"}</TableCell>
+                        <TableCell className="text-center">
                           <select
-                            value={p.eselon || "NON_ESELON"}
-                            onChange={(e) => handleEselonSelectChange(p.id, e.target.value)}
-                            className="h-8 w-28 text-xs font-semibold rounded-md border border-slate-300 bg-white px-2 py-1 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                            value={item.eselon || "NON_ESELON"}
+                            onChange={(e) => handleEselonChange(item.id, e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white font-medium text-slate-700"
                           >
-                            <option value="NON_ESELON">Non Eselon</option>
                             <option value="I.a">I.a</option>
                             <option value="I.b">I.b</option>
                             <option value="II.a">II.a</option>
@@ -486,17 +473,15 @@ export default function PejabatBindingList({
                             <option value="III.b">III.b</option>
                             <option value="IV.a">IV.a</option>
                             <option value="IV.b">IV.b</option>
+                            <option value="NON_ESELON">Non Eselon</option>
                           </select>
                         </TableCell>
-
-                        {/* Selector Kategori Grup */}
-                        <TableCell className="text-center text-xs">
+                        <TableCell className="text-center">
                           <select
-                            value={p.kategoriPegawai || "NONE"}
-                            onChange={(e) => handleKategoriSelectChange(p.id, e.target.value)}
-                            className="h-8 w-28 text-xs font-semibold rounded-md border border-slate-300 bg-white px-2 py-1 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                            value={item.kategoriPegawai || "UMUM"}
+                            onChange={(e) => handleKategoriChange(item.id, e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white font-medium text-slate-700"
                           >
-                            <option value="NONE">- Standar -</option>
                             <option value="ESELON_2">Eselon II</option>
                             <option value="ESELON_3">Eselon III</option>
                             <option value="KECAMATAN">Kecamatan</option>
@@ -512,59 +497,18 @@ export default function PejabatBindingList({
             </Table>
           </div>
 
-          {/* Pagination Controls */}
-          {pagination.totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-              <div className="text-xs text-slate-500">
-                Menampilkan halaman <strong>{pagination.page}</strong> dari <strong>{pagination.totalPages}</strong> (Total {pagination.totalItems.toLocaleString("id-ID")} data)
+          {/* Infinite Scroll Sentinel & Indicator */}
+          <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px]">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-full px-4 py-1.5 shadow-xs">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memuat data pejabat selanjutnya...</span>
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateUrl({ page: String(Math.max(1, pagination.page - 1)) })}
-                  disabled={pagination.page <= 1 || isPending}
-                  className="h-8 text-xs px-2.5"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Sebelumnya
-                </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum = i + 1;
-                    if (pagination.totalPages > 5 && pagination.page > 3) {
-                      pageNum = Math.min(pagination.totalPages - 4 + i, pagination.page - 2 + i);
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={pagination.page === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => updateUrl({ page: String(pageNum) })}
-                        disabled={isPending}
-                        className={`h-8 w-8 text-xs p-0 ${
-                          pagination.page === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white font-bold" : ""
-                        }`}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateUrl({ page: String(Math.min(pagination.totalPages, pagination.page + 1)) })}
-                  disabled={pagination.page >= pagination.totalPages || isPending}
-                  className="h-8 text-xs px-2.5"
-                >
-                  Selanjutnya <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+            {!hasMore && internalList.length > 0 && (
+              <p className="text-xs text-slate-400 font-medium">Semua data ({internalList.length}) telah dimuat</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
