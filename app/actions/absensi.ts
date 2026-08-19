@@ -47,6 +47,127 @@ export async function getAllPegawaiForBinding() {
   });
 }
 
+export async function getPegawaiForBindingPaginated(params: {
+  search?: string;
+  status?: "ALL" | "BINDING" | "UNBOUND";
+  eselon?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const page = Math.max(1, Number(params.page) || 1);
+  const limit = Math.min(200, Math.max(10, Number(params.limit) || 50));
+  const skip = (page - 1) * limit;
+
+  const teamId = session.user.teamId;
+  const search = params.search?.trim();
+  const status = params.status || "ALL";
+  const eselon = params.eselon || "ALL";
+
+  // Build where clause
+  const where: any = { teamId };
+
+  if (search) {
+    where.OR = [
+      { nama: { contains: search, mode: "insensitive" } },
+      { nip: { contains: search, mode: "insensitive" } },
+      { jabatan: { contains: search, mode: "insensitive" } },
+      { instansi: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (status === "BINDING") {
+    where.wajibAbsenOpd = true;
+  } else if (status === "UNBOUND") {
+    where.wajibAbsenOpd = false;
+  }
+
+  if (eselon === "ESELON_ONLY") {
+    where.AND = [
+      { eselon: { not: null } },
+      { eselon: { not: "NON_ESELON" } },
+      { eselon: { not: "" } },
+    ];
+  } else if (eselon === "NON_ESELON") {
+    where.OR = [
+      { eselon: null },
+      { eselon: "NON_ESELON" },
+      { eselon: "" },
+    ];
+  } else if (eselon !== "ALL") {
+    where.eselon = eselon;
+  }
+
+  // Parallel fetch: items, totalFiltered, and stat counters
+  const [items, totalFiltered, totalBound, totalPegawaiInTeam, countEselon2, countEselon3, countNonEselon] = await Promise.all([
+    prisma.pegawai.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: [
+        { wajibAbsenOpd: "desc" },
+        { urutanOpd: "asc" },
+        { instansi: "asc" },
+        { nama: "asc" },
+      ],
+      select: {
+        id: true,
+        nip: true,
+        nama: true,
+        jabatan: true,
+        instansi: true,
+        eselon: true,
+        kategoriPegawai: true,
+        wajibAbsenOpd: true,
+        urutanOpd: true,
+      },
+    }),
+    prisma.pegawai.count({ where }),
+    prisma.pegawai.count({ where: { teamId, wajibAbsenOpd: true } }),
+    prisma.pegawai.count({ where: { teamId } }),
+    prisma.pegawai.count({
+      where: {
+        teamId,
+        wajibAbsenOpd: true,
+        eselon: { in: ["II.a", "II.b"] },
+      },
+    }),
+    prisma.pegawai.count({
+      where: {
+        teamId,
+        wajibAbsenOpd: true,
+        eselon: { in: ["III.a", "III.b"] },
+      },
+    }),
+    prisma.pegawai.count({
+      where: {
+        teamId,
+        wajibAbsenOpd: true,
+        OR: [{ eselon: null }, { eselon: "NON_ESELON" }, { eselon: "" }],
+      },
+    }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      totalItems: totalFiltered,
+      totalPages: Math.max(1, Math.ceil(totalFiltered / limit)),
+    },
+    stats: {
+      totalPegawai: totalPegawaiInTeam,
+      totalBound,
+      countEselon2,
+      countEselon3,
+      countNonEselon,
+    },
+  };
+}
+
 export async function updateBindingPejabat(data: {
   pegawaiId: string;
   wajibAbsenOpd: boolean;

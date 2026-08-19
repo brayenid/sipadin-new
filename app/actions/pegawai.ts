@@ -24,6 +24,77 @@ export async function getPegawais() {
   });
 }
 
+export async function getPegawaisPaginated(params: {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: "nama" | "golongan" | "jabatan" | "instansi";
+  direction?: "asc" | "desc";
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const page = Math.max(1, Number(params.page) || 1);
+  const limit = Math.min(200, Math.max(10, Number(params.limit) || 50));
+  const skip = (page - 1) * limit;
+
+  const teamId = session.user.teamId;
+  const search = params.search?.trim();
+
+  const where: any = { teamId };
+  if (search) {
+    where.OR = [
+      { nama: { contains: search, mode: "insensitive" } },
+      { nip: { contains: search, mode: "insensitive" } },
+      { jabatan: { contains: search, mode: "insensitive" } },
+      { instansi: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const orderBy: any[] = [];
+  const dir = params.direction || "asc";
+  if (params.sort === "golongan") {
+    orderBy.push({ golongan: dir });
+    orderBy.push({ nama: "asc" });
+  } else if (params.sort === "jabatan") {
+    orderBy.push({ jabatan: dir });
+  } else if (params.sort === "instansi") {
+    orderBy.push({ instansi: dir });
+  } else {
+    orderBy.push({ nama: dir });
+  }
+
+  const [items, totalItems] = await Promise.all([
+    prisma.pegawai.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      select: {
+        id: true,
+        nip: true,
+        nama: true,
+        pangkat: true,
+        golongan: true,
+        jabatan: true,
+        instansi: true,
+        eselon: true,
+      },
+    }),
+    prisma.pegawai.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / limit)),
+    },
+  };
+}
+
 export async function createPegawai(data: {
   nip?: string;
   nama: string;

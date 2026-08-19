@@ -1,14 +1,31 @@
-import { getAllPegawaiForBinding } from "@/app/actions/absensi";
+import { getPegawaiForBindingPaginated } from "@/app/actions/absensi";
 import PejabatBindingList from "./PejabatBindingList";
 import Link from "next/link";
-import { ChevronLeft, ShieldCheck } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 export const metadata = {
   title: "Kelola Binding Pegawai OPD - SIPADIN",
 };
 
-export default async function PejabatBindingPage() {
-  const allPegawai = await getAllPegawaiForBinding();
+export default async function PejabatBindingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string;
+    status?: "ALL" | "BINDING" | "UNBOUND";
+    eselon?: string;
+    page?: string;
+    limit?: string;
+  }>;
+}) {
+  const sp = await searchParams;
+  const data = await getPegawaiForBindingPaginated({
+    search: sp.search,
+    status: sp.status,
+    eselon: sp.eselon,
+    page: Number(sp.page) || 1,
+    limit: Number(sp.limit) || 50,
+  });
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto w-full">
@@ -38,7 +55,11 @@ export default async function PejabatBindingPage() {
         </div>
       </div>
 
-      <PejabatBindingList allPegawai={allPegawai} />
+      <PejabatBindingList
+        initialItems={data.items}
+        pagination={data.pagination}
+        stats={data.stats}
+      />
     </div>
   );
 }

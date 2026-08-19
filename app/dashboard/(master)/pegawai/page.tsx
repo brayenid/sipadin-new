@@ -1,4 +1,4 @@
-import { getPegawais } from "@/app/actions/pegawai";
+import { getPegawaisPaginated } from "@/app/actions/pegawai";
 import { auth } from "@/lib/auth";
 import PegawaiList from "./PegawaiList";
 import Link from "next/link";
@@ -8,10 +8,29 @@ export const metadata = {
   title: "Master Pegawai - SIPADIN",
 };
 
-export default async function PegawaiPage() {
+export default async function PegawaiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    search?: string;
+    tab?: string;
+    sort?: "nama" | "golongan" | "jabatan" | "instansi";
+    dir?: "asc" | "desc";
+  }>;
+}) {
   const session = await auth();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
-  const data = await getPegawais();
+  const sp = await searchParams;
+
+  const data = await getPegawaisPaginated({
+    page: Number(sp.page) || 1,
+    limit: Number(sp.limit) || 50,
+    search: sp.search,
+    sort: sp.sort,
+    direction: sp.dir,
+  });
 
   return (
     <div className="p-4 sm:p-8">
@@ -34,7 +53,11 @@ export default async function PegawaiPage() {
         </p>
       </div>
 
-      <PegawaiList initialData={data} isSuperAdmin={isSuperAdmin} />
+      <PegawaiList
+        initialData={data.items}
+        pagination={data.pagination}
+        isSuperAdmin={isSuperAdmin}
+      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
- 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createPegawai, deletePegawai, bulkUpsertPegawai } from "@/app/actions/pegawai";
-import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
 import PegawaiExcelActions from "./PegawaiExcelActions";
@@ -45,35 +44,76 @@ type Pegawai = {
   eselon: string | null;
 };
 
-export default function PegawaiList({ initialData, isSuperAdmin = false }: { initialData: Pegawai[], isSuperAdmin?: boolean }) {
+type PaginationMeta = {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+export default function PegawaiList({
+  initialData,
+  pagination,
+  isSuperAdmin = false,
+}: {
+  initialData: Pegawai[];
+  pagination?: PaginationMeta;
+  isSuperAdmin?: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
   const activeTab = searchParams.get("tab") || "kartu";
 
   const [data, setData] = useState<Pegawai[]>(initialData);
+  const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map((p) => ({ ...p })));
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // Sort State
-  const [sortConfig, setSortConfig] = useState<{ key: 'nama' | 'golongan', direction: 'asc' | 'desc' }>({ key: 'golongan', direction: 'desc' });
-  
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Sync state when server sends new initialData
+  useEffect(() => {
+    setData(initialData);
+    setBulkData(initialData.map((p) => ({ ...p })));
+    setDeleteIds([]);
+  }, [initialData]);
 
   // Single Card Mode State
   const [isOpen, setIsOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Bulk Tabel Mode State
-  const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map(p => ({ ...p })));
-  const [deleteIds, setDeleteIds] = useState<string[]>([]);
-  const [bulkLoading, setBulkLoading] = useState(false);
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const current = searchParams.get("search") || "";
+      if (searchQuery !== current) {
+        updateUrl({ search: searchQuery || undefined, page: "1" });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const updateUrl = (newParams: Record<string, string | undefined>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(newParams).forEach(([key, val]) => {
+      if (val === undefined || val === "") {
+        params.delete(key);
+      } else {
+        params.set(key, val);
+      }
+    });
+
+    startTransition(() => {
+      router.push(`?${params.toString()}`);
+    });
+  };
 
   // --- Computed Dirty States ---
   const isRowDirty = (row: Pegawai) => {
     if (row.id.startsWith("temp-")) return true;
-    const original = initialData.find(p => p.id === row.id);
+    const original = initialData.find((p) => p.id === row.id);
     if (!original) return false;
     return (
       (original.nip || "") !== (row.nip || "") ||
@@ -87,22 +127,19 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
 
   const isFieldDirty = (row: Pegawai, field: keyof Pegawai) => {
     if (row.id.startsWith("temp-")) return true;
-    const original = initialData.find(p => p.id === row.id);
+    const original = initialData.find((p) => p.id === row.id);
     if (!original) return false;
     return (original[field] || "") !== (row[field] || "");
   };
 
-  const newRowsCount = bulkData.filter(r => r.id.startsWith("temp-")).length;
-  const updatedRowsCount = bulkData.filter(r => !r.id.startsWith("temp-") && isRowDirty(r)).length;
+  const newRowsCount = bulkData.filter((r) => r.id.startsWith("temp-")).length;
+  const updatedRowsCount = bulkData.filter((r) => !r.id.startsWith("temp-") && isRowDirty(r)).length;
   const deletedCount = deleteIds.length;
   const totalChanges = newRowsCount + updatedRowsCount + deletedCount;
 
   // ---------------- SINGLE MODE HANDLERS ----------------
   const handleTabChange = (val: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", val);
-    router.replace(`?${params.toString()}`);
-    setCurrentPage(1);
+    updateUrl({ tab: val });
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -115,11 +152,12 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     const golongan = formData.get("golongan") as string;
     const jabatan = formData.get("jabatan") as string;
     const eselon = formData.get("eselon") as string;
-    
+
     try {
       await createPegawai({ nip, nama, pangkat, golongan, jabatan, eselon });
       setIsOpen(false);
-      window.location.reload();
+      toast.success("Pegawai berhasil ditambahkan");
+      router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal menambahkan Pegawai");
     }
@@ -131,7 +169,8 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     setLoading(true);
     try {
       await deletePegawai(deleteId);
-      window.location.reload();
+      toast.success("Pegawai berhasil dihapus");
+      router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus data.");
     }
@@ -152,14 +191,13 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
         instansi: "Sekretariat Daerah",
         eselon: "",
       },
-      ...bulkData
+      ...bulkData,
     ]);
-    setCurrentPage(1);
   };
 
   const updateBulkRow = (id: string, field: keyof Pegawai, value: string) => {
     const newData = [...bulkData];
-    const index = newData.findIndex(r => r.id === id);
+    const index = newData.findIndex((r) => r.id === id);
     if (index !== -1) {
       newData[index] = { ...newData[index], [field]: value };
       setBulkData(newData);
@@ -170,7 +208,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     if (!id.startsWith("temp-")) {
       setDeleteIds([...deleteIds, id]);
     }
-    const newData = bulkData.filter(r => r.id !== id);
+    const newData = bulkData.filter((r) => r.id !== id);
     setBulkData(newData);
   };
 
@@ -178,106 +216,71 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
     setBulkLoading(true);
     try {
       await bulkUpsertPegawai(bulkData, deleteIds);
-      // Data berhasil disave, reload untuk memperbarui data dari database dan menghapus highlight kotor.
-      window.location.reload(); 
+      toast.success("Perubahan data pegawai berhasil disimpan.");
+      router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data massal.");
     }
     setBulkLoading(false);
   };
 
-  // ---------------- SEARCH & FILTER ----------------
-  const filteredData = data.filter((p) => 
-    p.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.nip || "").includes(searchQuery) ||
-    p.jabatan.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const filteredBulkData = bulkData.filter((p) => 
-    p.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.nip || "").includes(searchQuery) ||
-    p.jabatan.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Sort handlers
+  const currentSort = searchParams.get("sort") || "nama";
+  const currentDir = searchParams.get("dir") || "asc";
 
-  // ---------------- SORTING LOGIC ----------------
-  const getGolonganWeight = (gol: string | null, jab: string) => {
-    const j = jab.trim().toLowerCase();
-    
-    // Bupati / PPK selalu teratas
-    if ((gol && gol.trim().toUpperCase() === "PPK") || j.includes("bupati")) {
-      return 1000;
-    }
-    
-    // Sekda di bawah Bupati
-    if (j === "sekda" || j.includes("sekretaris daerah")) {
-      return 900;
-    }
-
-    if (!gol) return 0;
-    const g = gol.trim().toUpperCase();
-    
-    // Pemetaan standar golongan PNS
-    const weights: Record<string, number> = {
-      "I/A": 11, "I/B": 12, "I/C": 13, "I/D": 14,
-      "II/A": 21, "II/B": 22, "II/C": 23, "II/D": 24,
-      "III/A": 31, "III/B": 32, "III/C": 33, "III/D": 34,
-      "IV/A": 41, "IV/B": 42, "IV/C": 43, "IV/D": 44, "IV/E": 45,
-    };
-    
-    return weights[g] || 50; // Jika tidak diketahui, beri bobot tengah
+  const toggleSort = (field: "nama" | "golongan" | "jabatan") => {
+    const nextDir = currentSort === field && currentDir === "asc" ? "desc" : "asc";
+    updateUrl({ sort: field, dir: nextDir, page: "1" });
   };
 
-  const sortData = (dataArray: Pegawai[]) => {
-    if (!sortConfig) return dataArray;
-    return [...dataArray].sort((a, b) => {
-      // Selalu taruh baris baru (temp-) di paling atas
-      const aIsNew = a.id.startsWith("temp-");
-      const bIsNew = b.id.startsWith("temp-");
-      if (aIsNew && !bIsNew) return -1;
-      if (!aIsNew && bIsNew) return 1;
-
-      if (sortConfig.key === 'nama') {
-        const res = a.nama.localeCompare(b.nama);
-        return sortConfig.direction === 'asc' ? res : -res;
-      }
-      if (sortConfig.key === 'golongan') {
-        const weightA = getGolonganWeight(a.golongan, a.jabatan);
-        const weightB = getGolonganWeight(b.golongan, b.jabatan);
-        const res = weightA - weightB;
-        
-        // Jika bobot sama, fallback sort by nama
-        if (res === 0) {
-          return a.nama.localeCompare(b.nama);
-        }
-        return sortConfig.direction === 'asc' ? res : -res;
-      }
-      return 0;
-    });
-  };
-
-  const sortedKartuData = sortData(filteredData);
-  const sortedBulkData = sortData(filteredBulkData);
+  const page = pagination?.page || 1;
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.totalItems ?? data.length;
+  const limit = pagination?.limit || 50;
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
-      {/* Header */}
+      {/* Header Search & Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-72">
-          <Input 
-            placeholder="Cari pegawai..." 
-            className="h-9 w-full" 
+        <div className="relative w-full sm:w-80">
+          <Input
+            placeholder="Cari nama, NIP, jabatan, atau OPD..."
+            className="h-9 w-full text-xs"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {isPending && (
+            <div className="absolute right-2.5 top-2.5">
+              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+            </div>
+          )}
         </div>
         {isSuperAdmin && <PegawaiExcelActions data={data} />}
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="kartu">Mode Kartu</TabsTrigger>
-          <TabsTrigger value="tabel">Mode Tabel</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <TabsList>
+            <TabsTrigger value="kartu" className="text-xs">Mode Kartu</TabsTrigger>
+            <TabsTrigger value="tabel" className="text-xs">Mode Tabel (Cepat)</TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>Ditemukan <strong>{totalItems.toLocaleString("id-ID")}</strong> pegawai</span>
+            <span>•</span>
+            <span>Tampilkan:</span>
+            <select
+              value={limit}
+              onChange={(e) => updateUrl({ limit: e.target.value, page: "1" })}
+              className="text-xs border border-slate-200 rounded px-2 py-0.5 bg-white font-medium text-slate-700 h-7"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
 
         {/* ================= MODE KARTU ================= */}
         <TabsContent value="kartu" className="space-y-6">
@@ -342,7 +345,7 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
             </div>
           )}
 
-          {filteredData.length === 0 ? (
+          {data.length === 0 ? (
             <Card className="bg-slate-50 border-dashed">
               <CardContent className="pt-6 text-center text-slate-500 py-12 flex flex-col items-center">
                 <Users className="w-12 h-12 text-slate-300 mb-3" />
@@ -350,16 +353,22 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {sortedKartuData.map((pegawai) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 relative">
+              {isPending && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-xl">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                </div>
+              )}
+              {data.map((pegawai) => (
                 <Card key={pegawai.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <CardContent className="p-5 flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-slate-900">{pegawai.nama}</h3>
                       <p className="text-xs text-slate-500 mt-1">{pegawai.nip || "Non-ASN / NIP tidak ada"}</p>
-                      
+
                       <div className="mt-4 space-y-1">
                         <p className="text-sm text-slate-700"><span className="font-semibold">Jabatan:</span> {pegawai.jabatan}</p>
+                        <p className="text-xs text-slate-600"><span className="font-medium">Instansi:</span> {pegawai.instansi || "-"}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {(pegawai.pangkat || pegawai.golongan) && (
                             <span className="text-xs text-slate-500">
@@ -374,12 +383,12 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                         </div>
                       </div>
                     </div>
-                    
+
                     {isSuperAdmin && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3"
                         onClick={() => setDeleteId(pegawai.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -390,6 +399,60 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
               ))}
             </div>
           )}
+
+          {/* Pagination Controls Kartu */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="text-xs text-slate-500">
+                Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong> (Total {totalItems.toLocaleString("id-ID")} pegawai)
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateUrl({ page: String(Math.max(1, page - 1)) })}
+                  disabled={page <= 1 || isPending}
+                  className="h-8 text-xs px-2.5"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Sebelumnya
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalPages > 5 && page > 3) {
+                      pageNum = Math.min(totalPages - 4 + i, page - 2 + i);
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateUrl({ page: String(pageNum) })}
+                        disabled={isPending}
+                        className={`h-8 w-8 text-xs p-0 ${
+                          page === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white font-bold" : ""
+                        }`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateUrl({ page: String(Math.min(totalPages, page + 1)) })}
+                  disabled={page >= totalPages || isPending}
+                  className="h-8 text-xs px-2.5"
+                >
+                  Selanjutnya <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* ================= MODE TABEL (BULK) ================= */}
@@ -397,7 +460,10 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
           <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
             <CardHeader className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
               <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Data Pegawai</CardTitle>
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                  Data Pegawai (Mode Tabel)
+                  {isPending && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
+                </CardTitle>
                 {totalChanges > 0 && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
@@ -413,147 +479,148 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                     </Button>
                     <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
                       {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Simpan Semua Perubahan
+                      Simpan Perubahan
                     </Button>
                   </>
                 )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto relative">
+                {isPending && (
+                  <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                  </div>
+                )}
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
                       <TableHead className="min-w-[170px]">NIP</TableHead>
-                      <TableHead 
+                      <TableHead
                         className="min-w-[250px] cursor-pointer hover:bg-slate-100/50 select-none group"
-                        onClick={() => {
-                          let direction: 'asc' | 'desc' = 'asc';
-                          if (sortConfig?.key === 'nama' && sortConfig.direction === 'asc') direction = 'desc';
-                          setSortConfig({ key: 'nama', direction });
-                        }}
+                        onClick={() => toggleSort("nama")}
                       >
                         <div className="flex items-center">
                           Nama Lengkap
-                          {sortConfig?.key === 'nama' ? (
-                            sortConfig.direction === 'asc' ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
+                          {currentSort === "nama" ? (
+                            currentDir === "asc" ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
                           ) : (
                             <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                         </div>
                       </TableHead>
                       <TableHead className="min-w-[130px]">Pangkat</TableHead>
-                      <TableHead 
+                      <TableHead
                         className="min-w-[120px] cursor-pointer hover:bg-slate-100/50 select-none group"
-                        onClick={() => {
-                          let direction: 'asc' | 'desc' = 'asc';
-                          if (sortConfig?.key === 'golongan' && sortConfig.direction === 'asc') direction = 'desc';
-                          setSortConfig({ key: 'golongan', direction });
-                        }}
+                        onClick={() => toggleSort("golongan")}
                       >
                         <div className="flex items-center">
                           Golongan
-                          {sortConfig?.key === 'golongan' ? (
-                            sortConfig.direction === 'asc' ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
+                          {currentSort === "golongan" ? (
+                            currentDir === "asc" ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
                           ) : (
                             <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                         </div>
                       </TableHead>
                       <TableHead className="min-w-[200px]">Jabatan</TableHead>
-                      <TableHead className="min-w-[100px]">Eselon</TableHead>
-                      {isSuperAdmin && <TableHead className="min-w-[60px] text-center">Aksi</TableHead>}
+                      <TableHead className="min-w-[130px]">Eselon</TableHead>
+                      {isSuperAdmin && <TableHead className="w-[50px]"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedBulkData.map((row) => {
+                    {bulkData.map((row) => {
                       const rowIsNew = row.id.startsWith("temp-");
                       return (
-                      <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.nip || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "nip", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder=""
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.nama} 
-                            onChange={(e) => updateBulkRow(row.id, "nama", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
-                            placeholder=""
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.pangkat || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "pangkat", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder=""
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.golongan || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "golongan", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder=""
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.jabatan} 
-                            onChange={(e) => updateBulkRow(row.id, "jabatan", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder=""
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Select
-                            value={row.eselon || "NON_ESELON"}
-                            onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : (val || ""))}
-                            disabled={!isSuperAdmin}
-                          >
-                            <SelectTrigger className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'eselon') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}>
-                              <SelectValue placeholder="Pilih" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="I.a">I.a</SelectItem>
-                              <SelectItem value="I.b">I.b</SelectItem>
-                              <SelectItem value="II.a">II.a</SelectItem>
-                              <SelectItem value="II.b">II.b</SelectItem>
-                              <SelectItem value="III.a">III.a</SelectItem>
-                              <SelectItem value="III.b">III.b</SelectItem>
-                              <SelectItem value="IV.a">IV.a</SelectItem>
-                              <SelectItem value="IV.b">IV.b</SelectItem>
-                              <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        {isSuperAdmin && (
-                          <TableCell className="p-2 text-center">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => removeBulkRow(row.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                        <TableRow
+                          key={row.id}
+                          className={rowIsNew ? "bg-emerald-50/40" : isRowDirty(row) ? "bg-amber-50/30" : ""}
+                        >
+                          <TableCell className="p-2">
+                            <Input
+                              value={row.nip || ""}
+                              onChange={(e) => updateBulkRow(row.id, "nip", e.target.value)}
+                              readOnly={!isSuperAdmin}
+                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                              placeholder=""
+                            />
                           </TableCell>
-                        )}
-                      </TableRow>
-                    )})}
-                    {filteredBulkData.length === 0 && (
+                          <TableCell className="p-2">
+                            <Input
+                              value={row.nama}
+                              onChange={(e) => updateBulkRow(row.id, "nama", e.target.value)}
+                              readOnly={!isSuperAdmin}
+                              className={`h-8 text-xs font-semibold rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                              placeholder=""
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input
+                              value={row.pangkat || ""}
+                              onChange={(e) => updateBulkRow(row.id, "pangkat", e.target.value)}
+                              readOnly={!isSuperAdmin}
+                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                              placeholder=""
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input
+                              value={row.golongan || ""}
+                              onChange={(e) => updateBulkRow(row.id, "golongan", e.target.value)}
+                              readOnly={!isSuperAdmin}
+                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                              placeholder=""
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input
+                              value={row.jabatan}
+                              onChange={(e) => updateBulkRow(row.id, "jabatan", e.target.value)}
+                              readOnly={!isSuperAdmin}
+                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
+                              placeholder=""
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Select
+                              value={row.eselon || "NON_ESELON"}
+                              onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : (val || ""))}
+                              disabled={!isSuperAdmin}
+                            >
+                              <SelectTrigger className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'eselon') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}>
+                                <SelectValue placeholder="Pilih" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="I.a">I.a</SelectItem>
+                                <SelectItem value="I.b">I.b</SelectItem>
+                                <SelectItem value="II.a">II.a</SelectItem>
+                                <SelectItem value="II.b">II.b</SelectItem>
+                                <SelectItem value="III.a">III.a</SelectItem>
+                                <SelectItem value="III.b">III.b</SelectItem>
+                                <SelectItem value="IV.a">IV.a</SelectItem>
+                                <SelectItem value="IV.b">IV.b</SelectItem>
+                                <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          {isSuperAdmin && (
+                            <TableCell className="p-2 text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => removeBulkRow(row.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                    {bulkData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={7} className="text-center py-8 text-slate-500 text-xs">
                           {searchQuery ? "Tidak ada pegawai yang cocok dengan pencarian." : "Tidak ada baris data. Klik \"Tambah Baris\" untuk mulai menginput."}
                         </TableCell>
                       </TableRow>
@@ -561,6 +628,60 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination Controls Mode Tabel */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50">
+                  <div className="text-xs text-slate-500">
+                    Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong> (Total {totalItems.toLocaleString("id-ID")} pegawai)
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateUrl({ page: String(Math.max(1, page - 1)) })}
+                      disabled={page <= 1 || isPending}
+                      className="h-8 text-xs px-2.5"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Sebelumnya
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5 && page > 3) {
+                          pageNum = Math.min(totalPages - 4 + i, page - 2 + i);
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => updateUrl({ page: String(pageNum) })}
+                            disabled={isPending}
+                            className={`h-8 w-8 text-xs p-0 ${
+                              page === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white font-bold" : ""
+                            }`}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateUrl({ page: String(Math.min(totalPages, page + 1)) })}
+                      disabled={page >= totalPages || isPending}
+                      className="h-8 text-xs px-2.5"
+                    >
+                      Selanjutnya <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -577,8 +698,8 @@ export default function PegawaiList({ initialData, isSuperAdmin = false }: { ini
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
               disabled={loading}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
