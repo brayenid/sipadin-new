@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +48,13 @@ export default function ModalTambahPeserta({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filterEselonGroup, setFilterEselonGroup] = useState<string>("ALL"); // ALL, I, II, III, IV, OTHER
 
+  // Lazy Load State
+  const [displayLimit, setDisplayLimit] = useState(60);
+
+  useEffect(() => {
+    setDisplayLimit(60);
+  }, [search, filterEselonGroup, isOpen]);
+
   // Filter pegawai yang belum ditambahkan
   const availablePegawai = allPegawai.filter(
     (p) => !existingPegawaiIds.includes(p.id)
@@ -83,6 +90,15 @@ export default function ModalTambahPeserta({
 
     return true;
   });
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 200) {
+      setDisplayLimit((prev) => Math.min(prev + 50, filteredPegawai.length));
+    }
+  };
+
+  const visiblePegawai = filteredPegawai.slice(0, displayLimit);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -183,7 +199,7 @@ export default function ModalTambahPeserta({
                     onCheckedChange={handleSelectAll}
                   />
                   <Label htmlFor="select-all" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                    Pilih Semua yang Tampil ({filteredPegawai.length})
+                    Pilih Semua Hasil Filter ({filteredPegawai.length})
                   </Label>
                 </div>
                 <span className="text-xs font-bold text-indigo-600">
@@ -194,7 +210,10 @@ export default function ModalTambahPeserta({
           </div>
 
           {/* List Pegawai */}
-          <div className="flex-1 min-h-0 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-slate-50/30">
+          <div
+            onScroll={handleScroll}
+            className="flex-1 min-h-0 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-slate-50/30"
+          >
             {filteredPegawai.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">
                 {availablePegawai.length === 0
@@ -202,44 +221,54 @@ export default function ModalTambahPeserta({
                   : "Tidak ada pegawai yang sesuai dengan filter pencarian / eselon"}
               </div>
             ) : (
-              filteredPegawai.map((p) => {
-                const isSelected = selectedIds.includes(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => toggleSelect(p.id)}
-                    className={`p-3 text-xs flex items-start gap-3 transition-colors cursor-pointer ${
-                      isSelected ? "bg-indigo-50/50" : "hover:bg-slate-100/75"
-                    }`}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelect(p.id)}
-                      className="mt-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-slate-900">
-                          {p.nama}
-                        </span>
-                        {p.eselon && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-slate-300 text-slate-500 font-medium">
-                            Eselon {p.eselon}
-                          </Badge>
-                        )}
-                        {p.wajibAbsenOpd && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 bg-emerald-50 border-emerald-200 text-emerald-700">
-                            Wajib Absen
-                          </Badge>
-                        )}
+              <>
+                {visiblePegawai.map((p) => {
+                  const isSelected = selectedIds.includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => toggleSelect(p.id)}
+                      className={`p-3 text-xs flex items-start gap-3 transition-colors cursor-pointer ${
+                        isSelected ? "bg-indigo-50/50" : "hover:bg-slate-100/75"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(p.id)}
+                        className="mt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-slate-900">
+                            {p.nama}
+                          </span>
+                          {p.eselon && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-slate-300 text-slate-500 font-medium">
+                              Eselon {p.eselon}
+                            </Badge>
+                          )}
+                          {p.wajibAbsenOpd && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-emerald-50 border-emerald-200 text-emerald-700">
+                              Wajib Absen
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-slate-500 truncate mt-0.5">{p.jabatan}</p>
+                        <p className="text-slate-400 text-[10px] truncate">{p.instansi}</p>
                       </div>
-                      <p className="text-slate-500 truncate mt-0.5">{p.jabatan}</p>
-                      <p className="text-slate-400 text-[10px] truncate">{p.instansi}</p>
                     </div>
+                  );
+                })}
+
+                {/* Lazy Load Indicator */}
+                {displayLimit < filteredPegawai.length && (
+                  <div className="p-2.5 text-center text-[11px] text-slate-500 font-medium flex items-center justify-center gap-2 bg-white/80 border-t border-slate-100">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                    <span>Menampilkan {visiblePegawai.length} dari {filteredPegawai.length} pegawai (gulir ke bawah untuk memuat lagi)...</span>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
 

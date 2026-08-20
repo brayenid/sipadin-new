@@ -1226,6 +1226,7 @@ export async function updateKehadiranPesertaBatch(
     waktuPulang?: Date | string | null;
   }[],
   extraAgendaData?: {
+    namaKegiatan?: string;
     driveUrl?: string;
     status?: StatusAgendaAbsensi;
     tanggal?: string | Date;
@@ -1281,6 +1282,10 @@ export async function updateKehadiranPesertaBatch(
 
     if (extraAgendaData) {
       const agendaUpdatePayload: any = {};
+
+      if (extraAgendaData.namaKegiatan !== undefined && extraAgendaData.namaKegiatan.trim()) {
+        agendaUpdatePayload.namaKegiatan = extraAgendaData.namaKegiatan.trim();
+      }
 
       if (extraAgendaData.enableCheckOut !== undefined) {
         agendaUpdatePayload.enableCheckOut = extraAgendaData.enableCheckOut;

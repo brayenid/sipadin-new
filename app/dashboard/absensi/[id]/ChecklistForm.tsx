@@ -148,13 +148,17 @@ export default function ChecklistForm({
   }[];
 }) {
   const router = useRouter();
-  const [pesertaList, setPesertaList] = useState<Peserta[]>(agenda.peserta);
+  const [pesertaList, setPesertaList] = useState<Peserta[]>(agenda.peserta || []);
+  const [isPublicActive, setIsPublicActive] = useState(agenda.isPublicActive);
   const [statusAgenda, setStatusAgenda] = useState<StatusAgendaAbsensi>(agenda.status);
-  const [isPublicActive, setIsPublicActive] = useState<boolean>(agenda.isPublicActive ?? true);
   const [driveUrl, setDriveUrl] = useState<string>(agenda.driveUrl || "");
+
+  // Form Edit Metadata Agenda
+  const [namaKegiatan, setNamaKegiatan] = useState<string>(agenda.namaKegiatan || "");
   const [tanggal, setTanggal] = useState<string>(
     agenda.tanggal ? formatWita(agenda.tanggal, "yyyy-MM-dd") : ""
   );
+
   const parseWaktuParts = (waktuStr: string | null | undefined): { jamMulai: string; jamSelesai: string } => {
     if (!waktuStr) return { jamMulai: "09:00", jamSelesai: "" };
     const matches = waktuStr.match(/(\d{1,2}[:.]\d{2})/g);
@@ -225,6 +229,7 @@ export default function ChecklistForm({
     setIsPublicActive(agenda.isPublicActive);
     setStatusAgenda(agenda.status);
     setDriveUrl(agenda.driveUrl || "");
+    setNamaKegiatan(agenda.namaKegiatan || "");
     setTanggal(agenda.tanggal ? new Date(agenda.tanggal).toISOString().split("T")[0] : "");
     const parts = parseWaktuParts(agenda.waktu);
     setJamMulai(parts.jamMulai);
@@ -493,6 +498,7 @@ export default function ChecklistForm({
           waktuPulang: p.waktuPulang,
         })),
         {
+          namaKegiatan: namaKegiatan.trim() || undefined,
           driveUrl: driveUrl.trim() || undefined,
           status: statusAgenda,
           tanggal: tanggal || undefined,
@@ -917,6 +923,21 @@ export default function ChecklistForm({
             </div>
 
             <CardContent className="p-4 space-y-3.5">
+              {/* Baris 0: Nama Kegiatan / Acara */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">
+                  Nama Kegiatan / Acara <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="Contoh: Rapat Koordinasi Evaluasi OPD Triwulan I"
+                  value={namaKegiatan}
+                  onChange={(e) => setNamaKegiatan(e.target.value)}
+                  className="bg-white text-xs font-bold text-slate-900 h-9 border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
               {/* Baris 1: Waktu & Tempat Pelaksanaan */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                 <div className="space-y-1.5">
