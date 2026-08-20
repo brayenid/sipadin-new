@@ -48,6 +48,7 @@ import {
   ShieldCheck,
   AlertCircle,
   RotateCcw,
+  HelpCircle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -72,6 +73,7 @@ import QrCodeModal from "./QrCodeModal";
 import FotoPreviewModal from "./FotoPreviewModal";
 import PetaSebaranGps from "./PetaSebaranGps";
 import ModalMapPicker from "./ModalMapPicker";
+import PanduanTeknisView from "./PanduanTeknisView";
 
 type Peserta = {
   id: string;
@@ -280,14 +282,15 @@ export default function ChecklistForm({
     }
   };
 
-  const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA">("EDIT_AGENDA");
+  const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | "PANDUAN_TEKNIS">("EDIT_AGENDA");
 
-  const handleTabChange = (tab: "DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA") => {
+  const handleTabChange = (tab: "DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | "PANDUAN_TEKNIS") => {
     setActiveTab(tab);
     const hashMap: Record<string, string> = {
       EDIT_AGENDA: "edit",
       DAFTAR_HADIR: "daftar-hadir",
       PETA_GPS: "peta-gps",
+      PANDUAN_TEKNIS: "panduan-teknis",
     };
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `#${hashMap[tab] || "edit"}`);
@@ -296,7 +299,7 @@ export default function ChecklistForm({
 
   // Sinkronisasi Tab dengan URL Hash & Default ke EDIT_AGENDA
   React.useEffect(() => {
-    const parseHashToTab = (hashStr: string): "DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | null => {
+    const parseHashToTab = (hashStr: string): "DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | "PANDUAN_TEKNIS" | null => {
       const h = hashStr.replace("#", "").toLowerCase();
       if (h === "daftar-hadir" || h === "kehadiran" || h === "peserta") {
         return "DAFTAR_HADIR";
@@ -306,6 +309,9 @@ export default function ChecklistForm({
       }
       if (h === "edit" || h === "edit-agenda") {
         return "EDIT_AGENDA";
+      }
+      if (h === "panduan-teknis" || h === "panduan" || h === "info" || h === "pengukuran") {
+        return "PANDUAN_TEKNIS";
       }
       return null;
     };
@@ -729,6 +735,8 @@ export default function ChecklistForm({
       "Waktu Pulang",
       "Lokasi Pulang (GPS)",
       "URL Foto Pulang",
+      "Audit Biometrik Wajah",
+      "Skor Kemiripan Biometrik",
     ];
 
     const dataRows = pesertaList.map((p, idx) => {
@@ -769,6 +777,24 @@ export default function ChecklistForm({
         lokasiPulangPlain = p.lokasiPulangText ? `${p.lokasiPulangText} (${mapsUrl})` : mapsUrl;
       }
 
+      const bioStatus =
+        p.faceMatchStatus === "MATCH"
+          ? "Cocok / Terverifikasi"
+          : p.faceMatchStatus === "MISMATCH"
+          ? "Indikasi Beda"
+          : p.faceMatchStatus === "ENROLLED"
+          ? "Biometrik Baru Terdaftar"
+          : p.faceMatchStatus === "PERWAKILAN"
+          ? "Perwakilan (Bypass)"
+          : "-";
+
+      const bioScore =
+        typeof p.faceScore === "number" && p.faceScore > 0
+          ? `${Math.round(p.faceScore * 100)}%`
+          : p.faceMatchStatus === "ENROLLED"
+          ? "100%"
+          : "-";
+
       return {
         no: idx + 1,
         nama: p.nama,
@@ -787,6 +813,8 @@ export default function ChecklistForm({
         waktuPulang: p.waktuPulang ? `${formatWita(p.waktuPulang, "dd/MM/yyyy HH:mm")} WITA` : (agenda.enableCheckOut ? "Belum Pulang" : "-"),
         lokasiPulangPlain,
         fotoPulangUrlPlain,
+        bioStatus,
+        bioScore,
       };
     });
 
@@ -810,6 +838,8 @@ export default function ChecklistForm({
         r.waktuPulang,
         r.lokasiPulangPlain,
         r.fotoPulangUrlPlain,
+        r.bioStatus,
+        r.bioScore,
       ]);
     });
 
@@ -828,11 +858,13 @@ export default function ChecklistForm({
       { wch: 25 },
       { wch: 28 },
       { wch: 22 },
-      { wch: 45 },
-      { wch: 45 },
+      { wch: 35 },
+      { wch: 35 },
       { wch: 22 },
-      { wch: 45 },
-      { wch: 45 },
+      { wch: 35 },
+      { wch: 35 },
+      { wch: 26 },
+      { wch: 26 },
     ];
     worksheet["!cols"] = colWidths;
 
@@ -940,7 +972,7 @@ export default function ChecklistForm({
         </CardContent>
       </Card>
 
-      {/* Tab Navigasi Underline (Edit Agenda vs Daftar Kehadiran vs Peta Sebaran GPS) */}
+      {/* Tab Navigasi Underline (Edit Agenda vs Daftar Kehadiran vs Peta Sebaran GPS vs Panduan Teknis) */}
       <div className="flex items-center gap-6 sm:gap-8 border-b border-slate-200 text-xs sm:text-sm overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           type="button"
@@ -994,6 +1026,18 @@ export default function ChecklistForm({
           >
             {pesertaList.filter((p) => typeof p.latitude === "number" && typeof p.longitude === "number").length}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("PANDUAN_TEKNIS")}
+          className={`pb-2.5 px-1 border-b-2 transition-all whitespace-nowrap cursor-pointer -mb-[1px] ${
+            activeTab === "PANDUAN_TEKNIS"
+              ? "border-indigo-600 text-indigo-600 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-800 font-medium"
+          }`}
+        >
+          Panduan Pengukuran
         </button>
       </div>
 
@@ -1592,7 +1636,7 @@ export default function ChecklistForm({
                   className="text-xs border-slate-300 hover:bg-slate-50 font-semibold"
                 >
                   <UserPlus className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  Tambah Pegawai Manual
+                  Tambah Pegawai
                 </Button>
               </div>
             </div>
@@ -1948,11 +1992,11 @@ export default function ChecklistForm({
 
                               {p.faceMatchStatus === "MISMATCH" && (
                                 <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[9.5px] font-bold animate-pulse"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[9.5px] font-semibold"
                                   title={`Indikasi wajah berbeda dari biometrik terdaftar. Kemiripan hanya: ${Math.round((p.faceScore || 0) * 100)}%`}
                                 >
                                   <AlertCircle className="w-3 h-3 text-rose-600" />
-                                  ⚠️ Indikasi Beda ({Math.round((p.faceScore || 0) * 100)}%)
+                                  Indikasi Beda ({Math.round((p.faceScore || 0) * 100)}%)
                                 </span>
                               )}
 
@@ -2068,6 +2112,10 @@ export default function ChecklistForm({
           </div>
         </CardContent>
       </Card>
+      )}
+
+      {activeTab === "PANDUAN_TEKNIS" && (
+        <PanduanTeknisView />
       )}
 
       {/* Modal Cetak Blanko */}

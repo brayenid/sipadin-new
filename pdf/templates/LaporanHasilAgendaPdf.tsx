@@ -33,6 +33,8 @@ export type LaporanHasilAgendaData = {
     lokasiText?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    faceScore?: number | null;
+    faceMatchStatus?: string | null;
   }[];
 };
 
@@ -332,6 +334,25 @@ export default function LaporanHasilAgendaPdf({
 
   const pctInside = totalGps > 0 ? Math.round((countInside / totalGps) * 100) : 0;
 
+  // Perhitungan Analisis Audit Biometrik Pengenalan Wajah (Face Recognition)
+  const pesertaWithBio = data.peserta.filter(
+    (p) => p.faceMatchStatus && p.faceMatchStatus !== "BYPASS"
+  );
+  const totalBio = pesertaWithBio.length;
+  const countBioMatch = data.peserta.filter((p) => p.faceMatchStatus === "MATCH").length;
+  const countBioMismatch = data.peserta.filter((p) => p.faceMatchStatus === "MISMATCH").length;
+  const countBioEnrolled = data.peserta.filter((p) => p.faceMatchStatus === "ENROLLED").length;
+
+  const validScores = data.peserta
+    .filter((p) => typeof p.faceScore === "number" && p.faceScore > 0)
+    .map((p) => p.faceScore!);
+  const avgSimilarityPct =
+    validScores.length > 0
+      ? Math.round(
+          (validScores.reduce((acc, score) => acc + score, 0) / validScores.length) * 100
+        )
+      : 0;
+
   return (
     <Document>
       <Page size={pageDimensions as any} style={styles.page}>
@@ -369,10 +390,10 @@ export default function LaporanHasilAgendaPdf({
           </View>
         </View>
 
-        {/* Laporan Analisis Geolokasi Kedinasan */}
+        {/* Laporan Analisis Geolokasi & Biometrik Kedinasan */}
         <View style={styles.analysisBox} wrap={false}>
           <Text style={styles.analysisHeader}>
-            RINGKASAN ANALISIS GEOLOKASI DAN KESESUAIAN PRESENSI
+            RINGKASAN ANALISIS GEOLOKASI DAN AUDIT BIOMETRIK PRESENSI
           </Text>
 
           <View style={styles.analysisItem}>
@@ -414,7 +435,7 @@ export default function LaporanHasilAgendaPdf({
           <View style={styles.analysisItem}>
             <Text style={styles.analysisNumber}>3.</Text>
             <Text style={styles.analysisContent}>
-              <Text style={styles.analysisBold}>Kesesuaian Presensi (Geofence): </Text>
+              <Text style={styles.analysisBold}>Kesesuaian Geofence: </Text>
               {totalGps > 0 ? (
                 <>
                   Sebanyak <Text style={styles.analysisBold}>{countInside} peserta ({pctInside}%)</Text> terverifikasi berada di dalam zona radius lokasi kegiatan.
@@ -428,15 +449,35 @@ export default function LaporanHasilAgendaPdf({
           <View style={styles.analysisItem}>
             <Text style={styles.analysisNumber}>4.</Text>
             <Text style={styles.analysisContent}>
-              <Text style={styles.analysisBold}>Catatan Evaluasi / Rekomendasi: </Text>
-              {totalGps === 0 ? (
-                "Seluruh data kehadiran dicatat secara manual oleh admin / operator absensi."
-              ) : countOutside > 0 ? (
+              <Text style={styles.analysisBold}>Verifikasi Biometrik Wajah: </Text>
+              {totalBio > 0 ? (
                 <>
-                  Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> yang terdeteksi melakukan presensi di luar batas radius lokasi (rincian jarak terlampir pada tabel di bawah). Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
+                  Tercatat <Text style={styles.analysisBold}>{totalBio} peserta</Text> diverifikasi biometrik. Sebanyak <Text style={styles.analysisBold}>{countBioMatch} Cocok/Identik</Text> (rata-rata kemiripan: <Text style={styles.analysisBold}>{avgSimilarityPct}%</Text>), <Text style={styles.analysisBold}>{countBioEnrolled} Biometrik Baru</Text> (Enrolled 100%), dan <Text style={styles.analysisBold}>{countBioMismatch} Indikasi Beda</Text> (&lt;60% kemiripan).
                 </>
               ) : (
-                "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan."
+                "Belum ada data verifikasi biometrik wajah yang tercatat pada presensi agenda ini."
+              )}
+            </Text>
+          </View>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>5.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>Catatan Evaluasi / Rekomendasi: </Text>
+              {totalGps === 0 && totalBio === 0 ? (
+                "Seluruh data kehadiran dicatat secara manual oleh admin / operator absensi."
+              ) : countOutside > 0 || countBioMismatch > 0 ? (
+                <>
+                  {countOutside > 0 && (
+                    <>Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> di luar radius lokasi. </>
+                  )}
+                  {countBioMismatch > 0 && (
+                    <>Terdapat <Text style={styles.analysisBold}>{countBioMismatch} peserta</Text> terindikasi ketidaksesuaian wajah (kemiripan rendah). </>
+                  )}
+                  Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
+                </>
+              ) : (
+                "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan dan tervalidasi biometrik secara akurat."
               )}
             </Text>
           </View>
@@ -513,11 +554,28 @@ export default function LaporanHasilAgendaPdf({
                     </Text>
                   ) : null}
                   {isOutside && (
-                    <Text style={[styles.tdText, { fontSize: 6, color: "#b91c1c", marginTop: 1 }]}>
+                    <Text style={[styles.tdText, { fontSize: 5.5, color: "#b91c1c", marginTop: 1 }]}>
                       Luar Radius: {formatDistanceMeters(dist!)}
                     </Text>
                   )}
-                  {!row.namaPerwakilan && !row.keterangan && !isOutside && <Text style={[styles.tdText, { fontSize: 6.5 }]}>-</Text>}
+                  {row.faceMatchStatus === "MATCH" && (
+                    <Text style={[styles.tdText, { fontSize: 5.5, color: "#047857", marginTop: 1 }]}>
+                      Biometrik: Cocok ({Math.round((row.faceScore || 0) * 100)}%)
+                    </Text>
+                  )}
+                  {row.faceMatchStatus === "MISMATCH" && (
+                    <Text style={[styles.tdText, styles.tdBold, { fontSize: 5.5, color: "#b91c1c", marginTop: 1 }]}>
+                      Biometrik: Indikasi Beda ({Math.round((row.faceScore || 0) * 100)}%)
+                    </Text>
+                  )}
+                  {row.faceMatchStatus === "ENROLLED" && (
+                    <Text style={[styles.tdText, { fontSize: 5.5, color: "#1d4ed8", marginTop: 1 }]}>
+                      Biometrik: Terdaftar Baru (100%)
+                    </Text>
+                  )}
+                  {!row.namaPerwakilan && !row.keterangan && !isOutside && !row.faceMatchStatus && (
+                    <Text style={[styles.tdText, { fontSize: 6.5 }]}>-</Text>
+                  )}
                 </View>
                 <View style={[styles.tdCell, styles.colWaktu]}>
                   <Text style={[styles.tdText, { textAlign: "center", fontSize: 6 }]}>
