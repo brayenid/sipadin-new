@@ -229,7 +229,7 @@ export default function AbsensiWizard({
       });
 
       toast.success(`Agenda berhasil diterbitkan dengan ${selectedPesertaIds.length} peserta terdaftar`);
-      router.push(`/dashboard/absensi/${created.id}`);
+      router.push(`/dashboard/presensi/${created.id}`);
     } catch (err: any) {
       toast.error(err.message || "Gagal membuat agenda");
       setLoading(false);

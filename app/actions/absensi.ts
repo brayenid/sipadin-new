@@ -204,8 +204,8 @@ export async function updateBindingPejabat(data: {
     },
   });
 
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/pejabat");
   revalidatePath("/dashboard/pegawai");
   return res;
 }
@@ -236,8 +236,8 @@ export async function bulkUpdateBindingPejabat(
     )
   );
 
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/pejabat");
   return { success: true };
 }
 
@@ -296,8 +296,8 @@ export async function bulkSetWajibAbsenByFilter(params: {
     },
   });
 
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/pejabat");
   revalidatePath("/dashboard/pegawai");
 
   return { success: true, count: result.count };
@@ -573,7 +573,7 @@ export async function createAgendaAbsensi(payload: {
     return agenda;
   });
 
-  revalidatePath("/dashboard/absensi");
+  revalidatePath("/dashboard/presensi");
   return created;
 }
 
@@ -686,11 +686,11 @@ export async function updateAgendaAbsensi(
     data: dataToUpdate,
   });
 
-  revalidatePath("/dashboard/absensi");
-  revalidatePath(`/dashboard/absensi/${id}`);
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath("/dashboard/presensi");
+  revalidatePath(`/dashboard/presensi/${id}`);
+  revalidatePath("/dashboard/presensi/rekap");
   if (updated.publicToken) {
-    revalidatePath(`/p/absensi/${updated.publicToken}`);
+    revalidatePath(`/p/presensi/${updated.publicToken}`);
   }
   return updated;
 }
@@ -704,10 +704,10 @@ export async function togglePublicAbsensiActive(id: string, isPublicActive: bool
     data: { isPublicActive },
   });
 
-  revalidatePath("/dashboard/absensi");
-  revalidatePath(`/dashboard/absensi/${id}`);
+  revalidatePath("/dashboard/presensi");
+  revalidatePath(`/dashboard/presensi/${id}`);
   if (updated.publicToken) {
-    revalidatePath(`/p/absensi/${updated.publicToken}`);
+    revalidatePath(`/p/presensi/${updated.publicToken}`);
   }
   return { success: true, isPublicActive: updated.isPublicActive };
 }
@@ -743,7 +743,7 @@ export async function deleteAgendaAbsensi(id: string) {
     },
   });
 
-  revalidatePath("/dashboard/absensi");
+  revalidatePath("/dashboard/presensi");
   return { success: true };
 }
 
@@ -1142,10 +1142,10 @@ export async function submitSelfAbsensi(payload: {
     });
   }
 
-  revalidatePath(`/p/absensi/${publicToken}`);
-  revalidatePath(`/dashboard/absensi/${agenda.id}`);
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath(`/p/presensi/${publicToken}`);
+  revalidatePath(`/dashboard/presensi/${agenda.id}`);
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/rekap");
 
   return {
     success: true,
@@ -1171,7 +1171,7 @@ export async function resetPegawaiBiometric(pegawaiId: string) {
     },
   });
 
-  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/presensi/pejabat");
   revalidatePath("/dashboard/pegawai");
 
   return { success: true, message: `Biometrik wajah ${pegawai.nama} berhasil direset` };
@@ -1236,10 +1236,10 @@ export async function clearBuktiKehadiranPeserta(kehadiranId: string, resetMaste
     }).catch(() => {});
   }
 
-  revalidatePath(`/dashboard/absensi/${kehadiran.agendaId}`);
-  revalidatePath(`/p/absensi/${kehadiran.agenda.publicToken}`);
-  revalidatePath("/dashboard/absensi/pejabat");
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath(`/dashboard/presensi/${kehadiran.agendaId}`);
+  revalidatePath(`/p/presensi/${kehadiran.agenda.publicToken}`);
+  revalidatePath("/dashboard/presensi/pejabat");
+  revalidatePath("/dashboard/presensi/rekap");
 
   return {
     success: true,
@@ -1302,11 +1302,11 @@ export async function bulkClearBuktiKehadiranPeserta(kehadiranIds: string[], res
   }
 
   if (list.length > 0) {
-    revalidatePath(`/dashboard/absensi/${list[0].agendaId}`);
-    revalidatePath(`/p/absensi/${list[0].agenda.publicToken}`);
+    revalidatePath(`/dashboard/presensi/${list[0].agendaId}`);
+    revalidatePath(`/p/presensi/${list[0].agenda.publicToken}`);
   }
-  revalidatePath("/dashboard/absensi/pejabat");
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath("/dashboard/presensi/pejabat");
+  revalidatePath("/dashboard/presensi/rekap");
 
   return {
     success: true,
@@ -1400,10 +1400,10 @@ export async function submitSelfAbsensiPulang(payload: {
     },
   });
 
-  revalidatePath(`/p/absensi/${publicToken}`);
-  revalidatePath(`/dashboard/absensi/${agenda.id}`);
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath(`/p/presensi/${publicToken}`);
+  revalidatePath(`/dashboard/presensi/${agenda.id}`);
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/rekap");
 
   return {
     success: true,
@@ -1602,11 +1602,11 @@ export async function updateKehadiranPesertaBatch(
     }
   });
 
-  revalidatePath(`/dashboard/absensi/${agendaId}`);
-  revalidatePath("/dashboard/absensi");
-  revalidatePath("/dashboard/absensi/rekap");
+  revalidatePath(`/dashboard/presensi/${agendaId}`);
+  revalidatePath("/dashboard/presensi");
+  revalidatePath("/dashboard/presensi/rekap");
   if (agenda.publicToken) {
-    revalidatePath(`/p/absensi/${agenda.publicToken}`);
+    revalidatePath(`/p/presensi/${agenda.publicToken}`);
   }
   return { success: true };
 }
@@ -1653,7 +1653,7 @@ export async function addPesertaManualToAgenda(
     },
   });
 
-  revalidatePath(`/dashboard/absensi/${agendaId}`);
+  revalidatePath(`/dashboard/presensi/${agendaId}`);
   return peserta;
 }
 
@@ -1677,7 +1677,7 @@ export async function deletePesertaFromAgenda(agendaId: string, pesertaId: strin
     },
   });
 
-  revalidatePath(`/dashboard/absensi/${agendaId}`);
+  revalidatePath(`/dashboard/presensi/${agendaId}`);
   return { success: true };
 }
 
@@ -1713,7 +1713,7 @@ export async function bulkDeletePesertaFromAgenda(agendaId: string, pesertaIds: 
     },
   });
 
-  revalidatePath(`/dashboard/absensi/${agendaId}`);
+  revalidatePath(`/dashboard/presensi/${agendaId}`);
   return { success: true, count: res.count };
 }
 
@@ -2036,7 +2036,7 @@ export async function addPesertaBulkToAgenda(
     )
   );
 
-  revalidatePath(`/dashboard/absensi/${agendaId}`);
+  revalidatePath(`/dashboard/presensi/${agendaId}`);
   return { success: true };
 }
 

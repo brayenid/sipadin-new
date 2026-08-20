@@ -29,7 +29,7 @@ export default function QrCodeModal({
   const [isDownloading, setIsDownloading] = useState(false);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const publicUrl = publicToken ? `${baseUrl}/p/absensi/${publicToken}` : "";
+  const publicUrl = publicToken ? `${baseUrl}/p/presensi/${publicToken}` : "";
 
   useEffect(() => {
     if (publicUrl && isOpen) {
@@ -135,7 +135,7 @@ export default function QrCodeModal({
       const measureCtx = measureCanvas.getContext("2d");
 
       // 1. Keterangan instruksi absen singkat
-      const instructionText = "Pindai QR Code untuk mengisi absensi mandiri";
+      const instructionText = "Pindai QR Code untuk mengisi presensi mandiri";
       const instLineHeight = 28;
       let instructionLines: string[] = [];
       if (measureCtx) {

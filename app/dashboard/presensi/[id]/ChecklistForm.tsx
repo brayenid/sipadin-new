@@ -261,7 +261,7 @@ export default function ChecklistForm({
   }, [agenda]);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/absensi/${agenda.publicToken}` : "";
+  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/presensi/${agenda.publicToken}` : "";
 
   // Ubah status kehadiran satuan
   const handleStatusChange = (id: string, newStatus: StatusKehadiran) => {
@@ -400,7 +400,7 @@ export default function ChecklistForm({
       const res = await deleteAgendaAbsensi(agenda.id);
       if (res?.success) {
         toast.success("Agenda presensi berhasil dihapus");
-        router.push("/dashboard/absensi");
+        router.push("/dashboard/presensi");
       }
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus agenda");
@@ -1343,7 +1343,7 @@ export default function ChecklistForm({
                 <div className="flex items-center gap-2">
                   <div className="flex items-center flex-1 bg-white border border-slate-300 rounded-md overflow-hidden h-9 px-2.5">
                     <span className="text-xs text-slate-400 font-mono select-none pr-1">
-                      /p/absensi/
+                      /p/presensi/
                     </span>
                     <input
                       type="text"
@@ -2203,7 +2203,7 @@ export default function ChecklistForm({
               <RotateCcw className="w-5 h-5 text-amber-600" />
               Reset Bukti Presensi?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 pt-1 text-slate-600 text-xs">
+            <AlertDialogDescription render={<div />} className="space-y-3 pt-1 text-slate-600 text-xs">
               <span>
                 Apakah Anda yakin ingin menghapus seluruh bukti presensi untuk{" "}
                 <strong className="text-slate-900 font-bold">{clearBuktiTarget?.nama}</strong>?
@@ -2269,7 +2269,7 @@ export default function ChecklistForm({
               <RotateCcw className="w-5 h-5 text-amber-600" />
               Reset Bukti {selectedPesertaIds.length} Peserta?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 pt-1 text-slate-600 text-xs">
+            <AlertDialogDescription render={<div />} className="space-y-3 pt-1 text-slate-600 text-xs">
               <span>
                 Seluruh foto selfie, koordinat GPS, dan waktu presensi untuk{" "}
                 <strong className="text-amber-700 font-bold">{selectedPesertaIds.length} peserta</strong> yang dipilih akan dihapus. Status mereka akan diubah kembali menjadi <span className="font-bold">Tidak Hadir</span>.

@@ -33,14 +33,14 @@ export default async function PejabatBindingPage({
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
           <Link
-            href="/dashboard/absensi"
+            href="/dashboard/presensi"
             className="hover:text-slate-900 transition-colors flex items-center gap-1"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Absensi OPD
+            Presensi Digital
           </Link>
           <span>/</span>
-          <span className="font-medium text-slate-900">Pengaturan Wajib Absen Default</span>
+          <span className="font-medium text-slate-900">Pengaturan Wajib Hadir Default</span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

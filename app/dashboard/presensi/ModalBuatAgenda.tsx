@@ -228,7 +228,7 @@ export default function ModalBuatAgenda({
         `Agenda berhasil dibuat dengan ${selectedPesertaIds.length} peserta terdaftar`
       );
       onClose();
-      router.push(`/dashboard/absensi/${created.id}`);
+      router.push(`/dashboard/presensi/${created.id}`);
     } catch (err: any) {
       toast.error(err.message || "Gagal membuat agenda");
     } finally {

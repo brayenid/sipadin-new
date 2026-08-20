@@ -197,52 +197,137 @@ export default function PublicAbsensiForm({
 
   // AI Face Detection & Biometrics State
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isAiInitializing, setIsAiInitializing] = useState(true);
+  const [isWaitingAiToCapture, setIsWaitingAiToCapture] = useState(false);
   const [faceCount, setFaceCount] = useState<number | null>(null);
   const [extractedFaceDescriptor, setExtractedFaceDescriptor] = useState<number[] | null>(null);
   const faceApiRef = useRef<any>(null);
+  const modelLoadPromiseRef = useRef<Promise<boolean> | null>(null);
 
-  // Load FaceAPI Models once in browser using pure ESM bundle
+  // Live Diagnostics Monitor State
+  const [aiDebugLog, setAiDebugLog] = useState<{
+    tinyLoaded: boolean;
+    landmarkLoaded: boolean;
+    recogLoaded: boolean;
+    videoReady: number;
+    videoRes: string;
+    detectionsCount: number;
+    score: number;
+    descriptorStatus: string;
+    lastError: string;
+  }>({
+    tinyLoaded: false,
+    landmarkLoaded: false,
+    recogLoaded: false,
+    videoReady: 0,
+    videoRes: "-",
+    detectionsCount: 0,
+    score: 0,
+    descriptorStatus: "BELUM JEPRET",
+    lastError: "-",
+  });
+
+  // Debugger Visibility: Aktif di dev mode, atau via secret click 3x di judul
+  const [showDebugger, setShowDebugger] = useState(process.env.NODE_ENV === "development");
+  const secretClickCountRef = useRef(0);
+  const secretClickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSecretDebugClick = () => {
+    secretClickCountRef.current += 1;
+    if (secretClickTimerRef.current) clearTimeout(secretClickTimerRef.current);
+    if (secretClickCountRef.current >= 3) {
+      setShowDebugger((prev) => {
+        const next = !prev;
+        toast.info(next ? "🛠️ AI Live Debugger Diaktifkan" : "🛠️ AI Live Debugger Disembunyikan");
+        return next;
+      });
+      secretClickCountRef.current = 0;
+    } else {
+      secretClickTimerRef.current = setTimeout(() => {
+        secretClickCountRef.current = 0;
+      }, 1000);
+    }
+  };
+
+  // Load FaceAPI Models once in browser with Fast-Track detector
   useEffect(() => {
     let isMounted = true;
-    const loadAiModels = async () => {
+
+    const loadAiModels = async (): Promise<boolean> => {
       try {
         const faceapi = await import("@vladmandic/face-api");
         faceApiRef.current = faceapi;
 
+        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) sebelum memuat bobot model
+        const tf = (faceapi as any).tf;
+        if (tf) {
+          try {
+            if (typeof tf.setBackend === "function") {
+              await tf.setBackend("webgl").catch(() => tf.setBackend("cpu"));
+            }
+            if (typeof tf.ready === "function") {
+              await tf.ready();
+            }
+          } catch (tfErr) {
+            console.warn("TensorFlow backend init fallback:", tfErr);
+          }
+        }
+
         const MODEL_URL = "/models";
 
-        // Load Tiny Face Detector
+        // 1. FAST-TRACK: Tiny Face Detector (Hanya 190 KB - langsung aktif < 200ms)
         if (!faceapi.nets.tinyFaceDetector.isLoaded) {
           await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         }
 
-        // Load Landmarks & Recognition in parallel
+        // Langsung aktifkan detector agar garis hijau dan deteksi wajah kamera menyala instan!
+        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
+          setModelsLoaded(true);
+          setIsAiInitializing(false);
+          setAiDebugLog((p) => ({ ...p, tinyLoaded: true }));
+        }
+
+        // 2. BACKGROUND-TRACK: Tiny Landmarks (77 KB), Full Landmarks (356 KB) & Recognition Net (6.4 MB)
         await Promise.allSettled([
           !faceapi.nets.faceLandmark68TinyNet.isLoaded
             ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.faceLandmark68Net.isLoaded
+            ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
             : Promise.resolve(),
           !faceapi.nets.faceRecognitionNet.isLoaded
             ? faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
             : Promise.resolve(),
         ]);
 
-        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
-          setModelsLoaded(true);
+        if (isMounted) {
+          setAiDebugLog((p) => ({
+            ...p,
+            landmarkLoaded: !!faceapi.nets.faceLandmark68TinyNet?.isLoaded || !!faceapi.nets.faceLandmark68Net?.isLoaded,
+            recogLoaded: !!faceapi.nets.faceRecognitionNet?.isLoaded,
+          }));
         }
-      } catch (err) {
+
+        return true;
+      } catch (err: any) {
         console.warn("FaceAPI models load error:", err);
+        if (isMounted) {
+          setIsAiInitializing(false);
+          setAiDebugLog((p) => ({ ...p, lastError: String(err?.message || err) }));
+        }
+        return false;
       }
     };
 
     if (typeof window !== "undefined") {
-      loadAiModels();
+      modelLoadPromiseRef.current = loadAiModels();
     }
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Real-time AI Face Detection loop when camera is active
+  // Real-time AI Face Detection loop (Ringan, Cepat, Tanpa Beban Recognition di Setiap Frame)
   useEffect(() => {
     if (!isCameraActive || !modelsLoaded || !videoRef.current) {
       setFaceCount(null);
@@ -265,28 +350,30 @@ export default function PublicAbsensiForm({
 
       try {
         const video = videoRef.current;
-        if (video.readyState >= 2) {
-          const detections = await faceapi
-            .detectAllFaces(
-              video,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
-            )
-            .withFaceLandmarks(true)
-            .withFaceDescriptors();
+        if (video.readyState >= 2 && video.videoWidth > 0) {
+          // ScoreThreshold 0.5 standar resmi TinyFaceDetector untuk mencegah multi-box proposal duplikat
+          const detections = await faceapi.detectAllFaces(
+            video,
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+          );
 
           if (isScanning && detections && Array.isArray(detections)) {
             setFaceCount(detections.length);
-            if (detections.length === 1 && detections[0].descriptor) {
-              setExtractedFaceDescriptor(Array.from(detections[0].descriptor));
-            } else {
-              setExtractedFaceDescriptor(null);
-            }
+            setAiDebugLog((p) => ({
+              ...p,
+              videoReady: video.readyState,
+              videoRes: `${video.videoWidth}x${video.videoHeight}`,
+              detectionsCount: detections.length,
+              score: detections[0] ? (detections[0] as any).score : 0,
+              lastError: "-",
+            }));
           }
         }
-      } catch {
-        // Silently continue scanning
+      } catch (err: any) {
+        console.warn("[Realtime Face Detection Error]:", err);
+        setAiDebugLog((p) => ({ ...p, lastError: String(err?.message || err) }));
       }
-    }, 400);
+    }, 250);
 
     return () => {
       isScanning = false;
@@ -393,6 +480,24 @@ export default function PublicAbsensiForm({
   };
 
   const capturePhoto = async () => {
+    if (!videoRef.current || isWaitingAiToCapture) return;
+
+    // Graceful Period: jika engine AI sedang memuat (dan belum cut-off), tunggu sebentar atau maksimal cut-off 3.5 detik
+    if (isAiInitializing && !modelsLoaded && modelLoadPromiseRef.current) {
+      setIsWaitingAiToCapture(true);
+      try {
+        const timeoutPromise = new Promise<boolean>((resolve) =>
+          setTimeout(() => resolve(false), 3500)
+        );
+        await Promise.race([modelLoadPromiseRef.current, timeoutPromise]);
+      } catch (e) {
+        console.warn("AI engine wait timeout / error:", e);
+      } finally {
+        setIsWaitingAiToCapture(false);
+        setIsAiInitializing(false);
+      }
+    }
+
     if (!videoRef.current) return;
 
     // Single-face constraint warning (hanya peringatan jika terdeteksi banyak orang, tidak memblokir kamera redup/buram)
@@ -444,49 +549,92 @@ export default function PublicAbsensiForm({
 
     // Langsung ekstrak biometric face descriptor dengan mode toleransi tinggi (low-light & low-res adaptive)
     const faceapi = faceApiRef.current;
-    if (modelsLoaded && faceapi && faceapi.nets?.tinyFaceDetector?.isLoaded) {
+    if (faceapi && faceapi.nets?.tinyFaceDetector?.isLoaded) {
       try {
-        let detection: any = null;
-
-        // Percobaan 1: Tiny Detector Standar pada canvas
-        detection = await faceapi
-          .detectSingleFace(
-            canvas,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
-          )
-          .withFaceLandmarks(true)
-          .withFaceDescriptor()
-          .catch(() => null);
-
-        // Percobaan 2 (Fallback untuk kamera gelap/buram/beresolusi rendah): Tiny Detector Sangat Sensitif
-        if (!detection) {
-          detection = await faceapi
-            .detectSingleFace(
-              canvas,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.15 })
-            )
-            .withFaceLandmarks(true)
-            .withFaceDescriptor()
-            .catch(() => null);
+        if (!faceapi.nets.faceRecognitionNet?.isLoaded || !faceapi.nets.faceLandmark68TinyNet?.isLoaded) {
+          await Promise.allSettled([
+            !faceapi.nets.faceLandmark68TinyNet?.isLoaded
+              ? faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models")
+              : Promise.resolve(),
+            !faceapi.nets.faceRecognitionNet?.isLoaded
+              ? faceapi.nets.faceRecognitionNet.loadFromUri("/models")
+              : Promise.resolve(),
+          ]);
         }
 
-        // Percobaan 3: Langsung dari elemen video aktif sebelum kamera ditutup
-        if (!detection && videoRef.current) {
-          detection = await faceapi
-            .detectSingleFace(
-              videoRef.current,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.2 })
-            )
-            .withFaceLandmarks(true)
-            .withFaceDescriptor()
-            .catch(() => null);
+        let detection: any = null;
+
+        if (faceapi.nets.faceRecognitionNet?.isLoaded) {
+          // Percobaan 1: Tiny Detector Resolusi 320 dengan Tiny Landmark (Standard)
+          try {
+            detection = await faceapi
+              .detectSingleFace(
+                canvas,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 })
+              )
+              .withFaceLandmarks(true)
+              .withFaceDescriptor();
+          } catch {}
+
+          // Percobaan 2: Tiny Detector Resolusi 224 dengan Tiny Landmark
+          if (!detection) {
+            try {
+              detection = await faceapi
+                .detectSingleFace(
+                  canvas,
+                  new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 })
+                )
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+            } catch {}
+          }
+
+          // Percobaan 3: Menggunakan Full Landmark (Standard 68)
+          if (!detection && faceapi.nets.faceLandmark68Net?.isLoaded) {
+            try {
+              detection = await faceapi
+                .detectSingleFace(
+                  canvas,
+                  new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 })
+                )
+                .withFaceLandmarks(false)
+                .withFaceDescriptor();
+            } catch {}
+          }
+
+          // Percobaan 4: Langsung dari elemen video aktif (Uncropped video feed)
+          if (!detection && videoRef.current) {
+            try {
+              detection = await faceapi
+                .detectSingleFace(
+                  videoRef.current,
+                  new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 })
+                )
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+            } catch {}
+          }
         }
 
         if (detection && detection.descriptor) {
-          setExtractedFaceDescriptor(Array.from(detection.descriptor));
+          const descArray = Array.from(detection.descriptor) as number[];
+          setExtractedFaceDescriptor(descArray);
+          setAiDebugLog((p) => ({
+            ...p,
+            descriptorStatus: `✓ BERHASIL (${descArray.length}-d)`,
+          }));
+        } else {
+          setAiDebugLog((p) => ({
+            ...p,
+            descriptorStatus: "GAGAL (Wajah tidak terbaca saat jepret)",
+          }));
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn("[FaceAPI Adaptive Extract Warning]:", err);
+        setAiDebugLog((p) => ({
+          ...p,
+          descriptorStatus: `ERR: ${String(err?.message || err)}`,
+        }));
       }
     }
 
@@ -1425,17 +1573,28 @@ export default function PublicAbsensiForm({
           {agenda.requirePhoto && (status !== "IZIN" || isCheckOutMode) && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-800">
+                <label
+                  onClick={handleSecretDebugClick}
+                  className="block text-xs font-bold text-slate-800 select-none cursor-default"
+                  title="Presensi Selfie"
+                >
                   {isCheckOutMode ? "Foto Selfie Presensi Pulang" : "Foto Selfie Kehadiran"} <span className="text-red-500">*</span>
                 </label>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Pastikan foto selfie diambil langsung di lokasi kegiatan, wajah terlihat jelas menghadap kamera, tanpa masker/kacamata hitam, serta pencahayaan memadai.
+                  Pastikan seluruh wajah terlihat utuh menghadap kamera. <strong className="text-slate-700 font-semibold">Jangan tutupi mulut/hidung dengan tangan, masker, atau kacamata hitam</strong> agar verifikasi biometrik valid.
                 </p>
               </div>
 
               <div className="bg-slate-950 rounded-2xl overflow-hidden aspect-[3/4] max-w-xs sm:max-w-sm mx-auto flex items-center justify-center relative shadow-inner">
                 {isCameraActive ? (
                   <>
+                    {/* Top camera guidance pill */}
+                    <div className="absolute top-3 inset-x-3 z-20 flex justify-center pointer-events-none">
+                      <span className="text-[10px] font-medium text-white/90 bg-black/65 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm text-center">
+                        Tampilkan seluruh wajah (jangan tutupi mulut / mata)
+                      </span>
+                    </div>
+
                     <video
                       ref={(el) => {
                         videoRef.current = el;
@@ -1458,6 +1617,8 @@ export default function PublicAbsensiForm({
                             ? "border-emerald-400 border-solid shadow-[0_0_25px_rgba(52,211,153,0.6),0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-emerald-400/50"
                             : faceCount && faceCount > 1
                             ? "border-rose-500 border-solid shadow-[0_0_25px_rgba(244,63,94,0.6),0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-rose-500/50 animate-pulse"
+                            : isAiInitializing && !modelsLoaded
+                            ? "border-indigo-400/80 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] ring-1 ring-indigo-400/40"
                             : "border-white/70 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
                         }`}
                       >
@@ -1473,19 +1634,48 @@ export default function PublicAbsensiForm({
                             faceCount === 1 ? "bg-emerald-400" : faceCount && faceCount > 1 ? "bg-rose-400" : "bg-white/70"
                           }`}
                         />
+
+                        {/* Indikator Lingkaran Download/Inisialisasi AI */}
+                        {isAiInitializing && !modelsLoaded && (
+                          <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                            <div className="relative w-12 h-12 flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin absolute" />
+                              <div className="w-8 h-8 rounded-full bg-indigo-500/20 backdrop-blur-xs flex items-center justify-center">
+                                <Loader2 className="w-4 h-4 text-indigo-300 animate-spin" />
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-semibold text-white/80 bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-white/10 shadow-sm">
+                              Menyiapkan AI...
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Dynamic AI Face Detection Badge */}
                       <div
                         className={`mt-3 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide shadow-md backdrop-blur-md transition-all flex items-center gap-1.5 ${
-                          faceCount === 1
+                          isWaitingAiToCapture
+                            ? "bg-amber-950/85 border-amber-500/80 text-amber-200 animate-pulse"
+                            : isAiInitializing && !modelsLoaded
+                            ? "bg-indigo-950/80 border-indigo-500/60 text-indigo-200"
+                            : faceCount === 1
                             ? "bg-emerald-950/85 border-emerald-500/80 text-emerald-200"
                             : faceCount && faceCount > 1
                             ? "bg-rose-950/85 border-rose-500/80 text-rose-200"
                             : "bg-black/70 border-white/20 text-white/90"
                         }`}
                       >
-                        {faceCount === 1 ? (
+                        {isWaitingAiToCapture ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                            <span>Menyiapkan Sensor Biometrik...</span>
+                          </>
+                        ) : isAiInitializing && !modelsLoaded ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin text-indigo-300" />
+                            <span>Mengunduh Engine Biometrik...</span>
+                          </>
+                        ) : faceCount === 1 ? (
                           <>
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                             <span>Wajah Terdeteksi (1 Orang)</span>
@@ -1505,7 +1695,8 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={toggleCameraFacing}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition cursor-pointer"
+                        disabled={isWaitingAiToCapture}
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition cursor-pointer disabled:opacity-50"
                         title="Putar Kamera"
                       >
                         <SwitchCamera className="w-4 h-4" />
@@ -1514,16 +1705,24 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer"
+                        disabled={isWaitingAiToCapture}
+                        className="relative p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer disabled:opacity-90 disabled:cursor-wait"
                         title="Ambil Foto"
                       >
-                        <Camera className="w-6 h-6" />
+                        {isWaitingAiToCapture ? (
+                          <div className="w-6 h-6 flex items-center justify-center">
+                            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                          </div>
+                        ) : (
+                          <Camera className="w-6 h-6" />
+                        )}
                       </button>
 
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs cursor-pointer"
+                        disabled={isWaitingAiToCapture}
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs cursor-pointer disabled:opacity-50"
                       >
                         Batal
                       </button>
@@ -1531,6 +1730,13 @@ export default function PublicAbsensiForm({
                   </>
                 ) : photoDataUrl ? (
                   <div className="relative w-full h-full flex items-center justify-center bg-black">
+                    {/* Top confirmation pill */}
+                    <div className="absolute top-3 inset-x-3 z-10 flex justify-center pointer-events-none">
+                      <span className="text-[10px] font-medium text-emerald-200 bg-emerald-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-500/40 shadow-sm text-center">
+                        ✓ Foto berhasil diambil. Pastikan wajah tidak terhalang.
+                      </span>
+                    </div>
+
                     <img
                       src={photoDataUrl}
                       alt="Hasil Foto"
@@ -1569,6 +1775,38 @@ export default function PublicAbsensiForm({
                   </div>
                 )}
               </div>
+
+              {/* Panel Status Log Diagnostik Sementara (Hanya tampil di DEV atau jika secret-click 3x) */}
+              {showDebugger && (isCameraActive || photoDataUrl) && (
+                <div className="mt-2.5 max-w-xs sm:max-w-sm mx-auto p-3 bg-slate-900 text-slate-100 rounded-xl text-[11px] font-mono border border-slate-700 shadow-md space-y-1.5 animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between font-bold text-amber-300 border-b border-slate-800 pb-1">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Status AI Diagnostik
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDebugger(false)}
+                      className="text-[9px] text-slate-400 hover:text-white px-1 py-0.5 rounded bg-slate-800 transition"
+                    >
+                      Tutup [X]
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
+                    <div>TinyDetector: <span className={aiDebugLog.tinyLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.tinyLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
+                    <div>RecognitionNet: <span className={aiDebugLog.recogLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.recogLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
+                    <div>LandmarksNet: <span className={aiDebugLog.landmarkLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.landmarkLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
+                    <div>Status Kamera: <span className="text-cyan-300 font-semibold">{aiDebugLog.videoRes} (state:{aiDebugLog.videoReady})</span></div>
+                    <div>Wajah Live: <span className={aiDebugLog.detectionsCount > 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{aiDebugLog.detectionsCount} ({aiDebugLog.score > 0 ? `skor: ${(aiDebugLog.score * 100).toFixed(0)}%` : "0%"})</span></div>
+                    <div>Status Biometrik: <span className={extractedFaceDescriptor ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.descriptorStatus}</span></div>
+                  </div>
+                  {aiDebugLog.lastError !== "-" && (
+                    <div className="text-rose-300 bg-rose-950/60 p-1.5 rounded text-[9px] border border-rose-800/60 break-all">
+                      ⚠️ Error: {aiDebugLog.lastError}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

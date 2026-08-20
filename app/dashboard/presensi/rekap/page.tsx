@@ -1,14 +1,13 @@
-import { getAgendaAbsensiList, getPejabatWajibAbsen, getAllPegawaiForBinding } from "@/app/actions/absensi";
-import AgendaList from "./AgendaList";
+import { getRekapKehadiranOpd } from "@/app/actions/absensi";
+import RekapKehadiranView from "./RekapKehadiranView";
 import Link from "next/link";
-import { ChevronLeft, ClipboardCheck, Users, BarChart3 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, BarChart3 } from "lucide-react";
 
 export const metadata = {
-  title: "Absensi Perangkat Daerah - SIPADIN",
+  title: "Rekapitulasi Kehadiran OPD - SIPADIN",
 };
 
-export default async function AbsensiPage({
+export default async function RekapAbsensiPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -19,36 +18,30 @@ export default async function AbsensiPage({
   }>;
 }) {
   const resolvedParams = await searchParams;
-  const selectedYear = resolvedParams.tahun || "";
+  const currentYear = new Date().getFullYear().toString();
+  const selectedYear = resolvedParams.tahun || currentYear;
   const selectedBulan = resolvedParams.bulan || "ALL";
   const customStartDate = resolvedParams.startDate || "";
   const customEndDate = resolvedParams.endDate || "";
 
-  let startDate = "";
-  let endDate = "";
+  let startDate = `${selectedYear}-01-01`;
+  let endDate = `${selectedYear}-12-31`;
 
   if (customStartDate && customEndDate) {
     startDate = customStartDate;
     endDate = customEndDate;
-  } else if (selectedYear && selectedBulan && selectedBulan !== "ALL") {
+  } else if (selectedBulan && selectedBulan !== "ALL") {
     const monthNum = parseInt(selectedBulan, 10);
     const paddedMonth = monthNum < 10 ? `0${monthNum}` : `${monthNum}`;
     const lastDay = new Date(parseInt(selectedYear, 10), monthNum, 0).getDate();
     startDate = `${selectedYear}-${paddedMonth}-01`;
     endDate = `${selectedYear}-${paddedMonth}-${lastDay < 10 ? `0${lastDay}` : lastDay}`;
-  } else if (selectedYear) {
-    startDate = `${selectedYear}-01-01`;
-    endDate = `${selectedYear}-12-31`;
   }
 
-  const [agendas, pejabatList, allPegawai] = await Promise.all([
-    getAgendaAbsensiList({
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    }),
-    getPejabatWajibAbsen(),
-    getAllPegawaiForBinding(),
-  ]);
+  const data = await getRekapKehadiranOpd({
+    startDate,
+    endDate,
+  });
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto w-full">
@@ -56,32 +49,30 @@ export default async function AbsensiPage({
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
           <Link
-            href="/dashboard"
+            href="/dashboard/presensi"
             className="hover:text-slate-900 transition-colors flex items-center gap-1"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Dashboard
+            Presensi Digital
           </Link>
           <span>/</span>
-          <span className="font-medium text-slate-900">Absensi Perangkat Daerah</span>
+          <span className="font-medium text-slate-900">Rekapitulasi Kehadiran</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              Absensi Perangkat Daerah
+              Rekapitulasi Kehadiran Pegawai
             </h1>
             <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
-              Pencatatan dan rekapitulasi kehadiran resmi Pegawai pada seluruh kegiatan.
+              Laporan akumulasi tingkat kehadiran Pegawai pada seluruh kegiatan.
             </p>
           </div>
         </div>
       </div>
 
-      <AgendaList
-        initialData={agendas as any}
-        totalPejabatTerdaftar={pejabatList.length}
-        allPegawai={allPegawai as any}
+      <RekapKehadiranView 
+        initialData={data as any} 
         selectedYear={selectedYear}
         selectedBulan={selectedBulan}
         customStartDate={customStartDate}

@@ -37,6 +37,25 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['tedious-lucca-sickly.ngrok-free.dev'],
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/absensi',
+        destination: '/dashboard/presensi',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/absensi/:path*',
+        destination: '/dashboard/presensi/:path*',
+        permanent: true,
+      },
+      {
+        source: '/p/absensi/:token',
+        destination: '/p/presensi/:token',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

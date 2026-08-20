@@ -1,18 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition, useMemo } from "react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,13 +17,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createPegawai, deletePegawai, bulkUpsertPegawai, getPegawaisPaginated } from "@/app/actions/pegawai";
-import { Loader2, Plus, Trash2, Users, Save, AlertCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { bulkUpsertPegawai, getPegawaisPaginated } from "@/app/actions/pegawai";
+import { resetPegawaiBiometric } from "@/app/actions/absensi";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Users,
+  Save,
+  AlertCircle,
+  ScanFace,
+  RotateCcw,
+  CheckCircle2,
+  FilterX,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
 import PegawaiExcelActions from "./PegawaiExcelActions";
+import ExcelColumnFilter, { FilterOption } from "./ExcelColumnFilter";
 
 type Pegawai = {
   id: string;
@@ -42,6 +49,8 @@ type Pegawai = {
   jabatan: string;
   instansi: string | null;
   eselon: string | null;
+  faceDescriptor?: string | null;
+  faceEnrolledAt?: Date | string | null;
 };
 
 type PaginationMeta = {
@@ -64,14 +73,25 @@ export default function PegawaiList({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const activeTab = searchParams.get("tab") || "kartu";
-
   const [data, setData] = useState<Pegawai[]>(initialData);
   const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map((p) => ({ ...p })));
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Column Filters State (Excel-Like)
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[] | null>>({
+    pangkat: null,
+    golongan: null,
+    jabatan: null,
+    instansi: null,
+    eselon: null,
+    biometrik: null,
+  });
+
+  // Biometric reset dialog state
+  const [resetBiometricPegawai, setResetBiometricPegawai] = useState<Pegawai | null>(null);
+  const [resettingBiometric, setResettingBiometric] = useState(false);
 
   // Auto Load More (Infinite Scroll) state
   const [page, setPage] = useState(pagination?.page || 1);
@@ -144,10 +164,6 @@ export default function PegawaiList({
     return () => observer.disconnect();
   }, [hasMore, loadingMore, page, isPending]);
 
-  // Single Card Mode State
-  const [isOpen, setIsOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -174,6 +190,108 @@ export default function PegawaiList({
     });
   };
 
+  // --- Single-pass High Performance Extraction of Unique Filter Options ---
+  const {
+    pangkatOptions,
+    golonganOptions,
+    jabatanOptions,
+    instansiOptions,
+    eselonOptions,
+    biometrikOptions,
+  } = useMemo(() => {
+    const pangkatMap = new Map<string, number>();
+    const golonganMap = new Map<string, number>();
+    const jabatanMap = new Map<string, number>();
+    const instansiMap = new Map<string, number>();
+    const eselonMap = new Map<string, number>();
+    let terdaftarCount = 0;
+    let belumTerdaftarCount = 0;
+
+    for (let i = 0; i < bulkData.length; i++) {
+      const p = bulkData[i];
+      const pangkat = p.pangkat || "(Kosong)";
+      const golongan = p.golongan || "(Kosong)";
+      const jabatan = p.jabatan || "(Kosong)";
+      const instansi = p.instansi || "Sekretariat Daerah";
+      const eselon = p.eselon || "Non Eselon";
+
+      pangkatMap.set(pangkat, (pangkatMap.get(pangkat) || 0) + 1);
+      golonganMap.set(golongan, (golonganMap.get(golongan) || 0) + 1);
+      jabatanMap.set(jabatan, (jabatanMap.get(jabatan) || 0) + 1);
+      instansiMap.set(instansi, (instansiMap.get(instansi) || 0) + 1);
+      eselonMap.set(eselon, (eselonMap.get(eselon) || 0) + 1);
+
+      if (p.faceDescriptor) terdaftarCount++;
+      else belumTerdaftarCount++;
+    }
+
+    const toSortedOptions = (m: Map<string, number>) =>
+      Array.from(m.entries())
+        .map(([val, count]) => ({ label: val, value: val, count }))
+        .sort((a, b) => a.label.localeCompare(b.label, "id", { sensitivity: "base" }));
+
+    return {
+      pangkatOptions: toSortedOptions(pangkatMap),
+      golonganOptions: toSortedOptions(golonganMap),
+      jabatanOptions: toSortedOptions(jabatanMap),
+      instansiOptions: toSortedOptions(instansiMap),
+      eselonOptions: toSortedOptions(eselonMap),
+      biometrikOptions: [
+        { label: "Terdaftar", value: "TERDAFTAR", count: terdaftarCount },
+        { label: "Belum Terdaftar", value: "BELUM_TERDAFTAR", count: belumTerdaftarCount },
+      ],
+    };
+  }, [bulkData]);
+
+  // --- Fast O(1) Filtered Display Rows (Instant Filtering for Thousands of Rows) ---
+  const displayedData = useMemo(() => {
+    const pangkatSet = columnFilters.pangkat ? new Set(columnFilters.pangkat) : null;
+    const golonganSet = columnFilters.golongan ? new Set(columnFilters.golongan) : null;
+    const jabatanSet = columnFilters.jabatan ? new Set(columnFilters.jabatan) : null;
+    const instansiSet = columnFilters.instansi ? new Set(columnFilters.instansi) : null;
+    const eselonSet = columnFilters.eselon ? new Set(columnFilters.eselon) : null;
+    const biometrikSet = columnFilters.biometrik ? new Set(columnFilters.biometrik) : null;
+
+    if (
+      !pangkatSet &&
+      !golonganSet &&
+      !jabatanSet &&
+      !instansiSet &&
+      !eselonSet &&
+      !biometrikSet
+    ) {
+      return bulkData;
+    }
+
+    return bulkData.filter((row) => {
+      if (pangkatSet && !pangkatSet.has(row.pangkat || "(Kosong)")) return false;
+      if (golonganSet && !golonganSet.has(row.golongan || "(Kosong)")) return false;
+      if (jabatanSet && !jabatanSet.has(row.jabatan || "(Kosong)")) return false;
+      if (instansiSet && !instansiSet.has(row.instansi || "Sekretariat Daerah")) return false;
+      if (eselonSet && !eselonSet.has(row.eselon || "Non Eselon")) return false;
+      if (biometrikSet) {
+        const bio = row.faceDescriptor ? "TERDAFTAR" : "BELUM_TERDAFTAR";
+        if (!biometrikSet.has(bio)) return false;
+      }
+      return true;
+    });
+  }, [bulkData, columnFilters]);
+
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(columnFilters).filter((f) => f !== null).length;
+  }, [columnFilters]);
+
+  const handleResetAllFilters = () => {
+    setColumnFilters({
+      pangkat: null,
+      golongan: null,
+      jabatan: null,
+      instansi: null,
+      eselon: null,
+      biometrik: null,
+    });
+  };
+
   // --- Computed Dirty States ---
   const isRowDirty = (row: Pegawai) => {
     if (row.id.startsWith("temp-")) return true;
@@ -185,6 +303,7 @@ export default function PegawaiList({
       (original.pangkat || "") !== (row.pangkat || "") ||
       (original.golongan || "") !== (row.golongan || "") ||
       original.jabatan !== row.jabatan ||
+      (original.instansi || "") !== (row.instansi || "") ||
       (original.eselon || "") !== (row.eselon || "")
     );
   };
@@ -201,48 +320,7 @@ export default function PegawaiList({
   const deletedCount = deleteIds.length;
   const totalChanges = newRowsCount + updatedRowsCount + deletedCount;
 
-  // ---------------- SINGLE MODE HANDLERS ----------------
-  const handleTabChange = (val: string) => {
-    updateUrl({ tab: val });
-  };
-
-  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    const nip = formData.get("nip") as string;
-    const nama = formData.get("nama") as string;
-    const pangkat = formData.get("pangkat") as string;
-    const golongan = formData.get("golongan") as string;
-    const jabatan = formData.get("jabatan") as string;
-    const eselon = formData.get("eselon") as string;
-
-    try {
-      await createPegawai({ nip, nama, pangkat, golongan, jabatan, eselon });
-      setIsOpen(false);
-      toast.success("Pegawai berhasil ditambahkan");
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menambahkan Pegawai");
-    }
-    setLoading(false);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    setLoading(true);
-    try {
-      await deletePegawai(deleteId);
-      toast.success("Pegawai berhasil dihapus");
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus data.");
-    }
-    setLoading(false);
-    setDeleteId(null);
-  };
-
-  // ---------------- BULK MODE HANDLERS ----------------
+  // ---------------- TABLE HANDLERS ----------------
   const addBulkRow = () => {
     setBulkData([
       {
@@ -254,6 +332,7 @@ export default function PegawaiList({
         jabatan: "",
         instansi: "Sekretariat Daerah",
         eselon: "",
+        faceDescriptor: null,
       },
       ...bulkData,
     ]);
@@ -282,88 +361,317 @@ export default function PegawaiList({
       await bulkUpsertPegawai(bulkData, deleteIds);
       toast.success("Perubahan data pegawai berhasil disimpan.");
       router.refresh();
+      setDeleteIds([]);
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data massal.");
     }
     setBulkLoading(false);
   };
 
-  // Sort handlers
+  const handleResetBiometric = async () => {
+    if (!resetBiometricPegawai) return;
+    setResettingBiometric(true);
+    try {
+      const res = await resetPegawaiBiometric(resetBiometricPegawai.id);
+      if (res.success) {
+        toast.success(`Data biometrik ${resetBiometricPegawai.nama} berhasil direset.`);
+        setBulkData((prev) =>
+          prev.map((p) => (p.id === resetBiometricPegawai.id ? { ...p, faceDescriptor: null } : p))
+        );
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mereset data biometrik");
+    }
+    setResettingBiometric(false);
+    setResetBiometricPegawai(null);
+  };
+
+  // Sort handlers (Server URL Sort)
   const currentSort = searchParams.get("sort") || "nama";
   const currentDir = searchParams.get("dir") || "asc";
 
-  const toggleSort = (field: "nama" | "golongan" | "jabatan") => {
-    const nextDir = currentSort === field && currentDir === "asc" ? "desc" : "asc";
-    updateUrl({ sort: field, dir: nextDir, page: "1" });
+  const handleSort = (field: "nama" | "golongan" | "jabatan" | "instansi", dir: "asc" | "desc") => {
+    updateUrl({ sort: field, dir, page: "1" });
   };
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-0">
+    <div className="space-y-4 pb-24 lg:pb-0">
       {/* Header Search & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Input
-            placeholder="Cari nama, NIP, jabatan, atau OPD..."
-            className="h-9 w-full text-xs"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {isPending && (
-            <div className="absolute right-2.5 top-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Input
+              placeholder="Cari nama, NIP, jabatan, atau OPD..."
+              className="h-9 w-full text-xs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {isPending && (
+              <div className="absolute right-2.5 top-2.5">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+              </div>
+            )}
+          </div>
+
+          {activeFiltersCount > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetAllFilters}
+              className="h-9 px-2.5 text-xs text-indigo-700 bg-indigo-50/70 border-indigo-200 hover:bg-indigo-100/80 shrink-0 font-medium"
+              title="Reset semua filter kolom"
+            >
+              <FilterX className="w-3.5 h-3.5 mr-1" />
+              Reset Filter ({activeFiltersCount})
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {isSuperAdmin && <PegawaiExcelActions data={data} />}
+          {isSuperAdmin && (
+            <div className="hidden lg:flex gap-2">
+              <Button onClick={addBulkRow} size="sm" variant="outline" className="text-xs bg-white shadow-2xs">
+                <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
+              </Button>
+              <Button
+                onClick={saveBulk}
+                size="sm"
+                disabled={bulkLoading || totalChanges === 0}
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 font-bold shadow-xs text-white"
+              >
+                {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+                Simpan Perubahan
+              </Button>
             </div>
           )}
         </div>
-        {isSuperAdmin && <PegawaiExcelActions data={data} />}
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <TabsList>
-            <TabsTrigger value="kartu" className="text-xs">Mode Kartu</TabsTrigger>
-            <TabsTrigger value="tabel" className="text-xs">Mode Tabel (Cepat)</TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Tabel Utama Pegawai */}
+      <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto flex-wrap">
+            <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-600" />
+              Data Pegawai ({displayedData.length}
+              {displayedData.length !== bulkData.length ? ` dari ${bulkData.length}` : ""})
+              {isPending && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
+            </CardTitle>
+            {activeFiltersCount > 0 && (
+              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[11px] font-semibold">
+                {activeFiltersCount} filter aktif
+              </Badge>
+            )}
+            {totalChanges > 0 && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center text-[11px]">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                {totalChanges} perubahan belum disimpan
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto relative">
+            {isPending && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+              </div>
+            )}
+            <Table>
+              <TableHeader className="bg-slate-50 text-xs">
+                <TableRow>
+                  {/* 1. NIP - Tanpa Filter */}
+                  <TableHead className="min-w-[160px] px-3 font-semibold text-slate-700">NIP</TableHead>
 
-        {/* ================= MODE KARTU ================= */}
-        <TabsContent value="kartu" className="space-y-6">
-          {isSuperAdmin && (
-            <div className="hidden lg:flex justify-end">
-              <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Pegawai</Button>} />
-                <DialogContent>
-                  <form onSubmit={handleCreate} className="space-y-4">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Pegawai Baru</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                      <Label>NIP (Opsional)</Label>
-                      <Input name="nip" placeholder="199001012020121001" />
+                  {/* 2. NAMA LENGKAP - Hanya Sort */}
+                  <TableHead
+                    className="min-w-[240px] px-3 cursor-pointer hover:bg-slate-100/70 select-none group transition-colors"
+                    onClick={() => handleSort("nama", currentSort === "nama" && currentDir === "asc" ? "desc" : "asc")}
+                    title="Klik untuk mengurutkan Nama Lengkap"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">Nama Lengkap</span>
+                      {currentSort === "nama" ? (
+                        currentDir === "asc" ? (
+                          <ChevronUp className="w-4 h-4 text-indigo-600" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-indigo-600" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label>Nama Lengkap</Label>
-                      <Input name="nama" required placeholder="Dr. Budi Santoso, S.Kom" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Pangkat</Label>
-                        <Input name="pangkat" placeholder="Penata Tk. I" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Golongan</Label>
-                        <Input name="golongan" placeholder="III/d" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Jabatan</Label>
-                        <Input name="jabatan" required placeholder="Kepala Bidang E-Gov" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Eselon</Label>
-                        <Select name="eselon" defaultValue="NON_ESELON">
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih Eselon" />
+                  </TableHead>
+
+                  {/* 3. PANGKAT */}
+                  <TableHead className="min-w-[130px] p-1">
+                    <ExcelColumnFilter
+                      title="Pangkat"
+                      selectedValues={columnFilters.pangkat}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, pangkat: sel }))}
+                      options={pangkatOptions}
+                    />
+                  </TableHead>
+
+                  {/* 4. GOLONGAN */}
+                  <TableHead className="min-w-[120px] p-1">
+                    <ExcelColumnFilter
+                      title="Golongan"
+                      selectedValues={columnFilters.golongan}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, golongan: sel }))}
+                      options={golonganOptions}
+                      onSortAsc={() => handleSort("golongan", "asc")}
+                      onSortDesc={() => handleSort("golongan", "desc")}
+                      isSortedAsc={currentSort === "golongan" && currentDir === "asc"}
+                      isSortedDesc={currentSort === "golongan" && currentDir === "desc"}
+                    />
+                  </TableHead>
+
+                  {/* 5. JABATAN */}
+                  <TableHead className="min-w-[190px] p-1">
+                    <ExcelColumnFilter
+                      title="Jabatan"
+                      selectedValues={columnFilters.jabatan}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, jabatan: sel }))}
+                      options={jabatanOptions}
+                      onSortAsc={() => handleSort("jabatan", "asc")}
+                      onSortDesc={() => handleSort("jabatan", "desc")}
+                      isSortedAsc={currentSort === "jabatan" && currentDir === "asc"}
+                      isSortedDesc={currentSort === "jabatan" && currentDir === "desc"}
+                    />
+                  </TableHead>
+
+                  {/* 6. INSTANSI / OPD */}
+                  <TableHead className="min-w-[210px] p-1">
+                    <ExcelColumnFilter
+                      title="Instansi / OPD"
+                      selectedValues={columnFilters.instansi}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, instansi: sel }))}
+                      options={instansiOptions}
+                      onSortAsc={() => handleSort("instansi", "asc")}
+                      onSortDesc={() => handleSort("instansi", "desc")}
+                      isSortedAsc={currentSort === "instansi" && currentDir === "asc"}
+                      isSortedDesc={currentSort === "instansi" && currentDir === "desc"}
+                    />
+                  </TableHead>
+
+                  {/* 7. ESELON */}
+                  <TableHead className="min-w-[130px] p-1">
+                    <ExcelColumnFilter
+                      title="Eselon"
+                      selectedValues={columnFilters.eselon}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, eselon: sel }))}
+                      options={eselonOptions}
+                    />
+                  </TableHead>
+
+                  {/* 8. STATUS BIOMETRIK */}
+                  <TableHead className="min-w-[145px] p-1">
+                    <ExcelColumnFilter
+                      title="Status Biometrik"
+                      selectedValues={columnFilters.biometrik}
+                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, biometrik: sel }))}
+                      options={biometrikOptions}
+                      align="end"
+                    />
+                  </TableHead>
+
+                  {isSuperAdmin && <TableHead className="w-[50px] text-center"></TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayedData.map((row) => {
+                  const rowIsNew = row.id.startsWith("temp-");
+                  const hasBiometric = !!row.faceDescriptor;
+
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className={rowIsNew ? "bg-emerald-50/40" : isRowDirty(row) ? "bg-amber-50/30" : ""}
+                    >
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.nip || ""}
+                          onChange={(e) => updateBulkRow(row.id, "nip", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "nip") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="NIP..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.nama}
+                          onChange={(e) => updateBulkRow(row.id, "nama", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs font-semibold rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "nama") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="Nama lengkap..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.pangkat || ""}
+                          onChange={(e) => updateBulkRow(row.id, "pangkat", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "pangkat") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="Pangkat..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.golongan || ""}
+                          onChange={(e) => updateBulkRow(row.id, "golongan", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "golongan") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="Golongan..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.jabatan}
+                          onChange={(e) => updateBulkRow(row.id, "jabatan", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "jabatan") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="Jabatan..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.instansi || ""}
+                          onChange={(e) => updateBulkRow(row.id, "instansi", e.target.value)}
+                          readOnly={!isSuperAdmin}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "instansi") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                          }`}
+                          placeholder="Instansi / OPD..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Select
+                          value={row.eselon || "NON_ESELON"}
+                          onValueChange={(val) =>
+                            updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : val || "")
+                          }
+                          disabled={!isSuperAdmin}
+                        >
+                          <SelectTrigger
+                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                              isFieldDirty(row, "eselon") && !rowIsNew ? "bg-amber-50 font-medium text-amber-900 border-amber-200" : ""
+                            }`}
+                          >
+                            <SelectValue placeholder="Pilih" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="I.a">I.a</SelectItem>
@@ -377,317 +685,142 @@ export default function PegawaiList({
                             <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                    </div>
-                    <Button type="submit" disabled={loading} className="w-full mt-2">
-                      {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
+                      </TableCell>
 
-          {data.length === 0 ? (
-            <Card className="bg-slate-50 border-dashed">
-              <CardContent className="pt-6 text-center text-slate-500 py-12 flex flex-col items-center">
-                <Users className="w-12 h-12 text-slate-300 mb-3" />
-                <p>{searchQuery ? "Tidak ada pegawai yang cocok dengan pencarian." : "Belum ada data Pegawai."}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 relative">
-              {isPending && (
-                <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-xl">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                </div>
-              )}
-              {data.map((pegawai) => (
-                <Card key={pegawai.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
-                  <CardContent className="p-5 flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{pegawai.nama}</h3>
-                      <p className="text-xs text-slate-500 mt-1">{pegawai.nip || "Non-ASN / NIP tidak ada"}</p>
-
-                      <div className="mt-4 space-y-1">
-                        <p className="text-sm text-slate-700"><span className="font-semibold">Jabatan:</span> {pegawai.jabatan}</p>
-                        <p className="text-xs text-slate-600"><span className="font-medium">Instansi:</span> {pegawai.instansi || "-"}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {(pegawai.pangkat || pegawai.golongan) && (
-                            <span className="text-xs text-slate-500">
-                              Pangkat/Gol: {pegawai.pangkat || "-"} ({pegawai.golongan || "-"})
+                      {/* KOLOM STATUS BIOMETRIK */}
+                      <TableCell className="p-2">
+                        {hasBiometric ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Terdaftar
                             </span>
-                          )}
-                          {pegawai.eselon && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-300 font-medium">
-                              Eselon {pegawai.eselon}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                            {isSuperAdmin && !rowIsNew && (
+                              <button
+                                type="button"
+                                onClick={() => setResetBiometricPegawai(row)}
+                                className="p-1 rounded text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                                title="Reset Data Biometrik Master"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                            Belum Terdaftar
+                          </span>
+                        )}
+                      </TableCell>
 
-                    {isSuperAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3"
-                        onClick={() => setDeleteId(pegawai.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                      {isSuperAdmin && (
+                        <TableCell className="p-2 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => removeBulkRow(row.id)}
+                            title={rowIsNew ? "Batalkan baris baru" : "Hapus Pegawai"}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {displayedData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10 text-slate-500 text-xs">
+                      {activeFiltersCount > 0 || searchQuery ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p>Tidak ada data pegawai yang sesuai dengan filter yang dipilih.</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetAllFilters}
+                            className="text-xs text-indigo-600 border-indigo-200"
+                          >
+                            <FilterX className="w-3.5 h-3.5 mr-1" />
+                            Bersihkan Filter Kolom
+                          </Button>
+                        </div>
+                      ) : (
+                        "Tidak ada baris data. Klik \"Tambah Baris\" untuk mulai menginput."
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Infinite Scroll Sentinel & Indicator */}
-          <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px]">
+          <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px] border-t border-slate-100 bg-slate-50/30">
             {loadingMore && (
               <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-full px-4 py-1.5 shadow-xs">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Memuat data pegawai selanjutnya...</span>
+                <span>Memuat baris selanjutnya...</span>
               </div>
             )}
-            {!hasMore && data.length > 0 && (
-              <p className="text-xs text-slate-400 font-medium">Semua data pegawai ({data.length}) telah dimuat</p>
+            {!hasMore && bulkData.length > 0 && (
+              <p className="text-xs text-slate-400 font-medium">Semua data pegawai ({bulkData.length}) telah dimuat</p>
             )}
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        {/* ================= MODE TABEL (BULK) ================= */}
-        <TabsContent value="tabel">
-          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
-            <CardHeader className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
-              <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                <CardTitle className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-                  Data Pegawai (Mode Tabel)
-                  {isPending && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
-                </CardTitle>
-                {totalChanges > 0 && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center">
-                    <AlertCircle className="w-3 h-3 mr-1" />
-                    {totalChanges} perubahan belum disimpan
-                  </Badge>
-                )}
-              </div>
-              <div className="hidden lg:flex gap-2">
-                {isSuperAdmin && (
-                  <>
-                    <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
-                      <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-                    </Button>
-                    <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
-                      {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Simpan Perubahan
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto relative">
-                {isPending && (
-                  <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                  </div>
-                )}
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="min-w-[170px]">NIP</TableHead>
-                      <TableHead
-                        className="min-w-[250px] cursor-pointer hover:bg-slate-100/50 select-none group"
-                        onClick={() => toggleSort("nama")}
-                      >
-                        <div className="flex items-center">
-                          Nama Lengkap
-                          {currentSort === "nama" ? (
-                            currentDir === "asc" ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
-                          ) : (
-                            <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </div>
-                      </TableHead>
-                      <TableHead className="min-w-[130px]">Pangkat</TableHead>
-                      <TableHead
-                        className="min-w-[120px] cursor-pointer hover:bg-slate-100/50 select-none group"
-                        onClick={() => toggleSort("golongan")}
-                      >
-                        <div className="flex items-center">
-                          Golongan
-                          {currentSort === "golongan" ? (
-                            currentDir === "asc" ? <ChevronUp className="ml-2 w-4 h-4 text-primary" /> : <ChevronDown className="ml-2 w-4 h-4 text-primary" />
-                          ) : (
-                            <ArrowUpDown className="ml-2 w-4 h-4 text-slate-300 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </div>
-                      </TableHead>
-                      <TableHead className="min-w-[200px]">Jabatan</TableHead>
-                      <TableHead className="min-w-[130px]">Eselon</TableHead>
-                      {isSuperAdmin && <TableHead className="w-[50px]"></TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bulkData.map((row) => {
-                      const rowIsNew = row.id.startsWith("temp-");
-                      return (
-                        <TableRow
-                          key={row.id}
-                          className={rowIsNew ? "bg-emerald-50/40" : isRowDirty(row) ? "bg-amber-50/30" : ""}
-                        >
-                          <TableCell className="p-2">
-                            <Input
-                              value={row.nip || ""}
-                              onChange={(e) => updateBulkRow(row.id, "nip", e.target.value)}
-                              readOnly={!isSuperAdmin}
-                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nip') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                              placeholder=""
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Input
-                              value={row.nama}
-                              onChange={(e) => updateBulkRow(row.id, "nama", e.target.value)}
-                              readOnly={!isSuperAdmin}
-                              className={`h-8 text-xs font-semibold rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'nama') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                              placeholder=""
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Input
-                              value={row.pangkat || ""}
-                              onChange={(e) => updateBulkRow(row.id, "pangkat", e.target.value)}
-                              readOnly={!isSuperAdmin}
-                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'pangkat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                              placeholder=""
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Input
-                              value={row.golongan || ""}
-                              onChange={(e) => updateBulkRow(row.id, "golongan", e.target.value)}
-                              readOnly={!isSuperAdmin}
-                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'golongan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                              placeholder=""
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Input
-                              value={row.jabatan}
-                              onChange={(e) => updateBulkRow(row.id, "jabatan", e.target.value)}
-                              readOnly={!isSuperAdmin}
-                              className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'jabatan') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                              placeholder=""
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Select
-                              value={row.eselon || "NON_ESELON"}
-                              onValueChange={(val) => updateBulkRow(row.id, "eselon", val === "NON_ESELON" ? "" : (val || ""))}
-                              disabled={!isSuperAdmin}
-                            >
-                              <SelectTrigger className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'eselon') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}>
-                                <SelectValue placeholder="Pilih" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="I.a">I.a</SelectItem>
-                                <SelectItem value="I.b">I.b</SelectItem>
-                                <SelectItem value="II.a">II.a</SelectItem>
-                                <SelectItem value="II.b">II.b</SelectItem>
-                                <SelectItem value="III.a">III.a</SelectItem>
-                                <SelectItem value="III.b">III.b</SelectItem>
-                                <SelectItem value="IV.a">IV.a</SelectItem>
-                                <SelectItem value="IV.b">IV.b</SelectItem>
-                                <SelectItem value="NON_ESELON">Non Eselon</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          {isSuperAdmin && (
-                            <TableCell className="p-2 text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => removeBulkRow(row.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
-                    {bulkData.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-slate-500 text-xs">
-                          {searchQuery ? "Tidak ada pegawai yang cocok dengan pencarian." : "Tidak ada baris data. Klik \"Tambah Baris\" untuk mulai menginput."}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Infinite Scroll Sentinel & Indicator for Mode Tabel */}
-              <div ref={observerRef} className="py-6 flex flex-col items-center justify-center min-h-[50px] border-t border-slate-100 bg-slate-50/30">
-                {loadingMore && (
-                  <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-full px-4 py-1.5 shadow-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memuat baris selanjutnya...</span>
-                  </div>
-                )}
-                {!hasMore && bulkData.length > 0 && (
-                  <p className="text-xs text-slate-400 font-medium">Semua data pegawai ({bulkData.length}) telah dimuat</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Delete Confirmation Modal untuk Mode Kartu */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      {/* Dialog Konfirmasi Reset Biometrik Pegawai */}
+      <AlertDialog
+        open={!!resetBiometricPegawai}
+        onOpenChange={(open) => !open && setResetBiometricPegawai(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Pegawai?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Data pegawai akan dihapus secara permanen.
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ScanFace className="w-5 h-5 text-amber-600" />
+              Reset Data Biometrik Master?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed space-y-2">
+              <p>
+                Anda akan mereset master biometrik wajah untuk <b>{resetBiometricPegawai?.nama}</b> (NIP: {resetBiometricPegawai?.nip || "-"}).
+              </p>
+              <p>
+                Setelah direset, saat pegawai bersangkutan melakukan presensi selfie berikutnya, foto barunya akan otomatis didaftarkan sebagai master biometrik baru (Status: <b>ENROLLED</b>).
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={resettingBiometric}>Batal</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleResetBiometric}
+              disabled={resettingBiometric}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
             >
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Hapus
+              {resettingBiometric ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1.5" />}
+              Reset Biometrik
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Mobile bottom action bar — tab-aware */}
+      {/* Mobile Bottom Action Bar */}
       {isSuperAdmin && (
         <MobileActionBar>
-          {activeTab === "kartu" ? (
-            <Button className="w-full" onClick={() => setIsOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Tambah Pegawai
+          <div className="flex gap-2">
+            <Button className="flex-1 text-xs" variant="outline" onClick={addBulkRow}>
+              <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
             </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button className="flex-1" variant="outline" onClick={addBulkRow}>
-                <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-              </Button>
-              <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
-                {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Simpan
-              </Button>
-            </div>
-          )}
+            <Button
+              className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              onClick={saveBulk}
+              disabled={bulkLoading || totalChanges === 0}
+            >
+              {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+              Simpan
+            </Button>
+          </div>
         </MobileActionBar>
       )}
     </div>

@@ -1,34 +1,14 @@
- 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createVendor, deleteVendor, bulkUpsertVendor } from "@/app/actions/vendor";
-import { Loader2, Plus, Store, Trash2, Save, AlertCircle } from "lucide-react";
+import { bulkUpsertVendor } from "@/app/actions/vendor";
+import { Loader2, Plus, Trash2, Save, AlertCircle, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MobileActionBar from "@/components/dashboard/MobileActionBar";
 
@@ -42,31 +22,24 @@ type Vendor = {
   rekeningBank: string | null;
 };
 
-export default function VendorList({ initialData, isSuperAdmin = false }: { initialData: Vendor[], isSuperAdmin?: boolean }) {
+export default function VendorList({
+  initialData,
+  isSuperAdmin = false,
+}: {
+  initialData: Vendor[];
+  isSuperAdmin?: boolean;
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || "kartu";
 
-  const [data, setData] = useState<Vendor[]>(initialData);
-  const [loading, setLoading] = useState(false);
-  
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
-
-  // Single Card Mode State
-  const [isOpen, setIsOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  // Bulk Tabel Mode State
-  const [bulkData, setBulkData] = useState<Vendor[]>(initialData.map(v => ({ ...v })));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [bulkData, setBulkData] = useState<Vendor[]>(initialData.map((v) => ({ ...v })));
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
 
   // --- Computed Dirty States ---
   const isRowDirty = (row: Vendor) => {
     if (row.id.startsWith("temp-")) return true;
-    const original = initialData.find(v => v.id === row.id);
+    const original = initialData.find((v) => v.id === row.id);
     if (!original) return false;
     return (
       original.namaVendor !== row.namaVendor ||
@@ -80,61 +53,32 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
 
   const isFieldDirty = (row: Vendor, field: keyof Vendor) => {
     if (row.id.startsWith("temp-")) return true;
-    const original = initialData.find(v => v.id === row.id);
+    const original = initialData.find((v) => v.id === row.id);
     if (!original) return false;
     return (original[field] || "") !== (row[field] || "");
   };
 
-  const newRowsCount = bulkData.filter(r => r.id.startsWith("temp-")).length;
-  const updatedRowsCount = bulkData.filter(r => !r.id.startsWith("temp-") && isRowDirty(r)).length;
+  const newRowsCount = bulkData.filter((r) => r.id.startsWith("temp-")).length;
+  const updatedRowsCount = bulkData.filter((r) => !r.id.startsWith("temp-") && isRowDirty(r)).length;
   const deletedCount = deleteIds.length;
   const totalChanges = newRowsCount + updatedRowsCount + deletedCount;
 
-  // ---------------- SINGLE MODE HANDLERS ----------------
-  const handleTabChange = (val: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", val);
-    router.replace(`?${params.toString()}`);
-    setCurrentPage(1);
-  };
+  // Filtered rows for display
+  const filteredData = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return bulkData;
+    return bulkData.filter(
+      (v) =>
+        v.namaVendor.toLowerCase().includes(q) ||
+        (v.namaPemilik && v.namaPemilik.toLowerCase().includes(q)) ||
+        (v.alamat && v.alamat.toLowerCase().includes(q)) ||
+        (v.npwp && v.npwp.toLowerCase().includes(q)) ||
+        (v.npwpd && v.npwpd.toLowerCase().includes(q)) ||
+        (v.rekeningBank && v.rekeningBank.toLowerCase().includes(q))
+    );
+  }, [bulkData, searchQuery]);
 
-  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    const payload = {
-      namaVendor: formData.get("namaVendor") as string,
-      namaPemilik: formData.get("namaPemilik") as string,
-      alamat: formData.get("alamat") as string,
-      npwp: formData.get("npwp") as string,
-      npwpd: formData.get("npwpd") as string,
-      rekeningBank: formData.get("rekeningBank") as string,
-    };
-    
-    try {
-      await createVendor(payload);
-      setIsOpen(false);
-      window.location.reload();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menambahkan Vendor");
-    }
-    setLoading(false);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    setLoading(true);
-    try {
-      await deleteVendor(deleteId);
-      window.location.reload();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus data.");
-    }
-    setLoading(false);
-    setDeleteId(null);
-  };
-
-  // ---------------- BULK MODE HANDLERS ----------------
+  // ---------------- TABLE HANDLERS ----------------
   const addBulkRow = () => {
     setBulkData([
       {
@@ -146,14 +90,13 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
         npwpd: "",
         rekeningBank: "",
       },
-      ...bulkData
+      ...bulkData,
     ]);
-    setCurrentPage(1);
   };
 
   const updateBulkRow = (id: string, field: keyof Vendor, value: string) => {
     const newData = [...bulkData];
-    const index = newData.findIndex(r => r.id === id);
+    const index = newData.findIndex((r) => r.id === id);
     if (index !== -1) {
       newData[index] = { ...newData[index], [field]: value };
       setBulkData(newData);
@@ -161,10 +104,15 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
   };
 
   const removeBulkRow = (id: string) => {
-    if (!id.startsWith("temp-")) {
+    const isNew = id.startsWith("temp-");
+    if (!isNew && !isSuperAdmin) {
+      toast.error("Hanya Super Admin yang berwenang menghapus vendor yang sudah tersimpan.");
+      return;
+    }
+    if (!isNew) {
       setDeleteIds([...deleteIds, id]);
     }
-    const newData = bulkData.filter(r => r.id !== id);
+    const newData = bulkData.filter((r) => r.id !== id);
     setBulkData(newData);
   };
 
@@ -172,287 +120,201 @@ export default function VendorList({ initialData, isSuperAdmin = false }: { init
     setBulkLoading(true);
     try {
       await bulkUpsertVendor(bulkData, deleteIds);
-      window.location.reload();
+      toast.success("Perubahan data vendor berhasil disimpan.");
+      router.refresh();
+      setDeleteIds([]);
     } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan data massal.");
+      toast.error(err.message || "Gagal menyimpan data vendor.");
     }
     setBulkLoading(false);
   };
 
-
   return (
-    <div className="space-y-6 pb-24 lg:pb-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-72">
-          <Input placeholder="Cari vendor..." className="h-9 w-full" />
+    <div className="space-y-4 pb-24 lg:pb-0">
+      {/* Header Search & Actions Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Input
+            placeholder="Cari nama vendor, pemilik, alamat, NPWP..."
+            className="h-9 w-full text-xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="hidden lg:flex items-center gap-2">
+          <Button onClick={addBulkRow} size="sm" variant="outline" className="text-xs bg-white shadow-2xs">
+            <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
+          </Button>
+          <Button
+            onClick={saveBulk}
+            size="sm"
+            disabled={bulkLoading || totalChanges === 0}
+            className="text-xs bg-indigo-600 hover:bg-indigo-700 font-bold shadow-xs text-white"
+          >
+            {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+            Simpan Perubahan
+          </Button>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="kartu">Mode Kartu</TabsTrigger>
-          <TabsTrigger value="tabel">Mode Tabel</TabsTrigger>
-        </TabsList>
-
-        {/* ================= MODE KARTU ================= */}
-        <TabsContent value="kartu" className="space-y-6">
-          {isSuperAdmin && (
-            <div className="hidden lg:flex justify-end">
-              <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogTrigger render={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Vendor</Button>} />
-                <DialogContent>
-                  <form onSubmit={handleCreate} className="space-y-4">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Vendor Baru</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                      <Label>Nama Vendor / RM / Katering</Label>
-                      <Input name="namaVendor" required placeholder="Contoh: RM Padang Sederhana" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Nama Pemilik (Opsional)</Label>
-                      <Input name="namaPemilik" placeholder="Bpk. Budi" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Alamat (Opsional)</Label>
-                      <Input name="alamat" placeholder="Jl. Melati No 12" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>NPWP (Opsional)</Label>
-                        <Input name="npwp" placeholder="00.000.000.0-000.000" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>NPWPD (Opsional)</Label>
-                        <Input name="npwpd" placeholder="P.12345678" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>No. Rekening (Opsional)</Label>
-                      <Input name="rekeningBank" placeholder="BPD Kaltimtara - 012345678" />
-                    </div>
-                    <Button type="submit" disabled={loading} className="w-full mt-2">
-                      {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
-
-          {data.length === 0 ? (
-            <Card className="bg-slate-50 border-dashed">
-              <CardContent className="pt-6 text-center text-slate-500 py-12 flex flex-col items-center">
-                <Store className="w-12 h-12 text-slate-300 mb-3" />
-                <p>Belum ada data Vendor.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {data.map((vendor) => (
-                <Card key={vendor.id} className="relative overflow-hidden hover:shadow-md transition-shadow duration-300">
-                  <CardContent className="p-5 flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{vendor.namaVendor}</h3>
-                      <p className="text-xs text-slate-500 mt-1">{vendor.namaPemilik || "Pemilik tidak dicatat"}</p>
-                      
-                      <div className="mt-4 space-y-1 text-sm text-slate-700">
-                        {vendor.alamat && <p><span className="font-semibold text-slate-500">Alamat:</span> {vendor.alamat}</p>}
-                        {vendor.npwp && <p><span className="font-semibold text-slate-500">NPWP:</span> {vendor.npwp}</p>}
-                        {vendor.npwpd && <p><span className="font-semibold text-slate-500">NPWPD:</span> {vendor.npwpd}</p>}
-                        {vendor.rekeningBank && <p><span className="font-semibold text-slate-500">Rek:</span> {vendor.rekeningBank}</p>}
-                      </div>
-                    </div>
-                    
-                    {isSuperAdmin && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 absolute top-3 right-3" 
-                        onClick={() => setDeleteId(vendor.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ================= MODE TABEL (BULK) ================= */}
-        <TabsContent value="tabel">
-          <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
-            <CardHeader className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 sm:pt-6 sm:pb-5 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
-              <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                <CardTitle className="text-base sm:text-lg font-bold text-slate-800">Data Vendor</CardTitle>
-                {totalChanges > 0 && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center">
-                    <AlertCircle className="w-3 h-3 mr-1" />
-                    {totalChanges} perubahan belum disimpan
-                  </Badge>
-                )}
-              </div>
-              <div className="hidden lg:flex gap-2">
-                {isSuperAdmin && (
-                  <>
-                    <Button onClick={addBulkRow} size="sm" variant="outline" className="bg-slate-50">
-                      <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-                    </Button>
-                    <Button onClick={saveBulk} size="sm" disabled={bulkLoading || totalChanges === 0}>
-                      {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Simpan Semua Perubahan
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="min-w-[200px]">Nama Vendor</TableHead>
-                      <TableHead className="min-w-[150px]">Nama Pemilik</TableHead>
-                      <TableHead className="min-w-[250px]">Alamat</TableHead>
-                      <TableHead className="min-w-[170px]">NPWP</TableHead>
-                      <TableHead className="min-w-[150px]">NPWPD</TableHead>
-                      <TableHead className="min-w-[170px]">No. Rekening</TableHead>
-                      {isSuperAdmin && <TableHead className="min-w-[60px] text-center">Aksi</TableHead>}
+      {/* Tabel Utama Vendor */}
+      <Card className="p-0 gap-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 pb-3 px-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Store className="w-4 h-4 text-indigo-600" />
+              Data Vendor ({filteredData.length})
+            </CardTitle>
+            {totalChanges > 0 && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center text-[11px]">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                {totalChanges} perubahan belum disimpan
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50 text-xs">
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Nama Vendor / RM / Katering</TableHead>
+                  <TableHead className="min-w-[150px]">Nama Pemilik</TableHead>
+                  <TableHead className="min-w-[250px]">Alamat</TableHead>
+                  <TableHead className="min-w-[160px]">NPWP</TableHead>
+                  <TableHead className="min-w-[140px]">NPWPD</TableHead>
+                  <TableHead className="min-w-[170px]">No. Rekening Bank</TableHead>
+                  <TableHead className="w-[50px] text-center"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((row) => {
+                  const rowIsNew = row.id.startsWith("temp-");
+                  const canDelete = isSuperAdmin || rowIsNew;
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className={rowIsNew ? "bg-emerald-50/40" : isRowDirty(row) ? "bg-amber-50/30" : ""}
+                    >
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.namaVendor}
+                          onChange={(e) => updateBulkRow(row.id, "namaVendor", e.target.value)}
+                          className={`h-8 text-xs font-semibold rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "namaVendor") && !rowIsNew
+                              ? "bg-amber-50 text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="Nama Vendor..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.namaPemilik || ""}
+                          onChange={(e) => updateBulkRow(row.id, "namaPemilik", e.target.value)}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "namaPemilik") && !rowIsNew
+                              ? "bg-amber-50 font-medium text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="Pemilik..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.alamat || ""}
+                          onChange={(e) => updateBulkRow(row.id, "alamat", e.target.value)}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "alamat") && !rowIsNew
+                              ? "bg-amber-50 font-medium text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="Alamat..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.npwp || ""}
+                          onChange={(e) => updateBulkRow(row.id, "npwp", e.target.value)}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "npwp") && !rowIsNew
+                              ? "bg-amber-50 font-medium text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="00.000.000.0-000.000"
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.npwpd || ""}
+                          onChange={(e) => updateBulkRow(row.id, "npwpd", e.target.value)}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "npwpd") && !rowIsNew
+                              ? "bg-amber-50 font-medium text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="NPWPD..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <Input
+                          value={row.rekeningBank || ""}
+                          onChange={(e) => updateBulkRow(row.id, "rekeningBank", e.target.value)}
+                          className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 bg-transparent ${
+                            isFieldDirty(row, "rekeningBank") && !rowIsNew
+                              ? "bg-amber-50 font-medium text-amber-900 border-amber-200"
+                              : ""
+                          }`}
+                          placeholder="Bank & No. Rekening..."
+                        />
+                      </TableCell>
+                      <TableCell className="p-2 text-center">
+                        {canDelete ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => removeBulkRow(row.id)}
+                            title={rowIsNew ? "Batalkan baris baru" : "Hapus Vendor"}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        ) : null}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bulkData.map((row) => {
-                      const rowIsNew = row.id.startsWith("temp-");
-                      return (
-                      <TableRow key={row.id} className={rowIsNew ? "bg-green-50/50" : ""}>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.namaVendor} 
-                            onChange={(e) => updateBulkRow(row.id, "namaVendor", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs font-medium rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaVendor') && !rowIsNew ? 'bg-amber-50 text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Nama Vendor"
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.namaPemilik || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "namaPemilik", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'namaPemilik') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Pemilik"
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.alamat || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "alamat", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'alamat') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="Alamat"
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.npwp || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "npwp", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwp') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="00.000..."
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.npwpd || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "npwpd", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'npwpd') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="NPWPD..."
-                          />
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <Input 
-                            value={row.rekeningBank || ""} 
-                            onChange={(e) => updateBulkRow(row.id, "rekeningBank", e.target.value)} 
-                            readOnly={!isSuperAdmin}
-                            className={`h-8 text-xs rounded-sm border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-transparent ${isFieldDirty(row, 'rekeningBank') && !rowIsNew ? 'bg-amber-50 font-medium text-amber-900 border-amber-200' : ''}`}
-                            placeholder="No. Rekening"
-                          />
-                        </TableCell>
-                        {isSuperAdmin && (
-                          <TableCell className="p-2 text-center">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => removeBulkRow(row.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    )})}
-                    {bulkData.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                          Tidak ada baris data. Klik &quot;Tambah Baris&quot; untuk mulai menginput.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  );
+                })}
+                {filteredData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-slate-500 text-xs">
+                      {searchQuery
+                        ? "Tidak ada data vendor yang cocok dengan kata kunci pencarian."
+                        : "Belum ada data vendor. Klik \"Tambah Baris\" untuk mulai menginput data."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Delete Confirmation Modal untuk Mode Kartu */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Vendor?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Data vendor akan dihapus secara permanen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Mobile bottom action bar — tab-aware */}
-      {isSuperAdmin && (
-        <MobileActionBar>
-          {activeTab === "kartu" ? (
-            <Button className="w-full" onClick={() => setIsOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Tambah Vendor
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button className="flex-1" variant="outline" onClick={addBulkRow}>
-                <Plus className="w-4 h-4 mr-2" /> Tambah Baris
-              </Button>
-              <Button className="flex-1" onClick={saveBulk} disabled={bulkLoading || totalChanges === 0}>
-                {bulkLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Simpan
-              </Button>
-            </div>
-          )}
-        </MobileActionBar>
-      )}
+      {/* Mobile Bottom Action Bar */}
+      <MobileActionBar>
+        <div className="flex gap-2">
+          <Button className="flex-1 text-xs" variant="outline" onClick={addBulkRow}>
+            <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
+          </Button>
+          <Button
+            className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            onClick={saveBulk}
+            disabled={bulkLoading || totalChanges === 0}
+          >
+            {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+            Simpan
+          </Button>
+        </div>
+      </MobileActionBar>
     </div>
   );
 }

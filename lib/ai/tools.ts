@@ -913,7 +913,7 @@ export async function executeToolCall(
             tempat: a.tempat || "-",
             targetPeserta: a.targetPeserta || "-",
             status: a.status, // BERLANGSUNG, SELESAI, DIBATALKAN
-            linkPublik: a.publicToken ? `https://sipadin.id/p/absensi/${a.publicToken}` : "-",
+            linkPublik: a.publicToken ? `https://sipadin.id/p/presensi/${a.publicToken}` : "-",
             rekapKehadiran: totalPeserta > 0
               ? `${hadir} Hadir, ${mewakili} Mewakili, ${tidakHadir} Absen (Total: ${totalPeserta})`
               : "Belum ada absensi masuk",
@@ -1100,7 +1100,7 @@ export async function executeToolCall(
         // Base URL SIPADIN untuk link publik
         const rawBaseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://sipadin.id";
         const cleanBaseUrl = rawBaseUrl.replace(/\/$/, "");
-        const publicUrl = `${cleanBaseUrl}/p/absensi/${publicSlugToken}`;
+        const publicUrl = `${cleanBaseUrl}/p/presensi/${publicSlugToken}`;
 
         // Format label waktu baku & hitung rentang buka/tutup presensi (H-1 jam dan H+4 jam)
         const waktuTeks = waktuMulai

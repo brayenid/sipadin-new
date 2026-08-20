@@ -40,6 +40,10 @@ export async function deleteVendor(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
+  if (session.user.role !== "SUPER_ADMIN") {
+    throw new Error("Hanya Super Admin yang memiliki hak akses menghapus data vendor.");
+  }
+
   await prisma.vendorPihakKetiga.delete({
     where: {
       id,
@@ -65,9 +69,14 @@ export async function bulkUpsertVendor(
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
+  const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+  if (deleteIds.length > 0 && !isSuperAdmin) {
+    throw new Error("Hanya Super Admin yang memiliki hak akses menghapus data vendor.");
+  }
+
   await prisma.$transaction(async (tx) => {
     // Delete
-    if (deleteIds.length > 0) {
+    if (deleteIds.length > 0 && isSuperAdmin) {
       await tx.vendorPihakKetiga.deleteMany({
         where: {
           id: { in: deleteIds },

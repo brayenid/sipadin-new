@@ -215,7 +215,7 @@ export default function AgendaList({
               </p>
               <p className="text-2xl font-black text-slate-800 mt-0.5">{totalPejabatTerdaftar}</p>
               <Link
-                href="/dashboard/absensi/pejabat"
+                href="/dashboard/presensi/pejabat"
                 className="text-[11px] text-indigo-600 hover:underline font-semibold flex items-center gap-0.5 mt-0.5"
               >
                 Kelola Daftar &rarr;
@@ -234,7 +234,7 @@ export default function AgendaList({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-bold text-slate-900">
-                Daftar Agenda Absensi Perangkat Daerah
+                Daftar Agenda Presensi Perangkat Daerah
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-0.5">
                 Kelola agenda, cetak blanko daftar hadir fisik, checklist kehadiran pegawai, dan tautkan arsip Google Drive.
@@ -242,21 +242,21 @@ export default function AgendaList({
             </div>
 
             <div className="hidden lg:flex items-center gap-2">
-              <Link href="/dashboard/absensi/rekap">
+              <Link href="/dashboard/presensi/rekap">
                 <Button variant="outline" size="sm" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
                   <BarChart3 className="w-3.5 h-3.5 mr-1" />
                   Rekapitulasi
                 </Button>
               </Link>
 
-              <Link href="/dashboard/absensi/pejabat">
+              <Link href="/dashboard/presensi/pejabat">
                 <Button variant="outline" size="sm" className="text-xs">
                   <Users className="w-3.5 h-3.5 mr-1" />
                   Master Pegawai
                 </Button>
               </Link>
 
-              <Link href="/dashboard/absensi/buat">
+              <Link href="/dashboard/presensi/buat">
                 <Button
                   size="sm"
                   className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
@@ -429,7 +429,7 @@ export default function AgendaList({
 
                         <TableCell className="text-xs">
                           <Link
-                            href={`/dashboard/absensi/${item.id}`}
+                            href={`/dashboard/presensi/${item.id}`}
                             className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-sm"
                           >
                             {item.namaKegiatan}
@@ -517,7 +517,7 @@ export default function AgendaList({
 
                         <TableCell className="text-right text-xs">
                           <div className="flex items-center justify-end gap-1">
-                            <Link href={`/dashboard/absensi/${item.id}`}>
+                            <Link href={`/dashboard/presensi/${item.id}`}>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -598,17 +598,17 @@ export default function AgendaList({
 
       {/* Mobile Bottom Fixed Action Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        <Link href="/dashboard/absensi/rekap">
+        <Link href="/dashboard/presensi/rekap">
           <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Rekapitulasi Kehadiran">
             <BarChart3 className="w-4 h-4 text-slate-700" />
           </Button>
         </Link>
-        <Link href="/dashboard/absensi/pejabat">
+        <Link href="/dashboard/presensi/pejabat">
           <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Master Pegawai Wajib Absen">
             <Users className="w-4 h-4 text-slate-700" />
           </Button>
         </Link>
-        <Link href="/dashboard/absensi/buat" className="flex-1">
+        <Link href="/dashboard/presensi/buat" className="flex-1">
           <Button
             className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
           >

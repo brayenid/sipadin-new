@@ -43,7 +43,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         // Izinkan bot perpesanan (WhatsApp/Telegram) membaca link preview presensi publik tanpa mengindeks
         userAgent: ["WhatsApp", "facebookexternalhit", "TelegramBot", "Twitterbot"],
-        allow: "/p/absensi/",
+        allow: ["/p/presensi/", "/p/absensi/"],
         disallow: ["/dashboard/", "/api/", "/uploads/", "/login", "/register"],
       },
     ],

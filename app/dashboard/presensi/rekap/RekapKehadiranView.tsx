@@ -607,7 +607,7 @@ export default function RekapKehadiranView({
                                       {opd.history.map((h, i) => (
                                         <Link 
                                           key={i} 
-                                          href={`/dashboard/absensi/${h.agendaId}`}
+                                          href={`/dashboard/presensi/${h.agendaId}`}
                                           className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
                                         >
                                           <div className="flex items-center justify-between gap-2">
@@ -833,7 +833,7 @@ export default function RekapKehadiranView({
                                       {peg.history.map((h, i) => (
                                         <Link 
                                           key={i} 
-                                          href={`/dashboard/absensi/${h.agendaId}`}
+                                          href={`/dashboard/presensi/${h.agendaId}`}
                                           className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
                                         >
                                           <div className="flex items-center justify-between gap-2">

@@ -20,6 +20,8 @@ export async function getPegawais() {
       jabatan: true,
       instansi: true,
       eselon: true,
+      faceDescriptor: true,
+      faceEnrolledAt: true,
     }
   });
 }
@@ -79,6 +81,8 @@ export async function getPegawaisPaginated(params: {
         jabatan: true,
         instansi: true,
         eselon: true,
+        faceDescriptor: true,
+        faceEnrolledAt: true,
       },
     }),
     prisma.pegawai.count({ where }),
