@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { createAgenda, updateAgenda, deleteAgenda } from "@/app/actions/agenda";
 import { KategoriAgenda, StatusAgenda } from "@prisma/client";
+import { AgendaExcelActions } from "./AgendaExcelActions";
 
 interface AgendaItem {
   id: string;
@@ -69,43 +70,56 @@ interface AgendaItem {
 
 const KATEGORI_CONFIG: Record<
   KategoriAgenda,
-  { label: string; bg: string; text: string; border: string }
+  { label: string; bg: string; text: string; border: string; dot: string }
 > = {
   RAPAT: {
     label: "Rapat",
-    bg: "bg-blue-50",
+    bg: "bg-blue-50/90 text-blue-700 border-blue-200/80 hover:bg-blue-100/70",
     text: "text-blue-700",
-    border: "border-blue-200",
+    border: "border-blue-200/80",
+    dot: "bg-blue-500",
   },
   PERJALANAN_DINAS: {
     label: "Perjalanan Dinas",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
+    bg: "bg-amber-50/90 text-amber-800 border-amber-200/80 hover:bg-amber-100/70",
+    text: "text-amber-800",
+    border: "border-amber-200/80",
+    dot: "bg-amber-500",
   },
   SOSIALISASI: {
     label: "Sosialisasi / Bimtek",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
+    bg: "bg-emerald-50/90 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100/70",
+    text: "text-emerald-800",
+    border: "border-emerald-200/80",
+    dot: "bg-emerald-500",
   },
   MONITORING_EVALUASI: {
     label: "Monev",
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-200",
+    bg: "bg-purple-50/90 text-purple-800 border-purple-200/80 hover:bg-purple-100/70",
+    text: "text-purple-800",
+    border: "border-purple-200/80",
+    dot: "bg-purple-500",
   },
   ACARA_INTERNAL: {
     label: "Acara Internal",
-    bg: "bg-pink-50",
-    text: "text-pink-700",
-    border: "border-pink-200",
+    bg: "bg-pink-50/90 text-pink-800 border-pink-200/80 hover:bg-pink-100/70",
+    text: "text-pink-800",
+    border: "border-pink-200/80",
+    dot: "bg-pink-500",
+  },
+  PENGINGAT: {
+    label: "Pengingat",
+    bg: "bg-indigo-50/90 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/70",
+    text: "text-indigo-700",
+    border: "border-indigo-200/80",
+    dot: "bg-indigo-500",
   },
   LAINNYA: {
     label: "Lainnya",
-    bg: "bg-slate-50",
+    bg: "bg-slate-50/90 text-slate-700 border-slate-200/80 hover:bg-slate-100/80",
     text: "text-slate-700",
-    border: "border-slate-200",
+    border: "border-slate-200/80",
+    dot: "bg-slate-400",
   },
 };
 
@@ -119,10 +133,21 @@ const STATUS_CONFIG: Record<
   DIBATALKAN: { label: "Dibatalkan", bg: "bg-rose-100", text: "text-rose-700" },
 };
 
+const DAYS_HEADER = [
+  { short: "Sen", full: "Senin", isWeekend: false },
+  { short: "Sel", full: "Selasa", isWeekend: false },
+  { short: "Rab", full: "Rabu", isWeekend: false },
+  { short: "Kam", full: "Kamis", isWeekend: false },
+  { short: "Jum", full: "Jumat", isWeekend: false },
+  { short: "Sab", full: "Sabtu", isWeekend: true, color: "text-amber-600 dark:text-amber-500" },
+  { short: "Min", full: "Minggu", isWeekend: true, color: "text-rose-600 dark:text-rose-500" },
+];
+
 export default function AgendaCalendarView({ initialAgendas }: { initialAgendas: AgendaItem[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [agendas, setAgendas] = useState<AgendaItem[]>(initialAgendas);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(new Date());
 
   // Modal State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -150,19 +175,22 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const numWeeks = Math.ceil(days.length / 7);
 
-  const filteredAgendas = agendas.filter((a) => {
-    if (selectedCategory !== "ALL" && a.kategori !== selectedCategory) return false;
-    return true;
-  });
+  const filteredAgendas =
+    selectedCategory === "ALL"
+      ? agendas
+      : agendas.filter((a) => a.kategori === selectedCategory);
 
   const getAgendasForDay = (day: Date) => {
     return filteredAgendas.filter((agenda) => {
       const start = parseISO(agenda.tanggalMulai);
       const end = agenda.tanggalSelesai ? parseISO(agenda.tanggalSelesai) : start;
+      const dayTime = day.getTime();
       return (
         isSameDay(day, start) ||
-        (day >= start && day <= end)
+        isSameDay(day, end) ||
+        (dayTime >= start.getTime() && dayTime <= end.getTime())
       );
     });
   };
@@ -278,38 +306,41 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50/50 p-4 lg:p-6 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-slate-50/50 p-3 sm:p-4 lg:p-5 overflow-y-auto md:overflow-hidden min-h-0">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Agenda Kegiatan Tim</h1>
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Agenda Kegiatan Tim</h1>
+            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium">
               Kalender
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Kelola, jadwalkan, dan pantau aktivitas tim kerja secara real-time.
           </p>
         </div>
 
-        {/* Controls: Filter Selector, Hari Ini, Navigasi Bulan */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Selector Filter Kategori (Ukuran kecil seperti Hari Ini) */}
+        {/* Controls: Filter Selector, Hari Ini, Navigasi Bulan, Tambah Agenda */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Selector Filter Kategori */}
           <Select
             value={selectedCategory}
             onValueChange={(val) => {
               if (val) setSelectedCategory(val);
             }}
           >
-            <SelectTrigger className="h-8 w-[150px] text-xs bg-white border-slate-200 text-slate-700 shadow-none font-medium">
+            <SelectTrigger className="h-8 sm:h-8.5 w-[135px] sm:w-[155px] text-xs bg-white border-slate-200 text-slate-700 shadow-none font-medium rounded-lg">
               <SelectValue placeholder="Semua Kategori" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL" className="text-xs">Semua Kategori ({agendas.length})</SelectItem>
               {(Object.keys(KATEGORI_CONFIG) as KategoriAgenda[]).map((kat) => (
                 <SelectItem key={kat} value={kat} className="text-xs">
-                  {KATEGORI_CONFIG[kat].label} ({agendas.filter((a) => a.kategori === kat).length})
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${KATEGORI_CONFIG[kat].dot}`} />
+                    <span>{KATEGORI_CONFIG[kat].label} ({agendas.filter((a) => a.kategori === kat).length})</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -318,8 +349,12 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentDate(new Date())}
-            className="h-8 bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-none text-xs"
+            onClick={() => {
+              const now = new Date();
+              setCurrentDate(now);
+              setSelectedMobileDate(now);
+            }}
+            className="h-8 sm:h-8.5 px-2.5 bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-none text-xs font-medium rounded-lg"
           >
             Hari Ini
           </Button>
@@ -328,74 +363,116 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-600 hover:text-slate-900"
+              className="h-7 w-7 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md"
               onClick={() => setCurrentDate(subMonths(currentDate, 1))}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="px-2.5 text-xs font-semibold text-slate-800 min-w-[120px] text-center">
+            <span className="px-1.5 sm:px-2.5 text-xs font-semibold text-slate-800 min-w-[100px] sm:min-w-[120px] text-center capitalize">
               {format(currentDate, "MMMM yyyy", { locale: idLocale })}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-600 hover:text-slate-900"
+              className="h-7 w-7 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md"
               onClick={() => setCurrentDate(addMonths(currentDate, 1))}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
+
+          <AgendaExcelActions />
+
+          <Button
+            size="sm"
+            onClick={() => handleOpenAddModal(selectedMobileDate)}
+            className="h-8 sm:h-8.5 text-xs font-medium rounded-lg shadow-none gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline sm:inline">Tambah</span>
+          </Button>
         </div>
       </div>
 
-      {/* Calendar Grid Container (No Shadow) */}
-      <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden">
-        {/* Days Header */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/75 text-center text-xs font-semibold text-slate-600 py-2.5">
-          <span>Senin</span>
-          <span>Selasa</span>
-          <span>Rabu</span>
-          <span>Kamis</span>
-          <span>Jumat</span>
-          <span className="text-amber-600">Sabtu</span>
-          <span className="text-rose-600">Minggu</span>
+      {/* Calendar Grid Container (Full height, No outer scroll) */}
+      <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden min-h-0">
+        {/* Days Header (Singkat) */}
+        <div className="grid grid-cols-7 border-b border-slate-200/80 bg-slate-50/80 text-center py-2 sm:py-2.5 flex-shrink-0">
+          {DAYS_HEADER.map((day) => (
+            <span
+              key={day.short}
+              title={day.full}
+              className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider ${
+                day.color || "text-slate-500"
+              }`}
+            >
+              {day.short}
+            </span>
+          ))}
         </div>
 
         {/* Days Cells Grid */}
-        <div className="flex-1 grid grid-cols-7 grid-rows-5 md:grid-rows-6 divide-x divide-y divide-slate-100 overflow-y-auto">
-          {days.map((day, idx) => {
+        <div
+          className="flex-1 grid grid-cols-7 gap-[1px] bg-slate-200/80 min-h-0"
+          style={{ gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))` }}
+        >
+          {days.map((day) => {
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isDayToday = isToday(day);
             const dayAgendas = getAgendasForDay(day);
+            const isMobileSelected = isSameDay(day, selectedMobileDate);
 
             return (
               <div
                 key={day.toISOString()}
-                onClick={() => handleOpenAddModal(day)}
-                className={`min-h-[90px] md:min-h-[110px] p-1.5 md:p-2 flex flex-col transition-colors cursor-pointer group hover:bg-slate-50/80 ${
-                  !isCurrentMonth ? "bg-slate-50/40 text-slate-400" : "bg-white text-slate-800"
-                }`}
+                onClick={() => {
+                  setSelectedMobileDate(day);
+                  if (typeof window !== "undefined" && window.innerWidth >= 768) {
+                    handleOpenAddModal(day);
+                  }
+                }}
+                className={`h-full min-h-0 p-1 md:p-1.5 lg:p-2 flex flex-col transition-all cursor-pointer group hover:bg-slate-50/90 relative overflow-hidden ${
+                  !isCurrentMonth ? "bg-slate-50/50 text-slate-400" : "bg-white text-slate-800"
+                } ${isMobileSelected ? "max-md:bg-primary/5 max-md:ring-2 max-md:ring-inset max-md:ring-primary/50" : ""}`}
               >
-                {/* Date Number */}
-                <div className="flex items-center justify-between mb-1">
+                {/* Date Number & Cell Header */}
+                <div className="flex items-center justify-between flex-shrink-0 md:mb-1">
                   <span
-                    className={`inline-flex items-center justify-center text-xs font-semibold rounded-full w-6 h-6 ${
+                    className={`inline-flex items-center justify-center text-[11px] md:text-xs rounded-full w-5 h-5 md:w-6 md:h-6 transition-all ${
                       isDayToday
                         ? "bg-primary text-white font-bold"
-                        : "group-hover:bg-slate-200 text-slate-700"
+                        : isCurrentMonth
+                        ? "group-hover:bg-slate-200/80 text-slate-700 font-semibold"
+                        : "text-slate-300 font-normal"
                     }`}
                   >
                     {format(day, "d")}
                   </span>
-                  {dayAgendas.length > 0 && (
-                    <span className="text-[10px] text-slate-400 font-medium md:hidden">
-                      {dayAgendas.length}
-                    </span>
+
+                  <span className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-primary transition-opacity hidden md:inline-flex">
+                    <Plus className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+
+                {/* Mobile Dots Row */}
+                <div className="flex md:hidden items-center justify-center gap-0.5 mt-0.5 flex-shrink-0">
+                  {dayAgendas.slice(0, 3).map((a) => {
+                    const config = KATEGORI_CONFIG[a.kategori] || KATEGORI_CONFIG.LAINNYA;
+                    return (
+                      <span
+                        key={a.id}
+                        className={`w-1.5 h-1.5 rounded-full ${config.dot}`}
+                        title={a.judul}
+                      />
+                    );
+                  })}
+                  {dayAgendas.length > 3 && (
+                    <span className="text-[8px] font-bold text-slate-400">+{dayAgendas.length - 3}</span>
                   )}
                 </div>
 
-                {/* Agenda Items List in Day Cell */}
-                <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[80px] scrollbar-none">
+                {/* Desktop Full Agenda Items List */}
+                <div className="hidden md:flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto scrollbar-none">
                   {dayAgendas.map((agenda) => {
                     const config = KATEGORI_CONFIG[agenda.kategori] || KATEGORI_CONFIG.LAINNYA;
                     return (
@@ -406,12 +483,15 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
                           setActiveAgenda(agenda);
                           setIsDetailOpen(true);
                         }}
-                        className={`text-[11px] px-1.5 py-0.5 rounded border ${config.bg} ${config.text} ${config.border} truncate font-medium flex items-center justify-between hover:shadow-xs hover:scale-[1.01] transition-transform`}
+                        className={`text-[11px] px-2 py-0.5 rounded-md border ${config.bg} ${config.text} ${config.border} truncate font-medium flex items-center justify-between gap-1 hover:scale-[1.01] transition-all cursor-pointer flex-shrink-0`}
                         title={agenda.judul}
                       >
-                        <span className="truncate">{agenda.judul}</span>
+                        <span className="truncate flex items-center gap-1.5 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+                          <span className="truncate">{agenda.judul}</span>
+                        </span>
                         {agenda.waktuMulai && (
-                          <span className="text-[9px] opacity-75 shrink-0 ml-1">
+                          <span className="text-[9.5px] font-mono opacity-75 shrink-0 ml-1 bg-black/5 px-1 py-0.2 rounded">
                             {agenda.waktuMulai}
                           </span>
                         )}
@@ -423,6 +503,64 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
             );
           })}
         </div>
+      </div>
+
+      {/* Mobile Selected Date Agenda List (Beneath Calendar) */}
+      <div className="md:hidden mt-3 bg-white rounded-xl border border-slate-200 p-3 flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-xs font-bold text-slate-800 capitalize truncate">
+              {format(selectedMobileDate, "EEEE, d MMMM yyyy", { locale: idLocale })}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleOpenAddModal(selectedMobileDate)}
+            className="h-7 px-2 text-[11px] gap-1 shadow-none border-slate-200 text-slate-700 shrink-0"
+          >
+            <Plus className="h-3 w-3" />
+            <span>Tambah</span>
+          </Button>
+        </div>
+
+        {getAgendasForDay(selectedMobileDate).length === 0 ? (
+          <p className="text-xs text-slate-400 py-2 text-center bg-slate-50 rounded-lg">
+            Tidak ada agenda pada tanggal ini.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto">
+            {getAgendasForDay(selectedMobileDate).map((agenda) => {
+              const config = KATEGORI_CONFIG[agenda.kategori] || KATEGORI_CONFIG.LAINNYA;
+              return (
+                <div
+                  key={agenda.id}
+                  onClick={() => {
+                    setActiveAgenda(agenda);
+                    setIsDetailOpen(true);
+                  }}
+                  className={`p-2.5 rounded-lg border ${config.bg} ${config.border} flex items-start justify-between gap-2 cursor-pointer transition-all active:scale-[0.99]`}
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${config.dot}`} />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold ${config.text} truncate`}>{agenda.judul}</p>
+                      {agenda.deskripsi && (
+                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{agenda.deskripsi}</p>
+                      )}
+                    </div>
+                  </div>
+                  {agenda.waktuMulai && (
+                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-black/5 text-slate-600 shrink-0">
+                      {agenda.waktuMulai}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* MODAL DETAIL AGENDA */}
@@ -588,6 +726,7 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
                       <SelectItem value="SOSIALISASI">Sosialisasi / Bimtek</SelectItem>
                       <SelectItem value="MONITORING_EVALUASI">Monev</SelectItem>
                       <SelectItem value="ACARA_INTERNAL">Acara Internal</SelectItem>
+                      <SelectItem value="PENGINGAT">Pengingat</SelectItem>
                       <SelectItem value="LAINNYA">Lainnya</SelectItem>
                     </SelectContent>
                   </Select>

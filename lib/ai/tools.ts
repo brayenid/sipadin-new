@@ -285,17 +285,31 @@ function parseWitaDate(dateStr: string): Date {
   return new Date();
 }
 
-export function inferKategoriAgenda(judul: string, explicitKategori?: string): "RAPAT" | "PERJALANAN_DINAS" | "SOSIALISASI" | "MONITORING_EVALUASI" | "ACARA_INTERNAL" | "LAINNYA" {
+export function inferKategoriAgenda(judul: string, explicitKategori?: string): "RAPAT" | "PERJALANAN_DINAS" | "SOSIALISASI" | "MONITORING_EVALUASI" | "ACARA_INTERNAL" | "PENGINGAT" | "LAINNYA" {
   if (explicitKategori) {
     const norm = explicitKategori.toUpperCase().trim();
-    if (["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "LAINNYA"].includes(norm)) {
+    if (["RAPAT", "PERJALANAN_DINAS", "SOSIALISASI", "MONITORING_EVALUASI", "ACARA_INTERNAL", "PENGINGAT", "LAINNYA"].includes(norm)) {
       return norm as any;
     }
   }
 
   const lower = (judul || "").toLowerCase();
 
-  // 1. Acara Internal / Perayaan / Pawai / Upacara / Olahraga
+  // 1. Pengingat / Pakaian Dinas / Seragam / Jadwal Baju
+  if (
+    lower.includes("pengingat") ||
+    lower.includes("ingat") ||
+    lower.includes("pakaian dinas") ||
+    lower.includes("pdh") ||
+    lower.includes("seragam") ||
+    lower.includes("wastra") ||
+    lower.includes("korpri") ||
+    lower.includes("jadwal baju")
+  ) {
+    return "PENGINGAT";
+  }
+
+  // 2. Acara Internal / Perayaan / Pawai / Upacara / Olahraga
   if (
     lower.includes("pawai") ||
     lower.includes("obor") ||
@@ -320,7 +334,7 @@ export function inferKategoriAgenda(judul: string, explicitKategori?: string): "
     return "ACARA_INTERNAL";
   }
 
-  // 2. Sosialisasi / Bimtek / Pelatihan / Workshop
+  // 3. Sosialisasi / Bimtek / Pelatihan / Workshop
   if (
     lower.includes("sosialisasi") ||
     lower.includes("bimtek") ||
@@ -337,7 +351,7 @@ export function inferKategoriAgenda(judul: string, explicitKategori?: string): "
     return "SOSIALISASI";
   }
 
-  // 3. Perjalanan Dinas / Kunker / Studi Banding
+  // 4. Perjalanan Dinas / Kunker / Studi Banding
   if (
     lower.includes("dinas luar") ||
     lower.includes("perjalanan dinas") ||
@@ -351,7 +365,7 @@ export function inferKategoriAgenda(judul: string, explicitKategori?: string): "
     return "PERJALANAN_DINAS";
   }
 
-  // 4. Monitoring & Evaluasi / Sidak / Pengawasan
+  // 5. Monitoring & Evaluasi / Sidak / Pengawasan
   if (
     lower.includes("monev") ||
     lower.includes("monitoring") ||
@@ -365,7 +379,7 @@ export function inferKategoriAgenda(judul: string, explicitKategori?: string): "
     return "MONITORING_EVALUASI";
   }
 
-  // 5. Rapat / Koordinasi / Pertemuan
+  // 6. Rapat / Koordinasi / Pertemuan
   if (
     lower.includes("rapat") ||
     lower.includes("koordinasi") ||

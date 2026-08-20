@@ -131,3 +131,85 @@ export async function deleteAgenda(id: string) {
   revalidatePath("/dashboard/agenda");
   return { success: true };
 }
+
+export async function importAgendasFromExcel(
+  items: Array<{
+    judul: string;
+    kategori?: string;
+    tanggalMulai: string;
+    tanggalSelesai?: string | null;
+    waktuMulai?: string | null;
+    waktuSelesai?: string | null;
+    lokasi?: string | null;
+    deskripsi?: string | null;
+    pic?: string | null;
+    status?: string;
+  }>
+) {
+  const session = await auth();
+  if (!session?.user?.teamId || !session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const validCategories: Record<string, KategoriAgenda> = {
+    RAPAT: "RAPAT",
+    PERJALANAN_DINAS: "PERJALANAN_DINAS",
+    "PERJALANAN DINAS": "PERJALANAN_DINAS",
+    PERJADIN: "PERJALANAN_DINAS",
+    SOSIALISASI: "SOSIALISASI",
+    "SOSIALISASI / BIMTEK": "SOSIALISASI",
+    BIMTEK: "SOSIALISASI",
+    MONITORING_EVALUASI: "MONITORING_EVALUASI",
+    "MONITORING EVALUASI": "MONITORING_EVALUASI",
+    MONEV: "MONITORING_EVALUASI",
+    ACARA_INTERNAL: "ACARA_INTERNAL",
+    "ACARA INTERNAL": "ACARA_INTERNAL",
+    PENGINGAT: "PENGINGAT",
+    LAINNYA: "LAINNYA",
+  };
+
+  const validStatuses: Record<string, StatusAgenda> = {
+    DIRENCANAKAN: "DIRENCANAKAN",
+    BERLANGSUNG: "BERLANGSUNG",
+    "SEDANG BERLANGSUNG": "BERLANGSUNG",
+    SELESAI: "SELESAI",
+    DIBATALKAN: "DIBATALKAN",
+  };
+
+  const dataToInsert = items
+    .filter((item) => item.judul && item.tanggalMulai)
+    .map((item) => {
+      const katKey = (item.kategori || "PENGINGAT").toUpperCase().trim();
+      const kategori: KategoriAgenda = validCategories[katKey] || "PENGINGAT";
+
+      const stKey = (item.status || "DIRENCANAKAN").toUpperCase().trim();
+      const status: StatusAgenda = validStatuses[stKey] || "DIRENCANAKAN";
+
+      return {
+        judul: item.judul.trim(),
+        kategori,
+        tanggalMulai: new Date(item.tanggalMulai),
+        tanggalSelesai: item.tanggalSelesai ? new Date(item.tanggalSelesai) : null,
+        waktuMulai: item.waktuMulai || null,
+        waktuSelesai: item.waktuSelesai || null,
+        lokasi: item.lokasi || null,
+        deskripsi: item.deskripsi || null,
+        pic: item.pic || null,
+        status,
+        teamId: session.user.teamId,
+        createdById: session.user.id,
+      };
+    });
+
+  if (dataToInsert.length === 0) {
+    return { success: false, count: 0, message: "Tidak ada baris data valid yang dapat diimpor." };
+  }
+
+  // Batch insert
+  await prisma.agendaTim.createMany({
+    data: dataToInsert,
+  });
+
+  revalidatePath("/dashboard/agenda");
+  return { success: true, count: dataToInsert.length };
+}
