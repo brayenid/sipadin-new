@@ -26,7 +26,6 @@ import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-compression";
 import { submitSelfAbsensi, submitSelfAbsensiPulang, searchPublicPesertaAgenda } from "@/app/actions/absensi";
-import AiDiagnosticInspector, { DetectorConfig, AiDetailedLog } from "./AiDiagnosticInspector";
 
 interface PesertaItem {
   id: string;
@@ -196,387 +195,6 @@ export default function PublicAbsensiForm({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // AI Face Detection & Biometrics State
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [isAiInitializing, setIsAiInitializing] = useState(true);
-  const [isWaitingAiToCapture, setIsWaitingAiToCapture] = useState(false);
-  const [faceCount, setFaceCount] = useState<number | null>(null);
-  const [extractedFaceDescriptor, setExtractedFaceDescriptor] = useState<number[] | null>(null);
-  const faceApiRef = useRef<any>(null);
-  const modelLoadPromiseRef = useRef<Promise<boolean> | null>(null);
-
-  // Inspector & Live Diagnostics State
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [detectorConfig, setDetectorConfig] = useState<DetectorConfig>({
-    scoreThreshold: 0.45,
-    inputSize: 224,
-    requireLandmarks: false,
-    minBoxRatio: 0.08,
-    backend: "webgl",
-  });
-  const detectorConfigRef = useRef<DetectorConfig>(detectorConfig);
-  useEffect(() => {
-    detectorConfigRef.current = detectorConfig;
-  }, [detectorConfig]);
-
-  const [aiDetailedLog, setAiDetailedLog] = useState<AiDetailedLog>({
-    browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "-",
-    tfBackend: "webgl",
-    tinyLoaded: false,
-    landmarkLoaded: false,
-    recogLoaded: false,
-    videoReady: 0,
-    videoRes: "-",
-    fps: 0,
-    inferenceTimeMs: 0,
-    rawCount: 0,
-    rawScores: [],
-    rawBoxes: [],
-    distinctCount: 0,
-    smoothedCount: 0,
-    landmarkCheckResults: [],
-    descriptorStatus: "BELUM JEPRET",
-    lastError: "-",
-    timestamp: "",
-  });
-
-  const handleSwitchBackend = async (targetBackend: "webgl" | "cpu") => {
-    const faceapi = faceApiRef.current;
-    if (faceapi && (faceapi as any).tf) {
-      const tf = (faceapi as any).tf;
-      if (typeof tf.setBackend === "function") {
-        await tf.setBackend(targetBackend);
-        if (typeof tf.ready === "function") {
-          await tf.ready();
-        }
-      }
-      setAiDetailedLog((prev) => ({ ...prev, tfBackend: targetBackend }));
-    }
-  };
-
-  // Load FaceAPI Models once in browser with Fast-Track detector
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadAiModels = async (): Promise<boolean> => {
-      try {
-        const faceapi = await import("@vladmandic/face-api");
-        faceApiRef.current = faceapi;
-
-        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) dengan perbaikan Float32 Shader Overflow
-        const tf = (faceapi as any).tf;
-        if (tf) {
-          try {
-            if (typeof tf.env === "function") {
-              // Nonaktifkan float16 forcing yang menyebabkan box regression melompat ke 1e+280 di Chrome Android
-              try { tf.env().set("WEBGL_FORCE_F16_TEXTURES", false); } catch {}
-              try { tf.env().set("WEBGL_RENDER_FLOAT32_CAPABLE", true); } catch {}
-              try { tf.env().set("WEBGL_PACK", false); } catch {}
-              try { tf.env().set("WEBGL_PACK_BINARY_OPERATIONS", false); } catch {}
-            }
-            if (typeof tf.setBackend === "function") {
-              await tf.setBackend("webgl").catch(() => tf.setBackend("cpu"));
-            }
-            if (typeof tf.ready === "function") {
-              await tf.ready();
-            }
-          } catch (tfErr) {
-            console.warn("TensorFlow backend init fallback:", tfErr);
-          }
-        }
-
-        const MODEL_URL = "/models";
-
-        // 1. FAST-TRACK: Tiny Face Detector (190 KB) & Tiny Landmarks (77 KB)
-        await Promise.all([
-          !faceapi.nets.tinyFaceDetector.isLoaded
-            ? faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-          !faceapi.nets.faceLandmark68TinyNet.isLoaded
-            ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-        ]);
-
-        // Langsung aktifkan detector & landmark agar akurasi validasi wajah 100% tepat dan instan
-        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
-          setModelsLoaded(true);
-          setIsAiInitializing(false);
-          setAiDetailedLog((p) => ({
-            ...p,
-            tinyLoaded: true,
-            landmarkLoaded: !!faceapi.nets.faceLandmark68TinyNet.isLoaded,
-          }));
-        }
-
-        // 2. BACKGROUND-TRACK: Full Landmarks (356 KB) & Recognition Net (6.4 MB)
-        await Promise.allSettled([
-          !faceapi.nets.faceLandmark68Net.isLoaded
-            ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-          !faceapi.nets.faceRecognitionNet.isLoaded
-            ? faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-        ]);
-
-        if (isMounted) {
-          setAiDetailedLog((p) => ({
-            ...p,
-            landmarkLoaded:
-              !!faceapi.nets.faceLandmark68TinyNet?.isLoaded ||
-              !!faceapi.nets.faceLandmark68Net?.isLoaded,
-            recogLoaded: !!faceapi.nets.faceRecognitionNet?.isLoaded,
-          }));
-        }
-
-        return true;
-      } catch (err: any) {
-        console.warn("FaceAPI models load error:", err);
-        if (isMounted) {
-          setIsAiInitializing(false);
-          setAiDetailedLog((p) => ({ ...p, lastError: String(err?.message || err) }));
-        }
-        return false;
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      modelLoadPromiseRef.current = loadAiModels();
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Buffer temporal smoothing untuk kestabilan deteksi wajah (mencegah flickering di Chrome)
-  const faceCountHistoryRef = useRef<number[]>([]);
-
-  // Real-time AI Face Detection loop (Ringan, Cepat, Akurat dengan Diagnostic Monitor)
-  useEffect(() => {
-    if (!isCameraActive || !modelsLoaded || !videoRef.current) {
-      setFaceCount(null);
-      faceCountHistoryRef.current = [];
-      return;
-    }
-
-    let isScanning = true;
-    const interval = setInterval(async () => {
-      const faceapi = faceApiRef.current;
-      if (
-        !isScanning ||
-        !videoRef.current ||
-        !faceapi ||
-        !faceapi.nets?.tinyFaceDetector?.isLoaded ||
-        videoRef.current.paused ||
-        videoRef.current.ended
-      ) {
-        return;
-      }
-
-      const startTime = performance.now();
-
-      try {
-        const video = videoRef.current;
-        if (video.readyState >= 2 && video.videoWidth > 0) {
-          const vWidth = video.videoWidth;
-          const vHeight = video.videoHeight;
-          const currentConfig = detectorConfigRef.current;
-          const hasTinyLandmarks = !!faceapi.nets?.faceLandmark68TinyNet?.isLoaded;
-
-          // Gunakan config dinamis dari Inspector
-          const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-            inputSize: currentConfig.inputSize,
-            scoreThreshold: currentConfig.scoreThreshold,
-          });
-
-          // Jalankan detector (opsional dengan verifikasi landmark jika diaktifkan)
-          let rawDetections: any[] = [];
-          if (currentConfig.requireLandmarks && hasTinyLandmarks) {
-            rawDetections = await faceapi
-              .detectAllFaces(video, detectorOptions)
-              .withFaceLandmarks(true);
-          } else {
-            rawDetections = await faceapi.detectAllFaces(video, detectorOptions);
-          }
-
-          const endTime = performance.now();
-          const inferenceTimeMs = Math.round(endTime - startTime);
-          const fps = Math.round(1000 / (inferenceTimeMs + 250));
-
-          if (isScanning && Array.isArray(rawDetections)) {
-            // 1. Ekstrak & validasi koordinat box (buang nilai overflow/Infinity/NaN dari WebGL float16 glitch)
-            const minSize = Math.max(30, Math.min(vWidth, vHeight) * currentConfig.minBoxRatio);
-            const rawBoxesInfo: { x: number; y: number; width: number; height: number; score: number }[] = [];
-            const rawScores: number[] = [];
-            const landmarkChecks: { faceIdx: number; passed: boolean; pointsCount: number; detail?: string }[] = [];
-            let hasCorruptedGpuOverflow = false;
-
-            const validBoxes = rawDetections
-              .map((d: any, idx: number) => {
-                const det = d.detection || d;
-                const b = det.box || det._box || det;
-                const rawScore = typeof det.score === "number" ? det.score : det._score || 0;
-                const landmarks = d.landmarks || null;
-                const pointsCount = landmarks?.positions?.length || 0;
-                const hasValidLandmark = pointsCount === 68;
-
-                const bx = Number(b.x || b._x || 0);
-                const by = Number(b.y || b._y || 0);
-                const bw = Number(b.width || b._width || 0);
-                const bh = Number(b.height || b._height || 0);
-
-                // Deteksi jika terjadi GPU overflow (misal angka astronomis 1e+280 atau NaN)
-                const isCorrupted =
-                  !isFinite(bx) ||
-                  !isFinite(by) ||
-                  !isFinite(bw) ||
-                  !isFinite(bh) ||
-                  bw > vWidth * 2 ||
-                  bh > vHeight * 2 ||
-                  bx < -vWidth * 2 ||
-                  by < -vHeight * 2 ||
-                  (bw <= 0 && bh <= 0);
-
-                if (isCorrupted) {
-                  hasCorruptedGpuOverflow = true;
-                }
-
-                rawScores.push(Number(rawScore.toFixed(3)));
-                rawBoxesInfo.push({
-                  x: Math.round(bx),
-                  y: Math.round(by),
-                  width: Math.round(bw),
-                  height: Math.round(bh),
-                  score: Number(rawScore.toFixed(3)),
-                });
-
-                landmarkChecks.push({
-                  faceIdx: idx + 1,
-                  passed: hasValidLandmark,
-                  pointsCount,
-                  detail: hasValidLandmark ? "Valid 68 points" : `Hanya ${pointsCount} points`,
-                });
-
-                return {
-                  x: bx,
-                  y: by,
-                  width: bw,
-                  height: bh,
-                  score: rawScore,
-                  isCorrupted,
-                  hasValidLandmark: currentConfig.requireLandmarks ? hasValidLandmark : true,
-                };
-              })
-              .filter(
-                (b) =>
-                  !b.isCorrupted &&
-                  b.hasValidLandmark &&
-                  b.score >= currentConfig.scoreThreshold &&
-                  b.width >= minSize &&
-                  b.height >= minSize &&
-                  b.width <= vWidth * 0.98 &&
-                  b.height <= vHeight * 0.98
-              )
-              .sort((a, b) => b.score - a.score);
-
-            // Auto Fallback: Jika WebGL terus menerus mengalami GPU overflow shader glitch, alihkan backend ke CPU
-            if (hasCorruptedGpuOverflow && currentConfig.backend === "webgl") {
-              const tf = (faceapi as any).tf;
-              if (tf && typeof tf.setBackend === "function") {
-                console.warn("[FaceAPI] Terdeteksi WebGL float overflow, beralih ke backend CPU...");
-                tf.setBackend("cpu").then(() => tf.ready());
-                detectorConfigRef.current = { ...currentConfig, backend: "cpu" };
-                setDetectorConfig((prev) => ({ ...prev, backend: "cpu" }));
-              }
-            }
-
-            // 2. Non-Maximum Suppression (NMS) & Cluster Merging
-            const distinctFaces: typeof validBoxes = [];
-
-            for (const box of validBoxes) {
-              let isDuplicateProposal = false;
-              const boxCenterX = box.x + box.width / 2;
-              const boxCenterY = box.y + box.height / 2;
-
-              for (const accepted of distinctFaces) {
-                const xA = Math.max(box.x, accepted.x);
-                const yA = Math.max(box.y, accepted.y);
-                const xB = Math.min(box.x + box.width, accepted.x + accepted.width);
-                const yB = Math.min(box.y + box.height, accepted.y + accepted.height);
-                const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
-                const unionArea =
-                  box.width * box.height + accepted.width * accepted.height - interArea;
-                const iou = unionArea > 0 ? interArea / unionArea : 0;
-
-                const isCenterInside =
-                  boxCenterX >= accepted.x &&
-                  boxCenterX <= accepted.x + accepted.width &&
-                  boxCenterY >= accepted.y &&
-                  boxCenterY <= accepted.y + accepted.height;
-
-                if (iou > 0.2 || isCenterInside) {
-                  isDuplicateProposal = true;
-                  break;
-                }
-              }
-
-              if (!isDuplicateProposal) {
-                distinctFaces.push(box);
-              }
-            }
-
-            const rawCount = distinctFaces.length;
-
-            // 3. Temporal Smoothing (Window 3 frame) untuk menstabilkan UI
-            const history = faceCountHistoryRef.current;
-            history.push(rawCount);
-            if (history.length > 3) history.shift();
-
-            const countsMap = new Map<number, number>();
-            history.forEach((c) => countsMap.set(c, (countsMap.get(c) || 0) + 1));
-            let smoothedCount = rawCount;
-            let maxFrequency = 0;
-            countsMap.forEach((freq, val) => {
-              if (freq > maxFrequency) {
-                maxFrequency = freq;
-                smoothedCount = val;
-              }
-            });
-
-            setFaceCount(smoothedCount);
-            setAiDetailedLog({
-              browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "-",
-              tfBackend: (faceapi as any).tf?.getBackend ? (faceapi as any).tf.getBackend() : currentConfig.backend,
-              tinyLoaded: !!faceapi.nets?.tinyFaceDetector?.isLoaded,
-              landmarkLoaded: !!faceapi.nets?.faceLandmark68TinyNet?.isLoaded,
-              recogLoaded: !!faceapi.nets?.faceRecognitionNet?.isLoaded,
-              videoReady: video.readyState,
-              videoRes: `${vWidth}x${vHeight}`,
-              fps,
-              inferenceTimeMs,
-              rawCount: rawDetections.length,
-              rawScores,
-              rawBoxes: rawBoxesInfo,
-              distinctCount: distinctFaces.length,
-              smoothedCount,
-              landmarkCheckResults: landmarkChecks,
-              descriptorStatus: extractedFaceDescriptor ? "TEREVALUASI (OK)" : "BELUM JEPRET",
-              lastError: "-",
-              timestamp: new Date().toISOString(),
-            });
-          }
-        }
-      } catch (err: any) {
-        console.warn("[Realtime Face Detection Error]:", err);
-        setAiDetailedLog((p) => ({ ...p, lastError: String(err?.message || err) }));
-      }
-    }, 250);
-
-    return () => {
-      isScanning = false;
-      clearInterval(interval);
-    };
-  }, [isCameraActive, modelsLoaded]);
-
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
@@ -676,30 +294,7 @@ export default function PublicAbsensiForm({
   };
 
   const capturePhoto = async () => {
-    if (!videoRef.current || isWaitingAiToCapture) return;
-
-    // Graceful Period: jika engine AI sedang memuat (dan belum cut-off), tunggu sebentar atau maksimal cut-off 3.5 detik
-    if (isAiInitializing && !modelsLoaded && modelLoadPromiseRef.current) {
-      setIsWaitingAiToCapture(true);
-      try {
-        const timeoutPromise = new Promise<boolean>((resolve) =>
-          setTimeout(() => resolve(false), 3500)
-        );
-        await Promise.race([modelLoadPromiseRef.current, timeoutPromise]);
-      } catch (e) {
-        console.warn("AI engine wait timeout / error:", e);
-      } finally {
-        setIsWaitingAiToCapture(false);
-        setIsAiInitializing(false);
-      }
-    }
-
     if (!videoRef.current) return;
-
-    // Single-face constraint warning (hanya peringatan jika terdeteksi banyak orang, tidak memblokir kamera redup/buram)
-    if (modelsLoaded && faceCount !== null && faceCount > 2) {
-      toast.warning(`Terdeteksi ${faceCount} orang di layar. Pastikan Anda berada sendiri di dalam frame.`);
-    }
 
     const video = videoRef.current;
     const vWidth = video.videoWidth || 640;
@@ -742,97 +337,6 @@ export default function PublicAbsensiForm({
 
     // Gambar hanya area yang terlihat pada viewfinder (WYSIWYG)
     ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-
-    // Langsung ekstrak biometric face descriptor dengan mode toleransi tinggi (low-light & low-res adaptive)
-    const faceapi = faceApiRef.current;
-    if (faceapi && faceapi.nets?.tinyFaceDetector?.isLoaded) {
-      try {
-        if (!faceapi.nets.faceRecognitionNet?.isLoaded || !faceapi.nets.faceLandmark68TinyNet?.isLoaded) {
-          await Promise.allSettled([
-            !faceapi.nets.faceLandmark68TinyNet?.isLoaded
-              ? faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models")
-              : Promise.resolve(),
-            !faceapi.nets.faceRecognitionNet?.isLoaded
-              ? faceapi.nets.faceRecognitionNet.loadFromUri("/models")
-              : Promise.resolve(),
-          ]);
-        }
-
-        let detection: any = null;
-
-        if (faceapi.nets.faceRecognitionNet?.isLoaded) {
-          // Percobaan 1: Tiny Detector Resolusi 320 dengan Tiny Landmark (Standard)
-          try {
-            detection = await faceapi
-              .detectSingleFace(
-                canvas,
-                new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 })
-              )
-              .withFaceLandmarks(true)
-              .withFaceDescriptor();
-          } catch {}
-
-          // Percobaan 2: Tiny Detector Resolusi 224 dengan Tiny Landmark
-          if (!detection) {
-            try {
-              detection = await faceapi
-                .detectSingleFace(
-                  canvas,
-                  new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 })
-                )
-                .withFaceLandmarks(true)
-                .withFaceDescriptor();
-            } catch {}
-          }
-
-          // Percobaan 3: Menggunakan Full Landmark (Standard 68)
-          if (!detection && faceapi.nets.faceLandmark68Net?.isLoaded) {
-            try {
-              detection = await faceapi
-                .detectSingleFace(
-                  canvas,
-                  new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 })
-                )
-                .withFaceLandmarks(false)
-                .withFaceDescriptor();
-            } catch {}
-          }
-
-          // Percobaan 4: Langsung dari elemen video aktif (Uncropped video feed)
-          if (!detection && videoRef.current) {
-            try {
-              detection = await faceapi
-                .detectSingleFace(
-                  videoRef.current,
-                  new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 })
-                )
-                .withFaceLandmarks(true)
-                .withFaceDescriptor();
-            } catch {}
-          }
-        }
-
-        if (detection && detection.descriptor) {
-          const descArray = Array.from(detection.descriptor) as number[];
-          setExtractedFaceDescriptor(descArray);
-          setAiDetailedLog((p) => ({
-            ...p,
-            descriptorStatus: `✓ BERHASIL (${descArray.length}-d)`,
-          }));
-        } else {
-          setAiDetailedLog((p) => ({
-            ...p,
-            descriptorStatus: "GAGAL (Wajah tidak terbaca saat jepret)",
-          }));
-        }
-      } catch (err: any) {
-        console.warn("[FaceAPI Adaptive Extract Warning]:", err);
-        setAiDetailedLog((p) => ({
-          ...p,
-          descriptorStatus: `ERR: ${String(err?.message || err)}`,
-        }));
-      }
-    }
 
     canvas.toBlob(
       async (blob) => {
@@ -1090,7 +594,6 @@ export default function PublicAbsensiForm({
         accuracy: currentGps?.accuracy || null,
         lokasiText: currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        faceDescriptor: extractedFaceDescriptor || null,
       };
 
       if (!isCustomPeserta) {
@@ -1769,15 +1272,11 @@ export default function PublicAbsensiForm({
           {agenda.requirePhoto && (status !== "IZIN" || isCheckOutMode) && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
               <div>
-                <label
-                  onClick={() => setIsInspectorOpen((prev) => !prev)}
-                  className="block text-xs font-bold text-slate-800 select-none cursor-pointer"
-                  title="Klik untuk membuka AI Biometric Inspector"
-                >
+                <label className="block text-xs font-bold text-slate-800 select-none cursor-default">
                   {isCheckOutMode ? "Foto Selfie Presensi Pulang" : "Foto Selfie Kehadiran"} <span className="text-red-500">*</span>
                 </label>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Pastikan seluruh wajah terlihat utuh menghadap kamera. <strong className="text-slate-700 font-semibold">Jangan tutupi mulut/hidung dengan tangan, masker, atau kacamata hitam</strong> agar verifikasi biometrik valid.
+                  Pastikan seluruh wajah terlihat jelas menghadap kamera. <strong className="text-slate-700 font-semibold">Jangan tutupi wajah</strong> agar bukti kehadiran valid.
                 </p>
               </div>
 
@@ -1798,85 +1297,18 @@ export default function PublicAbsensiForm({
                       className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
                     />
 
-                    {/* Layer Panduan Siluet / Posisi Wajah (Smart AI Face Oval Guide Overlay) */}
+                    {/* Layer Panduan Siluet / Posisi Wajah Oval */}
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6 z-10">
-                      <div
-                        className={`w-[175px] h-[230px] sm:w-[195px] sm:h-[250px] rounded-[50%] border-2 transition-all duration-300 flex flex-col items-center justify-center relative ${
-                          faceCount === 1
-                            ? "border-emerald-400 border-solid shadow-[0_0_25px_rgba(52,211,153,0.6),0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-emerald-400/50"
-                            : faceCount && faceCount > 1
-                            ? "border-rose-500 border-solid shadow-[0_0_25px_rgba(244,63,94,0.6),0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-rose-500/50 animate-pulse"
-                            : isAiInitializing && !modelsLoaded
-                            ? "border-indigo-400/80 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] ring-1 ring-indigo-400/40"
-                            : "border-white/70 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
-                        }`}
-                      >
+                      <div className="w-[175px] h-[230px] sm:w-[195px] sm:h-[250px] rounded-[50%] border-2 border-white/70 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center relative">
                         {/* Upper Crosshair mark */}
-                        <div
-                          className={`w-3 h-0.5 absolute top-2 rounded-full transition-colors ${
-                            faceCount === 1 ? "bg-emerald-400" : faceCount && faceCount > 1 ? "bg-rose-400" : "bg-white/70"
-                          }`}
-                        />
+                        <div className="w-3 h-0.5 absolute top-2 rounded-full bg-white/70" />
                         {/* Lower Crosshair mark */}
-                        <div
-                          className={`w-3 h-0.5 absolute bottom-2 rounded-full transition-colors ${
-                            faceCount === 1 ? "bg-emerald-400" : faceCount && faceCount > 1 ? "bg-rose-400" : "bg-white/70"
-                          }`}
-                        />
-
-                        {/* Indikator Lingkaran Download/Inisialisasi AI */}
-                        {isAiInitializing && !modelsLoaded && (
-                          <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                            <div className="relative w-12 h-12 flex items-center justify-center">
-                              <div className="w-12 h-12 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin absolute" />
-                              <div className="w-8 h-8 rounded-full bg-indigo-500/20 backdrop-blur-xs flex items-center justify-center">
-                                <Loader2 className="w-4 h-4 text-indigo-300 animate-spin" />
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-semibold text-white/80 bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-white/10 shadow-sm">
-                              Menyiapkan AI...
-                            </span>
-                          </div>
-                        )}
+                        <div className="w-3 h-0.5 absolute bottom-2 rounded-full bg-white/70" />
                       </div>
 
-                      {/* Dynamic AI Face Detection Badge */}
-                      <div
-                        className={`mt-3 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide shadow-md backdrop-blur-md transition-all flex items-center gap-1.5 ${
-                          isWaitingAiToCapture
-                            ? "bg-amber-950/85 border-amber-500/80 text-amber-200 animate-pulse"
-                            : isAiInitializing && !modelsLoaded
-                            ? "bg-indigo-950/80 border-indigo-500/60 text-indigo-200"
-                            : faceCount === 1
-                            ? "bg-emerald-950/85 border-emerald-500/80 text-emerald-200"
-                            : faceCount && faceCount > 1
-                            ? "bg-rose-950/85 border-rose-500/80 text-rose-200"
-                            : "bg-black/70 border-white/20 text-white/90"
-                        }`}
-                      >
-                        {isWaitingAiToCapture ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                            <span>Menyiapkan Sensor Biometrik...</span>
-                          </>
-                        ) : isAiInitializing && !modelsLoaded ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin text-indigo-300" />
-                            <span>Mengunduh Engine Biometrik...</span>
-                          </>
-                        ) : faceCount === 1 ? (
-                          <>
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            <span>Wajah Terdeteksi (1 Orang)</span>
-                          </>
-                        ) : faceCount && faceCount > 1 ? (
-                          <>
-                            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                            <span>Terdeteksi {faceCount} Orang! Hanya Boleh 1 Orang</span>
-                          </>
-                        ) : (
-                          <span>Posisikan Wajah di Dalam Garis</span>
-                        )}
+                      {/* Badge Panduan Posisi Wajah */}
+                      <div className="mt-3 px-3.5 py-1.5 rounded-full border border-white/20 bg-black/70 text-white/90 text-[11px] font-medium tracking-wide shadow-md backdrop-blur-md">
+                        Posisikan Wajah di Dalam Garis
                       </div>
                     </div>
 
@@ -1884,8 +1316,7 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={toggleCameraFacing}
-                        disabled={isWaitingAiToCapture}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition cursor-pointer disabled:opacity-50"
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition cursor-pointer"
                         title="Putar Kamera"
                       >
                         <SwitchCamera className="w-4 h-4" />
@@ -1894,24 +1325,16 @@ export default function PublicAbsensiForm({
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        disabled={isWaitingAiToCapture}
-                        className="relative p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer disabled:opacity-90 disabled:cursor-wait"
+                        className="relative p-3.5 rounded-full bg-white text-slate-900 shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer"
                         title="Ambil Foto"
                       >
-                        {isWaitingAiToCapture ? (
-                          <div className="w-6 h-6 flex items-center justify-center">
-                            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                          </div>
-                        ) : (
-                          <Camera className="w-6 h-6" />
-                        )}
+                        <Camera className="w-6 h-6" />
                       </button>
 
                       <button
                         type="button"
                         onClick={stopCamera}
-                        disabled={isWaitingAiToCapture}
-                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs cursor-pointer disabled:opacity-50"
+                        className="p-2.5 rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition text-xs cursor-pointer"
                       >
                         Batal
                       </button>
@@ -1963,24 +1386,6 @@ export default function PublicAbsensiForm({
                     </button>
                   </div>
                 )}
-              </div>
-
-              {/* Tombol AI Inspector & Diagnostic (Mudah diakses untuk audit & live telemetry) */}
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsInspectorOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-900 text-indigo-300 hover:bg-slate-800 border border-indigo-500/30 transition shadow-xs cursor-pointer"
-                >
-                  <span>🔬</span>
-                  <span>{isInspectorOpen ? "Tutup AI Inspector" : "Buka AI Inspector & Live Values"}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-                </button>
-
-                <div className="text-[10px] text-slate-400 font-mono">
-                  {aiDetailedLog.inferenceTimeMs > 0 && `${aiDetailedLog.inferenceTimeMs}ms • `}
-                  {aiDetailedLog.tfBackend.toUpperCase()}
-                </div>
               </div>
             </div>
           )}
@@ -2202,17 +1607,6 @@ export default function PublicAbsensiForm({
           </div>
         </div>
       )}
-
-      {/* Dev AI Biometric Diagnostic Inspector Modal */}
-      <AiDiagnosticInspector
-        isOpen={isInspectorOpen}
-        onClose={() => setIsInspectorOpen(false)}
-        log={aiDetailedLog}
-        config={detectorConfig}
-        onUpdateConfig={(newConf) => setDetectorConfig((prev) => ({ ...prev, ...newConf }))}
-        onSwitchBackend={handleSwitchBackend}
-        extractedDescriptor={extractedFaceDescriptor}
-      />
     </div>
   );
 }
