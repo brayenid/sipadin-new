@@ -208,6 +208,23 @@ export default function PublicAbsensiForm({
       try {
         const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js");
         faceApiRef.current = faceapi;
+
+        // Initialize TF Backend safely (WebGL -> CPU fallback, never let it fail on wasm 404)
+        const tf = (faceapi as any)?.tf;
+        if (tf) {
+          try {
+            if (typeof tf.setBackend === "function") await tf.setBackend("webgl");
+            if (typeof tf.ready === "function") await tf.ready();
+          } catch {
+            try {
+              if (typeof tf.setBackend === "function") await tf.setBackend("cpu");
+              if (typeof tf.ready === "function") await tf.ready();
+            } catch (e) {
+              console.warn("[TF Backend Init Warning]:", e);
+            }
+          }
+        }
+
         const MODEL_URL = "/models";
 
         // Load Tiny Face Detector
@@ -738,29 +755,6 @@ export default function PublicAbsensiForm({
         uploadedPhotoUrl = uploadJson.url;
       }
 
-      // Ekstraksi darurat face descriptor dari photoDataUrl jika state belum terisi
-      let finalFaceDescriptor = extractedFaceDescriptor;
-      const faceapi = faceApiRef.current;
-      if (!finalFaceDescriptor && photoDataUrl && faceapi) {
-        try {
-          const img = new Image();
-          img.src = photoDataUrl;
-          await new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = resolve;
-          });
-          const detection = await faceapi
-            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }))
-            .withFaceLandmarks(true)
-            .withFaceDescriptor();
-          if (detection && detection.descriptor) {
-            finalFaceDescriptor = Array.from(detection.descriptor);
-          }
-        } catch (e) {
-          console.warn("[FaceAPI Fallback Extract Error]:", e);
-        }
-      }
-
       const payload: any = {
         publicToken: agenda.publicToken,
         status,
@@ -773,7 +767,7 @@ export default function PublicAbsensiForm({
         accuracy: currentGps?.accuracy || null,
         lokasiText: currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        faceDescriptor: finalFaceDescriptor || null,
+        faceDescriptor: extractedFaceDescriptor || null,
       };
 
       if (!isCustomPeserta) {
