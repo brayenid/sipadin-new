@@ -21,7 +21,6 @@ import {
 import {
   bulkUpdateBindingPejabat,
   getPegawaiForBindingPaginated,
-  bulkSetWajibAbsenByFilter,
 } from "@/app/actions/absensi";
 
 type Pegawai = {
@@ -197,35 +196,7 @@ export default function PejabatBindingList({
     );
   };
 
-  const [applyingBulkFilter, setApplyingBulkFilter] = useState(false);
-
-  // Terapkan Wajib Absen ke SELURUH data yang cocok dengan filter (termasuk yang belum di-scroll)
-  const handleSelectAllFilter = async (wajib: boolean) => {
-    setApplyingBulkFilter(true);
-    try {
-      const res = await bulkSetWajibAbsenByFilter({
-        search: search || undefined,
-        eselon: filterEselon !== "ALL" ? filterEselon : undefined,
-        status: filterStatus !== "ALL" ? (filterStatus as any) : undefined,
-        wajibAbsenOpd: wajib,
-      });
-
-      // Update local view
-      setInternalList((prev) => prev.map((item) => ({ ...item, wajibAbsenOpd: wajib })));
-      toast.success(
-        wajib
-          ? `Berhasil menandai seluruh ${res.count} pegawai hasil filter sebagai Wajib Absen.`
-          : `Berhasil membatalkan Wajib Absen untuk seluruh ${res.count} pegawai hasil filter.`
-      );
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menerapkan status masal.");
-    } finally {
-      setApplyingBulkFilter(false);
-    }
-  };
-
-  // Toggle Semua Data yang Sedang Tampil
+  // Toggle Semua Data yang Sedang Tampil (memerlukan klik Simpan untuk simpan permanen)
   const handleSelectAllCurrentPage = (checked: boolean) => {
     setInternalList((prev) =>
       prev.map((item) => ({
@@ -238,6 +209,7 @@ export default function PejabatBindingList({
   const allCurrentPageSelected =
     internalList.length > 0 && internalList.every((item) => item.wajibAbsenOpd);
   const someCurrentPageSelected =
+    internalList.some((item) => item.wajibAbsenOpd);
     internalList.some((item) => item.wajibAbsenOpd);
 
   const handleSaveBulk = async () => {
@@ -399,7 +371,7 @@ export default function PejabatBindingList({
 
           {/* Tabel Pegawai */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto relative">
-            {(isPending || applyingBulkFilter) && (
+            {isPending && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
                 <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
               </div>
@@ -411,12 +383,12 @@ export default function PejabatBindingList({
                   <TableHead className="min-w-[130px] text-center text-xs">
                     <div
                       className="flex items-center justify-center gap-1.5 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
-                      onClick={() => handleSelectAllFilter(!allCurrentPageSelected)}
-                      title={allCurrentPageSelected ? "Batalkan semua wajib absen hasil filter" : "Pilih semua wajib absen hasil filter"}
+                      onClick={() => handleSelectAllCurrentPage(!allCurrentPageSelected)}
+                      title={allCurrentPageSelected ? "Batalkan pilihan semua pegawai pada tabel" : "Pilih semua pegawai pada tabel sebagai Wajib Absen"}
                     >
                       <Checkbox
                         checked={allCurrentPageSelected}
-                        onCheckedChange={(checked) => handleSelectAllFilter(Boolean(checked))}
+                        onCheckedChange={(checked) => handleSelectAllCurrentPage(Boolean(checked))}
                         aria-label="Pilih Semua"
                         className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                       />

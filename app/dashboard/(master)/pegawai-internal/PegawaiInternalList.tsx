@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   bulkUpdatePegawaiTimInternal,
-  bulkSetTimInternalByFilter,
   getPegawaisPaginated,
 } from "@/app/actions/pegawai";
 import {
@@ -23,12 +22,12 @@ import {
   Save,
   AlertCircle,
   Search,
+  CheckCircle2,
+  ShieldCheck,
   FilterX,
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
-  CheckCircle2,
-  ShieldCheck,
 } from "lucide-react";
 import ExcelColumnFilter from "../pegawai/ExcelColumnFilter";
 
@@ -67,7 +66,7 @@ export default function PegawaiInternalList({
   isSuperAdmin = false,
 }: {
   initialData: Pegawai[];
-  pagination?: PaginationMeta;
+  pagination: PaginationMeta;
   stats: StatsMeta;
   isSuperAdmin?: boolean;
 }) {
@@ -78,7 +77,6 @@ export default function PegawaiInternalList({
   const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map((p) => ({ ...p })));
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkFilterLoading, setBulkFilterLoading] = useState(false);
 
   // Column Filters State (Excel-Like)
   const [columnFilters, setColumnFilters] = useState<Record<string, string[] | null>>({
@@ -287,33 +285,15 @@ export default function PegawaiInternalList({
     );
   };
 
-  // Bulk toggle for all currently displayed rows
+  // Bulk toggle for all currently displayed rows in local state (Save button required to persist)
   const allCurrentSelected =
     displayedData.length > 0 && displayedData.every((item) => item.timInternal);
 
-  const handleSelectAllFilter = async (timInternal: boolean) => {
-    setBulkFilterLoading(true);
-    try {
-      const res = await bulkSetTimInternalByFilter({
-        search: searchParams.get("search") || undefined,
-        eselon: filterEselon !== "ALL" ? filterEselon : undefined,
-        status: filterStatus !== "ALL" ? (filterStatus as any) : undefined,
-        timInternal,
-      });
-
-      // Update local view
-      setBulkData((prev) => prev.map((item) => ({ ...item, timInternal })));
-      toast.success(
-        timInternal
-          ? `Berhasil menambahkan ${res.count} pegawai hasil filter ke Tim Internal.`
-          : `Berhasil mengeluarkan ${res.count} pegawai hasil filter dari Tim Internal.`
-      );
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menerapkan status masal.");
-    } finally {
-      setBulkFilterLoading(false);
-    }
+  const handleSelectAll = (timInternal: boolean) => {
+    const displayedIds = new Set(displayedData.map((d) => d.id));
+    setBulkData((prev) =>
+      prev.map((item) => (displayedIds.has(item.id) ? { ...item, timInternal } : item))
+    );
   };
 
   // Save changes
@@ -504,7 +484,7 @@ export default function PegawaiInternalList({
 
           {/* Tabel Pegawai Internal */}
           <div className="border border-slate-200/60 rounded-lg overflow-x-auto relative">
-            {(isPending || bulkFilterLoading) && (
+            {isPending && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
                 <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
               </div>
@@ -518,12 +498,12 @@ export default function PegawaiInternalList({
                   <TableHead className="min-w-[150px] text-center text-xs">
                     <div
                       className="flex items-center justify-center gap-1.5 cursor-pointer select-none py-1 hover:text-indigo-600 transition-colors"
-                      onClick={() => handleSelectAllFilter(!allCurrentSelected)}
-                      title={allCurrentSelected ? "Keluarkan semua pegawai hasil filter dari Tim Internal" : "Masukkan semua pegawai hasil filter ke Tim Internal"}
+                      onClick={() => handleSelectAll(!allCurrentSelected)}
+                      title={allCurrentSelected ? "Batalkan pilihan semua pegawai pada tabel" : "Pilih semua pegawai pada tabel sebagai Tim Internal"}
                     >
                       <Checkbox
                         checked={allCurrentSelected}
-                        onCheckedChange={(checked) => handleSelectAllFilter(Boolean(checked))}
+                        onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                         aria-label="Pilih Semua Tim Internal"
                         className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                       />
