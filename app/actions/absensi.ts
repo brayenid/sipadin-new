@@ -13,6 +13,7 @@ import {
   calculateFaceSimilarity,
   BIOMETRIC_MATCH_THRESHOLD,
 } from "@/lib/face-biometrics";
+import { calculateDistanceMeters } from "@/lib/geo-utils";
 
 // ==========================================
 // 1. MANAJEMEN BINDING PEJABAT (MASTER ESELON)
@@ -1772,6 +1773,9 @@ export async function getRekapKehadiranOpd(params?: {
     lokasiPulangText?: string | null;
     latitudePulang?: number | null;
     longitudePulang?: number | null;
+    distanceMeters?: number | null;
+    isInsideRadius?: boolean | null;
+    radiusToleransiMeters?: number | null;
   };
 
   // Akumulasi per Instansi / Perangkat Daerah dan Pegawai
@@ -1782,6 +1786,11 @@ export async function getRekapKehadiranOpd(params?: {
       jabatanTerdata: string[];
       totalDiundang: number;
       hadir: number;
+      hadirValid: number;
+      hadirLuarRadius: number;
+      hadirTanpaLokasi: number;
+      totalJarakLuarMeters: number;
+      maxJarakLuarMeters: number;
       mewakili: number;
       tidakHadir: number;
       izin: number;
@@ -1798,6 +1807,11 @@ export async function getRekapKehadiranOpd(params?: {
       instansi: string;
       totalDiundang: number;
       hadir: number;
+      hadirValid: number;
+      hadirLuarRadius: number;
+      hadirTanpaLokasi: number;
+      totalJarakLuarMeters: number;
+      maxJarakLuarMeters: number;
       mewakili: number;
       tidakHadir: number;
       izin: number;
@@ -1806,6 +1820,36 @@ export async function getRekapKehadiranOpd(params?: {
   > = {};
 
   for (const ag of agendas) {
+    // 1. Tentukan Titik Acuan & Radius Toleransi Agenda ini
+    const hasVenue = typeof ag.targetLatitude === "number" && typeof ag.targetLongitude === "number";
+    let centerLat: number | null = hasVenue ? ag.targetLatitude : null;
+    let centerLng: number | null = hasVenue ? ag.targetLongitude : null;
+    let radiusMeters: number = hasVenue ? (ag.radiusMeter || 50) : 100;
+
+    if (!hasVenue) {
+      const pWithGps = ag.peserta.filter(
+        (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
+      );
+      if (pWithGps.length >= 4) {
+        const sumLat = pWithGps.reduce((acc, cur) => acc + cur.latitude!, 0);
+        const sumLng = pWithGps.reduce((acc, cur) => acc + cur.longitude!, 0);
+        centerLat = sumLat / pWithGps.length;
+        centerLng = sumLng / pWithGps.length;
+        const distances = pWithGps.map((p) =>
+          calculateDistanceMeters(centerLat!, centerLng!, p.latitude!, p.longitude!)
+        );
+        const meanDist = distances.reduce((a, b) => a + b, 0) / pWithGps.length;
+        const variance =
+          distances.reduce((acc, d) => acc + Math.pow(d - meanDist, 2), 0) / pWithGps.length;
+        const stdDev = Math.sqrt(variance);
+        radiusMeters = Math.max(50, Math.min(500, Math.round(meanDist + 2 * stdDev)));
+      } else if (pWithGps.length > 0) {
+        centerLat = pWithGps[0].latitude!;
+        centerLng = pWithGps[0].longitude!;
+        radiusMeters = 100;
+      }
+    }
+
     for (const p of ag.peserta) {
       const instansiKey = p.instansi.trim();
       if (!opdMap[instansiKey]) {
@@ -1814,6 +1858,11 @@ export async function getRekapKehadiranOpd(params?: {
           jabatanTerdata: [],
           totalDiundang: 0,
           hadir: 0,
+          hadirValid: 0,
+          hadirLuarRadius: 0,
+          hadirTanpaLokasi: 0,
+          totalJarakLuarMeters: 0,
+          maxJarakLuarMeters: 0,
           mewakili: 0,
           tidakHadir: 0,
           izin: 0,
@@ -1825,15 +1874,27 @@ export async function getRekapKehadiranOpd(params?: {
         opdMap[instansiKey].jabatanTerdata.push(p.jabatan);
       }
 
+      // Hitung Jarak & Kesesuaian Lokasi Peserta
+      let distMeters: number | null = null;
+      let isInside: boolean | null = null;
+      if (
+        p.status === "HADIR" &&
+        typeof p.latitude === "number" &&
+        typeof p.longitude === "number" &&
+        typeof centerLat === "number" &&
+        typeof centerLng === "number"
+      ) {
+        distMeters = calculateDistanceMeters(centerLat, centerLng, p.latitude, p.longitude);
+        isInside = distMeters <= radiusMeters;
+      }
+
       // logic rekap per instansi (unik per agenda)
-      // Jika instansi mengirimkan lebih dari 1 perwakilan/pejabat pada agenda yang sama, kita hanya hitung status terbaik dari instansi tersebut di agenda ini.
       const existingHistoryIndex = opdMap[instansiKey].history.findIndex((h) => h.agendaId === ag.id);
       
       if (existingHistoryIndex !== -1) {
         const currentBest = opdMap[instansiKey].history[existingHistoryIndex].status;
         const candidate = p.status;
         
-        // Aturan hierarki keaktifan: HADIR > MEWAKILI > IZIN > TIDAK_HADIR
         const getWeight = (st: StatusKehadiran) => {
           if (st === "HADIR") return 4;
           if (st === "MEWAKILI") return 3;
@@ -1843,15 +1904,33 @@ export async function getRekapKehadiranOpd(params?: {
 
         if (getWeight(candidate) > getWeight(currentBest)) {
           // Kurangi counter status lama yang digantikan
-          const oldStatus = currentBest;
-          if (oldStatus === "HADIR") opdMap[instansiKey].hadir -= 1;
-          else if (oldStatus === "MEWAKILI") opdMap[instansiKey].mewakili -= 1;
-          else if (oldStatus === "IZIN") opdMap[instansiKey].izin -= 1;
+          const oldRecord = opdMap[instansiKey].history[existingHistoryIndex];
+          if (oldRecord.status === "HADIR") {
+            opdMap[instansiKey].hadir -= 1;
+            if (oldRecord.isInsideRadius === false) {
+              opdMap[instansiKey].hadirLuarRadius = Math.max(0, opdMap[instansiKey].hadirLuarRadius - 1);
+            } else if (oldRecord.isInsideRadius === true) {
+              opdMap[instansiKey].hadirValid = Math.max(0, opdMap[instansiKey].hadirValid - 1);
+            } else {
+              opdMap[instansiKey].hadirTanpaLokasi = Math.max(0, opdMap[instansiKey].hadirTanpaLokasi - 1);
+            }
+          } else if (oldRecord.status === "MEWAKILI") opdMap[instansiKey].mewakili -= 1;
+          else if (oldRecord.status === "IZIN") opdMap[instansiKey].izin -= 1;
           else opdMap[instansiKey].tidakHadir -= 1;
 
           // Tambah counter status yang baru
-          if (candidate === "HADIR") opdMap[instansiKey].hadir += 1;
-          else if (candidate === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
+          if (candidate === "HADIR") {
+            opdMap[instansiKey].hadir += 1;
+            if (isInside === false) {
+              opdMap[instansiKey].hadirLuarRadius += 1;
+              if (distMeters) {
+                opdMap[instansiKey].totalJarakLuarMeters += distMeters;
+                opdMap[instansiKey].maxJarakLuarMeters = Math.max(opdMap[instansiKey].maxJarakLuarMeters, distMeters);
+              }
+            } else {
+              opdMap[instansiKey].hadirValid += 1;
+            }
+          } else if (candidate === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
           else if (candidate === "IZIN") opdMap[instansiKey].izin += 1;
           else opdMap[instansiKey].tidakHadir += 1;
 
@@ -1875,14 +1954,27 @@ export async function getRekapKehadiranOpd(params?: {
             lokasiPulangText: p.lokasiPulangText,
             latitudePulang: p.latitudePulang,
             longitudePulang: p.longitudePulang,
+            distanceMeters: distMeters,
+            isInsideRadius: isInside,
+            radiusToleransiMeters: radiusMeters,
           };
         }
       } else {
         // Jika agenda baru pertama kali didaftarkan untuk instansi ini
         opdMap[instansiKey].totalDiundang += 1;
 
-        if (p.status === "HADIR") opdMap[instansiKey].hadir += 1;
-        else if (p.status === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
+        if (p.status === "HADIR") {
+          opdMap[instansiKey].hadir += 1;
+          if (isInside === false) {
+            opdMap[instansiKey].hadirLuarRadius += 1;
+            if (distMeters) {
+              opdMap[instansiKey].totalJarakLuarMeters += distMeters;
+              opdMap[instansiKey].maxJarakLuarMeters = Math.max(opdMap[instansiKey].maxJarakLuarMeters, distMeters);
+            }
+          } else {
+            opdMap[instansiKey].hadirValid += 1;
+          }
+        } else if (p.status === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
         else if (p.status === "IZIN") opdMap[instansiKey].izin += 1;
         else opdMap[instansiKey].tidakHadir += 1;
 
@@ -1905,11 +1997,13 @@ export async function getRekapKehadiranOpd(params?: {
           lokasiPulangText: p.lokasiPulangText,
           latitudePulang: p.latitudePulang,
           longitudePulang: p.longitudePulang,
+          distanceMeters: distMeters,
+          isInsideRadius: isInside,
+          radiusToleransiMeters: radiusMeters,
         });
       }
 
       // logic rekap per pegawai
-      // Gunakan nama + nip + jabatan sebagai key jika pegawaiId null (peserta manual)
       const pegawaiKey = p.pegawaiId || `${p.nama}_${p.nip || ""}_${p.jabatan}`;
       if (!pegawaiMap[pegawaiKey]) {
         pegawaiMap[pegawaiKey] = {
@@ -1919,6 +2013,11 @@ export async function getRekapKehadiranOpd(params?: {
           instansi: p.instansi,
           totalDiundang: 0,
           hadir: 0,
+          hadirValid: 0,
+          hadirLuarRadius: 0,
+          hadirTanpaLokasi: 0,
+          totalJarakLuarMeters: 0,
+          maxJarakLuarMeters: 0,
           mewakili: 0,
           tidakHadir: 0,
           izin: 0,
@@ -1927,8 +2026,18 @@ export async function getRekapKehadiranOpd(params?: {
       }
 
       pegawaiMap[pegawaiKey].totalDiundang += 1;
-      if (p.status === "HADIR") pegawaiMap[pegawaiKey].hadir += 1;
-      else if (p.status === "MEWAKILI") pegawaiMap[pegawaiKey].mewakili += 1;
+      if (p.status === "HADIR") {
+        pegawaiMap[pegawaiKey].hadir += 1;
+        if (isInside === false) {
+          pegawaiMap[pegawaiKey].hadirLuarRadius += 1;
+          if (distMeters) {
+            pegawaiMap[pegawaiKey].totalJarakLuarMeters += distMeters;
+            pegawaiMap[pegawaiKey].maxJarakLuarMeters = Math.max(pegawaiMap[pegawaiKey].maxJarakLuarMeters, distMeters);
+          }
+        } else {
+          pegawaiMap[pegawaiKey].hadirValid += 1;
+        }
+      } else if (p.status === "MEWAKILI") pegawaiMap[pegawaiKey].mewakili += 1;
       else if (p.status === "IZIN") pegawaiMap[pegawaiKey].izin += 1;
       else pegawaiMap[pegawaiKey].tidakHadir += 1;
 
@@ -1951,6 +2060,9 @@ export async function getRekapKehadiranOpd(params?: {
         lokasiPulangText: p.lokasiPulangText,
         latitudePulang: p.latitudePulang,
         longitudePulang: p.longitudePulang,
+        distanceMeters: distMeters,
+        isInsideRadius: isInside,
+        radiusToleransiMeters: radiusMeters,
       });
     }
   }
@@ -1967,11 +2079,58 @@ export async function getRekapKehadiranOpd(params?: {
         ? Math.round((item.hadir / item.totalDiundang) * 100)
         : 0;
 
+    const persentaseValidLokasi =
+      item.hadir > 0
+        ? Math.round((item.hadirValid / item.hadir) * 100)
+        : item.totalDiundang > 0 ? 0 : 100;
+
+    const avgJarakLuarKm =
+      item.hadirLuarRadius > 0
+        ? Number(((item.totalJarakLuarMeters / item.hadirLuarRadius) / 1000).toFixed(1))
+        : 0;
+    const maxJarakLuarKm =
+      item.hadirLuarRadius > 0
+        ? Number((item.maxJarakLuarMeters / 1000).toFixed(1))
+        : 0;
+
+    let predikatKepatuhan = "Sangat Tertib";
+    let evaluasiSingkat = "Kehadiran disiplin dan seluruhnya terverifikasi tepat di lokasi kegiatan.";
+
+    if (item.totalDiundang === 0) {
+      predikatKepatuhan = "-";
+      evaluasiSingkat = "Belum ada agenda penugasan resmi.";
+    } else if (persentaseKehadiran === 100 && item.hadirLuarRadius === 0) {
+      predikatKepatuhan = "Sangat Tertib";
+      evaluasiSingkat = `Tingkat kehadiran 100% (${item.hadir} Hadir di lokasi${item.mewakili > 0 ? `, ${item.mewakili} Mewakili` : ""}). Terverifikasi tertib.`;
+    } else if (item.hadirLuarRadius > 0) {
+      if (persentaseValidLokasi >= 75) {
+        predikatKepatuhan = "Tertib (Ada Luar Lokasi)";
+        evaluasiSingkat = `Kehadiran ${persentaseKehadiran}%. Terdapat ${item.hadirLuarRadius} presensi di luar radius lokasi (terjauh ${maxJarakLuarKm} km). Perlu klarifikasi tugas lapangan.`;
+      } else {
+        predikatKepatuhan = "Banyak Luar Lokasi";
+        evaluasiSingkat = `Mayoritas presensi (${item.hadirLuarRadius} dari ${item.hadir}) tercatat di luar radius kegiatan (rata-rata ${avgJarakLuarKm} km).`;
+      }
+    } else if (persentaseKehadiran >= 80) {
+      predikatKepatuhan = item.tidakHadir > 0 ? "Tertib (Ada Alpa)" : "Sangat Tertib";
+      evaluasiSingkat = `Kehadiran ${persentaseKehadiran}% (${item.hadir} Hadir di lokasi${item.tidakHadir > 0 ? `, ${item.tidakHadir} Alpa` : ""}${item.izin > 0 ? `, ${item.izin} Izin` : ""}). Seluruh kehadiran di lokasi valid.`;
+    } else if (persentaseKehadiran >= 60) {
+      predikatKepatuhan = "Cukup Tertib";
+      evaluasiSingkat = `Kehadiran ${persentaseKehadiran}% (${item.hadir} Hadir, ${item.tidakHadir + item.izin} Absen). Seluruh kehadiran di lokasi valid.`;
+    } else {
+      predikatKepatuhan = "Perlu Pembinaan";
+      evaluasiSingkat = `Tingkat kehadiran rendah (${persentaseKehadiran}%). ${item.tidakHadir + item.izin} dari ${item.totalDiundang} penugasan tidak hadir.`;
+    }
+
     return {
       ...item,
       totalPartisipasi,
       persentaseKehadiran,
       persentaseHadirLangsung,
+      persentaseValidLokasi,
+      avgJarakLuarKm,
+      maxJarakLuarKm,
+      predikatKepatuhan,
+      evaluasiSingkat,
     };
   });
 
@@ -1982,10 +2141,57 @@ export async function getRekapKehadiranOpd(params?: {
         ? Math.round((totalPartisipasi / item.totalDiundang) * 100)
         : 0;
 
+    const persentaseValidLokasi =
+      item.hadir > 0
+        ? Math.round((item.hadirValid / item.hadir) * 100)
+        : item.totalDiundang > 0 ? 0 : 100;
+
+    const avgJarakLuarKm =
+      item.hadirLuarRadius > 0
+        ? Number(((item.totalJarakLuarMeters / item.hadirLuarRadius) / 1000).toFixed(1))
+        : 0;
+    const maxJarakLuarKm =
+      item.hadirLuarRadius > 0
+        ? Number((item.maxJarakLuarMeters / 1000).toFixed(1))
+        : 0;
+
+    let predikatKepatuhan = "Sangat Tertib";
+    let evaluasiSingkat = "Kehadiran disiplin dan seluruhnya terverifikasi tepat di lokasi kegiatan.";
+
+    if (item.totalDiundang === 0) {
+      predikatKepatuhan = "-";
+      evaluasiSingkat = "Belum ada agenda penugasan resmi.";
+    } else if (persentaseKehadiran === 100 && item.hadirLuarRadius === 0) {
+      predikatKepatuhan = "Sangat Tertib";
+      evaluasiSingkat = `Tingkat kehadiran 100% (${item.hadir} Hadir di lokasi${item.mewakili > 0 ? `, ${item.mewakili} Mewakili` : ""}). Terverifikasi tertib.`;
+    } else if (item.hadirLuarRadius > 0) {
+      if (persentaseValidLokasi >= 75) {
+        predikatKepatuhan = "Tertib (Ada Luar Lokasi)";
+        evaluasiSingkat = `Kehadiran ${persentaseKehadiran}%. Terdapat ${item.hadirLuarRadius} presensi di luar radius lokasi (terjauh ${maxJarakLuarKm} km). Perlu klarifikasi tugas lapangan.`;
+      } else {
+        predikatKepatuhan = "Banyak Luar Lokasi";
+        evaluasiSingkat = `Mayoritas presensi (${item.hadirLuarRadius} dari ${item.hadir}) tercatat di luar radius kegiatan (rata-rata ${avgJarakLuarKm} km).`;
+      }
+    } else if (persentaseKehadiran >= 80) {
+      predikatKepatuhan = item.tidakHadir > 0 ? "Tertib (Ada Alpa)" : "Sangat Tertib";
+      evaluasiSingkat = `Kehadiran ${persentaseKehadiran}% (${item.hadir} Hadir di lokasi${item.tidakHadir > 0 ? `, ${item.tidakHadir} Alpa` : ""}${item.izin > 0 ? `, ${item.izin} Izin` : ""}). Seluruh kehadiran di lokasi valid.`;
+    } else if (persentaseKehadiran >= 60) {
+      predikatKepatuhan = "Cukup Tertib";
+      evaluasiSingkat = `Kehadiran ${persentaseKehadiran}% (${item.hadir} Hadir, ${item.tidakHadir + item.izin} Absen). Seluruh kehadiran di lokasi valid.`;
+    } else {
+      predikatKepatuhan = "Perlu Pembinaan";
+      evaluasiSingkat = `Tingkat kehadiran rendah (${persentaseKehadiran}%). ${item.tidakHadir + item.izin} dari ${item.totalDiundang} penugasan tidak hadir.`;
+    }
+
     return {
       ...item,
       totalPartisipasi,
       persentaseKehadiran,
+      persentaseValidLokasi,
+      avgJarakLuarKm,
+      maxJarakLuarKm,
+      predikatKepatuhan,
+      evaluasiSingkat,
     };
   });
 

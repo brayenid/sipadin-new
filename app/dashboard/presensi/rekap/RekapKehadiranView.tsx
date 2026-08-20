@@ -52,6 +52,9 @@ type HistoryItem = {
   isSelfInput?: boolean;
   waktuInput?: Date | null;
   waktuPulang?: Date | null;
+  distanceMeters?: number | null;
+  isInsideRadius?: boolean | null;
+  radiusToleransiMeters?: number | null;
 };
 
 type OpdSummaryItem = {
@@ -59,12 +62,19 @@ type OpdSummaryItem = {
   jabatanTerdata: string[];
   totalDiundang: number;
   hadir: number;
+  hadirValid?: number;
+  hadirLuarRadius?: number;
   mewakili: number;
   tidakHadir: number;
   izin: number;
   totalPartisipasi: number;
   persentaseKehadiran: number;
   persentaseHadirLangsung: number;
+  persentaseValidLokasi?: number;
+  avgJarakLuarKm?: number;
+  maxJarakLuarKm?: number;
+  predikatKepatuhan?: string;
+  evaluasiSingkat?: string;
   history: HistoryItem[];
 };
 
@@ -75,11 +85,18 @@ type PegawaiSummaryItem = {
   instansi: string;
   totalDiundang: number;
   hadir: number;
+  hadirValid?: number;
+  hadirLuarRadius?: number;
   mewakili: number;
   tidakHadir: number;
   izin: number;
   totalPartisipasi: number;
   persentaseKehadiran: number;
+  persentaseValidLokasi?: number;
+  avgJarakLuarKm?: number;
+  maxJarakLuarKm?: number;
+  predikatKepatuhan?: string;
+  evaluasiSingkat?: string;
   history: HistoryItem[];
 };
 
@@ -208,13 +225,17 @@ export default function RekapKehadiranView({
       No: idx + 1,
       "Perangkat Daerah": opd.instansi,
       "Total Diundang": opd.totalDiundang,
-      "Hadir Langsung": opd.hadir,
+      "Total Hadir": opd.hadir,
+      "Hadir Valid (Di Lokasi)": opd.hadirValid ?? opd.hadir,
+      "Hadir Luar Radius (Anomali)": opd.hadirLuarRadius ?? 0,
       Mewakili: opd.mewakili,
       "Izin / Sakit": opd.izin,
       "Tidak Hadir": opd.tidakHadir,
       "Total Partisipasi": opd.totalPartisipasi,
       "Persentase Kehadiran (%)": `${opd.persentaseKehadiran}%`,
-      "Persentase Hadir Langsung (%)": `${opd.persentaseHadirLangsung}%`,
+      "Validitas Lokasi (%)": `${opd.persentaseValidLokasi ?? 100}%`,
+      "Predikat Kepatuhan": opd.predikatKepatuhan || "-",
+      "Catatan Evaluasi": opd.evaluasiSingkat || "-",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -223,15 +244,19 @@ export default function RekapKehadiranView({
 
     const colWidths = [
       { wch: 5 },
-      { wch: 40 },
-      { wch: 15 },
-      { wch: 15 },
+      { wch: 35 },
+      { wch: 14 },
       { wch: 12 },
+      { wch: 22 },
+      { wch: 25 },
+      { wch: 10 },
       { wch: 12 },
       { wch: 12 },
       { wch: 15 },
       { wch: 22 },
-      { wch: 26 },
+      { wch: 20 },
+      { wch: 24 },
+      { wch: 45 },
     ];
     worksheet["!cols"] = colWidths;
 
@@ -246,10 +271,15 @@ export default function RekapKehadiranView({
       Jabatan: peg.jabatan,
       "Perangkat Daerah": peg.instansi,
       "Total Agenda": peg.totalDiundang,
-      Hadir: peg.hadir,
+      "Total Hadir": peg.hadir,
+      "Hadir Valid (Di Lokasi)": peg.hadirValid ?? peg.hadir,
+      "Hadir Luar Radius (Anomali)": peg.hadirLuarRadius ?? 0,
       Mewakili: peg.mewakili,
-      "Tidak Hadir/Izin": peg.tidakHadir + peg.izin,
+      "Tidak Hadir / Izin": peg.tidakHadir + peg.izin,
       "Persentase Kehadiran (%)": `${peg.persentaseKehadiran}%`,
+      "Validitas Lokasi (%)": `${peg.persentaseValidLokasi ?? 100}%`,
+      "Predikat Kepatuhan": peg.predikatKepatuhan || "-",
+      "Catatan Evaluasi": peg.evaluasiSingkat || "-",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -263,10 +293,15 @@ export default function RekapKehadiranView({
       { wch: 25 },
       { wch: 30 },
       { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 15 },
+      { wch: 12 },
       { wch: 22 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 20 },
+      { wch: 24 },
+      { wch: 45 },
     ];
     worksheet["!cols"] = colWidths;
 
@@ -552,8 +587,13 @@ export default function RekapKehadiranView({
                                 {opd.totalDiundang}
                               </TableCell>
 
-                              <TableCell className="text-center text-xs font-bold text-emerald-700">
-                                {opd.hadir}
+                              <TableCell className="text-center text-xs">
+                                <span className="font-bold text-emerald-700">{opd.hadir}</span>
+                                {opd.hadirLuarRadius && opd.hadirLuarRadius > 0 ? (
+                                  <p className="text-[9.5px] text-amber-600 font-semibold leading-none mt-0.5">
+                                    ({opd.hadirLuarRadius} Luar Rad.)
+                                  </p>
+                                ) : null}
                               </TableCell>
 
                               <TableCell className="text-center text-xs font-medium text-amber-700">
@@ -678,6 +718,13 @@ export default function RekapKehadiranView({
                                               </span>
                                             )}
 
+                                            {h.isInsideRadius === false && (
+                                              <span className="inline-flex items-center gap-1 text-[9.5px] text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">
+                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                                                Luar Rad. {h.distanceMeters ? (h.distanceMeters >= 1000 ? `${(h.distanceMeters / 1000).toFixed(1)}km` : `${h.distanceMeters}m`) : ""}
+                                              </span>
+                                            )}
+
                                             <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
                                               {h.waktuInput && (
                                                 <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
@@ -798,7 +845,14 @@ export default function RekapKehadiranView({
                               </TableCell>
                               <TableCell className="text-xs text-slate-600 font-medium">{peg.instansi}</TableCell>
                               <TableCell className="text-center text-xs font-semibold text-slate-700">{peg.totalDiundang}</TableCell>
-                              <TableCell className="text-center text-xs font-bold text-emerald-700">{peg.hadir}</TableCell>
+                              <TableCell className="text-center text-xs">
+                                <span className="font-bold text-emerald-700">{peg.hadir}</span>
+                                {peg.hadirLuarRadius && peg.hadirLuarRadius > 0 ? (
+                                  <p className="text-[9.5px] text-amber-600 font-semibold leading-none mt-0.5">
+                                    ({peg.hadirLuarRadius} Luar Rad.)
+                                  </p>
+                                ) : null}
+                              </TableCell>
                               <TableCell className="text-center text-xs font-medium text-amber-700">{peg.mewakili}</TableCell>
                               <TableCell className="text-center text-xs font-medium text-red-600">{peg.tidakHadir + peg.izin}</TableCell>
                               
@@ -904,6 +958,13 @@ export default function RekapKehadiranView({
                                               </span>
                                             )}
 
+                                            {h.isInsideRadius === false && (
+                                              <span className="inline-flex items-center gap-1 text-[9.5px] text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">
+                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                                                Luar Rad. {h.distanceMeters ? (h.distanceMeters >= 1000 ? `${(h.distanceMeters / 1000).toFixed(1)}km` : `${h.distanceMeters}m`) : ""}
+                                              </span>
+                                            )}
+
                                             <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
                                               {h.waktuInput && (
                                                 <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
@@ -944,10 +1005,15 @@ export default function RekapKehadiranView({
             instansi: opd.instansi,
             totalDiundang: opd.totalDiundang,
             hadir: opd.hadir,
+            hadirValid: opd.hadirValid,
+            hadirLuarRadius: opd.hadirLuarRadius,
             mewakili: opd.mewakili,
             tidakHadir: opd.tidakHadir,
             izin: opd.izin,
             persentaseKehadiran: opd.persentaseKehadiran,
+            persentaseValidLokasi: opd.persentaseValidLokasi,
+            predikatKepatuhan: opd.predikatKepatuhan,
+            evaluasiSingkat: opd.evaluasiSingkat,
           })),
         }}
       />
@@ -962,14 +1028,20 @@ export default function RekapKehadiranView({
           totalAgenda: initialData.totalAgenda,
           dataPegawai: filteredPegawai.map((peg) => ({
             nama: peg.nama,
+            nip: peg.nip,
             jabatan: peg.jabatan,
             instansi: peg.instansi,
             totalDiundang: peg.totalDiundang,
             hadir: peg.hadir,
+            hadirValid: peg.hadirValid,
+            hadirLuarRadius: peg.hadirLuarRadius,
             mewakili: peg.mewakili,
             tidakHadir: peg.tidakHadir,
             izin: peg.izin,
             persentaseKehadiran: peg.persentaseKehadiran,
+            persentaseValidLokasi: peg.persentaseValidLokasi,
+            predikatKepatuhan: peg.predikatKepatuhan,
+            evaluasiSingkat: peg.evaluasiSingkat,
           })),
         }}
       />
