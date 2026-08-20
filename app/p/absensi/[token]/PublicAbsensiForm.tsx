@@ -206,45 +206,37 @@ export default function PublicAbsensiForm({
     let isMounted = true;
     const loadAiModels = async () => {
       try {
+        // Import face-api ESM bundle (includes TF.js internally)
         const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js");
         faceApiRef.current = faceapi;
 
-        // Force CPU backend directly — WebGL check via canvas.getContext is unreliable;
-        // TF's own WebGL context fails on many devices even when canvas returns a context.
-        // Never attempt webgl or wasm to avoid the wasm 404 cascade error.
-        const tf = (faceapi as any)?.tf;
-        if (tf) {
-          try {
-            if (typeof tf.env === "function") {
-              // Disable all GPU/WASM backends at env level to prevent auto-fallback to wasm
-              tf.env().set("WEBGL_VERSION", 0);
-            }
-          } catch { /* env() may not be available in all builds */ }
-          try {
-            if (typeof tf.setBackend === "function") await tf.setBackend("cpu");
-            if (typeof tf.ready === "function") await tf.ready();
-          } catch (e) {
-            console.warn("[TF Backend Init Warning]:", e);
-          }
-        }
-
+        // NOTE: Do NOT call tf.setBackend() here at all.
+        // tf.setBackend("webgl") causes errors on devices without GPU, which then
+        // cascades into a wasm 404 error. Let face-api auto-select the best backend
+        // when it first runs inference (it handles this internally on model load).
+        
         const MODEL_URL = "/models";
 
-        // Load Tiny Face Detector
+        // Load Tiny Face Detector (required for live scan)
         if (!faceapi.nets.tinyFaceDetector.isLoaded) {
           await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         }
 
-        // Load Landmarks & Recognition
-        if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
-          await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL).catch(() => {});
-        }
-        if (!faceapi.nets.faceLandmark68Net.isLoaded) {
-          await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL).catch(() => {});
-        }
-        if (!faceapi.nets.faceRecognitionNet.isLoaded) {
-          await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL).catch(() => {});
-        }
+        // Load Landmarks & Recognition in parallel (for biometric extraction)
+        await Promise.allSettled([
+          !faceapi.nets.faceLandmark68TinyNet.isLoaded
+            ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.faceLandmark68Net.isLoaded
+            ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.faceRecognitionNet.isLoaded
+            ? faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.ssdMobilenetv1.isLoaded
+            ? faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+        ]);
 
         if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
           setModelsLoaded(true);
@@ -263,7 +255,6 @@ export default function PublicAbsensiForm({
   }, []);
 
   // Real-time AI Face Detection loop when camera is active
-  // Only counts faces for the live indicator — descriptor extracted at capture time
   useEffect(() => {
     if (!isCameraActive || !modelsLoaded || !videoRef.current) {
       setFaceCount(null);
@@ -287,23 +278,31 @@ export default function PublicAbsensiForm({
       try {
         const video = videoRef.current;
         if (video.readyState >= 2) {
-          // Hanya deteksi wajah saja (TANPA landmark & descriptor)
-          // agar ringan di CPU dan tidak menyebabkan timeout diam-diam
-          const detections = await faceapi
-            .detectAllFaces(
-              video,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
-            )
-            .catch(() => null);
+          let query: any = faceapi.detectAllFaces(
+            video,
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
+          );
+
+          if (faceapi.nets.faceLandmark68TinyNet?.isLoaded) {
+            query = query.withFaceLandmarks(true);
+            if (faceapi.nets.faceRecognitionNet?.isLoaded) {
+              query = query.withFaceDescriptors();
+            }
+          }
+
+          const detections = await query.catch(() => null);
 
           if (isScanning && detections && Array.isArray(detections)) {
             setFaceCount(detections.length);
+            if (detections.length === 1 && detections[0].descriptor) {
+              setExtractedFaceDescriptor(Array.from(detections[0].descriptor));
+            }
           }
         }
       } catch {
         // Silently continue scanning
       }
-    }, 500);
+    }, 400);
 
     return () => {
       isScanning = false;
