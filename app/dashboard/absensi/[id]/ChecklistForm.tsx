@@ -45,6 +45,8 @@ import {
   Users,
   RefreshCw,
   LogOut,
+  ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -94,6 +96,8 @@ type Peserta = {
   accuracy: number | null;
   lokasiText: string | null;
   isSelfInput: boolean;
+  faceScore?: number | null;
+  faceMatchStatus?: string | null;
 };
 
 type Agenda = {
@@ -1825,6 +1829,37 @@ export default function ChecklistForm({
                                   <MapPin className="w-3 h-3 text-emerald-600" />
                                   GPS
                                 </a>
+                              )}
+
+                              {/* Biometric Audit Badges */}
+                              {p.faceMatchStatus === "MATCH" && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[9.5px] font-semibold"
+                                  title={`Kemiripan Wajah Biometrik: ${Math.round((p.faceScore || 0) * 100)}%`}
+                                >
+                                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                  Wajah Cocok ({Math.round((p.faceScore || 0) * 100)}%)
+                                </span>
+                              )}
+
+                              {p.faceMatchStatus === "MISMATCH" && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[9.5px] font-bold animate-pulse"
+                                  title={`Indikasi wajah berbeda dari biometrik terdaftar. Kemiripan hanya: ${Math.round((p.faceScore || 0) * 100)}%`}
+                                >
+                                  <AlertCircle className="w-3 h-3 text-rose-600" />
+                                  ⚠️ Indikasi Beda ({Math.round((p.faceScore || 0) * 100)}%)
+                                </span>
+                              )}
+
+                              {p.faceMatchStatus === "ENROLLED" && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9.5px] font-semibold"
+                                  title="Biometrik wajah master pertama kali terdaftar pada presensi ini"
+                                >
+                                  <Sparkles className="w-3 h-3 text-blue-600" />
+                                  Biometrik Baru
+                                </span>
                               )}
                             </div>
                           </div>

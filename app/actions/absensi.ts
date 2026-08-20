@@ -8,6 +8,11 @@ import { generateSlug } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
+import {
+  calculateEuclideanDistance,
+  calculateFaceSimilarity,
+  BIOMETRIC_MATCH_THRESHOLD,
+} from "@/lib/face-biometrics";
 
 // ==========================================
 // 1. MANAJEMEN BINDING PEJABAT (MASTER ESELON)
@@ -122,6 +127,8 @@ export async function getPegawaiForBindingPaginated(params: {
         kategoriPegawai: true,
         wajibAbsenOpd: true,
         urutanOpd: true,
+        faceDescriptor: true,
+        faceEnrolledAt: true,
       },
     }),
     prisma.pegawai.count({ where }),
@@ -898,6 +905,7 @@ export async function submitSelfAbsensi(payload: {
   lokasiText?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
+  faceDescriptor?: number[] | null;
 }) {
   const { publicToken } = payload;
   if (!publicToken) throw new Error("Token tidak valid");
@@ -945,17 +953,62 @@ export async function submitSelfAbsensi(payload: {
   }
 
   let resultPeserta;
+  let faceScore: number | null = null;
+  let faceMatchStatus: string | null = null;
 
   if (payload.pesertaId) {
-    // Cek foto lama untuk diunlink jika ada foto baru
-    if (payload.fotoUrl) {
-      const oldRecord = await prisma.kehadiranPeserta.findUnique({
-        where: { id: payload.pesertaId },
-        select: { fotoUrl: true },
-      });
-      if (oldRecord?.fotoUrl && oldRecord.fotoUrl !== payload.fotoUrl) {
-        await deleteFromR2OrLocal(oldRecord.fotoUrl);
+    // Cek record peserta dan relasi pegawai
+    const existingPeserta = await prisma.kehadiranPeserta.findUnique({
+      where: { id: payload.pesertaId },
+      include: { pegawai: true },
+    });
+
+    if (existingPeserta?.fotoUrl && payload.fotoUrl && existingPeserta.fotoUrl !== payload.fotoUrl) {
+      await deleteFromR2OrLocal(existingPeserta.fotoUrl);
+    }
+
+    // Evaluasi Biometrik Wajah (Silent Audit)
+    if (payload.status === "MEWAKILI" || payload.namaPerwakilan) {
+      faceMatchStatus = "PERWAKILAN";
+      faceScore = null;
+    } else if (existingPeserta?.pegawai) {
+      const pegawai = existingPeserta.pegawai;
+      const incomingDesc = payload.faceDescriptor;
+
+      if (!pegawai.faceDescriptor) {
+        // Self-enrollment on first attendance!
+        if (incomingDesc && Array.isArray(incomingDesc) && incomingDesc.length > 0) {
+          await prisma.pegawai.update({
+            where: { id: pegawai.id },
+            data: {
+              faceDescriptor: JSON.stringify(incomingDesc),
+              faceEnrolledAt: now,
+            },
+          });
+          faceMatchStatus = "ENROLLED";
+          faceScore = 1.0;
+        } else {
+          faceMatchStatus = "BYPASS";
+        }
+      } else {
+        // Biometrik master sudah ada -> Hitung skor kemiripan
+        if (incomingDesc && Array.isArray(incomingDesc) && incomingDesc.length > 0) {
+          try {
+            const masterDesc = JSON.parse(pegawai.faceDescriptor) as number[];
+            const dist = calculateEuclideanDistance(incomingDesc, masterDesc);
+            const sim = calculateFaceSimilarity(dist);
+            faceScore = Number((sim / 100).toFixed(2));
+            faceMatchStatus = dist <= BIOMETRIC_MATCH_THRESHOLD ? "MATCH" : "MISMATCH";
+          } catch (err) {
+            console.error("[Biometric Matching Error]:", err);
+            faceMatchStatus = "BYPASS";
+          }
+        } else {
+          faceMatchStatus = "BYPASS";
+        }
       }
+    } else {
+      faceMatchStatus = "PESERTA_TAMBAHAN";
     }
 
     // Update data peserta binding yang sudah terdaftar di agenda
@@ -978,6 +1031,8 @@ export async function submitSelfAbsensi(payload: {
         isSelfInput: true,
         ipAddress: payload.ipAddress || null,
         userAgent: payload.userAgent || null,
+        faceScore,
+        faceMatchStatus,
       },
     });
   } else {
@@ -989,6 +1044,8 @@ export async function submitSelfAbsensi(payload: {
     if (!payload.nama || !payload.jabatan || !payload.instansi) {
       throw new Error("Nama, Jabatan, dan Instansi/OPD wajib diisi");
     }
+
+    faceMatchStatus = payload.status === "MEWAKILI" ? "PERWAKILAN" : "PESERTA_TAMBAHAN";
 
     const currentCount = await prisma.kehadiranPeserta.count({
       where: { agendaId: agenda.id },
@@ -1016,6 +1073,8 @@ export async function submitSelfAbsensi(payload: {
         isSelfInput: true,
         ipAddress: payload.ipAddress || null,
         userAgent: payload.userAgent || null,
+        faceScore: null,
+        faceMatchStatus,
       },
     });
   }
@@ -1029,6 +1088,30 @@ export async function submitSelfAbsensi(payload: {
     success: true,
     data: resultPeserta,
   };
+}
+
+export async function resetPegawaiBiometric(pegawaiId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const pegawai = await prisma.pegawai.findUnique({
+    where: { id: pegawaiId, teamId: session.user.teamId },
+  });
+
+  if (!pegawai) throw new Error("Pegawai tidak ditemukan");
+
+  await prisma.pegawai.update({
+    where: { id: pegawaiId },
+    data: {
+      faceDescriptor: null,
+      faceEnrolledAt: null,
+    },
+  });
+
+  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/pegawai");
+
+  return { success: true, message: `Biometrik wajah ${pegawai.nama} berhasil direset` };
 }
 
 export async function submitSelfAbsensiPulang(payload: {
