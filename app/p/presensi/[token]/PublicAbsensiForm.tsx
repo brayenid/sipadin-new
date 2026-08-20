@@ -1654,13 +1654,6 @@ export default function PublicAbsensiForm({
               <div className="bg-slate-950 rounded-2xl overflow-hidden aspect-[3/4] max-w-xs sm:max-w-sm mx-auto flex items-center justify-center relative shadow-inner">
                 {isCameraActive ? (
                   <>
-                    {/* Top camera guidance pill */}
-                    <div className="absolute top-3 inset-x-3 z-20 flex justify-center pointer-events-none">
-                      <span className="text-[10px] font-medium text-white/90 bg-black/65 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm text-center">
-                        Tampilkan seluruh wajah (jangan tutupi mulut / mata)
-                      </span>
-                    </div>
-
                     <video
                       ref={(el) => {
                         videoRef.current = el;
