@@ -209,19 +209,22 @@ export default function PublicAbsensiForm({
         const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js");
         faceApiRef.current = faceapi;
 
-        // Initialize TF Backend safely (WebGL -> CPU fallback, never let it fail on wasm 404)
+        // Force CPU backend directly — WebGL check via canvas.getContext is unreliable;
+        // TF's own WebGL context fails on many devices even when canvas returns a context.
+        // Never attempt webgl or wasm to avoid the wasm 404 cascade error.
         const tf = (faceapi as any)?.tf;
         if (tf) {
           try {
-            if (typeof tf.setBackend === "function") await tf.setBackend("webgl");
-            if (typeof tf.ready === "function") await tf.ready();
-          } catch {
-            try {
-              if (typeof tf.setBackend === "function") await tf.setBackend("cpu");
-              if (typeof tf.ready === "function") await tf.ready();
-            } catch (e) {
-              console.warn("[TF Backend Init Warning]:", e);
+            if (typeof tf.env === "function") {
+              // Disable all GPU/WASM backends at env level to prevent auto-fallback to wasm
+              tf.env().set("WEBGL_VERSION", 0);
             }
+          } catch { /* env() may not be available in all builds */ }
+          try {
+            if (typeof tf.setBackend === "function") await tf.setBackend("cpu");
+            if (typeof tf.ready === "function") await tf.ready();
+          } catch (e) {
+            console.warn("[TF Backend Init Warning]:", e);
           }
         }
 
@@ -233,20 +236,15 @@ export default function PublicAbsensiForm({
         }
 
         // Load Landmarks & Recognition
-        await Promise.allSettled([
-          !faceapi.nets.faceLandmark68TinyNet.isLoaded
-            ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-          !faceapi.nets.faceLandmark68Net.isLoaded
-            ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-          !faceapi.nets.faceRecognitionNet.isLoaded
-            ? faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-          !faceapi.nets.ssdMobilenetv1.isLoaded
-            ? faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
-            : Promise.resolve(),
-        ]);
+        if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
+          await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL).catch(() => {});
+        }
+        if (!faceapi.nets.faceLandmark68Net.isLoaded) {
+          await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL).catch(() => {});
+        }
+        if (!faceapi.nets.faceRecognitionNet.isLoaded) {
+          await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL).catch(() => {});
+        }
 
         if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
           setModelsLoaded(true);
@@ -290,13 +288,19 @@ export default function PublicAbsensiForm({
         if (video.readyState >= 2) {
           let query: any = faceapi.detectAllFaces(
             video,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
           );
 
-          if (faceapi.nets.faceLandmark68TinyNet?.isLoaded || faceapi.nets.faceLandmark68Net?.isLoaded) {
+          const hasTinyLandmark = Boolean(faceapi.nets.faceLandmark68TinyNet?.isLoaded);
+          const hasStdLandmark = Boolean(faceapi.nets.faceLandmark68Net?.isLoaded);
+
+          if (hasTinyLandmark) {
             query = query.withFaceLandmarks(true);
+          } else if (hasStdLandmark) {
+            query = query.withFaceLandmarks(false);
           }
-          if (faceapi.nets.faceRecognitionNet?.isLoaded) {
+
+          if (faceapi.nets.faceRecognitionNet?.isLoaded && (hasTinyLandmark || hasStdLandmark)) {
             query = query.withFaceDescriptors();
           }
 
@@ -312,7 +316,7 @@ export default function PublicAbsensiForm({
       } catch (e) {
         // Silently continue scanning
       }
-    }, 400);
+    }, 350);
 
     return () => {
       isScanning = false;
@@ -472,35 +476,45 @@ export default function PublicAbsensiForm({
     const faceapi = faceApiRef.current;
     if (modelsLoaded && faceapi && faceapi.nets?.tinyFaceDetector?.isLoaded) {
       try {
-        // Percobaan 1: Tiny Detector Standar
-        let detection = await faceapi
-          .detectSingleFace(
-            canvas,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
-          )
-          .withFaceLandmarks(true)
-          .withFaceDescriptor()
-          .catch(() => null);
+        const hasTiny = Boolean(faceapi.nets.faceLandmark68TinyNet?.isLoaded);
+        const hasStd = Boolean(faceapi.nets.faceLandmark68Net?.isLoaded);
+        const useTinyParam = hasTiny ? true : false;
 
-        // Percobaan 2 (Fallback untuk kamera gelap/buram/beresolusi rendah): Tiny Detector Sangat Sensitif
-        if (!detection) {
+        let detection: any = null;
+        if (hasTiny || hasStd) {
+          // Percobaan 1: Tiny Detector Standar
           detection = await faceapi
             .detectSingleFace(
               canvas,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.15 })
+              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
             )
-            .withFaceLandmarks(true)
-            .withFaceDescriptor();
-        }
+            .withFaceLandmarks(useTinyParam)
+            .withFaceDescriptor()
+            .catch(() => null);
 
-        // Percobaan 3: SSD MobileNet Detector (Jika tersedia)
-        if (!detection && faceapi.nets.ssdMobilenetv1?.isLoaded) {
-          try {
+          // Percobaan 2 (Fallback untuk kamera gelap/buram/beresolusi rendah): Tiny Detector Sangat Sensitif
+          if (!detection) {
             detection = await faceapi
-              .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
-              .withFaceLandmarks(true)
-              .withFaceDescriptor();
-          } catch {}
+              .detectSingleFace(
+                canvas,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.15 })
+              )
+              .withFaceLandmarks(useTinyParam)
+              .withFaceDescriptor()
+              .catch(() => null);
+          }
+
+          // Percobaan 3: Langsung dari elemen video aktif sebelum kamera ditutup
+          if (!detection && videoRef.current) {
+            detection = await faceapi
+              .detectSingleFace(
+                videoRef.current,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.2 })
+              )
+              .withFaceLandmarks(useTinyParam)
+              .withFaceDescriptor()
+              .catch(() => null);
+          }
         }
 
         if (detection && detection.descriptor) {

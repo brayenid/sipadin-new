@@ -1177,6 +1177,143 @@ export async function resetPegawaiBiometric(pegawaiId: string) {
   return { success: true, message: `Biometrik wajah ${pegawai.nama} berhasil direset` };
 }
 
+export async function clearBuktiKehadiranPeserta(kehadiranId: string, resetMasterBiometrik = false) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const kehadiran = await prisma.kehadiranPeserta.findUnique({
+    where: { id: kehadiranId },
+    include: { agenda: true, pegawai: true },
+  });
+
+  if (!kehadiran || kehadiran.agenda.teamId !== session.user.teamId) {
+    throw new Error("Data presensi peserta tidak ditemukan");
+  }
+
+  // Hapus file fisik foto selfie di storage jika ada
+  if (kehadiran.fotoUrl) {
+    await deleteFromR2OrLocal(kehadiran.fotoUrl).catch(() => {});
+  }
+  if (kehadiran.fotoPulangUrl) {
+    await deleteFromR2OrLocal(kehadiran.fotoPulangUrl).catch(() => {});
+  }
+
+  // Reset data bukti presensi
+  const updated = await prisma.kehadiranPeserta.update({
+    where: { id: kehadiranId },
+    data: {
+      status: StatusKehadiran.TIDAK_HADIR,
+      namaPerwakilan: null,
+      jabatanPerwakilan: null,
+      keterangan: null,
+      fotoUrl: null,
+      fotoPulangUrl: null,
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      lokasiText: null,
+      latitudePulang: null,
+      longitudePulang: null,
+      accuracyPulang: null,
+      waktuInput: null,
+      waktuPulang: null,
+      isSelfInput: false,
+      faceScore: null,
+      faceMatchStatus: null,
+      ipAddress: null,
+      userAgent: null,
+    },
+  });
+
+  // Jika diminta reset master biometrik pegawai juga
+  if (resetMasterBiometrik && kehadiran.pegawaiId) {
+    await prisma.pegawai.update({
+      where: { id: kehadiran.pegawaiId },
+      data: {
+        faceDescriptor: null,
+        faceEnrolledAt: null,
+      },
+    }).catch(() => {});
+  }
+
+  revalidatePath(`/dashboard/absensi/${kehadiran.agendaId}`);
+  revalidatePath(`/p/absensi/${kehadiran.agenda.publicToken}`);
+  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/absensi/rekap");
+
+  return {
+    success: true,
+    message: `Bukti presensi (foto, GPS, & status biometrik) ${kehadiran.nama} berhasil dibersihkan`,
+    data: updated,
+  };
+}
+
+export async function bulkClearBuktiKehadiranPeserta(kehadiranIds: string[], resetMasterBiometrik = false) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const list = await prisma.kehadiranPeserta.findMany({
+    where: {
+      id: { in: kehadiranIds },
+      agenda: { teamId: session.user.teamId },
+    },
+    include: { agenda: true },
+  });
+
+  for (const k of list) {
+    if (k.fotoUrl) await deleteFromR2OrLocal(k.fotoUrl).catch(() => {});
+    if (k.fotoPulangUrl) await deleteFromR2OrLocal(k.fotoPulangUrl).catch(() => {});
+  }
+
+  await prisma.kehadiranPeserta.updateMany({
+    where: { id: { in: list.map((k) => k.id) } },
+    data: {
+      status: StatusKehadiran.TIDAK_HADIR,
+      namaPerwakilan: null,
+      jabatanPerwakilan: null,
+      keterangan: null,
+      fotoUrl: null,
+      fotoPulangUrl: null,
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      lokasiText: null,
+      latitudePulang: null,
+      longitudePulang: null,
+      accuracyPulang: null,
+      waktuInput: null,
+      waktuPulang: null,
+      isSelfInput: false,
+      faceScore: null,
+      faceMatchStatus: null,
+      ipAddress: null,
+      userAgent: null,
+    },
+  });
+
+  if (resetMasterBiometrik) {
+    const pegawaiIds = list.map((k) => k.pegawaiId).filter(Boolean) as string[];
+    if (pegawaiIds.length > 0) {
+      await prisma.pegawai.updateMany({
+        where: { id: { in: pegawaiIds } },
+        data: { faceDescriptor: null, faceEnrolledAt: null },
+      });
+    }
+  }
+
+  if (list.length > 0) {
+    revalidatePath(`/dashboard/absensi/${list[0].agendaId}`);
+    revalidatePath(`/p/absensi/${list[0].agenda.publicToken}`);
+  }
+  revalidatePath("/dashboard/absensi/pejabat");
+  revalidatePath("/dashboard/absensi/rekap");
+
+  return {
+    success: true,
+    message: `Bukti presensi ${list.length} peserta berhasil dibersihkan`,
+  };
+}
+
 export async function submitSelfAbsensiPulang(payload: {
   publicToken: string;
   pesertaId: string;

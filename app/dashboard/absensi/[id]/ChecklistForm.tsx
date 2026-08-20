@@ -47,12 +47,15 @@ import {
   LogOut,
   ShieldCheck,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   updateKehadiranPesertaBatch,
   deletePesertaFromAgenda,
   bulkDeletePesertaFromAgenda,
+  clearBuktiKehadiranPeserta,
+  bulkClearBuktiKehadiranPeserta,
   togglePublicAbsensiActive,
   updateAgendaAbsensi,
   deleteAgendaAbsensi,
@@ -431,6 +434,103 @@ export default function ChecklistForm({
       toast.error(err.message || "Gagal menghapus peserta terpilih");
     } finally {
       setDeletingBulk(false);
+    }
+  };
+
+  // State & Handlers untuk Clear Bukti Presensi (Foto, GPS, & Biometrik)
+  const [clearBuktiTarget, setClearBuktiTarget] = useState<Peserta | null>(null);
+  const [clearingBukti, setClearingBukti] = useState(false);
+  const [resetMasterBiometrikOption, setResetMasterBiometrikOption] = useState(false);
+
+  const [isBulkClearBuktiOpen, setIsBulkClearBuktiOpen] = useState(false);
+  const [clearingBulkBukti, setClearingBulkBukti] = useState(false);
+  const [bulkResetMasterBiometrikOption, setBulkResetMasterBiometrikOption] = useState(false);
+
+  const handleConfirmClearBukti = async () => {
+    if (!clearBuktiTarget) return;
+    setClearingBukti(true);
+    try {
+      await clearBuktiKehadiranPeserta(clearBuktiTarget.id, resetMasterBiometrikOption);
+      setPesertaList((prev) =>
+        prev.map((p) =>
+          p.id === clearBuktiTarget.id
+            ? {
+                ...p,
+                status: StatusKehadiran.TIDAK_HADIR,
+                namaPerwakilan: null,
+                jabatanPerwakilan: null,
+                keterangan: null,
+                fotoUrl: null,
+                fotoPulangUrl: null,
+                latitude: null,
+                longitude: null,
+                accuracy: null,
+                lokasiText: null,
+                latitudePulang: null,
+                longitudePulang: null,
+                accuracyPulang: null,
+                waktuInput: null,
+                waktuPulang: null,
+                isSelfInput: false,
+                faceScore: null,
+                faceMatchStatus: null,
+              }
+            : p
+        )
+      );
+      toast.success(`Bukti presensi (foto, GPS, biometrik) ${clearBuktiTarget.nama} berhasil dibersihkan`);
+      setClearBuktiTarget(null);
+      setResetMasterBiometrikOption(false);
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membersihkan bukti presensi");
+    } finally {
+      setClearingBukti(false);
+    }
+  };
+
+  const handleConfirmBulkClearBukti = async () => {
+    if (selectedPesertaIds.length === 0) return;
+    setClearingBulkBukti(true);
+    try {
+      const count = selectedPesertaIds.length;
+      await bulkClearBuktiKehadiranPeserta(selectedPesertaIds, bulkResetMasterBiometrikOption);
+      setPesertaList((prev) =>
+        prev.map((p) =>
+          selectedPesertaIds.includes(p.id)
+            ? {
+                ...p,
+                status: StatusKehadiran.TIDAK_HADIR,
+                namaPerwakilan: null,
+                jabatanPerwakilan: null,
+                keterangan: null,
+                fotoUrl: null,
+                fotoPulangUrl: null,
+                latitude: null,
+                longitude: null,
+                accuracy: null,
+                lokasiText: null,
+                latitudePulang: null,
+                longitudePulang: null,
+                accuracyPulang: null,
+                waktuInput: null,
+                waktuPulang: null,
+                isSelfInput: false,
+                faceScore: null,
+                faceMatchStatus: null,
+              }
+            : p
+        )
+      );
+      toast.success(`Bukti presensi ${count} peserta terpilih berhasil dibersihkan`);
+      setSelectedPesertaIds([]);
+      setIsBulkClearBuktiOpen(false);
+      setBulkResetMasterBiometrikOption(false);
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membersihkan bukti presensi peserta terpilih");
+    } finally {
+      setClearingBulkBukti(false);
     }
   };
 
@@ -1588,6 +1688,24 @@ export default function ChecklistForm({
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setIsBulkClearBuktiOpen(true);
+                    setBulkResetMasterBiometrikOption(false);
+                  }}
+                  disabled={clearingBulkBukti}
+                  className="h-8 text-xs bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold shadow-xs"
+                >
+                  {clearingBulkBukti ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                  )}
+                  Clear Bukti ({selectedPesertaIds.length})
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
                   onClick={() => setIsBulkDeleteOpen(true)}
                   disabled={deletingBulk}
                   className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs"
@@ -1851,17 +1969,33 @@ export default function ChecklistForm({
                           </div>
                         </TableCell>
 
-                        {/* Hapus Satuan */}
+                        {/* Aksi Satuan: Clear Bukti & Hapus */}
                         <TableCell className="text-right text-xs">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setDeletePesertaTarget({ id: p.id, nama: p.nama })}
-                            className="h-7 w-7 p-0 text-slate-300 hover:text-red-600"
-                            title={`Hapus ${p.nama}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {(p.fotoUrl || p.fotoPulangUrl || p.latitude || p.waktuInput || p.faceMatchStatus || p.status !== "TIDAK_HADIR") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setClearBuktiTarget(p);
+                                  setResetMasterBiometrikOption(false);
+                                }}
+                                className="h-7 w-7 p-0 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded"
+                                title={`Reset Bukti Presensi (Foto, GPS, & Biometrik) ${p.nama}`}
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setDeletePesertaTarget({ id: p.id, nama: p.nama })}
+                              className="h-7 w-7 p-0 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded"
+                              title={`Hapus baris peserta ${p.nama}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -2004,6 +2138,129 @@ export default function ChecklistForm({
           toast.success("Titik lokasi kegiatan berhasil ditentukan dari peta!");
         }}
       />
+
+      {/* Dialog Konfirmasi Clear Bukti Presensi Tunggal */}
+      <AlertDialog
+        open={!!clearBuktiTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setClearBuktiTarget(null);
+            setResetMasterBiometrikOption(false);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+              <RotateCcw className="w-5 h-5 text-amber-600" />
+              Reset Bukti Presensi?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-1 text-slate-600 text-xs">
+              <span>
+                Apakah Anda yakin ingin menghapus seluruh bukti presensi untuk{" "}
+                <strong className="text-slate-900 font-bold">{clearBuktiTarget?.nama}</strong>?
+              </span>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1 text-[11px] text-amber-900">
+                <span className="font-semibold block">Data yang akan dibersihkan:</span>
+                <ul className="list-disc list-inside space-y-0.5 text-amber-800">
+                  <li>Foto selfie kehadiran & foto selfie pulang</li>
+                  <li>Titik koordinat lokasi GPS & alamat geotag</li>
+                  <li>Waktu presensi & status dikembalikan ke <span className="font-bold">Tidak Hadir</span></li>
+                </ul>
+              </div>
+
+              {clearBuktiTarget?.pegawaiId && (
+                <div className="flex items-start gap-2 pt-1">
+                  <Checkbox
+                    id="reset-master-biometric-single"
+                    checked={resetMasterBiometrikOption}
+                    onCheckedChange={(c) => setResetMasterBiometrikOption(Boolean(c))}
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="reset-master-biometric-single"
+                    className="text-[11.5px] text-slate-700 leading-snug cursor-pointer font-normal"
+                  >
+                    Reset juga biometrik wajah terdaftar dari master data pegawai ini
+                  </Label>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearingBukti}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmClearBukti}
+              disabled={clearingBukti}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+            >
+              {clearingBukti ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Membersihkan...
+                </>
+              ) : (
+                "Bersihkan Bukti Presensi"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Konfirmasi Bulk Clear Bukti Presensi */}
+      <AlertDialog
+        open={isBulkClearBuktiOpen}
+        onOpenChange={(open) => {
+          setIsBulkClearBuktiOpen(open);
+          if (!open) setBulkResetMasterBiometrikOption(false);
+        }}
+      >
+        <AlertDialogContent className="max-w-md bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+              <RotateCcw className="w-5 h-5 text-amber-600" />
+              Reset Bukti {selectedPesertaIds.length} Peserta?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-1 text-slate-600 text-xs">
+              <span>
+                Seluruh foto selfie, koordinat GPS, dan waktu presensi untuk{" "}
+                <strong className="text-amber-700 font-bold">{selectedPesertaIds.length} peserta</strong> yang dipilih akan dihapus. Status mereka akan diubah kembali menjadi <span className="font-bold">Tidak Hadir</span>.
+              </span>
+              <div className="flex items-start gap-2 pt-1">
+                <Checkbox
+                  id="reset-master-biometric-bulk"
+                  checked={bulkResetMasterBiometrikOption}
+                  onCheckedChange={(c) => setBulkResetMasterBiometrikOption(Boolean(c))}
+                  className="mt-0.5"
+                />
+                <Label
+                  htmlFor="reset-master-biometric-bulk"
+                  className="text-[11.5px] text-slate-700 leading-snug cursor-pointer font-normal"
+                >
+                  Reset juga biometrik wajah terdaftar dari master data pegawai
+                </Label>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearingBulkBukti}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBulkClearBukti}
+              disabled={clearingBulkBukti}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+            >
+              {clearingBulkBukti ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Membersihkan...
+                </>
+              ) : (
+                `Bersihkan Bukti (${selectedPesertaIds.length} Peserta)`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog Konfirmasi Hapus Agenda */}
       <AlertDialog
