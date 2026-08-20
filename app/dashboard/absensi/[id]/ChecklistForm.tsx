@@ -230,7 +230,7 @@ export default function ChecklistForm({
     setStatusAgenda(agenda.status);
     setDriveUrl(agenda.driveUrl || "");
     setNamaKegiatan(agenda.namaKegiatan || "");
-    setTanggal(agenda.tanggal ? new Date(agenda.tanggal).toISOString().split("T")[0] : "");
+    setTanggal(agenda.tanggal ? formatWita(agenda.tanggal, "yyyy-MM-dd") : "");
     const parts = parseWaktuParts(agenda.waktu);
     setJamMulai(parts.jamMulai);
     setJamSelesai(parts.jamSelesai);
@@ -991,42 +991,7 @@ export default function ChecklistForm({
                 </div>
               </div>
 
-              {/* Baris 2: Target Binding & Label Kop Peserta */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-indigo-500" />
-                    Target Kategori Binding Pegawai
-                  </Label>
-                  <select
-                    value={targetKategori}
-                    onChange={(e) => handleTargetKategoriChange(e.target.value)}
-                    className="w-full h-9 text-xs font-semibold bg-white border border-slate-300 rounded-md px-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="SEMUA_OPD">Semua / Seluruh Perangkat Daerah & Pegawai</option>
-                    <option value="ESELON_2_3">OPD Utama (Eselon II & III)</option>
-                    <option value="ESELON_2">Khusus Eselon II (Kepala OPD)</option>
-                    <option value="ESELON_3">Khusus Eselon III (Sekretaris/Kabid)</option>
-                    <option value="KECAMATAN">Kecamatan se-Kutai Barat</option>
-                    <option value="CUSTOM">Kustom (Pilihan Tertentu)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Label Target Peserta (Kop / Lampiran)
-                  </Label>
-                  <Input
-                    type="text"
-                    placeholder="Contoh: Seluruh Perangkat Daerah / Pegawai"
-                    value={targetPeserta}
-                    onChange={(e) => setTargetPeserta(e.target.value)}
-                    className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                  />
-                </div>
-              </div>
-
-              {/* Baris 3: Catatan Agenda */}
+              {/* Baris 2: Catatan Agenda */}
               <div className="space-y-1.5 pt-1">
                 <Label className="text-xs font-semibold text-slate-700">
                   Keterangan / Catatan Agenda (Opsional)

@@ -1,4 +1,4 @@
-import { getAgendaAbsensiList, getPejabatWajibAbsen } from "@/app/actions/absensi";
+import { getAgendaAbsensiList, getPejabatWajibAbsen, getAllPegawaiForBinding } from "@/app/actions/absensi";
 import AgendaList from "./AgendaList";
 import Link from "next/link";
 import { ChevronLeft, ClipboardCheck, Users, BarChart3 } from "lucide-react";
@@ -41,12 +41,13 @@ export default async function AbsensiPage({
     endDate = `${selectedYear}-12-31`;
   }
 
-  const [agendas, pejabatList] = await Promise.all([
+  const [agendas, pejabatList, allPegawai] = await Promise.all([
     getAgendaAbsensiList({
       startDate: startDate || undefined,
       endDate: endDate || undefined,
     }),
     getPejabatWajibAbsen(),
+    getAllPegawaiForBinding(),
   ]);
 
   return (
@@ -80,6 +81,7 @@ export default async function AbsensiPage({
       <AgendaList
         initialData={agendas as any}
         totalPejabatTerdaftar={pejabatList.length}
+        allPegawai={allPegawai as any}
         selectedYear={selectedYear}
         selectedBulan={selectedBulan}
         customStartDate={customStartDate}

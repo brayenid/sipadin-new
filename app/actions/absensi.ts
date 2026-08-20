@@ -444,6 +444,7 @@ export async function createAgendaAbsensi(payload: {
   targetLongitude?: number | null;
   radiusMeter?: number | null;
   customPegawaiIds?: string[];
+  pesertaIds?: string[];
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -487,48 +488,36 @@ export async function createAgendaAbsensi(payload: {
     }
   }
 
-  // Filter pegawai sesuai kategori target binding
-  const targetKategori = payload.targetKategori || "SEMUA_OPD";
-  let targetPegawaiFilter: any = { teamId: session.user.teamId };
-
-  if (targetKategori === "CUSTOM" && payload.customPegawaiIds && payload.customPegawaiIds.length > 0) {
-    targetPegawaiFilter.id = { in: payload.customPegawaiIds };
-  } else if (targetKategori === "ESELON_2") {
-    targetPegawaiFilter.OR = [
-      { eselon: { in: ["II.a", "II.b", "II"] } },
-      { kategoriPegawai: "ESELON_2" },
-      { wajibAbsenOpd: true, eselon: { contains: "II", mode: "insensitive" } },
-    ];
-  } else if (targetKategori === "ESELON_3") {
-    targetPegawaiFilter.OR = [
-      { eselon: { in: ["III.a", "III.b", "III"] } },
-      { kategoriPegawai: "ESELON_3" },
-      { wajibAbsenOpd: true, eselon: { contains: "III", mode: "insensitive" } },
-    ];
-  } else if (targetKategori === "ESELON_2_3") {
-    targetPegawaiFilter.OR = [
-      { eselon: { in: ["II.a", "II.b", "II", "III.a", "III.b", "III"] } },
-      { kategoriPegawai: { in: ["ESELON_2", "ESELON_3"] } },
-      { wajibAbsenOpd: true },
-    ];
-  } else if (targetKategori === "KECAMATAN") {
-    targetPegawaiFilter.OR = [
-      { instansi: { contains: "Kecamatan", mode: "insensitive" } },
-      { kategoriPegawai: "KECAMATAN" },
-    ];
+  // Ambil daftar pegawai yang dipilih pengguna (atau default rekomendasi wajib absen)
+  let pejabatTerdaftar: any[] = [];
+  if (Array.isArray(payload.pesertaIds)) {
+    if (payload.pesertaIds.length > 0) {
+      pejabatTerdaftar = await prisma.pegawai.findMany({
+        where: {
+          id: { in: payload.pesertaIds },
+          teamId: session.user.teamId,
+        },
+        orderBy: [
+          { urutanOpd: "asc" },
+          { instansi: "asc" },
+          { nama: "asc" },
+        ],
+      });
+    }
   } else {
-    // Default: SEMUA_OPD (Seluruh Perangkat Daerah / Pegawai Wajib Absen)
-    targetPegawaiFilter.wajibAbsenOpd = true;
+    // Fallback default: pegawai dengan wajibAbsenOpd = true
+    pejabatTerdaftar = await prisma.pegawai.findMany({
+      where: {
+        teamId: session.user.teamId,
+        wajibAbsenOpd: true,
+      },
+      orderBy: [
+        { urutanOpd: "asc" },
+        { instansi: "asc" },
+        { nama: "asc" },
+      ],
+    });
   }
-
-  const pejabatTerdaftar = await prisma.pegawai.findMany({
-    where: targetPegawaiFilter,
-    orderBy: [
-      { urutanOpd: "asc" },
-      { instansi: "asc" },
-      { nama: "asc" },
-    ],
-  });
 
   const baseSlug = generateSlug(payload.namaKegiatan).slice(0, 45) || "agenda-presensi";
   const randomSuffix = Math.random().toString(36).substring(2, 6);
@@ -544,8 +533,8 @@ export async function createAgendaAbsensi(payload: {
         waktu: payload.waktu || "09:00 WITA",
         tempat: payload.tempat,
         deskripsi: payload.deskripsi || null,
-        targetPeserta: payload.targetPeserta || (targetKategori === "SEMUA_OPD" ? "Seluruh Perangkat Daerah / Pegawai" : "Eselon II.b dan III.a"),
-        targetKategori,
+        targetPeserta: payload.targetPeserta || "Daftar Hadir Pegawai / Pejabat",
+        targetKategori: "SEMUA_OPD",
         isPublicActive: true,
         waktuBukaAbsen: waktuBuka,
         waktuTutupAbsen: waktuTutup,

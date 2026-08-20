@@ -61,7 +61,7 @@ export default function CetakModal({
     hari: agenda.hari || formatWita(agenda.tanggal, "EEEE"),
     tanggalLabel: formattedTanggal,
     tempat: agenda.tempat,
-    targetPeserta: agenda.targetPeserta || "Eselon II.b dan III.a",
+    targetPeserta: agenda.targetPeserta || "Daftar Hadir Pegawai / Pejabat",
     peserta: agenda.peserta,
   };
 

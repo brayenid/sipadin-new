@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { deleteAgendaAbsensi } from "@/app/actions/absensi";
-import ModalBuatAgenda from "./ModalBuatAgenda";
 
 type AgendaItem = {
   id: string;
@@ -73,6 +72,7 @@ const NAMA_BULAN = [
 export default function AgendaList({
   initialData,
   totalPejabatTerdaftar,
+  allPegawai = [],
   selectedYear = "",
   selectedBulan = "ALL",
   customStartDate = "",
@@ -80,6 +80,7 @@ export default function AgendaList({
 }: {
   initialData: AgendaItem[];
   totalPejabatTerdaftar: number;
+  allPegawai?: any[];
   selectedYear?: string;
   selectedBulan?: string;
   customStartDate?: string;
@@ -89,7 +90,6 @@ export default function AgendaList({
   const [data, setData] = useState<AgendaItem[]>(initialData);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Filter Waktu State
@@ -256,14 +256,15 @@ export default function AgendaList({
                 </Button>
               </Link>
 
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Buat Agenda
-              </Button>
+              <Link href="/dashboard/absensi/buat">
+                <Button
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Buat Agenda
+                </Button>
+              </Link>
             </div>
           </div>
         </CardHeader>
@@ -607,20 +608,15 @@ export default function AgendaList({
             <Users className="w-4 h-4 text-slate-700" />
           </Button>
         </Link>
-        <Button
-          onClick={() => setIsModalOpen(true)}
-          className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Buat Agenda
-        </Button>
+        <Link href="/dashboard/absensi/buat" className="flex-1">
+          <Button
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Buat Agenda
+          </Button>
+        </Link>
       </div>
-
-      <ModalBuatAgenda
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        totalPejabatTerdaftar={totalPejabatTerdaftar}
-      />
     </div>
   );
 }
