@@ -368,7 +368,7 @@ export default function PublicAbsensiForm({
     startCamera(nextMode);
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current) return;
 
     // Single-face constraint validation (Wajib 1 Orang)
@@ -424,6 +424,26 @@ export default function PublicAbsensiForm({
 
     // Gambar hanya area yang terlihat pada viewfinder (WYSIWYG)
     ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+
+    // Langsung ekstrak biometric face descriptor dari kanvas foto resolusi tinggi
+    if (modelsLoaded && typeof faceapi !== "undefined") {
+      try {
+        const detection = await faceapi
+          .detectSingleFace(
+            canvas,
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
+          )
+          .withFaceLandmarks(true)
+          .withFaceDescriptor();
+
+        if (detection && detection.descriptor) {
+          setExtractedFaceDescriptor(Array.from(detection.descriptor));
+        }
+      } catch (err) {
+        console.warn("[FaceAPI Capture Error]:", err);
+      }
+    }
+
     canvas.toBlob(
       async (blob) => {
         if (!blob) return;

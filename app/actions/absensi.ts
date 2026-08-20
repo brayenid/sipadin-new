@@ -945,6 +945,17 @@ export async function submitSelfAbsensi(payload: {
   let faceScore: number | null = null;
   let faceMatchStatus: string | null = null;
 
+  // Normalisasi incoming face descriptor
+  let incomingDesc: number[] | null = null;
+  if (Array.isArray(payload.faceDescriptor) && payload.faceDescriptor.length > 0) {
+    incomingDesc = payload.faceDescriptor;
+  } else if (typeof payload.faceDescriptor === "string") {
+    try {
+      const parsed = JSON.parse(payload.faceDescriptor);
+      if (Array.isArray(parsed) && parsed.length > 0) incomingDesc = parsed;
+    } catch {}
+  }
+
   if (payload.pesertaId) {
     // Cek record peserta dan relasi pegawai
     const existingPeserta = await prisma.kehadiranPeserta.findUnique({
@@ -956,19 +967,36 @@ export async function submitSelfAbsensi(payload: {
       await deleteFromR2OrLocal(existingPeserta.fotoUrl);
     }
 
+    // Cari referensi pegawai (jika relasi belum terhubung, cari berdasarkan NIP atau Nama di OPD yang sama)
+    let targetPegawai = existingPeserta?.pegawai || null;
+    if (!targetPegawai && existingPeserta) {
+      targetPegawai = await prisma.pegawai.findFirst({
+        where: {
+          teamId: agenda.teamId,
+          OR: [
+            existingPeserta.nip ? { nip: existingPeserta.nip } : undefined,
+            { nama: { equals: existingPeserta.nama, mode: "insensitive" } },
+          ].filter(Boolean) as any,
+        },
+      });
+      if (targetPegawai) {
+        await prisma.kehadiranPeserta.update({
+          where: { id: existingPeserta.id },
+          data: { pegawaiId: targetPegawai.id },
+        });
+      }
+    }
+
     // Evaluasi Biometrik Wajah (Silent Audit)
     if (payload.status === "MEWAKILI" || payload.namaPerwakilan) {
       faceMatchStatus = "PERWAKILAN";
       faceScore = null;
-    } else if (existingPeserta?.pegawai) {
-      const pegawai = existingPeserta.pegawai;
-      const incomingDesc = payload.faceDescriptor;
-
-      if (!pegawai.faceDescriptor) {
-        // Self-enrollment on first attendance!
-        if (incomingDesc && Array.isArray(incomingDesc) && incomingDesc.length > 0) {
+    } else if (targetPegawai) {
+      if (!targetPegawai.faceDescriptor) {
+        // Self-enrollment pada absensi pertama!
+        if (incomingDesc && incomingDesc.length > 0) {
           await prisma.pegawai.update({
-            where: { id: pegawai.id },
+            where: { id: targetPegawai.id },
             data: {
               faceDescriptor: JSON.stringify(incomingDesc),
               faceEnrolledAt: now,
@@ -981,9 +1009,9 @@ export async function submitSelfAbsensi(payload: {
         }
       } else {
         // Biometrik master sudah ada -> Hitung skor kemiripan
-        if (incomingDesc && Array.isArray(incomingDesc) && incomingDesc.length > 0) {
+        if (incomingDesc && incomingDesc.length > 0) {
           try {
-            const masterDesc = JSON.parse(pegawai.faceDescriptor) as number[];
+            const masterDesc = JSON.parse(targetPegawai.faceDescriptor) as number[];
             const dist = calculateEuclideanDistance(incomingDesc, masterDesc);
             const sim = calculateFaceSimilarity(dist);
             faceScore = Number((sim / 100).toFixed(2));
@@ -1034,7 +1062,52 @@ export async function submitSelfAbsensi(payload: {
       throw new Error("Nama, Jabatan, dan Instansi/OPD wajib diisi");
     }
 
-    faceMatchStatus = payload.status === "MEWAKILI" ? "PERWAKILAN" : "PESERTA_TAMBAHAN";
+    // Cek apakah pegawai ini terdaftar di master pegawai
+    let matchedPegawai = await prisma.pegawai.findFirst({
+      where: {
+        teamId: agenda.teamId,
+        OR: [
+          payload.nip ? { nip: payload.nip } : undefined,
+          { nama: { equals: payload.nama, mode: "insensitive" } },
+        ].filter(Boolean) as any,
+      },
+    });
+
+    if (payload.status === "MEWAKILI") {
+      faceMatchStatus = "PERWAKILAN";
+    } else if (matchedPegawai) {
+      if (!matchedPegawai.faceDescriptor) {
+        if (incomingDesc && incomingDesc.length > 0) {
+          await prisma.pegawai.update({
+            where: { id: matchedPegawai.id },
+            data: {
+              faceDescriptor: JSON.stringify(incomingDesc),
+              faceEnrolledAt: now,
+            },
+          });
+          faceMatchStatus = "ENROLLED";
+          faceScore = 1.0;
+        } else {
+          faceMatchStatus = "BYPASS";
+        }
+      } else {
+        if (incomingDesc && incomingDesc.length > 0) {
+          try {
+            const masterDesc = JSON.parse(matchedPegawai.faceDescriptor) as number[];
+            const dist = calculateEuclideanDistance(incomingDesc, masterDesc);
+            const sim = calculateFaceSimilarity(dist);
+            faceScore = Number((sim / 100).toFixed(2));
+            faceMatchStatus = dist <= BIOMETRIC_MATCH_THRESHOLD ? "MATCH" : "MISMATCH";
+          } catch (err) {
+            faceMatchStatus = "BYPASS";
+          }
+        } else {
+          faceMatchStatus = "BYPASS";
+        }
+      }
+    } else {
+      faceMatchStatus = "PESERTA_TAMBAHAN";
+    }
 
     const currentCount = await prisma.kehadiranPeserta.count({
       where: { agendaId: agenda.id },
@@ -1043,11 +1116,12 @@ export async function submitSelfAbsensi(payload: {
     resultPeserta = await prisma.kehadiranPeserta.create({
       data: {
         agendaId: agenda.id,
-        nama: payload.nama,
-        nip: payload.nip || null,
-        jabatan: payload.jabatan,
-        instansi: payload.instansi,
-        eselon: payload.eselon || "II.b",
+        pegawaiId: matchedPegawai ? matchedPegawai.id : null,
+        nama: payload.nama.trim(),
+        nip: payload.nip?.trim() || null,
+        jabatan: payload.jabatan.trim(),
+        instansi: payload.instansi.trim(),
+        eselon: payload.eselon || "Umum",
         urutan: currentCount + 1,
         status: payload.status,
         namaPerwakilan: payload.status === "MEWAKILI" ? payload.namaPerwakilan : null,
@@ -1062,7 +1136,7 @@ export async function submitSelfAbsensi(payload: {
         isSelfInput: true,
         ipAddress: payload.ipAddress || null,
         userAgent: payload.userAgent || null,
-        faceScore: null,
+        faceScore,
         faceMatchStatus,
       },
     });
