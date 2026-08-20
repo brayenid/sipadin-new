@@ -26,7 +26,6 @@ import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-compression";
 import { submitSelfAbsensi, submitSelfAbsensiPulang, searchPublicPesertaAgenda } from "@/app/actions/absensi";
-import * as faceapi from "@vladmandic/face-api";
 
 interface PesertaItem {
   id: string;
@@ -200,24 +199,43 @@ export default function PublicAbsensiForm({
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceCount, setFaceCount] = useState<number | null>(null);
   const [extractedFaceDescriptor, setExtractedFaceDescriptor] = useState<number[] | null>(null);
+  const faceApiRef = useRef<any>(null);
 
-  // Load FaceAPI Models once in browser
+  // Load FaceAPI Models once in browser using pure ESM bundle
   useEffect(() => {
     let isMounted = true;
     const loadAiModels = async () => {
       try {
+        const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js");
+        faceApiRef.current = faceapi;
+        const MODEL_URL = "/models";
+
+        // Load Tiny Face Detector
         if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-          await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         }
-        if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
-          await faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models");
+
+        // Load Landmarks & Recognition
+        await Promise.allSettled([
+          !faceapi.nets.faceLandmark68TinyNet.isLoaded
+            ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.faceLandmark68Net.isLoaded
+            ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.faceRecognitionNet.isLoaded
+            ? faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+          !faceapi.nets.ssdMobilenetv1.isLoaded
+            ? faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
+        ]);
+
+        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
+          setModelsLoaded(true);
         }
-        if (!faceapi.nets.faceRecognitionNet.isLoaded) {
-          await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-        }
-        if (isMounted) setModelsLoaded(true);
       } catch (err) {
-        console.warn("FaceAPI models load error:", err);
+        console.warn("[FaceAPI Models Load Warning]:", err);
       }
     };
 
@@ -238,31 +256,46 @@ export default function PublicAbsensiForm({
 
     let isScanning = true;
     const interval = setInterval(async () => {
-      if (!isScanning || !videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+      const faceapi = faceApiRef.current;
+      if (
+        !isScanning ||
+        !videoRef.current ||
+        !faceapi ||
+        !faceapi.nets?.tinyFaceDetector?.isLoaded ||
+        videoRef.current.paused ||
+        videoRef.current.ended
+      ) {
+        return;
+      }
+
       try {
         const video = videoRef.current;
         if (video.readyState >= 2) {
-          const detections = await faceapi
-            .detectAllFaces(
-              video,
-              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
-            )
-            .withFaceLandmarks(true)
-            .withFaceDescriptors();
+          let query: any = faceapi.detectAllFaces(
+            video,
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
+          );
 
-          if (isScanning) {
+          if (faceapi.nets.faceLandmark68TinyNet?.isLoaded || faceapi.nets.faceLandmark68Net?.isLoaded) {
+            query = query.withFaceLandmarks(true);
+          }
+          if (faceapi.nets.faceRecognitionNet?.isLoaded) {
+            query = query.withFaceDescriptors();
+          }
+
+          const detections = await query.catch(() => null);
+
+          if (isScanning && detections && Array.isArray(detections)) {
             setFaceCount(detections.length);
-            if (detections.length === 1) {
+            if (detections.length === 1 && detections[0].descriptor) {
               setExtractedFaceDescriptor(Array.from(detections[0].descriptor));
-            } else {
-              setExtractedFaceDescriptor(null);
             }
           }
         }
       } catch (e) {
         // Silently continue scanning
       }
-    }, 450);
+    }, 400);
 
     return () => {
       isScanning = false;
@@ -371,16 +404,9 @@ export default function PublicAbsensiForm({
   const capturePhoto = async () => {
     if (!videoRef.current) return;
 
-    // Single-face constraint validation (Wajib 1 Orang)
-    if (modelsLoaded && faceCount !== null) {
-      if (faceCount === 0) {
-        toast.error("Wajah tidak terdeteksi. Posisikan wajah Anda tepat di dalam lingkaran.");
-        return;
-      }
-      if (faceCount > 1) {
-        toast.error(`Terdeteksi ${faceCount} orang! Hanya boleh 1 orang di depan kamera.`);
-        return;
-      }
+    // Single-face constraint warning (hanya peringatan jika terdeteksi banyak orang, tidak memblokir kamera redup/buram)
+    if (modelsLoaded && faceCount !== null && faceCount > 2) {
+      toast.warning(`Terdeteksi ${faceCount} orang di layar. Pastikan Anda berada sendiri di dalam frame.`);
     }
 
     const video = videoRef.current;
@@ -425,22 +451,46 @@ export default function PublicAbsensiForm({
     // Gambar hanya area yang terlihat pada viewfinder (WYSIWYG)
     ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
 
-    // Langsung ekstrak biometric face descriptor dari kanvas foto resolusi tinggi
-    if (modelsLoaded && typeof faceapi !== "undefined") {
+    // Langsung ekstrak biometric face descriptor dengan mode toleransi tinggi (low-light & low-res adaptive)
+    const faceapi = faceApiRef.current;
+    if (modelsLoaded && faceapi && faceapi.nets?.tinyFaceDetector?.isLoaded) {
       try {
-        const detection = await faceapi
+        // Percobaan 1: Tiny Detector Standar
+        let detection = await faceapi
           .detectSingleFace(
             canvas,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 })
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
           )
           .withFaceLandmarks(true)
-          .withFaceDescriptor();
+          .withFaceDescriptor()
+          .catch(() => null);
+
+        // Percobaan 2 (Fallback untuk kamera gelap/buram/beresolusi rendah): Tiny Detector Sangat Sensitif
+        if (!detection) {
+          detection = await faceapi
+            .detectSingleFace(
+              canvas,
+              new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.15 })
+            )
+            .withFaceLandmarks(true)
+            .withFaceDescriptor();
+        }
+
+        // Percobaan 3: SSD MobileNet Detector (Jika tersedia)
+        if (!detection && faceapi.nets.ssdMobilenetv1?.isLoaded) {
+          try {
+            detection = await faceapi
+              .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
+              .withFaceLandmarks(true)
+              .withFaceDescriptor();
+          } catch {}
+        }
 
         if (detection && detection.descriptor) {
           setExtractedFaceDescriptor(Array.from(detection.descriptor));
         }
       } catch (err) {
-        console.warn("[FaceAPI Capture Error]:", err);
+        console.warn("[FaceAPI Adaptive Extract Warning]:", err);
       }
     }
 
@@ -688,6 +738,29 @@ export default function PublicAbsensiForm({
         uploadedPhotoUrl = uploadJson.url;
       }
 
+      // Ekstraksi darurat face descriptor dari photoDataUrl jika state belum terisi
+      let finalFaceDescriptor = extractedFaceDescriptor;
+      const faceapi = faceApiRef.current;
+      if (!finalFaceDescriptor && photoDataUrl && faceapi) {
+        try {
+          const img = new Image();
+          img.src = photoDataUrl;
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+          const detection = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }))
+            .withFaceLandmarks(true)
+            .withFaceDescriptor();
+          if (detection && detection.descriptor) {
+            finalFaceDescriptor = Array.from(detection.descriptor);
+          }
+        } catch (e) {
+          console.warn("[FaceAPI Fallback Extract Error]:", e);
+        }
+      }
+
       const payload: any = {
         publicToken: agenda.publicToken,
         status,
@@ -700,7 +773,7 @@ export default function PublicAbsensiForm({
         accuracy: currentGps?.accuracy || null,
         lokasiText: currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        faceDescriptor: extractedFaceDescriptor || null,
+        faceDescriptor: finalFaceDescriptor || null,
       };
 
       if (!isCustomPeserta) {
