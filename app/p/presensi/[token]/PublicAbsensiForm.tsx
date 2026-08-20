@@ -26,6 +26,7 @@ import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-compression";
 import { submitSelfAbsensi, submitSelfAbsensiPulang, searchPublicPesertaAgenda } from "@/app/actions/absensi";
+import AiDiagnosticInspector, { DetectorConfig, AiDetailedLog } from "./AiDiagnosticInspector";
 
 interface PesertaItem {
   id: string;
@@ -204,48 +205,52 @@ export default function PublicAbsensiForm({
   const faceApiRef = useRef<any>(null);
   const modelLoadPromiseRef = useRef<Promise<boolean> | null>(null);
 
-  // Live Diagnostics Monitor State
-  const [aiDebugLog, setAiDebugLog] = useState<{
-    tinyLoaded: boolean;
-    landmarkLoaded: boolean;
-    recogLoaded: boolean;
-    videoReady: number;
-    videoRes: string;
-    detectionsCount: number;
-    score: number;
-    descriptorStatus: string;
-    lastError: string;
-  }>({
+  // Inspector & Live Diagnostics State
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [detectorConfig, setDetectorConfig] = useState<DetectorConfig>({
+    scoreThreshold: 0.45,
+    inputSize: 224,
+    requireLandmarks: false,
+    minBoxRatio: 0.08,
+    backend: "webgl",
+  });
+  const detectorConfigRef = useRef<DetectorConfig>(detectorConfig);
+  useEffect(() => {
+    detectorConfigRef.current = detectorConfig;
+  }, [detectorConfig]);
+
+  const [aiDetailedLog, setAiDetailedLog] = useState<AiDetailedLog>({
+    browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "-",
+    tfBackend: "webgl",
     tinyLoaded: false,
     landmarkLoaded: false,
     recogLoaded: false,
     videoReady: 0,
     videoRes: "-",
-    detectionsCount: 0,
-    score: 0,
+    fps: 0,
+    inferenceTimeMs: 0,
+    rawCount: 0,
+    rawScores: [],
+    rawBoxes: [],
+    distinctCount: 0,
+    smoothedCount: 0,
+    landmarkCheckResults: [],
     descriptorStatus: "BELUM JEPRET",
     lastError: "-",
+    timestamp: "",
   });
 
-  // Debugger Visibility: Aktif di dev mode, atau via secret click 3x di judul
-  const [showDebugger, setShowDebugger] = useState(process.env.NODE_ENV === "development");
-  const secretClickCountRef = useRef(0);
-  const secretClickTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleSecretDebugClick = () => {
-    secretClickCountRef.current += 1;
-    if (secretClickTimerRef.current) clearTimeout(secretClickTimerRef.current);
-    if (secretClickCountRef.current >= 3) {
-      setShowDebugger((prev) => {
-        const next = !prev;
-        toast.info(next ? "🛠️ AI Live Debugger Diaktifkan" : "🛠️ AI Live Debugger Disembunyikan");
-        return next;
-      });
-      secretClickCountRef.current = 0;
-    } else {
-      secretClickTimerRef.current = setTimeout(() => {
-        secretClickCountRef.current = 0;
-      }, 1000);
+  const handleSwitchBackend = async (targetBackend: "webgl" | "cpu") => {
+    const faceapi = faceApiRef.current;
+    if (faceapi && (faceapi as any).tf) {
+      const tf = (faceapi as any).tf;
+      if (typeof tf.setBackend === "function") {
+        await tf.setBackend(targetBackend);
+        if (typeof tf.ready === "function") {
+          await tf.ready();
+        }
+      }
+      setAiDetailedLog((prev) => ({ ...prev, tfBackend: targetBackend }));
     }
   };
 
@@ -294,7 +299,7 @@ export default function PublicAbsensiForm({
         if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
           setModelsLoaded(true);
           setIsAiInitializing(false);
-          setAiDebugLog((p) => ({
+          setAiDetailedLog((p) => ({
             ...p,
             tinyLoaded: true,
             landmarkLoaded: !!faceapi.nets.faceLandmark68TinyNet.isLoaded,
@@ -312,7 +317,7 @@ export default function PublicAbsensiForm({
         ]);
 
         if (isMounted) {
-          setAiDebugLog((p) => ({
+          setAiDetailedLog((p) => ({
             ...p,
             landmarkLoaded:
               !!faceapi.nets.faceLandmark68TinyNet?.isLoaded ||
@@ -326,7 +331,7 @@ export default function PublicAbsensiForm({
         console.warn("FaceAPI models load error:", err);
         if (isMounted) {
           setIsAiInitializing(false);
-          setAiDebugLog((p) => ({ ...p, lastError: String(err?.message || err) }));
+          setAiDetailedLog((p) => ({ ...p, lastError: String(err?.message || err) }));
         }
         return false;
       }
@@ -343,7 +348,7 @@ export default function PublicAbsensiForm({
   // Buffer temporal smoothing untuk kestabilan deteksi wajah (mencegah flickering di Chrome)
   const faceCountHistoryRef = useRef<number[]>([]);
 
-  // Real-time AI Face Detection loop (Ringan, Cepat, Akurat dengan Verifikasi Landmark)
+  // Real-time AI Face Detection loop (Ringan, Cepat, Akurat dengan Diagnostic Monitor)
   useEffect(() => {
     if (!isCameraActive || !modelsLoaded || !videoRef.current) {
       setFaceCount(null);
@@ -365,22 +370,25 @@ export default function PublicAbsensiForm({
         return;
       }
 
+      const startTime = performance.now();
+
       try {
         const video = videoRef.current;
         if (video.readyState >= 2 && video.videoWidth > 0) {
           const vWidth = video.videoWidth;
           const vHeight = video.videoHeight;
+          const currentConfig = detectorConfigRef.current;
           const hasTinyLandmarks = !!faceapi.nets?.faceLandmark68TinyNet?.isLoaded;
 
-          // Gunakan scoreThreshold 0.65 untuk mengeliminasi false detection pada dinding/baju
+          // Gunakan config dinamis dari Inspector
           const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-            inputSize: 224,
-            scoreThreshold: 0.65,
+            inputSize: currentConfig.inputSize,
+            scoreThreshold: currentConfig.scoreThreshold,
           });
 
-          // Jika landmark tersedia, verifikasi struktur fitur wajah (mata/hidung/mulut)
+          // Jalankan detector (opsional dengan verifikasi landmark jika diaktifkan)
           let rawDetections: any[] = [];
-          if (hasTinyLandmarks) {
+          if (currentConfig.requireLandmarks && hasTinyLandmarks) {
             rawDetections = await faceapi
               .detectAllFaces(video, detectorOptions)
               .withFaceLandmarks(true);
@@ -388,17 +396,41 @@ export default function PublicAbsensiForm({
             rawDetections = await faceapi.detectAllFaces(video, detectorOptions);
           }
 
+          const endTime = performance.now();
+          const inferenceTimeMs = Math.round(endTime - startTime);
+          const fps = Math.round(1000 / (inferenceTimeMs + 250));
+
           if (isScanning && Array.isArray(rawDetections)) {
-            // 1. Filter proposal box yang valid & memiliki landmark wajah riil
-            const minSize = Math.max(40, Math.min(vWidth, vHeight) * 0.1);
+            // 1. Ekstrak data mentah proposal boxes untuk inspector
+            const minSize = Math.max(30, Math.min(vWidth, vHeight) * currentConfig.minBoxRatio);
+            const rawBoxesInfo: { x: number; y: number; width: number; height: number; score: number }[] = [];
+            const rawScores: number[] = [];
+            const landmarkChecks: { faceIdx: number; passed: boolean; pointsCount: number; detail?: string }[] = [];
+
             const validBoxes = rawDetections
-              .map((d: any) => {
+              .map((d: any, idx: number) => {
                 const det = d.detection || d;
                 const b = det.box || det._box || det;
                 const score = typeof det.score === "number" ? det.score : det._score || 0;
                 const landmarks = d.landmarks || null;
-                const hasValidLandmark =
-                  landmarks && landmarks.positions && landmarks.positions.length === 68;
+                const pointsCount = landmarks?.positions?.length || 0;
+                const hasValidLandmark = pointsCount === 68;
+
+                rawScores.push(Number(score.toFixed(3)));
+                rawBoxesInfo.push({
+                  x: Math.round(b.x || b._x || 0),
+                  y: Math.round(b.y || b._y || 0),
+                  width: Math.round(b.width || b._width || 0),
+                  height: Math.round(b.height || b._height || 0),
+                  score: Number(score.toFixed(3)),
+                });
+
+                landmarkChecks.push({
+                  faceIdx: idx + 1,
+                  passed: hasValidLandmark,
+                  pointsCount,
+                  detail: hasValidLandmark ? "Valid 68 points" : `Hanya ${pointsCount} points`,
+                });
 
                 return {
                   x: b.x || b._x || 0,
@@ -406,17 +438,17 @@ export default function PublicAbsensiForm({
                   width: b.width || b._width || 0,
                   height: b.height || b._height || 0,
                   score,
-                  hasValidLandmark: hasTinyLandmarks ? hasValidLandmark : true,
+                  hasValidLandmark: currentConfig.requireLandmarks ? hasValidLandmark : true,
                 };
               })
               .filter(
                 (b) =>
                   b.hasValidLandmark &&
-                  b.score >= 0.65 &&
+                  b.score >= currentConfig.scoreThreshold &&
                   b.width >= minSize &&
                   b.height >= minSize &&
-                  b.width <= vWidth * 0.95 &&
-                  b.height <= vHeight * 0.95
+                  b.width <= vWidth * 0.98 &&
+                  b.height <= vHeight * 0.98
               )
               .sort((a, b) => b.score - a.score);
 
@@ -462,7 +494,6 @@ export default function PublicAbsensiForm({
             history.push(rawCount);
             if (history.length > 3) history.shift();
 
-            // Hitung nilai modus/mayoritas dari 3 frame terakhir
             const countsMap = new Map<number, number>();
             history.forEach((c) => countsMap.set(c, (countsMap.get(c) || 0) + 1));
             let smoothedCount = rawCount;
@@ -475,19 +506,31 @@ export default function PublicAbsensiForm({
             });
 
             setFaceCount(smoothedCount);
-            setAiDebugLog((p) => ({
-              ...p,
+            setAiDetailedLog({
+              browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "-",
+              tfBackend: (faceapi as any).tf?.getBackend ? (faceapi as any).tf.getBackend() : currentConfig.backend,
+              tinyLoaded: !!faceapi.nets?.tinyFaceDetector?.isLoaded,
+              landmarkLoaded: !!faceapi.nets?.faceLandmark68TinyNet?.isLoaded,
+              recogLoaded: !!faceapi.nets?.faceRecognitionNet?.isLoaded,
               videoReady: video.readyState,
               videoRes: `${vWidth}x${vHeight}`,
-              detectionsCount: smoothedCount,
-              score: distinctFaces[0]?.score || 0,
+              fps,
+              inferenceTimeMs,
+              rawCount: rawDetections.length,
+              rawScores,
+              rawBoxes: rawBoxesInfo,
+              distinctCount: distinctFaces.length,
+              smoothedCount,
+              landmarkCheckResults: landmarkChecks,
+              descriptorStatus: extractedFaceDescriptor ? "TEREVALUASI (OK)" : "BELUM JEPRET",
               lastError: "-",
-            }));
+              timestamp: new Date().toISOString(),
+            });
           }
         }
       } catch (err: any) {
         console.warn("[Realtime Face Detection Error]:", err);
-        setAiDebugLog((p) => ({ ...p, lastError: String(err?.message || err) }));
+        setAiDetailedLog((p) => ({ ...p, lastError: String(err?.message || err) }));
       }
     }, 250);
 
@@ -735,19 +778,19 @@ export default function PublicAbsensiForm({
         if (detection && detection.descriptor) {
           const descArray = Array.from(detection.descriptor) as number[];
           setExtractedFaceDescriptor(descArray);
-          setAiDebugLog((p) => ({
+          setAiDetailedLog((p) => ({
             ...p,
             descriptorStatus: `✓ BERHASIL (${descArray.length}-d)`,
           }));
         } else {
-          setAiDebugLog((p) => ({
+          setAiDetailedLog((p) => ({
             ...p,
             descriptorStatus: "GAGAL (Wajah tidak terbaca saat jepret)",
           }));
         }
       } catch (err: any) {
         console.warn("[FaceAPI Adaptive Extract Warning]:", err);
-        setAiDebugLog((p) => ({
+        setAiDetailedLog((p) => ({
           ...p,
           descriptorStatus: `ERR: ${String(err?.message || err)}`,
         }));
@@ -1690,9 +1733,9 @@ export default function PublicAbsensiForm({
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] space-y-3">
               <div>
                 <label
-                  onClick={handleSecretDebugClick}
-                  className="block text-xs font-bold text-slate-800 select-none cursor-default"
-                  title="Presensi Selfie"
+                  onClick={() => setIsInspectorOpen((prev) => !prev)}
+                  className="block text-xs font-bold text-slate-800 select-none cursor-pointer"
+                  title="Klik untuk membuka AI Biometric Inspector"
                 >
                   {isCheckOutMode ? "Foto Selfie Presensi Pulang" : "Foto Selfie Kehadiran"} <span className="text-red-500">*</span>
                 </label>
@@ -1885,37 +1928,23 @@ export default function PublicAbsensiForm({
                 )}
               </div>
 
-              {/* Panel Status Log Diagnostik Sementara (Hanya tampil di DEV atau jika secret-click 3x) */}
-              {showDebugger && (isCameraActive || photoDataUrl) && (
-                <div className="mt-2.5 max-w-xs sm:max-w-sm mx-auto p-3 bg-slate-900 text-slate-100 rounded-xl text-[11px] font-mono border border-slate-700 shadow-md space-y-1.5 animate-in fade-in zoom-in-95">
-                  <div className="flex items-center justify-between font-bold text-amber-300 border-b border-slate-800 pb-1">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Status AI Diagnostik
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowDebugger(false)}
-                      className="text-[9px] text-slate-400 hover:text-white px-1 py-0.5 rounded bg-slate-800 transition"
-                    >
-                      Tutup [X]
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
-                    <div>TinyDetector: <span className={aiDebugLog.tinyLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.tinyLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
-                    <div>RecognitionNet: <span className={aiDebugLog.recogLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.recogLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
-                    <div>LandmarksNet: <span className={aiDebugLog.landmarkLoaded ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.landmarkLoaded ? "✓ READY" : "⌛ MEMUAT"}</span></div>
-                    <div>Status Kamera: <span className="text-cyan-300 font-semibold">{aiDebugLog.videoRes} (state:{aiDebugLog.videoReady})</span></div>
-                    <div>Wajah Live: <span className={aiDebugLog.detectionsCount > 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{aiDebugLog.detectionsCount} ({aiDebugLog.score > 0 ? `skor: ${(aiDebugLog.score * 100).toFixed(0)}%` : "0%"})</span></div>
-                    <div>Status Biometrik: <span className={extractedFaceDescriptor ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{aiDebugLog.descriptorStatus}</span></div>
-                  </div>
-                  {aiDebugLog.lastError !== "-" && (
-                    <div className="text-rose-300 bg-rose-950/60 p-1.5 rounded text-[9px] border border-rose-800/60 break-all">
-                      ⚠️ Error: {aiDebugLog.lastError}
-                    </div>
-                  )}
+              {/* Tombol AI Inspector & Diagnostic (Mudah diakses untuk audit & live telemetry) */}
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsInspectorOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-900 text-indigo-300 hover:bg-slate-800 border border-indigo-500/30 transition shadow-xs cursor-pointer"
+                >
+                  <span>🔬</span>
+                  <span>{isInspectorOpen ? "Tutup AI Inspector" : "Buka AI Inspector & Live Values"}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                </button>
+
+                <div className="text-[10px] text-slate-400 font-mono">
+                  {aiDetailedLog.inferenceTimeMs > 0 && `${aiDetailedLog.inferenceTimeMs}ms • `}
+                  {aiDetailedLog.tfBackend.toUpperCase()}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -2136,6 +2165,17 @@ export default function PublicAbsensiForm({
           </div>
         </div>
       )}
+
+      {/* Dev AI Biometric Diagnostic Inspector Modal */}
+      <AiDiagnosticInspector
+        isOpen={isInspectorOpen}
+        onClose={() => setIsInspectorOpen(false)}
+        log={aiDetailedLog}
+        config={detectorConfig}
+        onUpdateConfig={(newConf) => setDetectorConfig((prev) => ({ ...prev, ...newConf }))}
+        onSwitchBackend={handleSwitchBackend}
+        extractedDescriptor={extractedFaceDescriptor}
+      />
     </div>
   );
 }
