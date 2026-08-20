@@ -390,10 +390,10 @@ export default function LaporanHasilAgendaPdf({
           </View>
         </View>
 
-        {/* Laporan Analisis Geolokasi & Biometrik Kedinasan */}
+        {/* Laporan Analisis Geolokasi Kedinasan */}
         <View style={styles.analysisBox} wrap={false}>
           <Text style={styles.analysisHeader}>
-            RINGKASAN ANALISIS GEOLOKASI DAN AUDIT BIOMETRIK PRESENSI
+            RINGKASAN ANALISIS GEOLOKASI PRESENSI
           </Text>
 
           <View style={styles.analysisItem}>
@@ -449,35 +449,15 @@ export default function LaporanHasilAgendaPdf({
           <View style={styles.analysisItem}>
             <Text style={styles.analysisNumber}>4.</Text>
             <Text style={styles.analysisContent}>
-              <Text style={styles.analysisBold}>Verifikasi Biometrik Wajah: </Text>
-              {totalBio > 0 ? (
-                <>
-                  Tercatat <Text style={styles.analysisBold}>{totalBio} peserta</Text> diverifikasi biometrik. Sebanyak <Text style={styles.analysisBold}>{countBioMatch} Cocok/Identik</Text> (rata-rata kemiripan: <Text style={styles.analysisBold}>{avgSimilarityPct}%</Text>), <Text style={styles.analysisBold}>{countBioEnrolled} Biometrik Baru</Text> (Enrolled 100%), dan <Text style={styles.analysisBold}>{countBioMismatch} Indikasi Beda</Text> (&lt;60% kemiripan).
-                </>
-              ) : (
-                "Belum ada data verifikasi biometrik wajah yang tercatat pada presensi agenda ini."
-              )}
-            </Text>
-          </View>
-
-          <View style={styles.analysisItem}>
-            <Text style={styles.analysisNumber}>5.</Text>
-            <Text style={styles.analysisContent}>
               <Text style={styles.analysisBold}>Catatan Evaluasi / Rekomendasi: </Text>
-              {totalGps === 0 && totalBio === 0 ? (
-                "Seluruh data kehadiran dicatat secara manual oleh admin / operator absensi."
-              ) : countOutside > 0 || countBioMismatch > 0 ? (
+              {totalGps === 0 ? (
+                "Seluruh data kehadiran dicatat secara manual oleh admin / operator presensi."
+              ) : countOutside > 0 ? (
                 <>
-                  {countOutside > 0 && (
-                    <>Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> di luar radius lokasi. </>
-                  )}
-                  {countBioMismatch > 0 && (
-                    <>Terdapat <Text style={styles.analysisBold}>{countBioMismatch} peserta</Text> terindikasi ketidaksesuaian wajah (kemiripan rendah). </>
-                  )}
-                  Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
+                  Terdapat <Text style={styles.analysisBold}>{countOutside} peserta</Text> di luar radius lokasi. Disarankan konfirmasi klarifikasi kedinasan terkait penugasan/posisi yang bersangkutan.
                 </>
               ) : (
-                "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan dan tervalidasi biometrik secara akurat."
+                "Seluruh peserta yang hadir terverifikasi tertib berada di dalam batas jangkauan lokasi kegiatan."
               )}
             </Text>
           </View>
