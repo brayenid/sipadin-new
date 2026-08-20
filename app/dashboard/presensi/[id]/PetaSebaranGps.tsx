@@ -123,9 +123,11 @@ const PanToSelectedPerson = dynamic(
 export default function PetaSebaranGps({
   agenda,
   pesertaList,
+  initialSelectedPersonId,
 }: {
   agenda: AgendaVenueInfo;
   pesertaList: PesertaWithGps[];
+  initialSelectedPersonId?: string | null;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -150,15 +152,27 @@ export default function PetaSebaranGps({
     setMounted(true);
   }, []);
 
-  // Auto-scroll pada daftar kanan saat marker di peta di-hover
+  // Responsif terhadap perpindahan dari tab daftar hadir untuk auto-focus ke marker peserta
   useEffect(() => {
-    if (hoveredPersonId && typeof document !== "undefined") {
-      const el = document.getElementById(`peserta-card-${hoveredPersonId}`);
+    if (initialSelectedPersonId) {
+      setSelectedPersonId(initialSelectedPersonId);
+      const target = pesertaList.find((p) => p.id === initialSelectedPersonId);
+      if (target && typeof target.latitude === "number" && typeof target.longitude === "number") {
+        setPanTarget([target.latitude, target.longitude]);
+      }
+    }
+  }, [initialSelectedPersonId, pesertaList]);
+
+  // Auto-scroll pada daftar kanan saat marker di peta di-hover / di-select
+  useEffect(() => {
+    const targetId = hoveredPersonId || selectedPersonId;
+    if (targetId && typeof document !== "undefined") {
+      const el = document.getElementById(`peserta-card-${targetId}`);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     }
-  }, [hoveredPersonId]);
+  }, [hoveredPersonId, selectedPersonId]);
 
   const hasVenue =
     typeof agenda.targetLatitude === "number" &&
@@ -784,6 +798,11 @@ export default function PetaSebaranGps({
                     position={[p.latitude, p.longitude]}
                     icon={createPersonIcon(p.isInsideRadius, p.isAnomaly, isHovered || isSelected)}
                     zIndexOffset={isHovered || isSelected ? 2000 : 1}
+                    ref={(markerRef: any) => {
+                      if (markerRef && isSelected) {
+                        markerRef.openPopup();
+                      }
+                    }}
                     eventHandlers={{
                       mouseover: () => setHoveredPersonId(p.id),
                       mouseout: () => setHoveredPersonId(null),
@@ -874,16 +893,9 @@ export default function PetaSebaranGps({
                             </div>
                           )}
 
-                          <div className="pt-1.5">
-                            <a
-                              href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10.5px] font-semibold flex items-center justify-center gap-1 transition"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Buka di Google Maps
-                            </a>
+                          <div className="flex justify-between items-center pt-1 border-t border-slate-100 text-[10px] text-slate-500 font-mono">
+                            <span>Koordinat GPS:</span>
+                            <span>{p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}</span>
                           </div>
                         </div>
                       </div>
@@ -992,16 +1004,6 @@ export default function PetaSebaranGps({
                             {formatDistance(p.distanceMeters)}
                           </span>
                         )}
-                        <a
-                          href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Buka di Google Maps"
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
                       </div>
                     </div>
                   );

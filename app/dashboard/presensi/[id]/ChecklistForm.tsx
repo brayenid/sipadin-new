@@ -283,6 +283,7 @@ export default function ChecklistForm({
   };
 
   const [activeTab, setActiveTab] = useState<"DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | "PANDUAN_TEKNIS">("EDIT_AGENDA");
+  const [selectedGpsPesertaId, setSelectedGpsPesertaId] = useState<string | null>(null);
 
   const handleTabChange = (tab: "DAFTAR_HADIR" | "PETA_GPS" | "EDIT_AGENDA" | "PANDUAN_TEKNIS") => {
     setActiveTab(tab);
@@ -295,6 +296,11 @@ export default function ChecklistForm({
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `#${hashMap[tab] || "edit"}`);
     }
+  };
+
+  const handleViewPesertaOnMap = (pesertaId: string) => {
+    setSelectedGpsPesertaId(pesertaId);
+    handleTabChange("PETA_GPS");
   };
 
   // Sinkronisasi Tab dengan URL Hash & Default ke EDIT_AGENDA
@@ -1598,6 +1604,7 @@ export default function ChecklistForm({
             radiusMeter,
           }}
           pesertaList={pesertaList}
+          initialSelectedPersonId={selectedGpsPesertaId}
         />
       )}
       {activeTab === "DAFTAR_HADIR" && (
@@ -1968,15 +1975,15 @@ export default function ChecklistForm({
                               )}
 
                               {p.latitude && p.longitude && (
-                                <a
-                                  href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-semibold rounded border border-emerald-200 transition"
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewPesertaOnMap(p.id)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-semibold rounded border border-emerald-200 transition cursor-pointer"
+                                  title="Lihat posisi di Peta GPS internal"
                                 >
                                   <MapPin className="w-3 h-3 text-emerald-600" />
                                   GPS
-                                </a>
+                                </button>
                               )}
 
                               {/* Biometric Audit Badges */}
@@ -2170,6 +2177,11 @@ export default function ChecklistForm({
         isOpen={!!selectedFotoPeserta}
         onClose={() => setSelectedFotoPeserta(null)}
         peserta={selectedFotoPeserta}
+        onViewMap={() => {
+          const targetId = selectedFotoPeserta?.id;
+          setSelectedFotoPeserta(null);
+          if (targetId) handleViewPesertaOnMap(targetId);
+        }}
       />
 
       {/* Modal Interaktif Peta Pemilihan Lokasi (Map Picker) */}

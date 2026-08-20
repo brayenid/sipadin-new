@@ -10,10 +10,12 @@ export default function FotoPreviewModal({
   isOpen,
   onClose,
   peserta,
+  onViewMap,
 }: {
   isOpen: boolean;
   onClose: () => void;
   peserta: {
+    id?: string;
     nama: string;
     jabatan: string;
     instansi: string;
@@ -24,13 +26,9 @@ export default function FotoPreviewModal({
     latitude?: number | null;
     longitude?: number | null;
   } | null;
+  onViewMap?: () => void;
 }) {
   if (!peserta || !peserta.fotoUrl) return null;
-
-  const mapsUrl =
-    peserta.latitude && peserta.longitude
-      ? `https://www.google.com/maps?q=${peserta.latitude},${peserta.longitude}`
-      : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -65,19 +63,24 @@ export default function FotoPreviewModal({
               </span>
             </div>
 
-            {mapsUrl && (
+            {peserta.latitude && peserta.longitude && (
               <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                 <span className="text-slate-500 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" /> Lokasi GPS:
                 </span>
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                >
-                  Lihat Titik di Maps <ExternalLink className="w-3 h-3" />
-                </a>
+                {onViewMap ? (
+                  <button
+                    type="button"
+                    onClick={onViewMap}
+                    className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 text-xs cursor-pointer"
+                  >
+                    Lihat Titik di Peta <MapPin className="w-3 h-3 text-emerald-600" />
+                  </button>
+                ) : (
+                  <span className="font-mono text-slate-700 text-[11px]">
+                    {peserta.latitude.toFixed(5)}, {peserta.longitude.toFixed(5)}
+                  </span>
+                )}
               </div>
             )}
           </div>
