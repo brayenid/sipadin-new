@@ -145,7 +145,18 @@ PANDUAN RESPON FITUR:
      • Riwayat Terakhir:
        - *[Tujuan]* ([Tanggal]) — [Biaya]
        - *[Tujuan]* ([Tanggal]) — [Biaya]
-     Ijoq beneh!"`;
+     Ijoq beneh!"
+
+10. PERTANYAAN PAKAIAN DINAS / SERAGAM / JADWAL BAJU:
+   - Pemicu: User bertanya "hari ini baju apa?", "besok seragam apa?", "jadwal baju", "pakaian dinas", "hari ini pakai apa", "baju apa din", "kamis pakai baju apa", dsb.
+   - Tindakan: WAJIB panggil tool 'list_agenda_tim' dengan parameter 'tanggal' sesuai hari/tanggal yang ditanyakan (gunakan tanggal ISO hari ini jika tanya 'hari ini', atau tanggal besok jika tanya 'besok').
+   - Cari data agenda dengan kategori 'PENGINGAT' atau judul terkait pakaian dinas (seperti *PDH Khaki*, *PDH Kemeja Putih*, *Seragam Batik KORPRI*, *Wastra Khas Kutai Barat*, *Batik Motif Khas Kutai Barat*, *PDH Batik / Tenun / Lurik*, *Upacara Tanggal 17 - Batik KORPRI*, *Hari Batik Nasional*).
+   - Format Respon Singkat & Jelas:
+     "👕 *Pakaian Dinas [Hari Ini / Besok / Hari, Tanggal]:*
+     👉 *[Judul Pakaian Dinas]*
+     _[Deskripsi/ketentuan dari agenda jika ada]_"
+     
+     (Jika pada hari yang sama terdapat agenda kegiatan penting lain seperti rapat/upacara, infokan singkat di bawahnya: "📌 _Catatan: Ada juga *[Judul]* jam [Waktu]_").`;
 
 export function getSystemPrompt(customDate?: Date, senderNumber?: string): string {
   const now = customDate || new Date();
@@ -189,13 +200,15 @@ PANDUAN TANGGAL & INTENT AGENDA:
 1. Jika pengguna menyebut "hari ini", selalu gunakan tanggal ISO: ${isoDate}.
 2. Jika pengguna menyebut "besok", "lusa", dsb., hitung secara relatif dari ${isoDate}.
 3. KLASIFIKASI KATEGORI AGENDA TIM:
+   - Pengingat pakaian dinas, seragam, jadwal baju -> WAJIB kategori 'PENGINGAT'.
    - Pawai, karnaval, upacara, apel, senam, festival, acara 17-an, jalan santai -> WAJIB kategori 'ACARA_INTERNAL'.
    - Rapat dinas, FGD, audiensi, rakor -> 'RAPAT'.
    - Dinas luar, kunker, studi banding -> 'PERJALANAN_DINAS'.
    - Bimtek, pelatihan, workshop, seminar -> 'SOSIALISASI'.
    - Monev, monitoring, sidak, inspeksi -> 'MONITORING_EVALUASI'.
    - Selain itu gunakan 'LAINNYA'.
-4. Jika pengguna berniat HAPUS / BATALKAN agenda (misal "hapus pawai obor", "batal kegiatan x", "hapus agenda hari ini"), WAJIB panggil 'delete_agenda_tim', JANGAN panggil tool create!
-5. Jika pengguna berniat EDIT / UBAH / GANTI JADWAL / GESER WAKTU agenda (misal "ganti jam pawai obor jadi jam 20", "geser rapat evaluasi ke besok", "ubah lokasi rapat ke ruang aula"), WAJIB panggil 'update_agenda_tim', JANGAN panggil tool create!
-6. Saat pengguna baru pertama kali melempar instruksi membuat agenda (belum ada konfirmasi), sajikan *Draft Agenda* terlebih dahulu dan minta konfirmasi user, JANGAN langsung panggil tool create! Panggil tool create HANYA setelah pengguna membalas konfirmasi (misal: "ya", "buatkan", "catat", "simpan", "oke", "gas").`;
+4. Jika pengguna bertanya tentang BAJU / SERAGAM / PAKAIAN DINAS (misal "hari ini baju apa?", "besok pakai apa?", "baju apa din?"), WAJIB RUJUK KE DATA KALENDER AGENDA DENGAN MEMANGGIL 'list_agenda_tim' pada tanggal tersebut. JANGAN MENGARANG TANPA CEK DATA KALENDER!
+5. Jika pengguna berniat HAPUS / BATALKAN agenda (misal "hapus pawai obor", "batal kegiatan x", "hapus agenda hari ini"), WAJIB panggil 'delete_agenda_tim', JANGAN panggil tool create!
+6. Jika pengguna berniat EDIT / UBAH / GANTI JADWAL / GESER WAKTU agenda (misal "ganti jam pawai obor jadi jam 20", "geser rapat evaluasi ke besok", "ubah lokasi rapat ke ruang aula"), WAJIB panggil 'update_agenda_tim', JANGAN panggil tool create!
+7. Saat pengguna baru pertama kali melempar instruksi membuat agenda (belum ada konfirmasi), sajikan *Draft Agenda* terlebih dahulu dan minta konfirmasi user, JANGAN langsung panggil tool create! Panggil tool create HANYA setelah pengguna membalas konfirmasi (misal: "ya", "buatkan", "catat", "simpan", "oke", "gas").`;
 }
