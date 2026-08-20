@@ -2197,58 +2197,50 @@ export default function ChecklistForm({
           }
         }}
       >
-        <AlertDialogContent className="max-w-md bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
-              <RotateCcw className="w-5 h-5 text-amber-600" />
+        <AlertDialogContent className="max-w-sm bg-white p-5 rounded-2xl">
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-200">
+                <RotateCcw className="w-4 h-4" />
+              </div>
               Reset Bukti Presensi?
             </AlertDialogTitle>
-            <AlertDialogDescription render={<div />} className="space-y-3 pt-1 text-slate-600 text-xs">
-              <span>
-                Apakah Anda yakin ingin menghapus seluruh bukti presensi untuk{" "}
-                <strong className="text-slate-900 font-bold">{clearBuktiTarget?.nama}</strong>?
-              </span>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1 text-[11px] text-amber-900">
-                <span className="font-semibold block">Data yang akan dibersihkan:</span>
-                <ul className="list-disc list-inside space-y-0.5 text-amber-800">
-                  <li>Foto selfie kehadiran & foto selfie pulang</li>
-                  <li>Titik koordinat lokasi GPS & alamat geotag</li>
-                  <li>Waktu presensi & status dikembalikan ke <span className="font-bold">Tidak Hadir</span></li>
-                </ul>
-              </div>
+            <AlertDialogDescription render={<div />} className="space-y-2.5 text-slate-600 text-xs">
+              <p className="leading-relaxed">
+                Foto selfie, titik GPS, dan waktu presensi untuk <strong className="text-slate-900 font-semibold">{clearBuktiTarget?.nama}</strong> akan dihapus dan status dikembalikan ke <span className="font-semibold text-slate-700">Tidak Hadir</span>.
+              </p>
 
               {clearBuktiTarget?.pegawaiId && (
-                <div className="flex items-start gap-2 pt-1">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
                   <Checkbox
                     id="reset-master-biometric-single"
                     checked={resetMasterBiometrikOption}
                     onCheckedChange={(c) => setResetMasterBiometrikOption(Boolean(c))}
-                    className="mt-0.5"
                   />
                   <Label
                     htmlFor="reset-master-biometric-single"
-                    className="text-[11.5px] text-slate-700 leading-snug cursor-pointer font-normal"
+                    className="text-[11px] text-slate-700 cursor-pointer font-normal"
                   >
-                    Reset juga biometrik wajah terdaftar dari master data pegawai ini
+                    Reset juga biometrik wajah di master pegawai
                   </Label>
                 </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearingBukti}>Batal</AlertDialogCancel>
+          <AlertDialogFooter className="mt-3 gap-2">
+            <AlertDialogCancel disabled={clearingBukti} className="h-8 text-xs">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmClearBukti}
               disabled={clearingBukti}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
             >
               {clearingBukti ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Membersihkan...
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Mereset...
                 </>
               ) : (
-                "Bersihkan Bukti Presensi"
+                "Reset Bukti"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2263,47 +2255,47 @@ export default function ChecklistForm({
           if (!open) setBulkResetMasterBiometrikOption(false);
         }}
       >
-        <AlertDialogContent className="max-w-md bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
-              <RotateCcw className="w-5 h-5 text-amber-600" />
+        <AlertDialogContent className="max-w-sm bg-white p-5 rounded-2xl">
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-200">
+                <RotateCcw className="w-4 h-4" />
+              </div>
               Reset Bukti {selectedPesertaIds.length} Peserta?
             </AlertDialogTitle>
-            <AlertDialogDescription render={<div />} className="space-y-3 pt-1 text-slate-600 text-xs">
-              <span>
-                Seluruh foto selfie, koordinat GPS, dan waktu presensi untuk{" "}
-                <strong className="text-amber-700 font-bold">{selectedPesertaIds.length} peserta</strong> yang dipilih akan dihapus. Status mereka akan diubah kembali menjadi <span className="font-bold">Tidak Hadir</span>.
-              </span>
-              <div className="flex items-start gap-2 pt-1">
+            <AlertDialogDescription render={<div />} className="space-y-2.5 text-slate-600 text-xs">
+              <p className="leading-relaxed">
+                Seluruh bukti presensi untuk <strong className="text-amber-700 font-semibold">{selectedPesertaIds.length} peserta</strong> yang dipilih akan dihapus dan status dikembalikan ke <span className="font-semibold text-slate-700">Tidak Hadir</span>.
+              </p>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
                 <Checkbox
                   id="reset-master-biometric-bulk"
                   checked={bulkResetMasterBiometrikOption}
                   onCheckedChange={(c) => setBulkResetMasterBiometrikOption(Boolean(c))}
-                  className="mt-0.5"
                 />
                 <Label
                   htmlFor="reset-master-biometric-bulk"
-                  className="text-[11.5px] text-slate-700 leading-snug cursor-pointer font-normal"
+                  className="text-[11px] text-slate-700 cursor-pointer font-normal"
                 >
-                  Reset juga biometrik wajah terdaftar dari master data pegawai
+                  Reset juga biometrik wajah di master pegawai
                 </Label>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearingBulkBukti}>Batal</AlertDialogCancel>
+          <AlertDialogFooter className="mt-3 gap-2">
+            <AlertDialogCancel disabled={clearingBulkBukti} className="h-8 text-xs">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmBulkClearBukti}
               disabled={clearingBulkBukti}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
             >
               {clearingBulkBukti ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Membersihkan...
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Mereset...
                 </>
               ) : (
-                `Bersihkan Bukti (${selectedPesertaIds.length} Peserta)`
+                `Reset (${selectedPesertaIds.length} Peserta)`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
