@@ -65,7 +65,9 @@ function NavLink({
   const pathname = usePathname();
   const { close } = useSidebar();
 
-  const isActive = exact ? pathname === href : pathname.startsWith(href);
+  const isActive = exact
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <Link
