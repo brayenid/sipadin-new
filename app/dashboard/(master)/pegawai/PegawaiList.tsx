@@ -49,6 +49,7 @@ type Pegawai = {
   jabatan: string;
   instansi: string | null;
   eselon: string | null;
+  timInternal?: boolean;
   faceDescriptor?: string | null;
   faceEnrolledAt?: Date | string | null;
 };
@@ -304,7 +305,8 @@ export default function PegawaiList({
       (original.golongan || "") !== (row.golongan || "") ||
       original.jabatan !== row.jabatan ||
       (original.instansi || "") !== (row.instansi || "") ||
-      (original.eselon || "") !== (row.eselon || "")
+      (original.eselon || "") !== (row.eselon || "") ||
+      Boolean(original.timInternal) !== Boolean(row.timInternal)
     );
   };
 
@@ -312,6 +314,9 @@ export default function PegawaiList({
     if (row.id.startsWith("temp-")) return true;
     const original = initialData.find((p) => p.id === row.id);
     if (!original) return false;
+    if (field === "timInternal") {
+      return Boolean(original.timInternal) !== Boolean(row.timInternal);
+    }
     return (original[field] || "") !== (row[field] || "");
   };
 
@@ -332,13 +337,14 @@ export default function PegawaiList({
         jabatan: "",
         instansi: "Sekretariat Daerah",
         eselon: "",
+        timInternal: false,
         faceDescriptor: null,
       },
       ...bulkData,
     ]);
   };
 
-  const updateBulkRow = (id: string, field: keyof Pegawai, value: string) => {
+  const updateBulkRow = (id: string, field: keyof Pegawai, value: any) => {
     const newData = [...bulkData];
     const index = newData.findIndex((r) => r.id === id);
     if (index !== -1) {
@@ -568,7 +574,12 @@ export default function PegawaiList({
                     />
                   </TableHead>
 
-                  {/* 8. STATUS BIOMETRIK */}
+                  {/* 8. TIM INTERNAL */}
+                  <TableHead className="min-w-[120px] px-3 text-center font-semibold text-slate-700">
+                    Tim Internal
+                  </TableHead>
+
+                  {/* 9. STATUS BIOMETRIK */}
                   <TableHead className="min-w-[145px] p-1">
                     <ExcelColumnFilter
                       title="Status Biometrik"
@@ -687,6 +698,28 @@ export default function PegawaiList({
                         </Select>
                       </TableCell>
 
+                      {/* KOLOM TIM INTERNAL */}
+                      <TableCell className="p-2 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(row.timInternal)}
+                            onChange={(e) => updateBulkRow(row.id, "timInternal", e.target.checked)}
+                            disabled={!isSuperAdmin}
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          {row.timInternal ? (
+                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+                              Ya
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">
+                              Tidak
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+
                       {/* KOLOM STATUS BIOMETRIK */}
                       <TableCell className="p-2">
                         {hasBiometric ? (
@@ -731,7 +764,7 @@ export default function PegawaiList({
                 })}
                 {displayedData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-slate-500 text-xs">
+                    <TableCell colSpan={10} className="text-center py-10 text-slate-500 text-xs">
                       {activeFiltersCount > 0 || searchQuery ? (
                         <div className="flex flex-col items-center gap-2">
                           <p>Tidak ada data pegawai yang sesuai dengan filter yang dipilih.</p>

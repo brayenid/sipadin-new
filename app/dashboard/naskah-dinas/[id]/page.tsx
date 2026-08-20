@@ -34,10 +34,17 @@ export default async function NaskahDinasDetailPage({
     redirect('/dashboard/naskah-dinas')
   }
 
+  // Hanya pegawai Tim Internal yang dimuat untuk dropdown/penandatangan Tata Naskah Dinas
   const pegawais = await prisma.pegawai.findMany({
-    where: { teamId: session.user.teamId },
+    where: { teamId: session.user.teamId, timInternal: true },
     orderBy: { nama: 'asc' }
-  })
+  }).then(async (internalList) => {
+    if (internalList.length > 0) return internalList;
+    return prisma.pegawai.findMany({
+      where: { teamId: session.user.teamId },
+      orderBy: { nama: 'asc' }
+    });
+  });
 
   return (
     <div className="p-4 sm:p-8 space-y-6">

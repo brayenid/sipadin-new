@@ -13,6 +13,7 @@ import {
   PenBox,
   ClipboardCheck,
   Info,
+  UserCheck,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "./SidebarProvider";
@@ -35,6 +36,7 @@ const navInformasi = [
 ];
 
 const navMaster = [
+  { href: "/dashboard/pegawai-internal", label: "Pegawai Internal", icon: UserCheck },
   { href: "/dashboard/pegawai", label: "Master Pegawai", icon: Users },
   { href: "/dashboard/vendor", label: "Master Vendor", icon: Store },
 ];

@@ -13,11 +13,19 @@ export default async function BuatSpjPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  // Fetch data master yang dibutuhkan untuk form
+  // Fetch data master yang dibutuhkan untuk form (Hanya pegawai Tim Internal untuk performa & kenyamanan)
   const [pegawais, vendors, tahunAnggarans, teams] = await Promise.all([
     prisma.pegawai.findMany({
-      where: session.user.role === "SUPER_ADMIN" ? undefined : { teamId: session.user.teamId },
+      where: session.user.role === "SUPER_ADMIN"
+        ? { timInternal: true }
+        : { teamId: session.user.teamId, timInternal: true },
       orderBy: { nama: "asc" },
+    }).then(async (internalList) => {
+      if (internalList.length > 0) return internalList;
+      return prisma.pegawai.findMany({
+        where: session.user.role === "SUPER_ADMIN" ? undefined : { teamId: session.user.teamId },
+        orderBy: { nama: "asc" },
+      });
     }),
     prisma.vendorPihakKetiga.findMany({
       where: session.user.role === "SUPER_ADMIN" ? undefined : { teamId: session.user.teamId },

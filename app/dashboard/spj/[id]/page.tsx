@@ -55,9 +55,16 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
     }
   });
 
+  // Hanya pegawai Tim Internal yang dimuat untuk dropdown/penandatangan SPJ
   const pegawaiList = await prisma.pegawai.findMany({
-    where: { teamId: session.user.teamId },
+    where: { teamId: session.user.teamId, timInternal: true },
     orderBy: { nama: "asc" }
+  }).then(async (internalList) => {
+    if (internalList.length > 0) return internalList;
+    return prisma.pegawai.findMany({
+      where: { teamId: session.user.teamId },
+      orderBy: { nama: "asc" }
+    });
   });
   
   const vendorList = await prisma.vendorPihakKetiga.findMany({

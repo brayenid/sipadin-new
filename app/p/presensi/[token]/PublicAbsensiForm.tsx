@@ -351,20 +351,86 @@ export default function PublicAbsensiForm({
       try {
         const video = videoRef.current;
         if (video.readyState >= 2 && video.videoWidth > 0) {
-          // ScoreThreshold 0.5 standar resmi TinyFaceDetector untuk mencegah multi-box proposal duplikat
-          const detections = await faceapi.detectAllFaces(
+          const vWidth = video.videoWidth;
+          const vHeight = video.videoHeight;
+
+          // Gunakan TinyFaceDetectorOptions dengan threshold seimbang
+          const rawDetections = await faceapi.detectAllFaces(
             video,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.55 })
           );
 
-          if (isScanning && detections && Array.isArray(detections)) {
-            setFaceCount(detections.length);
+          if (isScanning && rawDetections && Array.isArray(rawDetections)) {
+            // 1. Filter proposal box yang valid (buang micro-noise / box terlalu kecil dari background)
+            const minSize = Math.max(35, Math.min(vWidth, vHeight) * 0.08);
+            const validBoxes = rawDetections
+              .map((d: any) => {
+                const b = d.box || d._box || d;
+                const score = typeof d.score === "number" ? d.score : d._score || 0;
+                return {
+                  x: b.x || b._x || 0,
+                  y: b.y || b._y || 0,
+                  width: b.width || b._width || 0,
+                  height: b.height || b._height || 0,
+                  score,
+                };
+              })
+              .filter(
+                (b) =>
+                  b.score >= 0.55 &&
+                  b.width >= minSize &&
+                  b.height >= minSize &&
+                  b.width <= vWidth * 0.95 &&
+                  b.height <= vHeight * 0.95
+              )
+              .sort((a, b) => b.score - a.score);
+
+            // 2. Non-Maximum Suppression (NMS) & Cluster Merging:
+            // Menggabungkan anchor box yang tumpang tindih pada wajah yang sama agar tidak terhitung ratusan orang
+            const distinctFaces: typeof validBoxes = [];
+
+            for (const box of validBoxes) {
+              let isDuplicateProposal = false;
+              const boxCenterX = box.x + box.width / 2;
+              const boxCenterY = box.y + box.height / 2;
+
+              for (const accepted of distinctFaces) {
+                // Hitung Intersection over Union (IoU)
+                const xA = Math.max(box.x, accepted.x);
+                const yA = Math.max(box.y, accepted.y);
+                const xB = Math.min(box.x + box.width, accepted.x + accepted.width);
+                const yB = Math.min(box.y + box.height, accepted.y + accepted.height);
+                const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+                const unionArea =
+                  box.width * box.height + accepted.width * accepted.height - interArea;
+                const iou = unionArea > 0 ? interArea / unionArea : 0;
+
+                // Cek apakah pusat box berada di dalam accepted box
+                const isCenterInside =
+                  boxCenterX >= accepted.x &&
+                  boxCenterX <= accepted.x + accepted.width &&
+                  boxCenterY >= accepted.y &&
+                  boxCenterY <= accepted.y + accepted.height;
+
+                if (iou > 0.2 || isCenterInside) {
+                  isDuplicateProposal = true;
+                  break;
+                }
+              }
+
+              if (!isDuplicateProposal) {
+                distinctFaces.push(box);
+              }
+            }
+
+            const distinctCount = distinctFaces.length;
+            setFaceCount(distinctCount);
             setAiDebugLog((p) => ({
               ...p,
               videoReady: video.readyState,
-              videoRes: `${video.videoWidth}x${video.videoHeight}`,
-              detectionsCount: detections.length,
-              score: detections[0] ? (detections[0] as any).score : 0,
+              videoRes: `${vWidth}x${vHeight}`,
+              detectionsCount: distinctCount,
+              score: distinctFaces[0]?.score || 0,
               lastError: "-",
             }));
           }

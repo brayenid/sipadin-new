@@ -4,12 +4,17 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function getPegawais() {
+export async function getPegawais(params?: { timInternalOnly?: boolean }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
+  const where: any = { teamId: session.user.teamId };
+  if (params?.timInternalOnly) {
+    where.timInternal = true;
+  }
+
   return prisma.pegawai.findMany({
-    where: { teamId: session.user.teamId },
+    where,
     orderBy: { nama: "asc" },
     select: {
       id: true,
@@ -20,6 +25,7 @@ export async function getPegawais() {
       jabatan: true,
       instansi: true,
       eselon: true,
+      timInternal: true,
       faceDescriptor: true,
       faceEnrolledAt: true,
     }
@@ -32,6 +38,8 @@ export async function getPegawaisPaginated(params: {
   limit?: number;
   sort?: "nama" | "golongan" | "jabatan" | "instansi";
   direction?: "asc" | "desc";
+  timInternal?: "ALL" | "INTERNAL" | "EKSTERNAL";
+  eselon?: string;
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -51,6 +59,20 @@ export async function getPegawaisPaginated(params: {
       { jabatan: { contains: search, mode: "insensitive" } },
       { instansi: { contains: search, mode: "insensitive" } },
     ];
+  }
+
+  if (params.timInternal === "INTERNAL") {
+    where.timInternal = true;
+  } else if (params.timInternal === "EKSTERNAL") {
+    where.timInternal = false;
+  }
+
+  if (params.eselon && params.eselon !== "ALL") {
+    if (params.eselon === "NON_ESELON") {
+      where.OR = [{ eselon: null }, { eselon: "" }, { eselon: "NON_ESELON" }];
+    } else {
+      where.eselon = params.eselon;
+    }
   }
 
   const orderBy: any[] = [];
@@ -81,6 +103,7 @@ export async function getPegawaisPaginated(params: {
         jabatan: true,
         instansi: true,
         eselon: true,
+        timInternal: true,
         faceDescriptor: true,
         faceEnrolledAt: true,
       },
@@ -99,6 +122,108 @@ export async function getPegawaisPaginated(params: {
   };
 }
 
+export async function getPegawaiInternalStats() {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const teamId = session.user.teamId;
+
+  const [totalPegawai, totalInternal, countEselon] = await Promise.all([
+    prisma.pegawai.count({ where: { teamId } }),
+    prisma.pegawai.count({ where: { teamId, timInternal: true } }),
+    prisma.pegawai.count({
+      where: {
+        teamId,
+        timInternal: true,
+        eselon: { not: null, notIn: ["", "NON_ESELON"] },
+      },
+    }),
+  ]);
+
+  return {
+    totalPegawai,
+    totalInternal,
+    totalEksternal: Math.max(0, totalPegawai - totalInternal),
+    countEselon,
+  };
+}
+
+export async function bulkUpdatePegawaiTimInternal(
+  items: { id: string; timInternal: boolean }[]
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  if (items.length === 0) return { updated: 0 };
+
+  const teamId = session.user.teamId;
+
+  await prisma.$transaction(
+    items.map((item) =>
+      prisma.pegawai.updateMany({
+        where: { id: item.id, teamId },
+        data: { timInternal: item.timInternal },
+      })
+    )
+  );
+
+  revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
+  revalidatePath("/dashboard/spj");
+  revalidatePath("/dashboard/naskah-dinas");
+
+  return { updated: items.length };
+}
+
+export async function bulkSetTimInternalByFilter(params: {
+  search?: string;
+  eselon?: string;
+  status?: "ALL" | "INTERNAL" | "EKSTERNAL";
+  timInternal: boolean;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const teamId = session.user.teamId;
+  const where: any = { teamId };
+
+  if (params.search?.trim()) {
+    const q = params.search.trim();
+    where.OR = [
+      { nama: { contains: q, mode: "insensitive" } },
+      { nip: { contains: q, mode: "insensitive" } },
+      { jabatan: { contains: q, mode: "insensitive" } },
+      { instansi: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  if (params.status === "INTERNAL") {
+    where.timInternal = true;
+  } else if (params.status === "EKSTERNAL") {
+    where.timInternal = false;
+  }
+
+  if (params.eselon && params.eselon !== "ALL") {
+    if (params.eselon === "NON_ESELON") {
+      where.OR = [{ eselon: null }, { eselon: "" }, { eselon: "NON_ESELON" }];
+    } else {
+      where.eselon = params.eselon;
+    }
+  }
+
+  const res = await prisma.pegawai.updateMany({
+    where,
+    data: { timInternal: params.timInternal },
+  });
+
+  revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
+  revalidatePath("/dashboard/spj");
+  revalidatePath("/dashboard/naskah-dinas");
+
+  return { count: res.count };
+}
+
 export async function createPegawai(data: {
   nip?: string;
   nama: string;
@@ -107,6 +232,7 @@ export async function createPegawai(data: {
   jabatan: string;
   instansi?: string;
   eselon?: string;
+  timInternal?: boolean;
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -119,6 +245,7 @@ export async function createPegawai(data: {
   });
 
   revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
   return res;
 }
 
@@ -142,6 +269,7 @@ export async function deletePegawai(id: string) {
   });
 
   revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
 }
 
 export async function bulkUpsertPegawai(
@@ -154,6 +282,7 @@ export async function bulkUpsertPegawai(
     jabatan: string;
     instansi?: string | null;
     eselon?: string | null;
+    timInternal?: boolean;
   }[],
   deleteIds: string[]
 ) {
@@ -195,6 +324,7 @@ export async function bulkUpsertPegawai(
             jabatan: item.jabatan,
             instansi: item.instansi || "Sekretariat Daerah",
             eselon: item.eselon || null,
+            ...(item.timInternal !== undefined ? { timInternal: item.timInternal } : {}),
           },
         });
       } else {
@@ -208,6 +338,7 @@ export async function bulkUpsertPegawai(
             jabatan: item.jabatan,
             instansi: item.instansi || "Sekretariat Daerah",
             eselon: item.eselon || null,
+            timInternal: Boolean(item.timInternal),
             teamId: session.user.teamId,
           },
         });
@@ -219,6 +350,7 @@ export async function bulkUpsertPegawai(
   });
 
   revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
 }
 
 export async function importPegawaiExcel(
@@ -230,6 +362,7 @@ export async function importPegawaiExcel(
     jabatan: string;
     instansi?: string | null;
     eselon?: string | null;
+    timInternal?: boolean;
   }[]
 ) {
   const session = await auth();
@@ -276,6 +409,7 @@ export async function importPegawaiExcel(
       jabatan: item.jabatan.trim(),
       instansi: item.instansi?.trim() || "Sekretariat Daerah",
       eselon: item.eselon?.trim() || null,
+      ...(item.timInternal !== undefined ? { timInternal: item.timInternal } : {}),
     };
 
     if (nipTrimmed && existingMap.has(nipTrimmed)) {
@@ -291,6 +425,7 @@ export async function importPegawaiExcel(
       toInsert.push({
         nip: nipTrimmed,
         ...itemData,
+        timInternal: Boolean(item.timInternal),
         teamId: session.user.teamId,
       });
     }
@@ -315,5 +450,6 @@ export async function importPegawaiExcel(
   });
 
   revalidatePath("/dashboard/pegawai");
+  revalidatePath("/dashboard/pegawai-internal");
   return { inserted: toInsert.length, updated: toUpdate.length, skipped };
 }

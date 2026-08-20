@@ -102,6 +102,9 @@ model Pegawai {
   wajibAbsenOpd   Boolean  @default(false)
   urutanOpd       Int?     @default(0)
 
+  // Status Tim Internal (Hanya muncul di pencarian SPJ & Tata Naskah Dinas)
+  timInternal     Boolean  @default(false)
+
   // Biometrik Wajah
   faceDescriptor  String?   @db.Text
   faceEnrolledAt  DateTime?
@@ -118,6 +121,7 @@ model Pegawai {
   @@unique([nip, teamId])
   @@index([teamId, nama])
   @@index([teamId, wajibAbsenOpd])
+  @@index([teamId, timInternal])
   @@index([teamId, instansi])
 }
 
