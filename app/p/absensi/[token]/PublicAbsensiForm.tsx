@@ -263,6 +263,7 @@ export default function PublicAbsensiForm({
   }, []);
 
   // Real-time AI Face Detection loop when camera is active
+  // Only counts faces for the live indicator — descriptor extracted at capture time
   useEffect(() => {
     if (!isCameraActive || !modelsLoaded || !videoRef.current) {
       setFaceCount(null);
@@ -286,37 +287,23 @@ export default function PublicAbsensiForm({
       try {
         const video = videoRef.current;
         if (video.readyState >= 2) {
-          let query: any = faceapi.detectAllFaces(
-            video,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
-          );
-
-          const hasTinyLandmark = Boolean(faceapi.nets.faceLandmark68TinyNet?.isLoaded);
-          const hasStdLandmark = Boolean(faceapi.nets.faceLandmark68Net?.isLoaded);
-
-          if (hasTinyLandmark) {
-            query = query.withFaceLandmarks(true);
-          } else if (hasStdLandmark) {
-            query = query.withFaceLandmarks(false);
-          }
-
-          if (faceapi.nets.faceRecognitionNet?.isLoaded && (hasTinyLandmark || hasStdLandmark)) {
-            query = query.withFaceDescriptors();
-          }
-
-          const detections = await query.catch(() => null);
+          // Hanya deteksi wajah saja (TANPA landmark & descriptor)
+          // agar ringan di CPU dan tidak menyebabkan timeout diam-diam
+          const detections = await faceapi
+            .detectAllFaces(
+              video,
+              new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
+            )
+            .catch(() => null);
 
           if (isScanning && detections && Array.isArray(detections)) {
             setFaceCount(detections.length);
-            if (detections.length === 1 && detections[0].descriptor) {
-              setExtractedFaceDescriptor(Array.from(detections[0].descriptor));
-            }
           }
         }
-      } catch (e) {
+      } catch {
         // Silently continue scanning
       }
-    }, 350);
+    }, 500);
 
     return () => {
       isScanning = false;
