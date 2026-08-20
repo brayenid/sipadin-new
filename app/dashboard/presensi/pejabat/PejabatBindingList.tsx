@@ -17,14 +17,11 @@ import {
   Loader2,
   UserCheck,
   UserX,
-  ShieldCheck,
-  RotateCcw,
 } from "lucide-react";
 import {
   bulkUpdateBindingPejabat,
   getPegawaiForBindingPaginated,
   bulkSetWajibAbsenByFilter,
-  resetPegawaiBiometric,
 } from "@/app/actions/absensi";
 
 type Pegawai = {
@@ -243,22 +240,6 @@ export default function PejabatBindingList({
   const someCurrentPageSelected =
     internalList.some((item) => item.wajibAbsenOpd);
 
-  const handleResetBiometric = async (pegawaiId: string, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin mereset data biometrik wajah untuk ${nama}? Pegawai ini dapat mendaftarkan ulang wajahnya pada presensi berikutnya.`)) {
-      return;
-    }
-
-    try {
-      await resetPegawaiBiometric(pegawaiId);
-      toast.success(`Biometrik wajah ${nama} berhasil direset.`);
-      setInternalList((prev) =>
-        prev.map((p) => (p.id === pegawaiId ? { ...p, faceDescriptor: null, faceEnrolledAt: null } : p))
-      );
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mereset biometrik");
-    }
-  };
-
   const handleSaveBulk = async () => {
     const dirty = getDirtyItems();
     if (dirty.length === 0) {
@@ -349,7 +330,7 @@ export default function PejabatBindingList({
               Master Pejabat & Pegawai Wajib Absen
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 mt-1">
-              Atur pegawai mana saja yang wajib absen di setiap kegiatan OPD dan kelola biometrik wajah.
+              Atur pegawai mana saja yang wajib absen di setiap kegiatan OPD dan kategori eselon.
             </CardDescription>
           </div>
 
@@ -449,13 +430,12 @@ export default function PejabatBindingList({
                   <TableHead className="text-xs">OPD</TableHead>
                   <TableHead className="text-center w-32 text-xs">Eselon</TableHead>
                   <TableHead className="text-center w-32 text-xs">Grup</TableHead>
-                  <TableHead className="text-center w-32 text-xs">Biometrik</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {internalList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-32 text-center text-slate-400 text-xs">
+                    <TableCell colSpan={7} className="h-32 text-center text-slate-400 text-xs">
                       Tidak ada data pegawai yang sesuai dengan filter
                     </TableCell>
                   </TableRow>
@@ -532,27 +512,6 @@ export default function PejabatBindingList({
                             <option value="STAF">Staf Teknis</option>
                             <option value="UMUM">Umum</option>
                           </select>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {item.faceDescriptor ? (
-                            <div className="inline-flex items-center justify-center gap-1.5">
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-[10px] font-medium gap-1">
-                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                Terdaftar
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleResetBiometric(item.id, item.nama)}
-                                className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                title={`Reset biometrik ${item.nama}`}
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-[10.5px] text-slate-400 font-medium">Belum Ada</span>
-                          )}
                         </TableCell>
                       </TableRow>
                     );

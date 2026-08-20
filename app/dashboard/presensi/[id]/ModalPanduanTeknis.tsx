@@ -14,13 +14,11 @@ import {
   Users,
   Compass,
   Calculator,
-  ScanFace,
   Info,
   CheckCircle2,
   AlertTriangle,
   Lightbulb,
   BookOpen,
-  Sparkles,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -48,11 +46,11 @@ export default function ModalPanduanTeknis({
               <DialogTitle className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
                 Panduan Metodologi & Parameter Teknis Pengukuran
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/30 border border-indigo-400/40 text-indigo-200">
-                  SIPADIN AI & Geotag
+                  SIPADIN Geotag & Audit
                 </span>
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-300 mt-0.5">
-                Dokumentasi matematis, formula geolokasi, algoritma biometrik AI, dan filosofi audit non-deterministik.
+                Dokumentasi matematis formula geolokasi, analisis sebaran GPS, dan filosofi audit non-deterministik.
               </DialogDescription>
             </div>
           </div>
@@ -61,31 +59,24 @@ export default function ModalPanduanTeknis({
         {/* Modal Body with Tabs */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full bg-slate-200/70 p-1 rounded-xl h-auto gap-1">
+            <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full bg-slate-200/70 p-1 rounded-xl h-auto gap-1">
               <TabsTrigger
                 value="geofence"
-                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5"
+                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5 justify-center"
               >
                 <Compass className="w-3.5 h-3.5" />
                 Geofence & Radius
               </TabsTrigger>
               <TabsTrigger
                 value="cluster"
-                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5"
+                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5 justify-center"
               >
                 <Calculator className="w-3.5 h-3.5" />
                 Analisis Kerumunan
               </TabsTrigger>
               <TabsTrigger
-                value="biometrik"
-                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5"
-              >
-                <ScanFace className="w-3.5 h-3.5" />
-                Biometrik & Deteksi
-              </TabsTrigger>
-              <TabsTrigger
                 value="filosofi"
-                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5"
+                className="text-xs font-semibold py-2 data-[state=active]:bg-white data-[state=active]:text-indigo-900 data-[state=active]:shadow-2xs rounded-lg flex items-center gap-1.5 justify-center"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Prinsip Non-Deterministik
@@ -214,80 +205,7 @@ export default function ModalPanduanTeknis({
             </TabsContent>
 
             {/* 3. BIOMETRIK & DETEKSI WAJAH */}
-            <TabsContent value="biometrik" className="mt-4 space-y-4">
-              <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
-                    <ScanFace className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">
-                      3. Deteksi 1 Orang (Viewfinder) & Pengukuran Kemiripan Wajah
-                    </h4>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      SIPADIN mengimplementasikan Convolutional Neural Network (CNN) TinyFaceDetector dan ResNet-34 Face Recognition langsung di sisi browser pengguna.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-indigo-600" />
-                      A. Menghitung Jumlah Orang dalam Viewfinder
-                    </span>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      Setiap interval 400ms, sistem memindai frame kamera dan menghasilkan <i>Bounding Box</i> wajah dengan threshold kepercayaan ≥ 0.35.
-                    </p>
-                    <ul className="text-[11px] text-slate-600 space-y-1 pl-3 list-disc">
-                      <li><b>0 Orang</b>: Garis putus-putus putih (&quot;Posisikan Wajah&quot;).</li>
-                      <li><b>1 Orang</b>: Lingkaran hijau 🟢 (&quot;Wajah Terdeteksi&quot;).</li>
-                      <li><b>&gt;1 Orang</b>: Lingkaran merah 🔴 (Peringatan kerumunan).</li>
-                    </ul>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-purple-600" />
-                      B. Ekstraksi Vektor Deskriptor 128-Dimensi
-                    </span>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      Wajah dipetakan menjadi vektor matematis unik 128 floating-point (v ∈ ℝ¹²⁸) yang mewakili geometri jarak mata, hidung, rahang, dan kontur wajah.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Rumus Kemiripan Biometrik */}
-                <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-200">
-                  <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5 mb-2">
-                    <Calculator className="w-4 h-4 text-purple-700" />
-                    Formula Jarak Euclidean & Persentase Kemiripan
-                  </span>
-                  <p className="text-xs text-purple-900 leading-relaxed mb-2">
-                    Tingkat perbedaan antara wajah presensi (v1) dan master biometrik pegawai (v2) diukur dengan Jarak Euclidean (L2 Norm):
-                  </p>
-                  <div className="bg-white p-3 rounded-lg border border-purple-200 font-mono text-xs text-slate-800 overflow-x-auto shadow-2xs mb-2">
-                    <code>
-                      D = ||v1 − v2||₂ = √ [ Σ (v1[i] − v2[i])² ] (i = 1 .. 128)<br />
-                      Persentase Kemiripan (%) = max( 0, min( 100, (1 − D / 0.60) × 100 ) )
-                    </code>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-xs">
-                    <div className="p-2.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-900">
-                      <b>Cocok (MATCH)</b>: Kemiripan ≥ 60% (D ≤ 0.40).
-                    </div>
-                    <div className="p-2.5 rounded bg-blue-50 border border-blue-200 text-blue-900">
-                      <b>Biometrik Baru (ENROLLED)</b>: Pendaftaran awal 100%.
-                    </div>
-                    <div className="p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-900">
-                      <b>Indikasi Beda (MISMATCH)</b>: Kemiripan &lt; 60% (D &gt; 0.40).
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* 4. PRINSIP NON-DETERMINISTIK & ALAT BANTU */}
+            {/* 3. PRINSIP NON-DETERMINISTIK & ALAT BANTU */}
             <TabsContent value="filosofi" className="mt-4 space-y-4">
               <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
                 <div className="flex items-start gap-3">
@@ -296,7 +214,7 @@ export default function ModalPanduanTeknis({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-900">
-                      4. Prinsip Utama: Alat Bantu Pengawasan (Bukan Alat Deterministik)
+                      3. Prinsip Utama: Alat Bantu Pengawasan (Bukan Alat Deterministik)
                     </h4>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                       Pernyataan integritas sistem mengenai fungsi analitik data dalam tata kelola administrasi pemerintahan.

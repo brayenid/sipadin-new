@@ -486,7 +486,7 @@ export default function AbsensiWizard({
                     <div>
                       <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                         <Camera className="w-3.5 h-3.5 text-indigo-600" />
-                        Wajib Foto Selfie Biometrik
+                        Wajib Foto Selfie Kehadiran
                       </span>
                       <p className="text-[10.5px] text-slate-500">Verifikasi wajah peserta secara visual</p>
                     </div>

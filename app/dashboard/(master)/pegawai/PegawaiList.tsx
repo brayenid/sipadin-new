@@ -7,19 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { bulkUpsertPegawai, getPegawaisPaginated } from "@/app/actions/pegawai";
-import { resetPegawaiBiometric } from "@/app/actions/absensi";
 import {
   Loader2,
   Plus,
@@ -27,9 +16,6 @@ import {
   Users,
   Save,
   AlertCircle,
-  ScanFace,
-  RotateCcw,
-  CheckCircle2,
   FilterX,
   ArrowUpDown,
   ChevronUp,
@@ -87,12 +73,7 @@ export default function PegawaiList({
     jabatan: null,
     instansi: null,
     eselon: null,
-    biometrik: null,
   });
-
-  // Biometric reset dialog state
-  const [resetBiometricPegawai, setResetBiometricPegawai] = useState<Pegawai | null>(null);
-  const [resettingBiometric, setResettingBiometric] = useState(false);
 
   // Auto Load More (Infinite Scroll) state
   const [page, setPage] = useState(pagination?.page || 1);
@@ -198,15 +179,12 @@ export default function PegawaiList({
     jabatanOptions,
     instansiOptions,
     eselonOptions,
-    biometrikOptions,
   } = useMemo(() => {
     const pangkatMap = new Map<string, number>();
     const golonganMap = new Map<string, number>();
     const jabatanMap = new Map<string, number>();
     const instansiMap = new Map<string, number>();
     const eselonMap = new Map<string, number>();
-    let terdaftarCount = 0;
-    let belumTerdaftarCount = 0;
 
     for (let i = 0; i < bulkData.length; i++) {
       const p = bulkData[i];
@@ -221,9 +199,6 @@ export default function PegawaiList({
       jabatanMap.set(jabatan, (jabatanMap.get(jabatan) || 0) + 1);
       instansiMap.set(instansi, (instansiMap.get(instansi) || 0) + 1);
       eselonMap.set(eselon, (eselonMap.get(eselon) || 0) + 1);
-
-      if (p.faceDescriptor) terdaftarCount++;
-      else belumTerdaftarCount++;
     }
 
     const toSortedOptions = (m: Map<string, number>) =>
@@ -237,10 +212,6 @@ export default function PegawaiList({
       jabatanOptions: toSortedOptions(jabatanMap),
       instansiOptions: toSortedOptions(instansiMap),
       eselonOptions: toSortedOptions(eselonMap),
-      biometrikOptions: [
-        { label: "Terdaftar", value: "TERDAFTAR", count: terdaftarCount },
-        { label: "Belum Terdaftar", value: "BELUM_TERDAFTAR", count: belumTerdaftarCount },
-      ],
     };
   }, [bulkData]);
 
@@ -251,15 +222,13 @@ export default function PegawaiList({
     const jabatanSet = columnFilters.jabatan ? new Set(columnFilters.jabatan) : null;
     const instansiSet = columnFilters.instansi ? new Set(columnFilters.instansi) : null;
     const eselonSet = columnFilters.eselon ? new Set(columnFilters.eselon) : null;
-    const biometrikSet = columnFilters.biometrik ? new Set(columnFilters.biometrik) : null;
 
     if (
       !pangkatSet &&
       !golonganSet &&
       !jabatanSet &&
       !instansiSet &&
-      !eselonSet &&
-      !biometrikSet
+      !eselonSet
     ) {
       return bulkData;
     }
@@ -270,10 +239,6 @@ export default function PegawaiList({
       if (jabatanSet && !jabatanSet.has(row.jabatan || "(Kosong)")) return false;
       if (instansiSet && !instansiSet.has(row.instansi || "Sekretariat Daerah")) return false;
       if (eselonSet && !eselonSet.has(row.eselon || "Non Eselon")) return false;
-      if (biometrikSet) {
-        const bio = row.faceDescriptor ? "TERDAFTAR" : "BELUM_TERDAFTAR";
-        if (!biometrikSet.has(bio)) return false;
-      }
       return true;
     });
   }, [bulkData, columnFilters]);
@@ -289,7 +254,6 @@ export default function PegawaiList({
       jabatan: null,
       instansi: null,
       eselon: null,
-      biometrik: null,
     });
   };
 
@@ -372,25 +336,6 @@ export default function PegawaiList({
       toast.error(err.message || "Gagal menyimpan data massal.");
     }
     setBulkLoading(false);
-  };
-
-  const handleResetBiometric = async () => {
-    if (!resetBiometricPegawai) return;
-    setResettingBiometric(true);
-    try {
-      const res = await resetPegawaiBiometric(resetBiometricPegawai.id);
-      if (res.success) {
-        toast.success(`Data biometrik ${resetBiometricPegawai.nama} berhasil direset.`);
-        setBulkData((prev) =>
-          prev.map((p) => (p.id === resetBiometricPegawai.id ? { ...p, faceDescriptor: null } : p))
-        );
-        router.refresh();
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mereset data biometrik");
-    }
-    setResettingBiometric(false);
-    setResetBiometricPegawai(null);
   };
 
   // Sort handlers (Server URL Sort)
@@ -579,17 +524,6 @@ export default function PegawaiList({
                     Tim Internal
                   </TableHead>
 
-                  {/* 9. STATUS BIOMETRIK */}
-                  <TableHead className="min-w-[145px] p-1">
-                    <ExcelColumnFilter
-                      title="Status Biometrik"
-                      selectedValues={columnFilters.biometrik}
-                      onFilterChange={(sel) => setColumnFilters((prev) => ({ ...prev, biometrik: sel }))}
-                      options={biometrikOptions}
-                      align="end"
-                    />
-                  </TableHead>
-
                   {isSuperAdmin && <TableHead className="w-[50px] text-center"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -720,32 +654,6 @@ export default function PegawaiList({
                         </div>
                       </TableCell>
 
-                      {/* KOLOM STATUS BIOMETRIK */}
-                      <TableCell className="p-2">
-                        {hasBiometric ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Terdaftar
-                            </span>
-                            {isSuperAdmin && !rowIsNew && (
-                              <button
-                                type="button"
-                                onClick={() => setResetBiometricPegawai(row)}
-                                className="p-1 rounded text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
-                                title="Reset Data Biometrik Master"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
-                            Belum Terdaftar
-                          </span>
-                        )}
-                      </TableCell>
-
                       {isSuperAdmin && (
                         <TableCell className="p-2 text-center">
                           <Button
@@ -764,7 +672,7 @@ export default function PegawaiList({
                 })}
                 {displayedData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-10 text-slate-500 text-xs">
+                    <TableCell colSpan={9} className="text-center py-10 text-slate-500 text-xs">
                       {activeFiltersCount > 0 || searchQuery ? (
                         <div className="flex flex-col items-center gap-2">
                           <p>Tidak ada data pegawai yang sesuai dengan filter yang dipilih.</p>
@@ -803,40 +711,6 @@ export default function PegawaiList({
           </div>
         </CardContent>
       </Card>
-
-      {/* Dialog Konfirmasi Reset Biometrik Pegawai */}
-      <AlertDialog
-        open={!!resetBiometricPegawai}
-        onOpenChange={(open) => !open && setResetBiometricPegawai(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <ScanFace className="w-5 h-5 text-amber-600" />
-              Reset Data Biometrik Master?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed space-y-2">
-              <p>
-                Anda akan mereset master biometrik wajah untuk <b>{resetBiometricPegawai?.nama}</b> (NIP: {resetBiometricPegawai?.nip || "-"}).
-              </p>
-              <p>
-                Setelah direset, saat pegawai bersangkutan melakukan presensi selfie berikutnya, foto barunya akan otomatis didaftarkan sebagai master biometrik baru (Status: <b>ENROLLED</b>).
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={resettingBiometric}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleResetBiometric}
-              disabled={resettingBiometric}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
-            >
-              {resettingBiometric ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1.5" />}
-              Reset Biometrik
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Mobile Bottom Action Bar */}
       {isSuperAdmin && (

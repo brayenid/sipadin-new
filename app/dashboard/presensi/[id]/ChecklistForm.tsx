@@ -449,20 +449,18 @@ export default function ChecklistForm({
     }
   };
 
-  // State & Handlers untuk Clear Bukti Presensi (Foto, GPS, & Biometrik)
+  // State & Handlers untuk Clear Bukti Presensi (Foto & GPS)
   const [clearBuktiTarget, setClearBuktiTarget] = useState<Peserta | null>(null);
   const [clearingBukti, setClearingBukti] = useState(false);
-  const [resetMasterBiometrikOption, setResetMasterBiometrikOption] = useState(false);
 
   const [isBulkClearBuktiOpen, setIsBulkClearBuktiOpen] = useState(false);
   const [clearingBulkBukti, setClearingBulkBukti] = useState(false);
-  const [bulkResetMasterBiometrikOption, setBulkResetMasterBiometrikOption] = useState(false);
 
   const handleConfirmClearBukti = async () => {
     if (!clearBuktiTarget) return;
     setClearingBukti(true);
     try {
-      await clearBuktiKehadiranPeserta(clearBuktiTarget.id, resetMasterBiometrikOption);
+      await clearBuktiKehadiranPeserta(clearBuktiTarget.id, false);
       setPesertaList((prev) =>
         prev.map((p) =>
           p.id === clearBuktiTarget.id
@@ -490,9 +488,8 @@ export default function ChecklistForm({
             : p
         )
       );
-      toast.success(`Bukti presensi (foto, GPS, biometrik) ${clearBuktiTarget.nama} berhasil dibersihkan`);
+      toast.success(`Bukti presensi (foto & GPS) ${clearBuktiTarget.nama} berhasil dibersihkan`);
       setClearBuktiTarget(null);
-      setResetMasterBiometrikOption(false);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal membersihkan bukti presensi");
@@ -506,7 +503,7 @@ export default function ChecklistForm({
     setClearingBulkBukti(true);
     try {
       const count = selectedPesertaIds.length;
-      await bulkClearBuktiKehadiranPeserta(selectedPesertaIds, bulkResetMasterBiometrikOption);
+      await bulkClearBuktiKehadiranPeserta(selectedPesertaIds, false);
       setPesertaList((prev) =>
         prev.map((p) =>
           selectedPesertaIds.includes(p.id)
@@ -537,7 +534,6 @@ export default function ChecklistForm({
       toast.success(`Bukti presensi ${count} peserta terpilih berhasil dibersihkan`);
       setSelectedPesertaIds([]);
       setIsBulkClearBuktiOpen(false);
-      setBulkResetMasterBiometrikOption(false);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal membersihkan bukti presensi peserta terpilih");
@@ -1742,7 +1738,6 @@ export default function ChecklistForm({
                   variant="outline"
                   onClick={() => {
                     setIsBulkClearBuktiOpen(true);
-                    setBulkResetMasterBiometrikOption(false);
                   }}
                   disabled={clearingBulkBukti}
                   className="h-8 text-xs bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold shadow-xs"
@@ -1985,37 +1980,6 @@ export default function ChecklistForm({
                                   GPS
                                 </button>
                               )}
-
-                              {/* Biometric Audit Badges */}
-                              {p.faceMatchStatus === "MATCH" && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[9.5px] font-semibold"
-                                  title={`Kemiripan Wajah Biometrik: ${Math.round((p.faceScore || 0) * 100)}%`}
-                                >
-                                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                  Wajah Cocok ({Math.round((p.faceScore || 0) * 100)}%)
-                                </span>
-                              )}
-
-                              {p.faceMatchStatus === "MISMATCH" && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[9.5px] font-semibold"
-                                  title={`Indikasi wajah berbeda dari biometrik terdaftar. Kemiripan hanya: ${Math.round((p.faceScore || 0) * 100)}%`}
-                                >
-                                  <AlertCircle className="w-3 h-3 text-rose-600" />
-                                  Indikasi Beda ({Math.round((p.faceScore || 0) * 100)}%)
-                                </span>
-                              )}
-
-                              {p.faceMatchStatus === "ENROLLED" && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9.5px] font-semibold"
-                                  title="Biometrik wajah master pertama kali terdaftar pada presensi ini"
-                                >
-                                  <Sparkles className="w-3 h-3 text-blue-600" />
-                                  Biometrik Baru
-                                </span>
-                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -2023,16 +1987,15 @@ export default function ChecklistForm({
                         {/* Aksi Satuan: Clear Bukti & Hapus */}
                         <TableCell className="text-right text-xs">
                           <div className="flex items-center justify-end gap-1">
-                            {(p.fotoUrl || p.fotoPulangUrl || p.latitude || p.waktuInput || p.faceMatchStatus || p.status !== "TIDAK_HADIR") && (
+                            {(p.fotoUrl || p.fotoPulangUrl || p.latitude || p.waktuInput || p.status !== "TIDAK_HADIR") && (
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
                                   setClearBuktiTarget(p);
-                                  setResetMasterBiometrikOption(false);
                                 }}
                                 className="h-7 w-7 p-0 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded"
-                                title={`Reset Bukti Presensi (Foto, GPS, & Biometrik) ${p.nama}`}
+                                title={`Reset Bukti Presensi (Foto & GPS) ${p.nama}`}
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
                               </Button>
@@ -2205,7 +2168,6 @@ export default function ChecklistForm({
         onOpenChange={(open) => {
           if (!open) {
             setClearBuktiTarget(null);
-            setResetMasterBiometrikOption(false);
           }
         }}
       >
@@ -2221,22 +2183,6 @@ export default function ChecklistForm({
               <p className="leading-relaxed">
                 Foto selfie, titik GPS, dan waktu presensi untuk <strong className="text-slate-900 font-semibold">{clearBuktiTarget?.nama}</strong> akan dihapus dan status dikembalikan ke <span className="font-semibold text-slate-700">Tidak Hadir</span>.
               </p>
-
-              {clearBuktiTarget?.pegawaiId && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                  <Checkbox
-                    id="reset-master-biometric-single"
-                    checked={resetMasterBiometrikOption}
-                    onCheckedChange={(c) => setResetMasterBiometrikOption(Boolean(c))}
-                  />
-                  <Label
-                    htmlFor="reset-master-biometric-single"
-                    className="text-[11px] text-slate-700 cursor-pointer font-normal"
-                  >
-                    Reset juga biometrik wajah di master pegawai
-                  </Label>
-                </div>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-3 gap-2">
@@ -2264,7 +2210,6 @@ export default function ChecklistForm({
         open={isBulkClearBuktiOpen}
         onOpenChange={(open) => {
           setIsBulkClearBuktiOpen(open);
-          if (!open) setBulkResetMasterBiometrikOption(false);
         }}
       >
         <AlertDialogContent className="max-w-sm bg-white p-5 rounded-2xl">
@@ -2279,19 +2224,6 @@ export default function ChecklistForm({
               <p className="leading-relaxed">
                 Seluruh bukti presensi untuk <strong className="text-amber-700 font-semibold">{selectedPesertaIds.length} peserta</strong> yang dipilih akan dihapus dan status dikembalikan ke <span className="font-semibold text-slate-700">Tidak Hadir</span>.
               </p>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <Checkbox
-                  id="reset-master-biometric-bulk"
-                  checked={bulkResetMasterBiometrikOption}
-                  onCheckedChange={(c) => setBulkResetMasterBiometrikOption(Boolean(c))}
-                />
-                <Label
-                  htmlFor="reset-master-biometric-bulk"
-                  className="text-[11px] text-slate-700 cursor-pointer font-normal"
-                >
-                  Reset juga biometrik wajah di master pegawai
-                </Label>
-              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-3 gap-2">
