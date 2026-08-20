@@ -258,10 +258,15 @@ export default function PublicAbsensiForm({
         const faceapi = await import("@vladmandic/face-api");
         faceApiRef.current = faceapi;
 
-        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) sebelum memuat bobot model
+        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) dengan flag stabilitas Chrome Android
         const tf = (faceapi as any).tf;
         if (tf) {
           try {
+            if (typeof tf.env === "function") {
+              // Nonaktifkan packed textures yang sering memicu glitch false-positive di Chrome GPU mobile
+              try { tf.env().set("WEBGL_PACK", false); } catch {}
+              try { tf.env().set("WEBGL_PACK_BINARY_OPERATIONS", false); } catch {}
+            }
             if (typeof tf.setBackend === "function") {
               await tf.setBackend("webgl").catch(() => tf.setBackend("cpu"));
             }
@@ -275,23 +280,29 @@ export default function PublicAbsensiForm({
 
         const MODEL_URL = "/models";
 
-        // 1. FAST-TRACK: Tiny Face Detector (Hanya 190 KB - langsung aktif < 200ms)
-        if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        }
-
-        // Langsung aktifkan detector agar garis hijau dan deteksi wajah kamera menyala instan!
-        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
-          setModelsLoaded(true);
-          setIsAiInitializing(false);
-          setAiDebugLog((p) => ({ ...p, tinyLoaded: true }));
-        }
-
-        // 2. BACKGROUND-TRACK: Tiny Landmarks (77 KB), Full Landmarks (356 KB) & Recognition Net (6.4 MB)
-        await Promise.allSettled([
+        // 1. FAST-TRACK: Tiny Face Detector (190 KB) & Tiny Landmarks (77 KB)
+        await Promise.all([
+          !faceapi.nets.tinyFaceDetector.isLoaded
+            ? faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL)
+            : Promise.resolve(),
           !faceapi.nets.faceLandmark68TinyNet.isLoaded
             ? faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
             : Promise.resolve(),
+        ]);
+
+        // Langsung aktifkan detector & landmark agar akurasi validasi wajah 100% tepat dan instan
+        if (isMounted && faceapi.nets.tinyFaceDetector.isLoaded) {
+          setModelsLoaded(true);
+          setIsAiInitializing(false);
+          setAiDebugLog((p) => ({
+            ...p,
+            tinyLoaded: true,
+            landmarkLoaded: !!faceapi.nets.faceLandmark68TinyNet.isLoaded,
+          }));
+        }
+
+        // 2. BACKGROUND-TRACK: Full Landmarks (356 KB) & Recognition Net (6.4 MB)
+        await Promise.allSettled([
           !faceapi.nets.faceLandmark68Net.isLoaded
             ? faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
             : Promise.resolve(),
@@ -303,7 +314,9 @@ export default function PublicAbsensiForm({
         if (isMounted) {
           setAiDebugLog((p) => ({
             ...p,
-            landmarkLoaded: !!faceapi.nets.faceLandmark68TinyNet?.isLoaded || !!faceapi.nets.faceLandmark68Net?.isLoaded,
+            landmarkLoaded:
+              !!faceapi.nets.faceLandmark68TinyNet?.isLoaded ||
+              !!faceapi.nets.faceLandmark68Net?.isLoaded,
             recogLoaded: !!faceapi.nets.faceRecognitionNet?.isLoaded,
           }));
         }
@@ -327,10 +340,14 @@ export default function PublicAbsensiForm({
     };
   }, []);
 
-  // Real-time AI Face Detection loop (Ringan, Cepat, Tanpa Beban Recognition di Setiap Frame)
+  // Buffer temporal smoothing untuk kestabilan deteksi wajah (mencegah flickering di Chrome)
+  const faceCountHistoryRef = useRef<number[]>([]);
+
+  // Real-time AI Face Detection loop (Ringan, Cepat, Akurat dengan Verifikasi Landmark)
   useEffect(() => {
     if (!isCameraActive || !modelsLoaded || !videoRef.current) {
       setFaceCount(null);
+      faceCountHistoryRef.current = [];
       return;
     }
 
@@ -353,31 +370,49 @@ export default function PublicAbsensiForm({
         if (video.readyState >= 2 && video.videoWidth > 0) {
           const vWidth = video.videoWidth;
           const vHeight = video.videoHeight;
+          const hasTinyLandmarks = !!faceapi.nets?.faceLandmark68TinyNet?.isLoaded;
 
-          // Gunakan TinyFaceDetectorOptions dengan threshold seimbang
-          const rawDetections = await faceapi.detectAllFaces(
-            video,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.55 })
-          );
+          // Gunakan scoreThreshold 0.65 untuk mengeliminasi false detection pada dinding/baju
+          const detectorOptions = new faceapi.TinyFaceDetectorOptions({
+            inputSize: 224,
+            scoreThreshold: 0.65,
+          });
 
-          if (isScanning && rawDetections && Array.isArray(rawDetections)) {
-            // 1. Filter proposal box yang valid (buang micro-noise / box terlalu kecil dari background)
-            const minSize = Math.max(35, Math.min(vWidth, vHeight) * 0.08);
+          // Jika landmark tersedia, verifikasi struktur fitur wajah (mata/hidung/mulut)
+          let rawDetections: any[] = [];
+          if (hasTinyLandmarks) {
+            rawDetections = await faceapi
+              .detectAllFaces(video, detectorOptions)
+              .withFaceLandmarks(true);
+          } else {
+            rawDetections = await faceapi.detectAllFaces(video, detectorOptions);
+          }
+
+          if (isScanning && Array.isArray(rawDetections)) {
+            // 1. Filter proposal box yang valid & memiliki landmark wajah riil
+            const minSize = Math.max(40, Math.min(vWidth, vHeight) * 0.1);
             const validBoxes = rawDetections
               .map((d: any) => {
-                const b = d.box || d._box || d;
-                const score = typeof d.score === "number" ? d.score : d._score || 0;
+                const det = d.detection || d;
+                const b = det.box || det._box || det;
+                const score = typeof det.score === "number" ? det.score : det._score || 0;
+                const landmarks = d.landmarks || null;
+                const hasValidLandmark =
+                  landmarks && landmarks.positions && landmarks.positions.length === 68;
+
                 return {
                   x: b.x || b._x || 0,
                   y: b.y || b._y || 0,
                   width: b.width || b._width || 0,
                   height: b.height || b._height || 0,
                   score,
+                  hasValidLandmark: hasTinyLandmarks ? hasValidLandmark : true,
                 };
               })
               .filter(
                 (b) =>
-                  b.score >= 0.55 &&
+                  b.hasValidLandmark &&
+                  b.score >= 0.65 &&
                   b.width >= minSize &&
                   b.height >= minSize &&
                   b.width <= vWidth * 0.95 &&
@@ -385,8 +420,7 @@ export default function PublicAbsensiForm({
               )
               .sort((a, b) => b.score - a.score);
 
-            // 2. Non-Maximum Suppression (NMS) & Cluster Merging:
-            // Menggabungkan anchor box yang tumpang tindih pada wajah yang sama agar tidak terhitung ratusan orang
+            // 2. Non-Maximum Suppression (NMS) & Cluster Merging
             const distinctFaces: typeof validBoxes = [];
 
             for (const box of validBoxes) {
@@ -395,7 +429,6 @@ export default function PublicAbsensiForm({
               const boxCenterY = box.y + box.height / 2;
 
               for (const accepted of distinctFaces) {
-                // Hitung Intersection over Union (IoU)
                 const xA = Math.max(box.x, accepted.x);
                 const yA = Math.max(box.y, accepted.y);
                 const xB = Math.min(box.x + box.width, accepted.x + accepted.width);
@@ -405,7 +438,6 @@ export default function PublicAbsensiForm({
                   box.width * box.height + accepted.width * accepted.height - interArea;
                 const iou = unionArea > 0 ? interArea / unionArea : 0;
 
-                // Cek apakah pusat box berada di dalam accepted box
                 const isCenterInside =
                   boxCenterX >= accepted.x &&
                   boxCenterX <= accepted.x + accepted.width &&
@@ -423,13 +455,31 @@ export default function PublicAbsensiForm({
               }
             }
 
-            const distinctCount = distinctFaces.length;
-            setFaceCount(distinctCount);
+            const rawCount = distinctFaces.length;
+
+            // 3. Temporal Smoothing (Window 3 frame) untuk menstabilkan UI
+            const history = faceCountHistoryRef.current;
+            history.push(rawCount);
+            if (history.length > 3) history.shift();
+
+            // Hitung nilai modus/mayoritas dari 3 frame terakhir
+            const countsMap = new Map<number, number>();
+            history.forEach((c) => countsMap.set(c, (countsMap.get(c) || 0) + 1));
+            let smoothedCount = rawCount;
+            let maxFrequency = 0;
+            countsMap.forEach((freq, val) => {
+              if (freq > maxFrequency) {
+                maxFrequency = freq;
+                smoothedCount = val;
+              }
+            });
+
+            setFaceCount(smoothedCount);
             setAiDebugLog((p) => ({
               ...p,
               videoReady: video.readyState,
               videoRes: `${vWidth}x${vHeight}`,
-              detectionsCount: distinctCount,
+              detectionsCount: smoothedCount,
               score: distinctFaces[0]?.score || 0,
               lastError: "-",
             }));
