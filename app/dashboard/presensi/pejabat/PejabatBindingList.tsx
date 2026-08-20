@@ -210,7 +210,6 @@ export default function PejabatBindingList({
     internalList.length > 0 && internalList.every((item) => item.wajibAbsenOpd);
   const someCurrentPageSelected =
     internalList.some((item) => item.wajibAbsenOpd);
-    internalList.some((item) => item.wajibAbsenOpd);
 
   const handleSaveBulk = async () => {
     const dirty = getDirtyItems();
