@@ -263,12 +263,14 @@ export default function PublicAbsensiForm({
         const faceapi = await import("@vladmandic/face-api");
         faceApiRef.current = faceapi;
 
-        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) dengan flag stabilitas Chrome Android
+        // Inisialisasi TensorFlow backend (WebGL/WASM/CPU) dengan perbaikan Float32 Shader Overflow
         const tf = (faceapi as any).tf;
         if (tf) {
           try {
             if (typeof tf.env === "function") {
-              // Nonaktifkan packed textures yang sering memicu glitch false-positive di Chrome GPU mobile
+              // Nonaktifkan float16 forcing yang menyebabkan box regression melompat ke 1e+280 di Chrome Android
+              try { tf.env().set("WEBGL_FORCE_F16_TEXTURES", false); } catch {}
+              try { tf.env().set("WEBGL_RENDER_FLOAT32_CAPABLE", true); } catch {}
               try { tf.env().set("WEBGL_PACK", false); } catch {}
               try { tf.env().set("WEBGL_PACK_BINARY_OPERATIONS", false); } catch {}
             }
@@ -401,28 +403,50 @@ export default function PublicAbsensiForm({
           const fps = Math.round(1000 / (inferenceTimeMs + 250));
 
           if (isScanning && Array.isArray(rawDetections)) {
-            // 1. Ekstrak data mentah proposal boxes untuk inspector
+            // 1. Ekstrak & validasi koordinat box (buang nilai overflow/Infinity/NaN dari WebGL float16 glitch)
             const minSize = Math.max(30, Math.min(vWidth, vHeight) * currentConfig.minBoxRatio);
             const rawBoxesInfo: { x: number; y: number; width: number; height: number; score: number }[] = [];
             const rawScores: number[] = [];
             const landmarkChecks: { faceIdx: number; passed: boolean; pointsCount: number; detail?: string }[] = [];
+            let hasCorruptedGpuOverflow = false;
 
             const validBoxes = rawDetections
               .map((d: any, idx: number) => {
                 const det = d.detection || d;
                 const b = det.box || det._box || det;
-                const score = typeof det.score === "number" ? det.score : det._score || 0;
+                const rawScore = typeof det.score === "number" ? det.score : det._score || 0;
                 const landmarks = d.landmarks || null;
                 const pointsCount = landmarks?.positions?.length || 0;
                 const hasValidLandmark = pointsCount === 68;
 
-                rawScores.push(Number(score.toFixed(3)));
+                const bx = Number(b.x || b._x || 0);
+                const by = Number(b.y || b._y || 0);
+                const bw = Number(b.width || b._width || 0);
+                const bh = Number(b.height || b._height || 0);
+
+                // Deteksi jika terjadi GPU overflow (misal angka astronomis 1e+280 atau NaN)
+                const isCorrupted =
+                  !isFinite(bx) ||
+                  !isFinite(by) ||
+                  !isFinite(bw) ||
+                  !isFinite(bh) ||
+                  bw > vWidth * 2 ||
+                  bh > vHeight * 2 ||
+                  bx < -vWidth * 2 ||
+                  by < -vHeight * 2 ||
+                  (bw <= 0 && bh <= 0);
+
+                if (isCorrupted) {
+                  hasCorruptedGpuOverflow = true;
+                }
+
+                rawScores.push(Number(rawScore.toFixed(3)));
                 rawBoxesInfo.push({
-                  x: Math.round(b.x || b._x || 0),
-                  y: Math.round(b.y || b._y || 0),
-                  width: Math.round(b.width || b._width || 0),
-                  height: Math.round(b.height || b._height || 0),
-                  score: Number(score.toFixed(3)),
+                  x: Math.round(bx),
+                  y: Math.round(by),
+                  width: Math.round(bw),
+                  height: Math.round(bh),
+                  score: Number(rawScore.toFixed(3)),
                 });
 
                 landmarkChecks.push({
@@ -433,16 +457,18 @@ export default function PublicAbsensiForm({
                 });
 
                 return {
-                  x: b.x || b._x || 0,
-                  y: b.y || b._y || 0,
-                  width: b.width || b._width || 0,
-                  height: b.height || b._height || 0,
-                  score,
+                  x: bx,
+                  y: by,
+                  width: bw,
+                  height: bh,
+                  score: rawScore,
+                  isCorrupted,
                   hasValidLandmark: currentConfig.requireLandmarks ? hasValidLandmark : true,
                 };
               })
               .filter(
                 (b) =>
+                  !b.isCorrupted &&
                   b.hasValidLandmark &&
                   b.score >= currentConfig.scoreThreshold &&
                   b.width >= minSize &&
@@ -451,6 +477,17 @@ export default function PublicAbsensiForm({
                   b.height <= vHeight * 0.98
               )
               .sort((a, b) => b.score - a.score);
+
+            // Auto Fallback: Jika WebGL terus menerus mengalami GPU overflow shader glitch, alihkan backend ke CPU
+            if (hasCorruptedGpuOverflow && currentConfig.backend === "webgl") {
+              const tf = (faceapi as any).tf;
+              if (tf && typeof tf.setBackend === "function") {
+                console.warn("[FaceAPI] Terdeteksi WebGL float overflow, beralih ke backend CPU...");
+                tf.setBackend("cpu").then(() => tf.ready());
+                detectorConfigRef.current = { ...currentConfig, backend: "cpu" };
+                setDetectorConfig((prev) => ({ ...prev, backend: "cpu" }));
+              }
+            }
 
             // 2. Non-Maximum Suppression (NMS) & Cluster Merging
             const distinctFaces: typeof validBoxes = [];
