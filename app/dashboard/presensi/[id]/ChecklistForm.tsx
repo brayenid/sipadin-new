@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Save,
   Printer,
@@ -237,20 +238,14 @@ export default function ChecklistForm({
   const [cancelDateInput, setCancelDateInput] = useState("");
   const [cancelReasonInput, setCancelReasonInput] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+  const [confirmRestoreDate, setConfirmRestoreDate] = useState<string | null>(null);
 
-  const handleToggleCancelSession = async (
+  const handleExecuteToggleCancelSession = async (
     targetDate: string,
     action: "CANCEL" | "RESTORE",
     alasan?: string
   ) => {
     if (!targetDate) return;
-    if (action === "RESTORE") {
-      const formattedDate = formatWita(new Date(targetDate), "EEEE, dd MMMM yyyy");
-      const confirmed = window.confirm(
-        `Konfirmasi Pengaktifan Kembali Sesi:\n\nApakah Anda yakin ingin MENGAKTIFKAN KEMBALI sesi presensi pada ${formattedDate}?\n\nSesi ini akan kembali dibuka untuk presensi pegawai dan diperhitungkan dalam rekapitulasi kehadiran.`
-      );
-      if (!confirmed) return;
-    }
     try {
       setIsSubmittingCancel(true);
       const res = await toggleCancelRecurringSession({
@@ -274,6 +269,7 @@ export default function ChecklistForm({
       toast.error(err.message || "Gagal mengubah status peniadaan sesi");
     } finally {
       setIsSubmittingCancel(false);
+      setConfirmRestoreDate(null);
     }
   };
 
@@ -2092,7 +2088,7 @@ export default function ChecklistForm({
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => handleToggleCancelSession(selectedSessionDate, "RESTORE")}
+                    onClick={() => setConfirmRestoreDate(selectedSessionDate)}
                     disabled={isSubmittingCancel}
                     className="h-7 px-2.5 text-xs font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-100"
                   >
@@ -2798,7 +2794,7 @@ export default function ChecklistForm({
                 type="button"
                 size="sm"
                 disabled={!cancelDateInput || isSubmittingCancel}
-                onClick={() => handleToggleCancelSession(cancelDateInput, "CANCEL", cancelReasonInput)}
+                onClick={() => handleExecuteToggleCancelSession(cancelDateInput, "CANCEL", cancelReasonInput)}
                 className="w-full text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-8 mt-1"
               >
                 {isSubmittingCancel ? (
@@ -2857,7 +2853,7 @@ export default function ChecklistForm({
                         size="sm"
                         variant="outline"
                         disabled={isSubmittingCancel}
-                        onClick={() => handleToggleCancelSession(item.tanggal, "RESTORE")}
+                        onClick={() => setConfirmRestoreDate(item.tanggal)}
                         className="h-8 px-3 text-xs text-rose-700 bg-white hover:bg-rose-600 hover:text-white border-rose-300 font-bold shrink-0 shadow-2xs transition-all cursor-pointer"
                       >
                         Aktifkan Kembali
@@ -2882,6 +2878,38 @@ export default function ChecklistForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Custom Reusable Confirmation Modal untuk Pengaktifan Kembali Sesi */}
+      <ConfirmDialog
+        open={!!confirmRestoreDate}
+        onOpenChange={(open) => !open && setConfirmRestoreDate(null)}
+        title="Aktifkan Kembali Sesi Presensi?"
+        variant="warning"
+        confirmText="Ya, Aktifkan Sesi"
+        cancelText="Batal"
+        isLoading={isSubmittingCancel}
+        onConfirm={() => {
+          if (confirmRestoreDate) {
+            handleExecuteToggleCancelSession(confirmRestoreDate, "RESTORE");
+          }
+        }}
+        description={
+          confirmRestoreDate ? (
+            <div className="space-y-2 text-slate-600">
+              <p>
+                Sesi presensi pada{" "}
+                <strong className="text-slate-900 font-bold">
+                  {formatWita(new Date(confirmRestoreDate), "EEEE, dd MMMM yyyy")}
+                </strong>{" "}
+                akan kembali dibuka untuk presensi pegawai.
+              </p>
+              <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200/80 leading-relaxed font-medium">
+                ⚠️ Sesi ini akan kembali dihitung dan dievaluasi dalam laporan rekapitulasi kehadiran ASN & OPD.
+              </div>
+            </div>
+          ) : null
+        }
+      />
 
       {/* Mobile Bottom Fixed Action Bar (Tab-Aware & Tanpa Duplikasi) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-3 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
