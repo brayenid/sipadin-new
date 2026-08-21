@@ -356,6 +356,13 @@ model AgendaAbsensi {
   waktuBukaPulang  DateTime?           // Waktu mulai form presensi pulang dibuka
   waktuTutupPulang DateTime?           // Waktu batas akhir form presensi pulang ditutup
 
+  // Fitur Agenda Rutin / Berulang (Apel Pagi, Upacara, Senam, dsb.)
+  isRecurring       Boolean             @default(false)
+  recurringDays     String[]            @default([]) // ["SENIN"] atau ["SENIN", "JUMAT"]
+  recurringJamBuka  String?             // "07:00"
+  recurringJamTutup String?             // "08:15"
+  kategori          String?             @default("RAPAT") // "RAPAT" | "APEL" | "UPACARA" | "SENAM" | "LAINNYA"
+
   // Titik Lokasi Kegiatan & Geofencing (Opsional)
   targetLatitude  Float?
   targetLongitude Float?
@@ -384,6 +391,7 @@ model AgendaAbsensi {
 
   @@index([teamId, tanggal])
   @@index([publicToken])
+  @@index([isRecurring])
 }
 
 model KehadiranPeserta {
@@ -393,6 +401,9 @@ model KehadiranPeserta {
   
   pegawaiId         String?
   pegawai           Pegawai?        @relation(fields: [pegawaiId], references: [id], onDelete: SetNull)
+  
+  // Tanggal Sesi Presensi (Khusus Agenda Rutin Berulang)
+  tanggalSesi       DateTime?
   
   // Snapshot Data Pejabat / OPD
   nama              String
@@ -436,6 +447,7 @@ model KehadiranPeserta {
   updatedAt         DateTime        @updatedAt
 
   @@index([agendaId])
+  @@index([agendaId, tanggalSesi])
   @@index([instansi])
 }
 

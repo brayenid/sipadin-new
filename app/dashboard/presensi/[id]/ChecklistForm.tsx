@@ -102,6 +102,7 @@ type Peserta = {
   lokasiText: string | null;
   isSelfInput: boolean;
   isNonUndangan?: boolean;
+  tanggalSesi?: Date | string | null;
   faceScore?: number | null;
   faceMatchStatus?: string | null;
 };
@@ -118,23 +119,28 @@ type Agenda = {
   targetPeserta: string | null;
   targetKategori: string | null;
   status: StatusAgendaAbsensi;
+  driveUrl: string | null;
   isPublicActive: boolean;
   waktuBukaAbsen: Date | null;
   waktuTutupAbsen: Date | null;
-  enableCheckOut?: boolean;
+  enableCheckOut: boolean;
   waktuBukaPulang?: Date | null;
   waktuTutupPulang?: Date | null;
   requireLocation: boolean;
   requirePhoto: boolean;
-  allowNonPeserta?: boolean;
-  targetLatitude?: number | null;
-  targetLongitude?: number | null;
-  radiusMeter?: number | null;
+  allowNonPeserta: boolean;
+  targetLatitude: number | null;
+  targetLongitude: number | null;
+  radiusMeter: number | null;
   picPegawaiId?: string | null;
   picNama?: string | null;
   picNip?: string | null;
   picJabatan?: string | null;
-  driveUrl: string | null;
+  isRecurring?: boolean;
+  recurringDays?: string[];
+  recurringJamBuka?: string | null;
+  recurringJamTutup?: string | null;
+  kategori?: string | null;
   peserta: Peserta[];
 };
 
@@ -656,6 +662,20 @@ export default function ChecklistForm({
       ? Math.round(((countHadir + countMewakili) / totalPeserta) * 100)
       : 0;
 
+  // Tanggal Sesi untuk Agenda Rutin / Apel
+  const sessionDates = React.useMemo(() => {
+    if (!agenda.isRecurring) return [];
+    const datesSet = new Set<string>();
+    (pesertaList || []).forEach((p) => {
+      if (p.tanggalSesi) {
+        datesSet.add(formatWita(p.tanggalSesi, "yyyy-MM-dd"));
+      }
+    });
+    return Array.from(datesSet).sort((a, b) => b.localeCompare(a));
+  }, [agenda.isRecurring, pesertaList]);
+
+  const [selectedSessionDate, setSelectedSessionDate] = useState<string>("ALL");
+
   // Filter list
   const filteredPeserta = pesertaList.filter((p) => {
     const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
@@ -672,13 +692,20 @@ export default function ChecklistForm({
         ? isNonUndangan
         : p.status === filterStatus;
 
-    return matchSearch && matchStatus;
+    const matchSession =
+      !agenda.isRecurring || selectedSessionDate === "ALL"
+        ? true
+        : p.tanggalSesi
+        ? formatWita(p.tanggalSesi, "yyyy-MM-dd") === selectedSessionDate
+        : false;
+
+    return matchSearch && matchStatus && matchSession;
   });
 
   // Reset visible count saat filter/search berubah
   React.useEffect(() => {
     setVisibleCount(50);
-  }, [search, filterStatus]);
+  }, [search, filterStatus, selectedSessionDate]);
 
   // Observer untuk auto load more (infinite scroll)
   React.useEffect(() => {
@@ -1696,14 +1723,31 @@ export default function ChecklistForm({
         <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
           {/* Filter Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <Input
-                placeholder="Cari nama, OPD, atau perwakilan..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 text-xs h-9"
-              />
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Input
+                  placeholder="Cari nama, OPD, atau perwakilan..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 text-xs h-9"
+                />
+              </div>
+
+              {agenda.isRecurring && sessionDates.length > 0 && (
+                <select
+                  value={selectedSessionDate}
+                  onChange={(e) => setSelectedSessionDate(e.target.value)}
+                  className="text-xs border border-indigo-200 rounded-md px-2.5 py-1.5 bg-indigo-50/70 text-indigo-950 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-56"
+                >
+                  <option value="ALL">Semua Sesi Apel ({sessionDates.length} Sesi)</option>
+                  {sessionDates.map((sDate) => (
+                    <option key={sDate} value={sDate}>
+                      Sesi: {formatWita(new Date(sDate), "dd MMM yyyy")}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <select
@@ -1711,7 +1755,7 @@ export default function ChecklistForm({
               onChange={(e) => setFilterStatus(e.target.value)}
               className="text-xs border border-slate-200/60 rounded-md px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-44"
             >
-              <option value="ALL">Semua ({totalPeserta})</option>
+              <option value="ALL">Semua Status ({totalPeserta})</option>
               <option value="HADIR">Hadir ({countHadir})</option>
               <option value="MEWAKILI">Mewakili ({countMewakili})</option>
               <option value="IZIN">Izin ({countIzin})</option>

@@ -70,6 +70,11 @@ export default function AbsensiWizard({
     requireLocation: true,
     requirePhoto: true,
     allowNonPeserta: true,
+    isRecurring: false,
+    recurringDays: ["SENIN"],
+    recurringJamBuka: "07:00",
+    recurringJamTutup: "08:15",
+    kategori: "RAPAT",
   });
 
   // State Seleksi Pegawai
@@ -225,6 +230,11 @@ export default function AbsensiWizard({
         requireLocation: form.requireLocation,
         requirePhoto: form.requirePhoto,
         allowNonPeserta: form.allowNonPeserta,
+        isRecurring: form.isRecurring,
+        recurringDays: form.recurringDays,
+        recurringJamBuka: form.recurringJamBuka,
+        recurringJamTutup: form.recurringJamTutup,
+        kategori: form.kategori,
         pesertaIds: selectedPesertaIds,
       });
 
@@ -339,6 +349,136 @@ export default function AbsensiWizard({
           </CardHeader>
 
           <CardContent className="p-6 space-y-5">
+            {/* TIPE AGENDA: SEKALI SAJA VS AGENDA RUTIN */}
+            <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
+              <Label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                <span>Tipe Agenda Presensi</span>
+                <span className="text-[10px] font-semibold text-slate-400">Pilih jenis frekuensi kegiatan</span>
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setForm({ ...form, isRecurring: false, kategori: "RAPAT" })}
+                  className={`p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
+                    !form.isRecurring
+                      ? "bg-white border-indigo-600 shadow-xs ring-2 ring-indigo-100"
+                      : "bg-white/60 border-slate-200 hover:bg-white text-slate-600"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${!form.isRecurring ? "border-indigo-600 bg-indigo-600" : "border-slate-300"}`}>
+                    {!form.isRecurring && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900">Agenda Sekali Saja</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Untuk rapat koordinasi, sosialisasi, atau acara ad-hoc satu tanggal.</p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setForm({ ...form, isRecurring: true, kategori: "APEL", namaKegiatan: form.namaKegiatan || "Apel Pagi Gabungan Perangkat Daerah" })}
+                  className={`p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
+                    form.isRecurring
+                      ? "bg-white border-indigo-600 shadow-xs ring-2 ring-indigo-100"
+                      : "bg-white/60 border-slate-200 hover:bg-white text-slate-600"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${form.isRecurring ? "border-indigo-600 bg-indigo-600" : "border-slate-300"}`}>
+                    {form.isRecurring && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-bold text-slate-900">Agenda Rutin (Apel/Senam)</p>
+                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[9px] px-1.5 py-0">Reusable QR</Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">1 Link & QR tetap untuk kegiatan mingguan berulang (tiap Senin, dll).</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* PENGATURAN KHUSUS AGENDA RUTIN */}
+              {form.isRecurring && (
+                <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-3 mt-2 animate-in fade-in-50 duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-[11px] font-semibold text-indigo-950">
+                        Kategori Kegiatan Rutin
+                      </Label>
+                      <Select
+                        value={form.kategori}
+                        onValueChange={(val) => setForm({ ...form, kategori: val || "RAPAT" })}
+                      >
+                        <SelectTrigger className="mt-1 bg-white text-xs h-9 border-indigo-200">
+                          <SelectValue placeholder="Pilih Kategori" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="APEL">Apel Pagi / Apel Sore</SelectItem>
+                          <SelectItem value="UPACARA">Upacara Hari Besar / Bulanan</SelectItem>
+                          <SelectItem value="SENAM">Senam Bersama Hari Jumat</SelectItem>
+                          <SelectItem value="RAPAT">Rapat Rutin Mingguan</SelectItem>
+                          <SelectItem value="LAINNYA">Kegiatan Rutin Lainnya</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px] font-semibold text-indigo-950">
+                        Hari Pelaksanaan Rutin
+                      </Label>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                        {["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT"].map((day) => {
+                          const isChecked = form.recurringDays.includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => {
+                                const nextDays = isChecked
+                                  ? form.recurringDays.filter((d) => d !== day)
+                                  : [...form.recurringDays, day];
+                                if (nextDays.length > 0) {
+                                  setForm({ ...form, recurringDays: nextDays });
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                                isChecked
+                                  ? "bg-indigo-600 text-white border-indigo-600"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50"
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-indigo-100/80">
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-indigo-900">Jam Buka Sesi:</Label>
+                      <Input
+                        type="time"
+                        value={form.recurringJamBuka}
+                        onChange={(e) => setForm({ ...form, recurringJamBuka: e.target.value, jamBuka: e.target.value })}
+                        className="mt-1 text-xs bg-white h-8.5 font-semibold border-indigo-200"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-indigo-900">Jam Tutup Sesi:</Label>
+                      <Input
+                        type="time"
+                        value={form.recurringJamTutup}
+                        onChange={(e) => setForm({ ...form, recurringJamTutup: e.target.value, jamTutup: e.target.value })}
+                        className="mt-1 text-xs bg-white h-8.5 font-semibold border-indigo-200"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-indigo-800 italic">
+                    💡 QR Code dan URL form presensi dapat dicetak permanen. Sesi akan otomatis aktif di hari dan jam di atas.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Baris 1: Nama Kegiatan (Full Width) */}
             <div>
               <Label className="text-xs font-semibold text-slate-700">
@@ -346,7 +486,7 @@ export default function AbsensiWizard({
               </Label>
               <Input
                 required
-                placeholder="Contoh: Rapat Koordinasi Evaluasi Kinerja Triwulan II"
+                placeholder={form.isRecurring ? "Contoh: Apel Pagi Gabungan Perangkat Daerah" : "Contoh: Rapat Koordinasi Evaluasi Kinerja Triwulan II"}
                 value={form.namaKegiatan}
                 onChange={(e) => setForm({ ...form, namaKegiatan: e.target.value })}
                 className="mt-1.5 text-xs h-10 bg-white font-medium focus:border-indigo-500"

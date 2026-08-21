@@ -124,6 +124,7 @@ export default function RekapKehadiranView({
   initialData,
   selectedYear,
   selectedBulan = "ALL",
+  selectedKategori = "ALL",
   customStartDate = "",
   customEndDate = "",
 }: {
@@ -134,6 +135,7 @@ export default function RekapKehadiranView({
   };
   selectedYear: string;
   selectedBulan?: string;
+  selectedKategori?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
   customStartDate?: string;
   customEndDate?: string;
 }) {
@@ -150,14 +152,16 @@ export default function RekapKehadiranView({
   const [endDateInput, setEndDateInput] = useState(customEndDate);
   const [isCustomRange, setIsCustomRange] = useState(!!(customStartDate && customEndDate));
 
-  const updateFilters = (newParams: { tahun?: string; bulan?: string; startDate?: string; endDate?: string }) => {
+  const updateFilters = (newParams: { tahun?: string; bulan?: string; kategori?: string; startDate?: string; endDate?: string }) => {
     const params = new URLSearchParams();
     const yr = newParams.tahun !== undefined ? newParams.tahun : selectedYear;
     const bln = newParams.bulan !== undefined ? newParams.bulan : selectedBulan;
+    const kat = newParams.kategori !== undefined ? newParams.kategori : selectedKategori;
     const sDate = newParams.startDate !== undefined ? newParams.startDate : startDateInput;
     const eDate = newParams.endDate !== undefined ? newParams.endDate : endDateInput;
 
     if (yr) params.set("tahun", yr);
+    if (kat && kat !== "ALL") params.set("kategori", kat);
     if (sDate && eDate) {
       params.set("startDate", sDate);
       params.set("endDate", eDate);
@@ -413,6 +417,18 @@ export default function RekapKehadiranView({
                 {b.label}
               </option>
             ))}
+          </select>
+
+          {/* Selector Kategori Agenda */}
+          <select
+            value={selectedKategori}
+            onChange={(e) => updateFilters({ kategori: e.target.value })}
+            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9"
+          >
+            <option value="ALL">Semua Jenis Kegiatan</option>
+            <option value="RAPAT">Khusus Rapat Dinas</option>
+            <option value="RUTIN">Khusus Agenda Rutin</option>
+            <option value="APEL">Khusus Apel Gabungan</option>
           </select>
 
           {/* Toggle Custom Rentang Tanggal */}

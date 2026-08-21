@@ -41,6 +41,11 @@ type AgendaItem = {
   targetPeserta: string | null;
   requireLocation?: boolean;
   requirePhoto?: boolean;
+  isRecurring?: boolean;
+  recurringDays?: string[];
+  recurringJamBuka?: string | null;
+  recurringJamTutup?: string | null;
+  kategori?: string | null;
   status: "BERLANGSUNG" | "SELESAI" | "DIBATALKAN";
   driveUrl: string | null;
   stats: {
@@ -435,6 +440,11 @@ export default function AgendaList({
                             {item.namaKegiatan}
                           </Link>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {item.isRecurring && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                Rutin • {item.recurringDays && item.recurringDays.length > 0 ? item.recurringDays.join(", ") : "Mingguan"}
+                              </span>
+                            )}
                             {item.targetPeserta && (
                               <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
                                 {item.targetPeserta}
@@ -456,14 +466,30 @@ export default function AgendaList({
                         </TableCell>
 
                         <TableCell className="text-xs text-slate-600">
-                          <div className="font-semibold text-slate-900">
-                            {item.hari ? `${item.hari}, ` : ""}
-                            {formatWita(item.tanggal, "dd MMM yyyy")}
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                            {item.waktu || "-"}
-                          </div>
+                          {item.isRecurring ? (
+                            <div>
+                              <div className="font-bold text-indigo-900">
+                                Sesi Rutin ({item.recurringDays?.join(", ") || "Setiap Pekan"})
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                {item.recurringJamBuka && item.recurringJamTutup
+                                  ? `${item.recurringJamBuka} - ${item.recurringJamTutup} WITA`
+                                  : item.waktu || "-"}
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-semibold text-slate-900">
+                                {item.hari ? `${item.hari}, ` : ""}
+                                {formatWita(item.tanggal, "dd MMM yyyy")}
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                {item.waktu || "-"}
+                              </div>
+                            </div>
+                          )}
                         </TableCell>
 
                         <TableCell className="text-center text-xs">

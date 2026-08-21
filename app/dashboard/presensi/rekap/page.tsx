@@ -15,12 +15,14 @@ export default async function RekapAbsensiPage({
     bulan?: string;
     startDate?: string;
     endDate?: string;
+    kategori?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
   }>;
 }) {
   const resolvedParams = await searchParams;
   const currentYear = new Date().getFullYear().toString();
   const selectedYear = resolvedParams.tahun || currentYear;
   const selectedBulan = resolvedParams.bulan || "ALL";
+  const selectedKategori = resolvedParams.kategori || "ALL";
   const customStartDate = resolvedParams.startDate || "";
   const customEndDate = resolvedParams.endDate || "";
 
@@ -41,6 +43,7 @@ export default async function RekapAbsensiPage({
   const data = await getRekapKehadiranOpd({
     startDate,
     endDate,
+    kategoriAgenda: selectedKategori,
   });
 
   return (
@@ -75,6 +78,7 @@ export default async function RekapAbsensiPage({
         initialData={data as any} 
         selectedYear={selectedYear}
         selectedBulan={selectedBulan}
+        selectedKategori={selectedKategori}
         customStartDate={customStartDate}
         customEndDate={customEndDate}
       />
