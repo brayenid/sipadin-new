@@ -1953,7 +1953,7 @@ export async function addPesertaManualToAgenda(
       instansi: payload.instansi,
       eselon: payload.eselon || "II.b",
       urutan: count + 1,
-      status: payload.status || StatusKehadiran.HADIR,
+      status: payload.status || StatusKehadiran.TIDAK_HADIR,
       namaPerwakilan: payload.namaPerwakilan || null,
       jabatanPerwakilan: payload.jabatanPerwakilan || null,
       keterangan: payload.keterangan || null,
@@ -2952,7 +2952,7 @@ export async function addPesertaBulkToAgenda(
           instansi: p.instansi,
           eselon: p.eselon || "II.b",
           urutan: count + idx + 1,
-          status: StatusKehadiran.HADIR,
+          status: StatusKehadiran.TIDAK_HADIR,
         },
       })
     )
