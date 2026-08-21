@@ -410,7 +410,7 @@ export default function AgendaList({
                   <TableHead className="w-12 text-center text-xs">No</TableHead>
                   <TableHead className="text-xs">Kegiatan & Lokasi</TableHead>
                   <TableHead className="text-xs w-48">Waktu Pelaksanaan</TableHead>
-                  <TableHead className="text-xs text-center w-36">Kehadiran OPD</TableHead>
+                  <TableHead className="text-xs text-center w-36">Kehadiran</TableHead>
                   <TableHead className="text-xs text-center w-28">Status</TableHead>
                   <TableHead className="text-xs text-center w-28">Arsip Drive</TableHead>
                   <TableHead className="text-xs text-right w-32">Aksi</TableHead>
@@ -504,7 +504,7 @@ export default function AgendaList({
                             {item.stats.mewakili > 0 && (
                               <span className="text-amber-600"> • {item.stats.mewakili} Wakili</span>
                             )}
-                            <span className="text-slate-400"> / {item.stats.total} OPD</span>
+                            <span className="text-slate-400"> / {item.stats.total}</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
                             <div
