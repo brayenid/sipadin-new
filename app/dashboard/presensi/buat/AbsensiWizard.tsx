@@ -452,28 +452,64 @@ export default function AbsensiWizard({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-indigo-100/80">
-                    <div>
-                      <Label className="text-[10.5px] font-semibold text-indigo-900">Jam Buka Sesi:</Label>
-                      <Input
-                        type="time"
-                        value={form.recurringJamBuka}
-                        onChange={(e) => setForm({ ...form, recurringJamBuka: e.target.value, jamBuka: e.target.value })}
-                        className="mt-1 text-xs bg-white h-8.5 font-semibold border-indigo-200"
-                      />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-indigo-100/80">
+                    <div className="p-2.5 bg-white/80 rounded-lg border border-indigo-100 space-y-1.5">
+                      <Label className="text-[11px] font-bold text-indigo-950 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Jam Pelaksanaan Acara (WITA)</span>
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-slate-500">Mulai:</Label>
+                          <Input
+                            type="time"
+                            value={form.jamMulai}
+                            onChange={(e) => handleJamMulaiChange(e.target.value)}
+                            className="text-xs bg-white h-8 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500">Selesai:</Label>
+                          <Input
+                            type="time"
+                            value={form.jamSelesai}
+                            onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                            className="text-xs bg-white h-8 font-semibold"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-[10.5px] font-semibold text-indigo-900">Jam Tutup Sesi:</Label>
-                      <Input
-                        type="time"
-                        value={form.recurringJamTutup}
-                        onChange={(e) => setForm({ ...form, recurringJamTutup: e.target.value, jamTutup: e.target.value })}
-                        className="mt-1 text-xs bg-white h-8.5 font-semibold border-indigo-200"
-                      />
+
+                    <div className="p-2.5 bg-white/80 rounded-lg border border-indigo-100 space-y-1.5">
+                      <Label className="text-[11px] font-bold text-indigo-950 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Rentang Buka Presensi (WITA)</span>
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-slate-500">Buka:</Label>
+                          <Input
+                            type="time"
+                            value={form.recurringJamBuka}
+                            onChange={(e) => setForm({ ...form, recurringJamBuka: e.target.value, jamBuka: e.target.value })}
+                            className="text-xs bg-white h-8 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500">Tutup:</Label>
+                          <Input
+                            type="time"
+                            value={form.recurringJamTutup}
+                            onChange={(e) => setForm({ ...form, recurringJamTutup: e.target.value, jamTutup: e.target.value })}
+                            className="text-xs bg-white h-8 font-semibold"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
+
                   <p className="text-[10px] text-indigo-800">
-                    QR Code dan URL form presensi dapat dicetak permanen. Sesi akan otomatis aktif di hari dan jam di atas.
+                    💡 QR Code dan URL form presensi dapat dicetak permanen. Sesi akan otomatis aktif di hari dan jam di atas.
                   </p>
                 </div>
               )}

@@ -886,9 +886,7 @@ export default function PublicAbsensiForm({
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>
-                {agenda.isRecurring && agenda.recurringJamBuka && agenda.recurringJamTutup
-                  ? `${agenda.recurringJamBuka} - ${agenda.recurringJamTutup} WITA`
-                  : agenda.waktu || "09:00 WITA"}
+                {agenda.waktu || (agenda.recurringJamBuka && agenda.recurringJamTutup ? `${agenda.recurringJamBuka} - ${agenda.recurringJamTutup} WITA` : "07:30 WITA")}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -908,8 +906,13 @@ export default function PublicAbsensiForm({
                 <span>Presensi Agenda Rutin - {agenda.kategori === "APEL" ? "Apel Gabungan" : agenda.kategori || "Rutin"}</span>
               </div>
               <p className="text-[11.5px] text-indigo-800 leading-relaxed">
-                Jadwal: <strong>Setiap {agenda.recurringDays && agenda.recurringDays.length > 0 ? agenda.recurringDays.join(", ") : "Hari Pelaksanaan"}</strong> - Pukul {agenda.recurringJamBuka || "07:00"} s.d. {agenda.recurringJamTutup || "08:15"} WITA.
+                Jadwal: <strong>Setiap {agenda.recurringDays && agenda.recurringDays.length > 0 ? agenda.recurringDays.join(", ") : "Hari Pelaksanaan"}</strong> • Pukul {agenda.waktu || (agenda.recurringJamBuka ? `${agenda.recurringJamBuka} WITA` : "07:30 WITA")}.
               </p>
+              {agenda.recurringJamBuka && agenda.recurringJamTutup && (
+                <p className="text-[10.5px] text-indigo-600 font-medium">
+                  Rentang presensi dibuka: {agenda.recurringJamBuka} s.d. {agenda.recurringJamTutup} WITA
+                </p>
+              )}
             </div>
           )}
           {/* Banner Status Presensi Pulang */}

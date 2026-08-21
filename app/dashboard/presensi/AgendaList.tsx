@@ -441,8 +441,8 @@ export default function AgendaList({
                           </Link>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {item.isRecurring && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                Rutin • {item.recurringDays && item.recurringDays.length > 0 ? item.recurringDays.join(", ") : "Mingguan"}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                Rutin - {item.recurringDays && item.recurringDays.length > 0 ? item.recurringDays.join(", ") : "Mingguan"}
                               </span>
                             )}
                             {item.targetPeserta && (
