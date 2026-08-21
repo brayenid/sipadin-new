@@ -119,7 +119,7 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
           </div>
         )}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 mt-4 sm:mt-6">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4 sm:mt-6">
           {spj.jenisSpj === 'HONORARIUM' ? (
             <>
               <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setKuitansiType('HONOR'); setShowPreview(true); }}>
