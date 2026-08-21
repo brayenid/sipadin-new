@@ -472,8 +472,8 @@ export default function AbsensiWizard({
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-indigo-800 italic">
-                    💡 QR Code dan URL form presensi dapat dicetak permanen. Sesi akan otomatis aktif di hari dan jam di atas.
+                  <p className="text-[10px] text-indigo-800">
+                    QR Code dan URL form presensi dapat dicetak permanen. Sesi akan otomatis aktif di hari dan jam di atas.
                   </p>
                 </div>
               )}
