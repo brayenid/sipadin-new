@@ -310,9 +310,9 @@ export default function RekapKehadiranView({
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
-      {/* 3 Summary KPI Cards (All bg-white) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+      {/* 3 Summary KPI Cards (All bg-white, horizontal scroll on mobile) */}
+      <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pb-1.5 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Card className="min-w-[260px] sm:min-w-0 snap-start flex-1 border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">
@@ -321,13 +321,13 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-indigo-950 mt-0.5">{initialData.totalAgenda}</p>
               <p className="text-[11px] text-indigo-600/80 mt-0.5">{totalOpd} Perangkat Daerah Terdata</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
               <Calendar className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Card className="min-w-[260px] sm:min-w-0 snap-start flex-1 border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
@@ -336,13 +336,13 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-emerald-950 mt-0.5">{avgKehadiran}%</p>
               <p className="text-[11px] text-emerald-600/80 mt-0.5">Hadir Langsung + Mewakili</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
               <BarChart3 className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
+        <Card className="min-w-[260px] sm:min-w-0 snap-start flex-1 border-slate-200/60 bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
@@ -351,7 +351,7 @@ export default function RekapKehadiranView({
               <p className="text-2xl font-black text-amber-950 mt-0.5">{topAttendance} OPD</p>
               <p className="text-[11px] text-amber-600/80 mt-0.5">Tingkat Disiplin Kehadiran Baik</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
               <Award className="w-5 h-5" />
             </div>
           </CardContent>
