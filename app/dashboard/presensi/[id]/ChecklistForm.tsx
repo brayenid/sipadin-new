@@ -2885,7 +2885,7 @@ export default function ChecklistForm({
         onOpenChange={(open) => !open && setConfirmRestoreDate(null)}
         title="Aktifkan Kembali Sesi Presensi?"
         variant="warning"
-        confirmText="Ya, Aktifkan Sesi"
+        confirmText="Aktifkan Sesi"
         cancelText="Batal"
         isLoading={isSubmittingCancel}
         onConfirm={() => {
@@ -2895,16 +2895,16 @@ export default function ChecklistForm({
         }}
         description={
           confirmRestoreDate ? (
-            <div className="space-y-2 text-slate-600">
-              <p>
+            <div className="space-y-2.5 pt-1 text-slate-600">
+              <p className="text-xs text-slate-600 leading-normal">
                 Sesi presensi pada{" "}
-                <strong className="text-slate-900 font-bold">
+                <span className="font-semibold text-slate-900">
                   {formatWita(new Date(confirmRestoreDate), "EEEE, dd MMMM yyyy")}
-                </strong>{" "}
-                akan kembali dibuka untuk presensi pegawai.
+                </span>{" "}
+                akan dibuka kembali untuk presensi pegawai.
               </p>
-              <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200/80 leading-relaxed font-medium">
-                ⚠️ Sesi ini akan kembali dihitung dan dievaluasi dalam laporan rekapitulasi kehadiran ASN & OPD.
+              <div className="text-[11.5px] text-amber-800 bg-amber-50/80 px-3 py-2 rounded-xl border border-amber-200/70 leading-relaxed">
+                Sesi ini akan kembali dievaluasi dan diperhitungkan ke dalam rekapitulasi kehadiran.
               </div>
             </div>
           ) : null
