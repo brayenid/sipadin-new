@@ -359,6 +359,8 @@ model AgendaAbsensi {
   // Fitur Agenda Rutin / Berulang (Apel Pagi, Upacara, Senam, dsb.)
   isRecurring       Boolean             @default(false)
   recurringDays     String[]            @default([]) // ["SENIN"] atau ["SENIN", "JUMAT"]
+  recurringWeeks    Int[]               @default([]) // Contoh: [1, 3] untuk Pekan 1 & 3. [] berarti setiap pekan
+  cancelledSessions Json?               // Array JSON: [{ tanggal: "2026-08-17", alasan: "Libur Nasional HUT RI", cancelledAt: "..." }]
   recurringJamBuka  String?             // "07:00"
   recurringJamTutup String?             // "08:15"
   kategori          String?             @default("RAPAT") // "RAPAT" | "APEL" | "UPACARA" | "SENAM" | "LAINNYA"

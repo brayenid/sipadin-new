@@ -1,10 +1,12 @@
 import React from "react";
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import "@/pdf/fonts";
+import { formatWita } from "@/lib/date-utils";
 
 export type RekapKehadiranPdfData = {
   tahun: string;
   periodeLabel?: string;
+  judulLaporan?: string;
   totalAgenda: number;
   dataOpd: {
     instansi: string;
@@ -20,6 +22,23 @@ export type RekapKehadiranPdfData = {
     persentaseValidLokasi?: number;
     predikatKepatuhan?: string;
     evaluasiSingkat?: string;
+    history?: {
+      agendaId?: string;
+      namaKegiatan: string;
+      tanggal: Date | string;
+      totalDiundang: number;
+      hadir: number;
+      hadirValid?: number;
+      hadirLuarRadius?: number;
+      hadirTanpaLokasi?: number;
+      hadirNonUndangan?: number;
+      mewakili: number;
+      izin: number;
+      tidakHadir: number;
+      persentaseKehadiran: number;
+      isCancelledSession?: boolean;
+      cancelReason?: string | null;
+    }[];
   }[];
 };
 
@@ -30,13 +49,31 @@ export default function LaporanRekapKehadiranPdf({
 }) {
   // Hitung Agregat Makro
   const totalOpd = data.dataOpd.length;
-  const totalUndangan = data.dataOpd.reduce((acc, c) => acc + c.totalDiundang, 0);
-  const totalHadirAll = data.dataOpd.reduce((acc, c) => acc + c.hadir, 0);
-  const totalHadirValid = data.dataOpd.reduce((acc, c) => acc + (c.hadirValid ?? c.hadir), 0);
-  const totalHadirLuar = data.dataOpd.reduce((acc, c) => acc + (c.hadirLuarRadius ?? 0), 0);
-  const totalMewakili = data.dataOpd.reduce((acc, c) => acc + c.mewakili, 0);
+  const totalPegawaiDiundang = data.dataOpd.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + h.totalDiundang, 0) : c.totalDiundang),
+    0
+  );
+  const totalHadirAll = data.dataOpd.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + h.hadir, 0) : c.hadir),
+    0
+  );
+  const totalHadirValid = data.dataOpd.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + (h.hadirValid ?? h.hadir), 0) : (c.hadirValid ?? c.hadir)),
+    0
+  );
+  const totalHadirLuar = data.dataOpd.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + (h.hadirLuarRadius ?? 0), 0) : (c.hadirLuarRadius ?? 0)),
+    0
+  );
+  const totalMewakili = data.dataOpd.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + h.mewakili, 0) : c.mewakili),
+    0
+  );
 
-  const avgKehadiran = totalUndangan > 0 ? Math.round(((totalHadirAll + totalMewakili) / totalUndangan) * 100) : 0;
+  const avgKehadiran = totalPegawaiDiundang > 0 
+    ? Math.round(((totalHadirAll + totalMewakili) / totalPegawaiDiundang) * 100)
+    : (data.dataOpd.length > 0 ? Math.round(data.dataOpd.reduce((acc, c) => acc + c.persentaseKehadiran, 0) / data.dataOpd.length) : 0);
+
   const avgKepatuhanLokasi = totalHadirAll > 0 ? Math.round((totalHadirValid / totalHadirAll) * 100) : 100;
 
   return (
@@ -44,7 +81,7 @@ export default function LaporanRekapKehadiranPdf({
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Judul Laporan */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PERANGKAT DAERAH</Text>
+          <Text style={styles.titleText}>{data.judulLaporan || "LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PERANGKAT DAERAH"}</Text>
           <Text style={styles.regionText}>PEMERINTAH KABUPATEN KUTAI BARAT</Text>
           <Text style={styles.subtitleText}>
             {data.periodeLabel ? `PERIODE: ${data.periodeLabel.toUpperCase()}` : `TAHUN ANGGARAN: ${data.tahun}`}
@@ -59,7 +96,7 @@ export default function LaporanRekapKehadiranPdf({
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>TOTAL DIEVALUASI</Text>
             <Text style={styles.summaryValue}>{totalOpd} OPD</Text>
-            <Text style={styles.summarySub}>{totalUndangan} Total Penugasan</Text>
+            <Text style={styles.summarySub}>{data.totalAgenda} Agenda ({totalPegawaiDiundang} Penugasan)</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>RATA-RATA KEHADIRAN</Text>
@@ -111,7 +148,7 @@ export default function LaporanRekapKehadiranPdf({
         <View style={styles.table}>
           <View style={styles.tableHeader} fixed>
             <View style={[styles.th, styles.colNo, styles.borderRight]}><Text style={styles.thText}>No</Text></View>
-            <View style={[styles.th, styles.colOpd, styles.borderRight]}><Text style={styles.thText}>Perangkat Daerah</Text></View>
+            <View style={[styles.th, styles.colOpd, styles.borderRight]}><Text style={styles.thText}>Perangkat Daerah & Rincian Agenda</Text></View>
             <View style={[styles.th, styles.colUndang, styles.borderRight]}><Text style={styles.thText}>Undang</Text></View>
             <View style={[styles.th, styles.colHadirValid, styles.borderRight]}><Text style={styles.thText}>Hadir (Lokasi)</Text></View>
             <View style={[styles.th, styles.colHadirLuar, styles.borderRight]}><Text style={styles.thText}>Luar Rad.</Text></View>
@@ -129,60 +166,147 @@ export default function LaporanRekapKehadiranPdf({
               idx % 2 === 1 ? styles.rowAlternate : {},
             ];
 
-            const total = Math.max(1, opd.totalDiundang);
             const validCount = opd.hadirValid ?? opd.hadir;
             const luarCount = opd.hadirLuarRadius ?? 0;
             const wakiliCount = opd.mewakili;
             const izinCount = opd.izin;
             const alpaCount = opd.tidakHadir;
 
-            const pctValid = Math.round((validCount / total) * 100);
-            const pctLuar = Math.round((luarCount / total) * 100);
-            const pctWakili = Math.round((wakiliCount / total) * 100);
-            const pctIzin = Math.round((izinCount / total) * 100);
-            const pctAlpa = Math.max(0, 100 - pctValid - pctLuar - pctWakili - pctIzin);
+            let pctValid = 0;
+            let pctLuar = 0;
+            let pctWakili = 0;
+            let pctIzin = 0;
+            let pctAlpa = 0;
+
+            if (opd.history && opd.history.length > 0) {
+              const totalSubPeg = opd.history.reduce((acc, h) => acc + Math.max(1, h.totalDiundang), 0);
+              const totalValidSub = opd.history.reduce((acc, h) => acc + (h.hadirValid ?? h.hadir), 0);
+              const totalLuarSub = opd.history.reduce((acc, h) => acc + (h.hadirLuarRadius ?? 0), 0);
+              const totalWakiliSub = opd.history.reduce((acc, h) => acc + h.mewakili, 0);
+              const totalIzinSub = opd.history.reduce((acc, h) => acc + h.izin, 0);
+
+              pctValid = Math.round((totalValidSub / totalSubPeg) * 100);
+              pctLuar = Math.round((totalLuarSub / totalSubPeg) * 100);
+              pctWakili = Math.round((totalWakiliSub / totalSubPeg) * 100);
+              pctIzin = Math.round((totalIzinSub / totalSubPeg) * 100);
+              pctAlpa = Math.max(0, 100 - pctValid - pctLuar - pctWakili - pctIzin);
+            } else {
+              const totalPegawaiMaster = Math.max(1, validCount + luarCount + wakiliCount + izinCount + alpaCount);
+              pctValid = Math.round((validCount / totalPegawaiMaster) * 100);
+              pctLuar = Math.round((luarCount / totalPegawaiMaster) * 100);
+              pctWakili = Math.round((wakiliCount / totalPegawaiMaster) * 100);
+              pctIzin = Math.round((izinCount / totalPegawaiMaster) * 100);
+              pctAlpa = Math.max(0, 100 - pctValid - pctLuar - pctWakili - pctIzin);
+            }
 
             return (
-              <View key={idx} style={rowStyle} wrap={false}>
-                <View style={[styles.td, styles.colNo, styles.borderRight]}><Text style={styles.tdText}>{idx + 1}</Text></View>
-                <View style={[styles.td, styles.colOpd, styles.alignLeft, styles.borderRight]}>
-                  <Text style={[styles.tdText, styles.fontBold]}>{opd.instansi}</Text>
-                </View>
-                <View style={[styles.td, styles.colUndang, styles.borderRight]}><Text style={styles.tdText}>{opd.totalDiundang}</Text></View>
-                <View style={[styles.td, styles.colHadirValid, styles.borderRight]}><Text style={[styles.tdText, styles.fontBold]}>{validCount}</Text></View>
-                <View style={[styles.td, styles.colHadirLuar, styles.borderRight]}>
-                  <Text style={[styles.tdText, luarCount > 0 ? styles.textAmberBold : {}]}>{luarCount}</Text>
-                </View>
-                <View style={[styles.td, styles.colWakili, styles.borderRight]}><Text style={styles.tdText}>{wakiliCount}</Text></View>
-                <View style={[styles.td, styles.colIzin, styles.borderRight]}><Text style={styles.tdText}>{izinCount}</Text></View>
-                <View style={[styles.td, styles.colAlpa, styles.borderRight]}>
-                  <Text style={[styles.tdText, alpaCount > 0 ? styles.textRedBold : {}]}>{alpaCount}</Text>
-                </View>
-                <View style={[styles.td, styles.colPercent, styles.borderRight]}>
-                  <Text style={[styles.tdText, styles.fontBold]}>{opd.persentaseKehadiran}%</Text>
-                </View>
+              <React.Fragment key={idx}>
+                {/* Baris Utama OPD */}
+                <View style={rowStyle} wrap={false}>
+                  <View style={[styles.td, styles.colNo, styles.borderRight]}><Text style={styles.tdText}>{idx + 1}</Text></View>
+                  <View style={[styles.td, styles.colOpd, styles.alignLeft, styles.borderRight]}>
+                    <Text style={[styles.tdText, styles.fontBold]}>{opd.instansi}</Text>
+                  </View>
+                  <View style={[styles.td, styles.colUndang, styles.borderRight]}><Text style={styles.tdText}>{opd.totalDiundang}</Text></View>
+                  <View style={[styles.td, styles.colHadirValid, styles.borderRight]}><Text style={[styles.tdText, styles.fontBold]}>{validCount}</Text></View>
+                  <View style={[styles.td, styles.colHadirLuar, styles.borderRight]}>
+                    <Text style={[styles.tdText, luarCount > 0 ? styles.textAmberBold : {}]}>{luarCount}</Text>
+                  </View>
+                  <View style={[styles.td, styles.colWakili, styles.borderRight]}><Text style={styles.tdText}>{wakiliCount}</Text></View>
+                  <View style={[styles.td, styles.colIzin, styles.borderRight]}><Text style={styles.tdText}>{izinCount}</Text></View>
+                  <View style={[styles.td, styles.colAlpa, styles.borderRight]}>
+                    <Text style={[styles.tdText, alpaCount > 0 ? styles.textRedBold : {}]}>{alpaCount}</Text>
+                  </View>
+                  <View style={[styles.td, styles.colPercent, styles.borderRight]}>
+                    <Text style={[styles.tdText, styles.fontBold]}>{opd.persentaseKehadiran}%</Text>
+                  </View>
 
-                {/* Black Monochrome Segmented Bar Chart */}
-                <View style={[styles.td, styles.colChart, styles.borderRight]}>
-                  <View style={styles.barChartContainer}>
-                    {pctValid > 0 && <View style={[styles.barSegment, { width: `${pctValid}%`, backgroundColor: "#0f172a" }]} />}
-                    {pctLuar > 0 && <View style={[styles.barSegment, { width: `${pctLuar}%`, backgroundColor: "#d97706" }]} />}
-                    {pctWakili > 0 && <View style={[styles.barSegment, { width: `${pctWakili}%`, backgroundColor: "#94a3b8" }]} />}
-                    {pctIzin > 0 && <View style={[styles.barSegment, { width: `${pctIzin}%`, backgroundColor: "#cbd5e1" }]} />}
-                    {pctAlpa > 0 && <View style={[styles.barSegment, { width: `${pctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
+                  {/* Black Monochrome Segmented Bar Chart */}
+                  <View style={[styles.td, styles.colChart, styles.borderRight]}>
+                    <View style={styles.barChartContainer}>
+                      {pctValid > 0 && <View style={[styles.barSegment, { width: `${pctValid}%`, backgroundColor: "#0f172a" }]} />}
+                      {pctLuar > 0 && <View style={[styles.barSegment, { width: `${pctLuar}%`, backgroundColor: "#d97706" }]} />}
+                      {pctWakili > 0 && <View style={[styles.barSegment, { width: `${pctWakili}%`, backgroundColor: "#94a3b8" }]} />}
+                      {pctIzin > 0 && <View style={[styles.barSegment, { width: `${pctIzin}%`, backgroundColor: "#cbd5e1" }]} />}
+                      {pctAlpa > 0 && <View style={[styles.barSegment, { width: `${pctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
+                    </View>
+                  </View>
+
+                  {/* Raport & Evaluasi Singkat */}
+                  <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
+                    <Text style={styles.evalPredikat}>
+                      {opd.predikatKepatuhan || (opd.persentaseKehadiran >= 80 ? "Sangat Tertib" : "Cukup Tertib")}
+                    </Text>
+                    <Text style={styles.evalText}>
+                      {opd.evaluasiSingkat || "Kehadiran tertib di lokasi."}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Raport & Evaluasi Singkat */}
-                <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
-                  <Text style={styles.evalPredikat}>
-                    {opd.predikatKepatuhan || (opd.persentaseKehadiran >= 80 ? "Sangat Tertib" : "Cukup Tertib")}
-                  </Text>
-                  <Text style={styles.evalText}>
-                    {opd.evaluasiSingkat || "Kehadiran tertib di lokasi."}
-                  </Text>
-                </View>
-              </View>
+                {/* Sub-Baris Kegiatan Terkait OPD */}
+                {opd.history && opd.history.length > 0 && opd.history.map((h, hIdx) => {
+                  const hTotal = Math.max(1, h.totalDiundang);
+                  const hValid = h.hadirValid ?? h.hadir;
+                  const hLuar = h.hadirLuarRadius ?? 0;
+                  const hWakili = h.mewakili;
+                  const hIzin = h.izin;
+                  const hAlpa = h.tidakHadir;
+
+                  const hPctValid = Math.round((hValid / hTotal) * 100);
+                  const hPctLuar = Math.round((hLuar / hTotal) * 100);
+                  const hPctWakili = Math.round((hWakili / hTotal) * 100);
+                  const hPctIzin = Math.round((hIzin / hTotal) * 100);
+                  const hPctAlpa = Math.max(0, 100 - hPctValid - hPctLuar - hPctWakili - hPctIzin);
+
+                  const tglStr = typeof h.tanggal === "string" ? h.tanggal : formatWita(h.tanggal, "dd/MM/yy");
+
+                  return (
+                    <View key={`sub_${idx}_${hIdx}`} style={styles.subRow} wrap={false}>
+                      <View style={[styles.td, styles.colNo, styles.borderRight]}>
+                        <Text style={styles.subBullet}>•</Text>
+                      </View>
+                      <View style={[styles.td, styles.colOpd, styles.alignLeft, styles.borderRight, { paddingLeft: 12 }]}>
+                        <Text style={styles.subAgendaName}>
+                          - {h.namaKegiatan} ({tglStr})
+                        </Text>
+                      </View>
+                      <View style={[styles.td, styles.colUndang, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : h.totalDiundang}</Text></View>
+                      <View style={[styles.td, styles.colHadirValid, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : hValid}</Text></View>
+                      <View style={[styles.td, styles.colHadirLuar, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : hLuar}</Text></View>
+                      <View style={[styles.td, styles.colWakili, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : hWakili}</Text></View>
+                      <View style={[styles.td, styles.colIzin, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : hIzin}</Text></View>
+                      <View style={[styles.td, styles.colAlpa, styles.borderRight]}><Text style={styles.subText}>{h.isCancelledSession ? "-" : hAlpa}</Text></View>
+                      <View style={[styles.td, styles.colPercent, styles.borderRight]}>
+                        <Text style={[styles.subText, styles.fontBold]}>{h.isCancelledSession ? "-" : `${h.persentaseKehadiran}%`}</Text>
+                      </View>
+                      <View style={[styles.td, styles.colChart, styles.borderRight]}>
+                        {h.isCancelledSession ? (
+                          <View style={[styles.barChartContainer, { height: 5, backgroundColor: "#f1f5f9" }]} />
+                        ) : (
+                          <View style={[styles.barChartContainer, { height: 5 }]}>
+                            {hPctValid > 0 && <View style={[styles.barSegment, { width: `${hPctValid}%`, backgroundColor: "#0f172a" }]} />}
+                            {hPctLuar > 0 && <View style={[styles.barSegment, { width: `${hPctLuar}%`, backgroundColor: "#d97706" }]} />}
+                            {hPctWakili > 0 && <View style={[styles.barSegment, { width: `${hPctWakili}%`, backgroundColor: "#94a3b8" }]} />}
+                            {hPctIzin > 0 && <View style={[styles.barSegment, { width: `${hPctIzin}%`, backgroundColor: "#cbd5e1" }]} />}
+                            {hPctAlpa > 0 && <View style={[styles.barSegment, { width: `${hPctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
+                          </View>
+                        )}
+                      </View>
+                      <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
+                        <Text style={[styles.subEvaluasiText, h.isCancelledSession ? { color: "#e11d48", fontWeight: "bold" } : {}]}>
+                          {h.isCancelledSession
+                            ? `Ditiadakan (${h.cancelReason || "Libur"})`
+                            : h.persentaseKehadiran === 100
+                            ? "Hadir Lengkap"
+                            : h.persentaseKehadiran > 0
+                            ? `${h.hadir} Hadir, ${h.tidakHadir} Absen`
+                            : "Tidak Hadir / Belum Presensi"}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </React.Fragment>
             );
           })}
         </View>
@@ -385,6 +509,31 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: "#64748b",
     marginTop: 0.5,
+  },
+  subRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e2e8f0",
+    minHeight: 16,
+    backgroundColor: "#f8fafc",
+    alignItems: "center",
+  },
+  subText: {
+    fontSize: 6.2,
+    color: "#64748b",
+    textAlign: "center",
+  },
+  subAgendaName: {
+    fontSize: 6.3,
+    color: "#334155",
+  },
+  subBullet: {
+    fontSize: 6.5,
+    color: "#94a3b8",
+  },
+  subEvaluasiText: {
+    fontSize: 5.8,
+    color: "#64748b",
   },
   footer: {
     position: "absolute",

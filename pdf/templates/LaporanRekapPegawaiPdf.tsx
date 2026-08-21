@@ -5,6 +5,7 @@ import "@/pdf/fonts";
 export type RekapPegawaiPdfData = {
   tahun: string;
   periodeLabel?: string;
+  judulLaporan?: string;
   totalAgenda: number;
   dataPegawai: {
     nama: string;
@@ -47,7 +48,7 @@ export default function LaporanRekapPegawaiPdf({
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Judul Laporan */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PEGAWAI</Text>
+          <Text style={styles.titleText}>{data.judulLaporan || "LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PEGAWAI"}</Text>
           <Text style={styles.regionText}>PEMERINTAH KABUPATEN KUTAI BARAT</Text>
           <Text style={styles.subtitleText}>
             {data.periodeLabel ? `PERIODE: ${data.periodeLabel.toUpperCase()}` : `TAHUN ANGGARAN: ${data.tahun}`}

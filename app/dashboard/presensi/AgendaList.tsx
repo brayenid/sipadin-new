@@ -441,7 +441,7 @@ export default function AgendaList({
                           </Link>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {item.isRecurring && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
                                 Rutin - {item.recurringDays && item.recurringDays.length > 0 ? item.recurringDays.join(", ") : "Mingguan"}
                               </span>
                             )}
@@ -451,13 +451,13 @@ export default function AgendaList({
                               </span>
                             )}
                             {item.requirePhoto !== false && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
                                 <Camera className="w-2.5 h-2.5" />
                                 Selfie
                               </span>
                             )}
                             {item.requireLocation !== false && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                                 <MapPin className="w-2.5 h-2.5" />
                                 GPS
                               </span>

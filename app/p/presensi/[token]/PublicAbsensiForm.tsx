@@ -22,6 +22,7 @@ import {
   LogOut,
   Users,
   UserPlus,
+  Ban,
 } from "lucide-react";
 import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
@@ -77,6 +78,10 @@ interface PublicAgendaData {
   radiusMeter?: number | null;
   isRecurring?: boolean;
   recurringDays?: string[];
+  recurringWeeks?: number[];
+  cancelledSessions?: any;
+  isCancelledSession?: boolean;
+  cancelReason?: string;
   recurringJamBuka?: string | null;
   recurringJamTutup?: string | null;
   kategori?: string | null;
@@ -896,25 +901,28 @@ export default function PublicAbsensiForm({
           </div>
         </div>
 
-        {/* Form Isi */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* Banner Khusus Agenda Rutin / Apel */}
-          {agenda.isRecurring && (
-            <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-2xl p-4 text-xs space-y-1 text-indigo-950 shadow-2xs">
-              <div className="flex items-center gap-2 font-bold text-indigo-900">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <span>Presensi Agenda Rutin - {agenda.kategori === "APEL" ? "Apel Gabungan" : agenda.kategori || "Rutin"}</span>
-              </div>
-              <p className="text-[11.5px] text-indigo-800 leading-relaxed">
-                Jadwal: <strong>Setiap {agenda.recurringDays && agenda.recurringDays.length > 0 ? agenda.recurringDays.join(", ") : "Hari Pelaksanaan"}</strong> • Pukul {agenda.waktu || (agenda.recurringJamBuka ? `${agenda.recurringJamBuka} WITA` : "07:30 WITA")}.
-              </p>
-              {agenda.recurringJamBuka && agenda.recurringJamTutup && (
-                <p className="text-[10.5px] text-indigo-600 font-medium">
-                  Rentang presensi dibuka: {agenda.recurringJamBuka} s.d. {agenda.recurringJamTutup} WITA
-                </p>
-              )}
+        {/* Banner Sesi Ditiadakan / Diliburkan */}
+        {agenda.isCancelledSession ? (
+          <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-6 text-center space-y-3 shadow-xs animate-in fade-in duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Ban className="w-6 h-6" />
             </div>
-          )}
+            <div>
+              <h2 className="text-base font-bold text-rose-950">
+                Sesi Presensi Hari Ini DITIADAKAN / DILIBURKAN
+              </h2>
+              <p className="text-xs text-rose-700 mt-1 max-w-md mx-auto leading-relaxed font-medium">
+                {agenda.cancelReason || "Sesi presensi ini ditiadakan oleh penyelenggara/administrator."}
+              </p>
+            </div>
+            <div className="p-3 bg-white/80 rounded-xl border border-rose-200/80 text-[11.5px] text-slate-600 max-w-sm mx-auto">
+              Pengisian presensi online ditutup untuk tanggal ini. Seluruh aparatur yang terdaftar dikecualikan dari perhitungan alpa rekapitulasi.
+            </div>
+          </div>
+        ) : (
+          /* Form Isi */
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+      
           {/* Banner Status Presensi Pulang */}
           {isCheckOutMode && (
             <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-2xl p-4 text-xs space-y-1.5 shadow-2xs animate-in fade-in duration-200">
@@ -1466,6 +1474,7 @@ export default function PublicAbsensiForm({
             </button>
           </div>
         </form>
+        )}
 
         {/* Watermark Logo SIPADIN di Bagian Bawah */}
         <div className="pt-6 pb-2 flex flex-col items-center justify-center space-y-1 select-none pointer-events-none">

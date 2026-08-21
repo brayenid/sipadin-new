@@ -30,6 +30,8 @@ import {
   Smartphone,
   UserCheck,
   Users,
+  ExternalLink,
+  Ban,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import * as XLSX from "xlsx";
@@ -57,11 +59,55 @@ type HistoryItem = {
   distanceMeters?: number | null;
   isInsideRadius?: boolean | null;
   radiusToleransiMeters?: number | null;
+  isCancelledSession?: boolean;
+  cancelReason?: string | null;
+};
+
+type OpdPesertaItem = {
+  id: string;
+  nama: string;
+  nip?: string | null;
+  jabatan?: string;
+  status: "HADIR" | "MEWAKILI" | "TIDAK_HADIR" | "IZIN";
+  keterangan?: string | null;
+  namaPerwakilan?: string | null;
+  jabatanPerwakilan?: string | null;
+  fotoUrl?: string | null;
+  fotoPulangUrl?: string | null;
+  lokasiText?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isSelfInput?: boolean;
+  waktuInput?: Date | null;
+  waktuPulang?: Date | null;
+  distanceMeters?: number | null;
+  isInsideRadius?: boolean | null;
+  isNonUndangan?: boolean;
+};
+
+type OpdHistoryItem = {
+  agendaId: string;
+  namaKegiatan: string;
+  tanggal: Date;
+  totalDiundang: number;
+  hadir: number;
+  hadirValid: number;
+  hadirLuarRadius: number;
+  hadirTanpaLokasi: number;
+  hadirNonUndangan: number;
+  mewakili: number;
+  izin: number;
+  tidakHadir: number;
+  persentaseKehadiran: number;
+  pesertaList: OpdPesertaItem[];
+  isCancelledSession?: boolean;
+  cancelReason?: string | null;
 };
 
 type OpdSummaryItem = {
   instansi: string;
   jabatanTerdata: string[];
+  pegawaiTerdata?: string[];
   totalDiundang: number;
   hadir: number;
   hadirValid?: number;
@@ -78,7 +124,7 @@ type OpdSummaryItem = {
   maxJarakLuarKm?: number;
   predikatKepatuhan?: string;
   evaluasiSingkat?: string;
-  history: HistoryItem[];
+  history: OpdHistoryItem[];
 };
 
 type PegawaiSummaryItem = {
@@ -186,6 +232,14 @@ export default function RekapKehadiranView({
 
   const periodeLabelText = getPeriodeLabel();
 
+  const getJudulLaporanOpd = () => {
+    return "LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PERANGKAT DAERAH";
+  };
+
+  const getJudulLaporanPegawai = () => {
+    return "LAPORAN REKAPITULASI & EVALUASI KEHADIRAN PEGAWAI";
+  };
+
   // Sync state activeTab dengan Hash URL saat load
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -218,21 +272,26 @@ export default function RekapKehadiranView({
   );
 
   const totalOpd = initialData.opdSummary.length;
-  const avgKehadiran =
-    totalOpd > 0
-      ? Math.round(
-          initialData.opdSummary.reduce((acc, curr) => acc + curr.persentaseKehadiran, 0) /
-            totalOpd
-        )
-      : 0;
+  const totalPegawaiDiundangMacro = initialData.opdSummary.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + h.totalDiundang, 0) : c.totalDiundang),
+    0
+  );
+  const totalHadirMacro = initialData.opdSummary.reduce(
+    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + (h.hadir + h.mewakili), 0) : (c.hadir + c.mewakili)),
+    0
+  );
+  const avgKehadiran = totalPegawaiDiundangMacro > 0
+    ? Math.round((totalHadirMacro / totalPegawaiDiundangMacro) * 100)
+    : (totalOpd > 0 ? Math.round(initialData.opdSummary.reduce((acc, curr) => acc + curr.persentaseKehadiran, 0) / totalOpd) : 0);
 
   const topAttendance = initialData.opdSummary.filter((d) => d.persentaseKehadiran >= 80).length;
 
   const handleExportExcelOpd = () => {
+    // Sheet 1: Ringkasan Rangking OPD
     const rows = filteredOpd.map((opd, idx) => ({
       No: idx + 1,
       "Perangkat Daerah": opd.instansi,
-      "Total Diundang": opd.totalDiundang,
+      "Total Agenda Diundang": opd.totalDiundang,
       "Total Hadir": opd.hadir,
       "Hadir Valid (Di Lokasi)": opd.hadirValid ?? opd.hadir,
       "Hadir Luar Radius (Anomali)": opd.hadirLuarRadius ?? 0,
@@ -241,15 +300,40 @@ export default function RekapKehadiranView({
       "Izin / Sakit": opd.izin,
       "Tidak Hadir": opd.tidakHadir,
       "Total Partisipasi": opd.totalPartisipasi,
-      "Persentase Kehadiran (%)": `${opd.persentaseKehadiran}%`,
+      "Rata-rata Kehadiran (%)": `${opd.persentaseKehadiran}%`,
       "Validitas Lokasi (%)": `${opd.persentaseValidLokasi ?? 100}%`,
       "Predikat Kepatuhan": opd.predikatKepatuhan || "-",
       "Catatan Evaluasi": opd.evaluasiSingkat || "-",
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    // Sheet 2: Rincian OPD Per Agenda & Sesi
+    const rowsDetailAgenda: any[] = [];
+    let detailIdx = 1;
+    filteredOpd.forEach((opd) => {
+      opd.history.forEach((h) => {
+        const daftarPegawai = (h.pesertaList || [])
+          .map((p) => `${p.nama} (${p.status}${p.namaPerwakilan ? ` - Diwakili: ${p.namaPerwakilan}` : ""})`)
+          .join("; ");
+
+        rowsDetailAgenda.push({
+          No: detailIdx++,
+          "Perangkat Daerah": opd.instansi,
+          "Nama Agenda / Sesi": h.namaKegiatan,
+          "Tanggal Pelaksanaan": formatWita(h.tanggal, "yyyy-MM-dd"),
+          "Undangan OPD": h.totalDiundang,
+          "Status Kehadiran OPD": h.hadir > 0 ? (h.hadirLuarRadius > 0 ? "Hadir (Luar Radius)" : "Hadir di Lokasi") : h.mewakili > 0 ? "Mewakili" : h.izin > 0 ? "Izin" : "Tidak Hadir",
+          "Persentase Kehadiran OPD (%)": `${h.persentaseKehadiran}%`,
+          "Pegawai Hadir": (h.pesertaList || []).filter((p) => p.status === "HADIR" || p.status === "MEWAKILI").length,
+          "Daftar Hadir & Status Pegawai": daftarPegawai || "-",
+        });
+      });
+    });
+
+    const worksheet1 = XLSX.utils.json_to_sheet(rows);
+    const worksheet2 = XLSX.utils.json_to_sheet(rowsDetailAgenda);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kehadiran OPD");
+    XLSX.utils.book_append_sheet(workbook, worksheet1, "Ringkasan OPD");
+    XLSX.utils.book_append_sheet(workbook, worksheet2, "Rincian OPD Per Agenda");
 
     const colWidths = [
       { wch: 5 },
@@ -268,7 +352,20 @@ export default function RekapKehadiranView({
       { wch: 24 },
       { wch: 45 },
     ];
-    worksheet["!cols"] = colWidths;
+    worksheet1["!cols"] = colWidths;
+    worksheet2["!cols"] = [
+      { wch: 5 },
+      { wch: 35 },
+      { wch: 35 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 26 },
+      { wch: 50 },
+    ];
 
     XLSX.writeFile(workbook, `Rekap_Kehadiran_Perangkat_Daerah_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
@@ -600,9 +697,9 @@ export default function RekapKehadiranView({
                                   <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                                   {opd.instansi}
                                 </div>
-                                {opd.jabatanTerdata.length > 0 && (
+                                {((opd.pegawaiTerdata && opd.pegawaiTerdata.length > 0) || opd.history.length > 0) && (
                                   <p className="text-[10px] text-slate-400 mt-0.5">
-                                    Pegawai: {opd.jabatanTerdata.join(", ")}
+                                    {opd.pegawaiTerdata?.length || opd.history.reduce((max, h) => Math.max(max, h.totalDiundang), 0)} Pegawai Terdata
                                   </p>
                                 )}
                               </TableCell>
@@ -671,107 +768,96 @@ export default function RekapKehadiranView({
                                       <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                                       Riwayat Kehadiran {opd.instansi} ({opd.history.length} Agenda):
                                     </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-2">
+                                      {opd.history.map((h, i) => {
+                                        const isPerfect = h.persentaseKehadiran === 100;
+                                        const isGood = h.persentaseKehadiran >= 50 && h.persentaseKehadiran < 100;
+                                        const isLow = h.persentaseKehadiran > 0 && h.persentaseKehadiran < 50;
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
-                                      {opd.history.map((h, i) => (
-                                        <Link 
-                                          key={i} 
-                                          href={`/dashboard/presensi/${h.agendaId}`}
-                                          className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
-                                        >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <span className="font-bold text-slate-900 truncate">
-                                              {h.namaKegiatan}
-                                            </span>
-                                            <Badge
-                                              className={`text-[9px] px-1.5 py-0 shrink-0 ${
-                                                h.status === "HADIR"
-                                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                  : h.status === "MEWAKILI"
-                                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                  : "bg-red-50 text-red-600 border-red-200"
-                                              }`}
-                                            >
-                                              {h.status === "HADIR"
-                                                ? "Hadir"
-                                                : h.status === "MEWAKILI"
-                                                ? "Mewakili"
-                                                : "Absen"}
-                                            </Badge>
-                                          </div>
-
-                                          <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
-                                            <span className="flex items-center gap-1">
-                                              <Calendar className="w-3 h-3 text-slate-400" />
-                                              {formatWita(h.tanggal, "dd MMM yyyy")}
-                                            </span>
-                                            {h.namaPerwakilan && (
-                                              <span className="text-amber-700 font-medium truncate">
-                                                Wakili: {h.namaPerwakilan}
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          {/* Metadata Metode, Foto & Geotag */}
-                                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
-                                            {h.isNonUndangan && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Users className="w-2.5 h-2.5" />
-                                                Non-Undangan
-                                              </span>
-                                            )}
-
-                                            {h.isSelfInput ? (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
-                                                <Smartphone className="w-2.5 h-2.5" />
-                                                Self-Input
-                                              </span>
-                                            ) : (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
-                                                <UserCheck className="w-2.5 h-2.5" />
-                                                Manual
-                                              </span>
-                                            )}
-
-                                            {h.fotoUrl && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Camera className="w-2.5 h-2.5" />
-                                                Foto {h.fotoPulangUrl ? "Dtg" : ""}
-                                              </span>
-                                            )}
-
-                                            {h.fotoPulangUrl && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Camera className="w-2.5 h-2.5" />
-                                                Foto Plg
-                                              </span>
-                                            )}
-
-                                            {(h.lokasiText || h.latitude) && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <MapPin className="w-2.5 h-2.5" />
-                                                GPS
-                                              </span>
-                                            )}
-
-                                            {h.isInsideRadius === false && (
-                                              <span className="inline-flex items-center gap-1 text-[9.5px] text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">
-                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
-                                                Luar Rad. {h.distanceMeters ? (h.distanceMeters >= 1000 ? `${(h.distanceMeters / 1000).toFixed(1)}km` : `${h.distanceMeters}m`) : ""}
-                                              </span>
-                                            )}
-
-                                            <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
-                                              {h.waktuInput && (
-                                                <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
-                                              )}
-                                              {h.waktuPulang && (
-                                                <span className="text-indigo-600 font-semibold">• Plg: {formatWita(h.waktuPulang, "HH:mm")}</span>
+                                        return (
+                                          <Link 
+                                            key={i} 
+                                            href={`/dashboard/presensi/${h.agendaId}`}
+                                            className="p-3 bg-white border border-slate-200/90 rounded-xl text-xs space-y-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all block group"
+                                          >
+                                            {/* Header Agenda & Persentase Kehadiran OPD */}
+                                            <div className="flex items-start justify-between gap-2">
+                                              <div className="min-w-0 flex-1">
+                                                <span className="font-bold text-slate-900 group-hover:text-indigo-600 line-clamp-1 flex items-center gap-1">
+                                                  <span>{h.namaKegiatan}</span>
+                                                  <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                                </span>
+                                                <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                  <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                                  <span>{formatWita(h.tanggal, "EEEE, dd MMM yyyy")}</span>
+                                                </div>
+                                              </div>                                               {h.isCancelledSession ? (
+                                                <Badge className="text-[11px] font-bold px-2.5 py-0.5 shrink-0 bg-rose-50 text-rose-700 border-rose-300">
+                                                  Ditiadakan
+                                                </Badge>
+                                              ) : (
+                                                <Badge
+                                                  className={`text-[11px] font-bold px-2 py-0.5 shrink-0 ${
+                                                    isPerfect
+                                                      ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                                      : isGood
+                                                      ? "bg-indigo-50 text-indigo-700 border-indigo-300"
+                                                      : isLow
+                                                      ? "bg-amber-50 text-amber-700 border-amber-300"
+                                                      : "bg-rose-50 text-rose-700 border-rose-300"
+                                                  }`}
+                                                >
+                                                  {h.persentaseKehadiran}% Kehadiran
+                                                </Badge>
                                               )}
                                             </div>
-                                          </div>
-                                        </Link>
-                                      ))}
+
+                                            {/* Ringkasan Breakdown Kehadiran OPD pada Sesi ini */}
+                                            {h.isCancelledSession ? (
+                                              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-rose-50/70 px-2.5 py-1.5 rounded-lg border border-rose-200/80">
+                                                <span className="font-semibold text-rose-800 flex items-center gap-1.5">
+                                                  <Ban className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                                  <span>Sesi Ditiadakan ({h.cancelReason || "Libur"})</span>
+                                                </span>
+                                                <span className="text-[10.5px] text-rose-600 font-medium">
+                                                  Tidak Dihitung ke Bobot
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <div className="flex flex-wrap items-center gap-2 text-[11px] bg-slate-50/80 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                                <span className="font-medium text-slate-700">
+                                                  Status:{" "}
+                                                  <span className={`font-bold ${
+                                                    h.hadir > 0
+                                                      ? "text-emerald-700"
+                                                      : h.mewakili > 0
+                                                      ? "text-amber-700"
+                                                      : h.izin > 0
+                                                      ? "text-blue-700"
+                                                      : "text-rose-600"
+                                                  }`}>
+                                                    {h.hadir > 0
+                                                      ? (h.hadirLuarRadius > 0 ? "Hadir (Luar Radius)" : "Hadir di Lokasi")
+                                                      : h.mewakili > 0
+                                                      ? "Mewakili"
+                                                      : h.izin > 0
+                                                      ? "Izin"
+                                                      : "Tidak Hadir"}
+                                                  </span>
+                                                </span>
+                                                {h.pesertaList && h.pesertaList.length > 0 && (
+                                                  <>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-slate-500 font-medium">
+                                                      {h.pesertaList.filter((p) => p.status === "HADIR" || p.status === "MEWAKILI").length} Pegawai Hadir
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </div>
+                                            )}
+                                          </Link>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 </TableCell>
@@ -932,114 +1018,130 @@ export default function RekapKehadiranView({
                                           className="block p-3 bg-white border border-slate-200/80 rounded-xl text-xs space-y-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
                                         >
                                           <div className="flex items-center justify-between gap-2">
-                                            <span className="font-bold text-slate-900 truncate">
-                                              {h.namaKegiatan}
-                                            </span>
-                                            <Badge
-                                              className={`text-[9px] px-1.5 py-0 shrink-0 ${
-                                                h.status === "HADIR"
-                                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                  : h.status === "MEWAKILI"
-                                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                  : "bg-red-50 text-red-600 border-red-200"
-                                              }`}
-                                            >
-                                              {h.status === "HADIR"
-                                                ? "Hadir"
-                                                : h.status === "MEWAKILI"
-                                                ? "Mewakili"
-                                                : "Absen"}
-                                            </Badge>
-                                          </div>
+                                             <span className="font-bold text-slate-900 truncate">
+                                               {h.namaKegiatan}
+                                             </span>
+                                             {h.isCancelledSession ? (
+                                               <Badge className="text-[9px] px-1.5 py-0 shrink-0 bg-rose-50 text-rose-700 border-rose-200">
+                                                 Ditiadakan
+                                               </Badge>
+                                             ) : (
+                                               <Badge
+                                                 className={`text-[9px] px-1.5 py-0 shrink-0 ${
+                                                   h.status === "HADIR"
+                                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                     : h.status === "MEWAKILI"
+                                                     ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                     : "bg-red-50 text-red-600 border-red-200"
+                                                 }`}
+                                               >
+                                                 {h.status === "HADIR"
+                                                   ? "Hadir"
+                                                   : h.status === "MEWAKILI"
+                                                   ? "Mewakili"
+                                                   : "Absen"}
+                                               </Badge>
+                                             )}
+                                           </div>
 
-                                          <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
-                                            <span className="flex items-center gap-1">
-                                              <Calendar className="w-3 h-3 text-slate-400" />
-                                              {formatWita(h.tanggal, "dd MMM yyyy")}
-                                            </span>
-                                            {h.namaPerwakilan && (
-                                              <span className="text-amber-700 font-medium truncate">
-                                                Wakili: {h.namaPerwakilan}
-                                              </span>
-                                            )}
-                                          </div>
+                                           <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
+                                             <span className="flex items-center gap-1">
+                                               <Calendar className="w-3 h-3 text-slate-400" />
+                                               {formatWita(h.tanggal, "dd MMM yyyy")}
+                                             </span>
+                                             {h.namaPerwakilan && (
+                                               <span className="text-amber-700 font-medium truncate">
+                                                 Wakili: {h.namaPerwakilan}
+                                               </span>
+                                             )}
+                                           </div>
 
-                                          {/* Metadata Metode, Foto & Geotag */}
-                                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
-                                            {h.isNonUndangan && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Users className="w-2.5 h-2.5" />
-                                                Non-Undangan
-                                              </span>
-                                            )}
+                                           {/* Metadata Metode, Foto & Geotag / Info Sesi Ditiadakan */}
+                                           {h.isCancelledSession ? (
+                                             <div className="flex items-center justify-between gap-1 text-[10px] text-rose-700 bg-rose-50/70 px-2 py-1 rounded border border-rose-100 mt-1">
+                                               <span className="font-semibold flex items-center gap-1">
+                                                 <Ban className="w-3 h-3 text-rose-600 shrink-0" />
+                                                 <span>Sesi Ditiadakan ({h.cancelReason || "Libur"})</span>
+                                               </span>
+                                               <span className="text-rose-500 font-medium">Tidak Dihitung</span>
+                                             </div>
+                                           ) : (
+                                             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                                               {h.isNonUndangan && (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
+                                                   <Users className="w-2.5 h-2.5" />
+                                                   Non-Undangan
+                                                 </span>
+                                               )}
 
-                                            {h.isSelfInput ? (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
-                                                <Smartphone className="w-2.5 h-2.5" />
-                                                Self-Input
-                                              </span>
-                                            ) : (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
-                                                <UserCheck className="w-2.5 h-2.5" />
-                                                Manual
-                                              </span>
-                                            )}
+                                               {h.isSelfInput ? (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
+                                                   <Smartphone className="w-2.5 h-2.5" />
+                                                   Self-Input
+                                                 </span>
+                                               ) : (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                                                   <UserCheck className="w-2.5 h-2.5" />
+                                                   Manual
+                                                 </span>
+                                               )}
 
-                                            {h.fotoUrl && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Camera className="w-2.5 h-2.5" />
-                                                Foto {h.fotoPulangUrl ? "Dtg" : ""}
-                                              </span>
-                                            )}
+                                               {h.fotoUrl && (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+                                                   <Camera className="w-2.5 h-2.5" />
+                                                   Foto {h.fotoPulangUrl ? "Dtg" : ""}
+                                                 </span>
+                                               )}
 
-                                            {h.fotoPulangUrl && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <Camera className="w-2.5 h-2.5" />
-                                                Foto Plg
-                                              </span>
-                                            )}
+                                               {h.fotoPulangUrl && (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-semibold">
+                                                   <Camera className="w-2.5 h-2.5" />
+                                                   Foto Plg
+                                                 </span>
+                                               )}
 
-                                            {(h.lokasiText || h.latitude) && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-semibold">
-                                                <MapPin className="w-2.5 h-2.5" />
-                                                GPS
-                                              </span>
-                                            )}
+                                               {(h.lokasiText || h.latitude) && (
+                                                 <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-semibold">
+                                                   <MapPin className="w-2.5 h-2.5" />
+                                                   GPS
+                                                 </span>
+                                               )}
 
-                                            {h.isInsideRadius === false && (
-                                              <span className="inline-flex items-center gap-1 text-[9.5px] text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">
-                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
-                                                Luar Rad. {h.distanceMeters ? (h.distanceMeters >= 1000 ? `${(h.distanceMeters / 1000).toFixed(1)}km` : `${h.distanceMeters}m`) : ""}
-                                              </span>
-                                            )}
+                                               {h.isInsideRadius === false && (
+                                                 <span className="inline-flex items-center gap-1 text-[9.5px] text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">
+                                                   <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                                                   Luar Rad. {h.distanceMeters ? (h.distanceMeters >= 1000 ? `${(h.distanceMeters / 1000).toFixed(1)}km` : `${h.distanceMeters}m`) : ""}
+                                                 </span>
+                                               )}
 
-                                            <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
-                                              {h.waktuInput && (
-                                                <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
-                                              )}
-                                              {h.waktuPulang && (
-                                                <span className="text-indigo-600 font-semibold">• Plg: {formatWita(h.waktuPulang, "HH:mm")}</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </Link>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                                               <div className="text-[10px] text-slate-400 ml-auto flex items-center gap-1.5 font-mono">
+                                                 {h.waktuInput && (
+                                                   <span>Dtg: {formatWita(h.waktuInput, "HH:mm")}</span>
+                                                 )}
+                                                 {h.waktuPulang && (
+                                                   <span className="text-indigo-600 font-semibold">• Plg: {formatWita(h.waktuPulang, "HH:mm")}</span>
+                                                 )}
+                                               </div>
+                                             </div>
+                                           )}
+                                         </Link>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 </TableCell>
+                               </TableRow>
+                             )}
+                           </React.Fragment>
+                         );
+                       })
+                     )}
+                   </TableBody>
+                 </Table>
+               </div>
+             </CardContent>
+           </Card>
+         </TabsContent>
+       </Tabs>
 
       {/* Modal PDF Viewer Rekapitulasi */}
       <CetakRekapModal
@@ -1048,6 +1150,7 @@ export default function RekapKehadiranView({
         data={{
           tahun: selectedYear,
           periodeLabel: periodeLabelText,
+          judulLaporan: getJudulLaporanOpd(),
           totalAgenda: initialData.totalAgenda,
           dataOpd: filteredOpd.map((opd) => ({
             instansi: opd.instansi,
@@ -1063,6 +1166,7 @@ export default function RekapKehadiranView({
             persentaseValidLokasi: opd.persentaseValidLokasi,
             predikatKepatuhan: opd.predikatKepatuhan,
             evaluasiSingkat: opd.evaluasiSingkat,
+            history: opd.history,
           })),
         }}
       />
@@ -1074,6 +1178,7 @@ export default function RekapKehadiranView({
         data={{
           tahun: selectedYear,
           periodeLabel: periodeLabelText,
+          judulLaporan: getJudulLaporanPegawai(),
           totalAgenda: initialData.totalAgenda,
           dataPegawai: filteredPegawai.map((peg) => ({
             nama: peg.nama,

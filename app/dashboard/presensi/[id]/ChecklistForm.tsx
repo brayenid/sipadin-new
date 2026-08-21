@@ -49,6 +49,8 @@ import {
   AlertCircle,
   RotateCcw,
   HelpCircle,
+  Ban,
+  CalendarDays,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -60,12 +62,22 @@ import {
   togglePublicAbsensiActive,
   updateAgendaAbsensi,
   deleteAgendaAbsensi,
+  toggleCancelRecurringSession,
 } from "@/app/actions/absensi";
 import { StatusAgendaAbsensi, StatusKehadiran } from "@prisma/client";
 import { formatWita, calculatePresensiWindow } from "@/lib/date-utils";
 import { generateSlug } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import CetakModal from "./CetakModal";
 import ExportLaporanAgendaModal from "./ExportLaporanAgendaModal";
 import ModalTambahPeserta from "./ModalTambahPeserta";
@@ -89,22 +101,23 @@ type Peserta = {
   jabatanPerwakilan: string | null;
   keterangan: string | null;
   fotoUrl: string | null;
-  waktuInput: Date | string | null;
-  waktuPulang?: Date | string | null;
   fotoPulangUrl?: string | null;
-  latitudePulang?: number | null;
-  longitudePulang?: number | null;
-  accuracyPulang?: number | null;
-  lokasiPulangText?: string | null;
   latitude: number | null;
   longitude: number | null;
   accuracy: number | null;
   lokasiText: string | null;
+  latitudePulang?: number | null;
+  longitudePulang?: number | null;
+  accuracyPulang?: number | null;
+  lokasiPulangText?: string | null;
+  waktuInput: Date | null;
+  waktuPulang?: Date | null;
   isSelfInput: boolean;
-  isNonUndangan?: boolean;
-  tanggalSesi?: Date | string | null;
-  faceScore?: number | null;
+  ipAddress: string | null;
   faceMatchStatus?: string | null;
+  faceScore?: number | null;
+  tanggalSesi?: Date | string | null;
+  isNonUndangan?: boolean;
 };
 
 type Agenda = {
@@ -116,16 +129,16 @@ type Agenda = {
   waktu: string | null;
   tempat: string;
   deskripsi: string | null;
-  targetPeserta: string | null;
-  targetKategori: string | null;
-  status: StatusAgendaAbsensi;
-  driveUrl: string | null;
-  isPublicActive: boolean;
-  waktuBukaAbsen: Date | null;
-  waktuTutupAbsen: Date | null;
-  enableCheckOut: boolean;
+  waktuBukaAbsen?: Date | null;
+  waktuTutupAbsen?: Date | null;
+  enableCheckOut?: boolean;
   waktuBukaPulang?: Date | null;
   waktuTutupPulang?: Date | null;
+  isPublicActive: boolean;
+  status: StatusAgendaAbsensi;
+  driveUrl: string | null;
+  targetKategori: string | null;
+  targetPeserta: string | null;
   requireLocation: boolean;
   requirePhoto: boolean;
   allowNonPeserta: boolean;
@@ -138,6 +151,8 @@ type Agenda = {
   picJabatan?: string | null;
   isRecurring?: boolean;
   recurringDays?: string[];
+  recurringWeeks?: number[];
+  cancelledSessions?: any;
   recurringJamBuka?: string | null;
   recurringJamTutup?: string | null;
   kategori?: string | null;
@@ -206,6 +221,55 @@ export default function ChecklistForm({
   const [picJabatan, setPicJabatan] = useState<string>(agenda.picJabatan || "");
   const [gettingVenueGps, setGettingVenueGps] = useState(false);
 
+  // State Agenda Rutin
+  const [isRecurring, setIsRecurring] = useState<boolean>(agenda.isRecurring || false);
+  const [recurringDays, setRecurringDays] = useState<string[]>(agenda.recurringDays || ["SENIN"]);
+  const [recurringWeeks, setRecurringWeeks] = useState<number[]>(agenda.recurringWeeks || []);
+  const [cancelledSessions, setCancelledSessions] = useState<any[]>(
+    Array.isArray(agenda.cancelledSessions) ? agenda.cancelledSessions : []
+  );
+  const [recurringJamBuka, setRecurringJamBuka] = useState<string>(agenda.recurringJamBuka || "07:00");
+  const [recurringJamTutup, setRecurringJamTutup] = useState<string>(agenda.recurringJamTutup || "08:15");
+  const [kategori, setKategori] = useState<string>(agenda.kategori || "RAPAT");
+
+  // State Modal Peniadaan Sesi
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelDateInput, setCancelDateInput] = useState("");
+  const [cancelReasonInput, setCancelReasonInput] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  const handleToggleCancelSession = async (
+    targetDate: string,
+    action: "CANCEL" | "RESTORE",
+    alasan?: string
+  ) => {
+    if (!targetDate) return;
+    try {
+      setIsSubmittingCancel(true);
+      const res = await toggleCancelRecurringSession({
+        agendaId: agenda.id,
+        tanggal: targetDate,
+        alasan: alasan?.trim() || "Ditiadakan / Diliburkan",
+        action,
+      });
+      setCancelledSessions(res.cancelledSessions || []);
+      toast.success(
+        action === "CANCEL"
+          ? `Sesi tanggal ${targetDate} berhasil ditiadakan`
+          : `Sesi tanggal ${targetDate} berhasil diaktifkan kembali`
+      );
+      if (action === "CANCEL") {
+        setCancelDateInput("");
+        setCancelReasonInput("");
+      }
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengubah status peniadaan sesi");
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
   const handleJamMulaiChange = (newMulai: string) => {
     setJamMulai(newMulai);
     const formattedWaktu = `${newMulai}${jamSelesai ? ` - ${jamSelesai}` : ""} WITA`;
@@ -265,6 +329,13 @@ export default function ChecklistForm({
     setPicJabatan(agenda.picJabatan || "");
     setJamBuka(agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30");
     setJamTutup(agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00");
+    setIsRecurring(agenda.isRecurring || false);
+    setRecurringDays(agenda.recurringDays || ["SENIN"]);
+    setRecurringWeeks(agenda.recurringWeeks || []);
+    setCancelledSessions(Array.isArray(agenda.cancelledSessions) ? agenda.cancelledSessions : []);
+    setRecurringJamBuka(agenda.recurringJamBuka || "07:00");
+    setRecurringJamTutup(agenda.recurringJamTutup || "08:15");
+    setKategori(agenda.kategori || "RAPAT");
   }, [agenda]);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -636,6 +707,12 @@ export default function ChecklistForm({
           picNama: picNama.trim() || null,
           picNip: picNip.trim() || null,
           picJabatan: picJabatan.trim() || null,
+          isRecurring,
+          recurringDays,
+          recurringWeeks: isRecurring ? recurringWeeks : [],
+          recurringJamBuka,
+          recurringJamTutup,
+          kategori,
         }
       );
 
@@ -662,7 +739,7 @@ export default function ChecklistForm({
       ? Math.round(((countHadir + countMewakili) / totalPeserta) * 100)
       : 0;
 
-  // Tanggal Sesi untuk Agenda Rutin / Apel
+  // Tanggal Sesi untuk Agenda Rutin / Apel (Tercatat & Ditiadakan)
   const sessionDates = React.useMemo(() => {
     if (!agenda.isRecurring) return [];
     const datesSet = new Set<string>();
@@ -671,10 +748,20 @@ export default function ChecklistForm({
         datesSet.add(formatWita(p.tanggalSesi, "yyyy-MM-dd"));
       }
     });
+    (cancelledSessions || []).forEach((c: any) => {
+      if (c && c.tanggal) {
+        datesSet.add(c.tanggal);
+      }
+    });
     return Array.from(datesSet).sort((a, b) => b.localeCompare(a));
-  }, [agenda.isRecurring, pesertaList]);
+  }, [agenda.isRecurring, pesertaList, cancelledSessions]);
 
   const [selectedSessionDate, setSelectedSessionDate] = useState<string>("ALL");
+
+  const currentCancelledInfo = React.useMemo(() => {
+    if (selectedSessionDate === "ALL") return null;
+    return (cancelledSessions || []).find((s: any) => s && s.tanggal === selectedSessionDate);
+  }, [cancelledSessions, selectedSessionDate]);
 
   // Filter list
   const filteredPeserta = pesertaList.filter((p) => {
@@ -936,8 +1023,22 @@ export default function ChecklistForm({
               </p>
             </div>
 
-            {/* Tombol QR & Share */}
+            {/* Tombol QR & Share & Peniadaan Sesi */}
             <div className="flex flex-wrap items-center gap-2">
+              {agenda.isRecurring && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  className="text-xs font-semibold border-rose-200 bg-rose-50/50 hover:bg-rose-100/80 text-rose-700 h-8"
+                  title="Kelola tanggal sesi yang ditiadakan atau diliburkan"
+                >
+                  <Ban className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+                  Peniadaan Sesi {cancelledSessions.length > 0 ? `(${cancelledSessions.length})` : ""}
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
@@ -1087,6 +1188,195 @@ export default function ChecklistForm({
       {activeTab === "EDIT_AGENDA" && (
         <div className="space-y-3">
 
+          {/* ── CARD 0: Konfigurasi Khusus Agenda Rutin (Jika Agenda Rutin) ── */}
+          {isRecurring && (
+            <Card className="p-0 overflow-hidden bg-white border-indigo-200 shadow-[0_1px_4px_-2px_rgba(0,0,0,0.06)] animate-in fade-in duration-200">
+              <div className="px-4 py-3 border-b border-indigo-100 bg-indigo-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-1 h-4 rounded-full bg-indigo-600 shrink-0" />
+                  <p className="text-xs font-bold text-indigo-950">Konfigurasi Jadwal Rutin</p>
+                </div>
+                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px]">
+                  Standing QR Code
+                </Badge>
+              </div>
+              <CardContent className="p-4 space-y-4">
+                {/* Baris 1: Kategori & Hari */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Kategori Kegiatan Rutin</Label>
+                    <select
+                      value={kategori}
+                      onChange={(e) => setKategori(e.target.value)}
+                      className="w-full bg-white text-xs font-semibold text-slate-800 h-9 border border-slate-300 rounded-lg px-2.5 outline-none focus:border-indigo-500 shadow-2xs"
+                    >
+                      <option value="APEL">Apel Pagi / Apel Sore</option>
+                      <option value="UPACARA">Upacara Hari Besar / Bulanan</option>
+                      <option value="SENAM">Senam Bersama Hari Jumat</option>
+                      <option value="RAPAT">Rapat Rutin Mingguan</option>
+                      <option value="LAINNYA">Kegiatan Rutin Lainnya</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Hari Pelaksanaan Rutin</Label>
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT"].map((day) => {
+                        const isChecked = recurringDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              const nextDays = isChecked
+                                ? recurringDays.filter((d) => d !== day)
+                                : [...recurringDays, day];
+                              if (nextDays.length > 0) setRecurringDays(nextDays);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                              isChecked
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-indigo-100"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Baris 2: Frekuensi Pekan (Jeda / Rutin Khusus) */}
+                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">
+                        Frekuensi Pekan (Jeda / Jadwal Khusus)
+                      </span>
+                    </div>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 self-start sm:self-auto">
+                      {recurringWeeks.length === 0
+                        ? "Berjalan Setiap Pekan"
+                        : `Aktif di Pekan ke-${recurringWeeks.sort().join(" & ke-")}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setRecurringWeeks([])}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                        recurringWeeks.length === 0
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
+                      }`}
+                    >
+                      Semua Pekan
+                    </button>
+                    {[1, 2, 3, 4, 5].map((wk) => {
+                      const isWkChecked = recurringWeeks.includes(wk);
+                      return (
+                        <button
+                          key={wk}
+                          type="button"
+                          onClick={() => {
+                            const nextWeeks = isWkChecked
+                              ? recurringWeeks.filter((w) => w !== wk)
+                              : [...recurringWeeks, wk];
+                            setRecurringWeeks(nextWeeks);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                            isWkChecked
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
+                          }`}
+                        >
+                          Pekan {wk}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    {recurringWeeks.length === 0
+                      ? "• Agenda ini berlangsung rutin setiap minggu tanpa jeda."
+                      : `• Hanya aktif pada pekan ke-${recurringWeeks.sort().join(" dan ke-")} setiap bulan (contoh: Apel Gabungan Senin ke-1 & ke-3).`}
+                  </p>
+                </div>
+
+                {/* Baris 3: Jam Pelaksanaan & Jam Presensi */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+                    <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Jam Pelaksanaan Acara (WITA)</span>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10.5px] text-slate-500 font-medium">Mulai:</Label>
+                        <Input
+                          type="time"
+                          value={jamMulai}
+                          onChange={(e) => handleJamMulaiChange(e.target.value)}
+                          className="bg-white text-xs font-semibold h-8 border-slate-300 mt-0.5"
+                          title="Jam Mulai Acara"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10.5px] text-slate-500 font-medium">Selesai:</Label>
+                        <Input
+                          type="time"
+                          value={jamSelesai}
+                          onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                          className="bg-white text-xs font-semibold h-8 border-slate-300 mt-0.5"
+                          title="Jam Selesai (Opsional)"
+                          placeholder="Selesai"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-2 shadow-2xs">
+                    <Label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Rentang Buka Presensi Sesi (WITA)</span>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10.5px] text-slate-500 font-medium">Buka:</Label>
+                        <Input
+                          type="time"
+                          value={recurringJamBuka}
+                          onChange={(e) => {
+                            setRecurringJamBuka(e.target.value);
+                            setJamBuka(e.target.value);
+                          }}
+                          className="bg-white text-xs font-semibold h-8 border-slate-300 mt-0.5"
+                          title="Jam Buka Presensi"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10.5px] text-slate-500 font-medium">Tutup:</Label>
+                        <Input
+                          type="time"
+                          value={recurringJamTutup}
+                          onChange={(e) => {
+                            setRecurringJamTutup(e.target.value);
+                            setJamTutup(e.target.value);
+                          }}
+                          className="bg-white text-xs font-semibold h-8 border-slate-300 mt-0.5"
+                          title="Jam Tutup Presensi"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── CARD 1: Informasi Kegiatan ── */}
           <Card className="p-0 overflow-hidden bg-white border-slate-200/60 shadow-[0_1px_4px_-2px_rgba(0,0,0,0.06)]">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -1125,10 +1415,10 @@ export default function ChecklistForm({
               </div>
 
               {/* Baris 1: Waktu & Tempat Pelaksanaan */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              <div className={`grid grid-cols-1 ${isRecurring ? "md:grid-cols-2" : "md:grid-cols-3"} gap-3.5`}>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700">
-                    Tanggal Pelaksanaan
+                    {isRecurring ? "Mulai Berlaku Sejak Tanggal" : "Tanggal Pelaksanaan"}
                   </Label>
                   <Input
                     type="date"
@@ -1136,32 +1426,39 @@ export default function ChecklistForm({
                     onChange={(e) => setTanggal(e.target.value)}
                     className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
                   />
+                  {isRecurring && (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      * Tanggal awal berlakunya agenda rutin ini.
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Waktu Acara (WITA)
-                  </Label>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="time"
-                      required
-                      value={jamMulai}
-                      onChange={(e) => handleJamMulaiChange(e.target.value)}
-                      className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
-                      title="Jam Mulai Acara"
-                    />
-                    <span className="text-xs font-medium text-slate-400">s/d</span>
-                    <Input
-                      type="time"
-                      value={jamSelesai}
-                      onChange={(e) => handleJamSelesaiChange(e.target.value)}
-                      className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
-                      title="Jam Selesai (Opsional)"
-                      placeholder="Selesai"
-                    />
+                {!isRecurring && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Waktu Acara (WITA)
+                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="time"
+                        required
+                        value={jamMulai}
+                        onChange={(e) => handleJamMulaiChange(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
+                        title="Jam Mulai Acara"
+                      />
+                      <span className="text-xs font-medium text-slate-400">s/d</span>
+                      <Input
+                        type="time"
+                        value={jamSelesai}
+                        onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300 flex-1"
+                        title="Jam Selesai (Opsional)"
+                        placeholder="Selesai"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700">
@@ -1200,32 +1497,36 @@ export default function ChecklistForm({
               <p className="text-xs font-bold text-slate-700">Pengaturan Presensi</p>
             </div>
             <CardContent className="p-4 space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                    Jam Buka Presensi (WITA)
-                  </Label>
-                  <Input
-                    type="time"
-                    value={jamBuka}
-                    onChange={(e) => setJamBuka(e.target.value)}
-                    className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                  />
-                </div>
+              <div className={`grid grid-cols-1 ${!isRecurring ? "sm:grid-cols-3" : "sm:grid-cols-1"} gap-3.5`}>
+                {!isRecurring && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                        Jam Buka Presensi (WITA)
+                      </Label>
+                      <Input
+                        type="time"
+                        value={jamBuka}
+                        onChange={(e) => setJamBuka(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
+                      />
+                    </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-rose-500" />
-                    Jam Tutup Presensi (WITA)
-                  </Label>
-                  <Input
-                    type="time"
-                    value={jamTutup}
-                    onChange={(e) => setJamTutup(e.target.value)}
-                    className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
-                  />
-                </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-rose-500" />
+                        Jam Tutup Presensi (WITA)
+                      </Label>
+                      <Input
+                        type="time"
+                        value={jamTutup}
+                        onChange={(e) => setJamTutup(e.target.value)}
+                        className="bg-white text-xs font-semibold text-slate-800 h-9 border-slate-300"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
@@ -1741,11 +2042,14 @@ export default function ChecklistForm({
                   className="text-xs border border-indigo-200 rounded-md px-2.5 py-1.5 bg-indigo-50/70 text-indigo-950 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full sm:w-56"
                 >
                   <option value="ALL">Semua Sesi Apel ({sessionDates.length} Sesi)</option>
-                  {sessionDates.map((sDate) => (
-                    <option key={sDate} value={sDate}>
-                      Sesi: {formatWita(new Date(sDate), "dd MMM yyyy")}
-                    </option>
-                  ))}
+                  {sessionDates.map((sDate) => {
+                    const isCancelled = (cancelledSessions || []).some((c: any) => c && c.tanggal === sDate);
+                    return (
+                      <option key={sDate} value={sDate}>
+                        Sesi: {formatWita(new Date(sDate), "dd MMM yyyy")}{isCancelled ? " (Ditiadakan)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               )}
             </div>
@@ -1765,6 +2069,36 @@ export default function ChecklistForm({
               )}
             </select>
           </div>
+
+          {/* Banner Peringatan Jika Sesi yang Dipilih Ditiadakan / Diliburkan */}
+          {currentCancelledInfo && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 animate-in fade-in duration-200">
+              <div className="p-1.5 bg-rose-100 rounded-lg text-rose-700 shrink-0 mt-0.5">
+                <Ban className="w-4 h-4" />
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-rose-950">
+                    Sesi Presensi {formatWita(new Date(selectedSessionDate), "EEEE, dd MMMM yyyy")} DITIADAKAN / DILIBURKAN
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleCancelSession(selectedSessionDate, "RESTORE")}
+                    disabled={isSubmittingCancel}
+                    className="h-7 px-2.5 text-xs font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-100"
+                  >
+                    Aktifkan Kembali Sesi
+                  </Button>
+                </div>
+                <p className="text-[11px] text-rose-700 mt-1">
+                  Alasan: <span className="font-semibold">{currentCancelledInfo.alasan || "Ditiadakan oleh Administrator"}</span>.
+                  {" "}Sesi ini dikecualikan dari penilaian raport kehadiran di rekapitulasi.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Bulk Selection Action Bar */}
           {selectedPesertaIds.length > 0 && (
@@ -2411,6 +2745,118 @@ export default function ChecklistForm({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* MODAL KELOLA PENIADAAN SESI / HARI LIBUR */}
+      <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+        <DialogContent className="max-w-lg bg-white p-6 rounded-2xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Ban className="w-5 h-5 text-rose-600" />
+              Kelola Peniadaan Sesi & Hari Libur
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Tandai tanggal sesi tertentu yang ditiadakan (misal: Libur Nasional, Cuti Bersama, Bencana, dsb). Sesi yang ditiadakan tidak akan dihitung sebagai alpa di rekapitulasi kehadiran.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            {/* Form Tambah Peniadaan Sesi */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <CalendarDays className="w-4 h-4 text-indigo-600" />
+                Tandai Tanggal Sesi Ditiadakan
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700">Pilih Tanggal Sesi:</Label>
+                  <Input
+                    type="date"
+                    value={cancelDateInput}
+                    onChange={(e) => setCancelDateInput(e.target.value)}
+                    className="text-xs bg-white h-8 mt-1 border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700">Alasan Peniadaan:</Label>
+                  <Input
+                    type="text"
+                    placeholder="Misal: Libur HUT RI"
+                    value={cancelReasonInput}
+                    onChange={(e) => setCancelReasonInput(e.target.value)}
+                    className="text-xs bg-white h-8 mt-1 border-slate-300"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!cancelDateInput || isSubmittingCancel}
+                onClick={() => handleToggleCancelSession(cancelDateInput, "CANCEL", cancelReasonInput)}
+                className="w-full text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-8 mt-1"
+              >
+                {isSubmittingCancel ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                ) : (
+                  <Ban className="w-3.5 h-3.5 mr-1" />
+                )}
+                Tandai Sesi Ditiadakan
+              </Button>
+            </div>
+
+            {/* Daftar Sesi Ditiadakan */}
+            <div>
+              <p className="text-xs font-bold text-slate-800 mb-2">
+                Daftar Sesi yang Sedang Ditiadakan ({cancelledSessions.length}):
+              </p>
+              {cancelledSessions.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  Belum ada sesi yang ditiadakan. Seluruh jadwal sesi berjalan normal.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {cancelledSessions.map((item: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2.5 bg-rose-50/80 border border-rose-200 rounded-lg text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-rose-950 block">
+                          {formatWita(new Date(item.tanggal), "EEEE, dd MMMM yyyy")}
+                        </span>
+                        <span className="text-[11px] text-rose-700">
+                          {item.alasan || "Ditiadakan"}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isSubmittingCancel}
+                        onClick={() => handleToggleCancelSession(item.tanggal, "RESTORE")}
+                        className="h-7 px-2.5 text-xs text-slate-700 bg-white hover:bg-rose-100 hover:text-rose-800 border-slate-300 font-semibold"
+                      >
+                        Aktifkan Kembali
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCancelModalOpen(false)}
+              className="text-xs font-semibold"
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile Bottom Fixed Action Bar (Tab-Aware & Tanpa Duplikasi) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-3 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
