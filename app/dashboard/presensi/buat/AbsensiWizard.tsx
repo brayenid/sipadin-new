@@ -498,10 +498,11 @@ export default function AbsensiWizard({
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700">
-                    Tanggal Pelaksanaan <span className="text-red-500">*</span>
+                    {form.isRecurring ? "Mulai Berlaku Sejak Tanggal" : "Tanggal Pelaksanaan"}{" "}
+                    <span className="text-red-500">*</span>
                   </Label>
                   <span className="text-[10.5px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-                    Hari {form.hari}
+                    {form.isRecurring ? `Rutin: ${form.recurringDays.join(", ")}` : `Hari ${form.hari}`}
                   </span>
                 </div>
                 <Input
@@ -511,6 +512,11 @@ export default function AbsensiWizard({
                   onChange={(e) => handleDateChange(e.target.value)}
                   className="mt-1.5 text-xs h-10 bg-white font-medium"
                 />
+                {form.isRecurring && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    * Tanggal awal berlakunya agenda rutin ini (default hari ini). Setiap sesi apel mingguan berikutnya akan otomatis dicatat tanggalnya oleh sistem.
+                  </p>
+                )}
               </div>
 
               <div>
