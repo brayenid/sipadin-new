@@ -905,10 +905,10 @@ export default function PublicAbsensiForm({
             <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-2xl p-4 text-xs space-y-1 text-indigo-950 shadow-2xs">
               <div className="flex items-center gap-2 font-bold text-indigo-900">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <span>Presensi Agenda Rutin • {agenda.kategori === "APEL" ? "Apel Gabungan" : agenda.kategori || "Rutin"}</span>
+                <span>Presensi Agenda Rutin - {agenda.kategori === "APEL" ? "Apel Gabungan" : agenda.kategori || "Rutin"}</span>
               </div>
               <p className="text-[11.5px] text-indigo-800 leading-relaxed">
-                Jadwal: <strong>Setiap {agenda.recurringDays && agenda.recurringDays.length > 0 ? agenda.recurringDays.join(", ") : "Hari Pelaksanaan"}</strong> • Pukul {agenda.recurringJamBuka || "07:00"} s/d {agenda.recurringJamTutup || "08:15"} WITA.
+                Jadwal: <strong>Setiap {agenda.recurringDays && agenda.recurringDays.length > 0 ? agenda.recurringDays.join(", ") : "Hari Pelaksanaan"}</strong> - Pukul {agenda.recurringJamBuka || "07:00"} s.d. {agenda.recurringJamTutup || "08:15"} WITA.
               </p>
             </div>
           )}

@@ -220,12 +220,12 @@ export default function AbsensiWizard({
       const created = await createAgendaAbsensi({
         namaKegiatan: form.namaKegiatan,
         tanggal: form.tanggal,
-        hari: form.hari,
-        waktu: form.waktu,
+        hari: form.isRecurring && form.recurringDays.length > 0 ? form.recurringDays.join(", ") : form.hari,
+        waktu: form.isRecurring ? `${form.recurringJamBuka} - ${form.recurringJamTutup} WITA` : form.waktu,
         tempat: form.tempat,
         deskripsi: form.deskripsi,
-        jamBuka: form.jamBuka,
-        jamTutup: form.jamTutup,
+        jamBuka: form.isRecurring ? form.recurringJamBuka : form.jamBuka,
+        jamTutup: form.isRecurring ? form.recurringJamTutup : form.jamTutup,
         enableCheckOut: form.enableCheckOut,
         requireLocation: form.requireLocation,
         requirePhoto: form.requirePhoto,
@@ -533,88 +533,90 @@ export default function AbsensiWizard({
               </div>
             </div>
 
-            {/* Baris 3: Waktu Acara & Rentang Presensi (2 Kolom) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50/80 border border-slate-200/80 rounded-2xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <Clock className="w-4 h-4 text-indigo-600" />
-                    <span>Waktu Pelaksanaan Acara (WITA)</span>
+            {/* Baris 3: Waktu Acara & Rentang Presensi (Hanya Tampil pada Agenda Sekali Saja) */}
+            {!form.isRecurring && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-200">
+                <div className="p-4 bg-slate-50/80 border border-slate-200/80 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                      <Clock className="w-4 h-4 text-indigo-600" />
+                      <span>Waktu Pelaksanaan Acara (WITA)</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded">
+                      {form.waktu}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded">
-                    {form.waktu}
-                  </span>
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-slate-600">
+                        Jam Mulai:
+                      </Label>
+                      <Input
+                        type="time"
+                        required
+                        value={form.jamMulai}
+                        onChange={(e) => handleJamMulaiChange(e.target.value)}
+                        className="mt-1 text-xs bg-white h-9 font-semibold"
+                        title="Jam Mulai Acara"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-slate-600">
+                        Jam Selesai (Opsional):
+                      </Label>
+                      <Input
+                        type="time"
+                        value={form.jamSelesai}
+                        onChange={(e) => handleJamSelesaiChange(e.target.value)}
+                        className="mt-1 text-xs bg-white h-9 font-semibold"
+                        title="Jam Selesai (Opsional)"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  <div>
-                    <Label className="text-[10.5px] font-semibold text-slate-600">
-                      Jam Mulai:
-                    </Label>
-                    <Input
-                      type="time"
-                      required
-                      value={form.jamMulai}
-                      onChange={(e) => handleJamMulaiChange(e.target.value)}
-                      className="mt-1 text-xs bg-white h-9 font-semibold"
-                      title="Jam Mulai Acara"
-                    />
+
+                {/* RENTANG WAKTU PENGISIAN ABSEN (TIME WINDOW) */}
+                <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
+                      <Clock className="w-4 h-4 text-indigo-600" />
+                      <span>Rentang Waktu Presensi Publik (WITA)</span>
+                    </div>
+                    <span className="text-[9.5px] text-indigo-700 font-semibold bg-white border border-indigo-200 px-1.5 py-0.5 rounded">
+                      H-1 Jam s/d Selesai
+                    </span>
                   </div>
-                  <div>
-                    <Label className="text-[10.5px] font-semibold text-slate-600">
-                      Jam Selesai (Opsional):
-                    </Label>
-                    <Input
-                      type="time"
-                      value={form.jamSelesai}
-                      onChange={(e) => handleJamSelesaiChange(e.target.value)}
-                      className="mt-1 text-xs bg-white h-9 font-semibold"
-                      title="Jam Selesai (Opsional)"
-                    />
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-slate-700">
+                        Buka Presensi:
+                      </Label>
+                      <Input
+                        type="time"
+                        required
+                        value={form.jamBuka}
+                        onChange={(e) => setForm({ ...form, jamBuka: e.target.value })}
+                        className="mt-1 text-xs bg-white h-9 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-[10.5px] font-semibold text-slate-700">
+                        Tutup Presensi:
+                      </Label>
+                      <Input
+                        type="time"
+                        required
+                        value={form.jamTutup}
+                        onChange={(e) => setForm({ ...form, jamTutup: e.target.value })}
+                        className="mt-1 text-xs bg-white h-9 font-semibold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* RENTANG WAKTU PENGISIAN ABSEN (TIME WINDOW) */}
-              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
-                    <Clock className="w-4 h-4 text-indigo-600" />
-                    <span>Rentang Waktu Presensi Publik (WITA)</span>
-                  </div>
-                  <span className="text-[9.5px] text-indigo-700 font-semibold bg-white border border-indigo-200 px-1.5 py-0.5 rounded">
-                    H-1 Jam s/d Selesai
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  <div>
-                    <Label className="text-[10.5px] font-semibold text-slate-700">
-                      Buka Presensi:
-                    </Label>
-                    <Input
-                      type="time"
-                      required
-                      value={form.jamBuka}
-                      onChange={(e) => setForm({ ...form, jamBuka: e.target.value })}
-                      className="mt-1 text-xs bg-white h-9 font-semibold"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-[10.5px] font-semibold text-slate-700">
-                      Tutup Presensi:
-                    </Label>
-                    <Input
-                      type="time"
-                      required
-                      value={form.jamTutup}
-                      onChange={(e) => setForm({ ...form, jamTutup: e.target.value })}
-                      className="mt-1 text-xs bg-white h-9 font-semibold"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Baris 4: Validasi Presensi & Presensi Pulang (2 Kolom) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
