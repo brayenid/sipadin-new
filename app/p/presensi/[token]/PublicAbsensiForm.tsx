@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   LogOut,
   Users,
+  UserPlus,
 } from "lucide-react";
 import { StatusKehadiran } from "@prisma/client";
 import { formatWita } from "@/lib/date-utils";
@@ -1035,8 +1036,26 @@ export default function PublicAbsensiForm({
                           Ketik nama pegawai atau NIP untuk mencari
                         </div>
                       ) : filteredPeserta.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-slate-400">
-                          Tidak menemukan nama yang cocok
+                        <div className="p-4 text-center text-xs space-y-2.5">
+                          <p className="text-slate-500">Tidak menemukan nama yang cocok</p>
+                          {agenda.allowNonPeserta !== false && !isCheckOutMode && !isAlreadyCheckedOut && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCustomPeserta(true);
+                                setIsDropdownOpen(false);
+                                setSelectedPesertaId("");
+                                setSelectedPeserta(null);
+                                if (searchQuery.trim()) {
+                                  setManualNama(searchQuery.trim());
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs border border-indigo-200 transition cursor-pointer"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" />
+                              Tambahkan Manual
+                            </button>
+                          )}
                         </div>
                       ) : (
                         filteredPeserta.map((p) => (
