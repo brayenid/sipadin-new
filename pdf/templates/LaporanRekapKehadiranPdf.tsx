@@ -12,6 +12,7 @@ export type RekapKehadiranPdfData = {
     hadir: number;
     hadirValid?: number;
     hadirLuarRadius?: number;
+    hadirNonUndangan?: number;
     mewakili: number;
     tidakHadir: number;
     izin: number;

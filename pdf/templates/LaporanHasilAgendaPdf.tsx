@@ -28,6 +28,7 @@ export type LaporanHasilAgendaData = {
     jabatanPerwakilan?: string | null;
     keterangan?: string | null;
     isSelfInput?: boolean;
+    isNonUndangan?: boolean;
     waktuInput?: string | null;
     waktuPulang?: string | null;
     lokasiText?: string | null;
@@ -510,7 +511,9 @@ export default function LaporanHasilAgendaPdf({
                   <Text style={[styles.tdText, { textAlign: "center", fontSize: 6.5 }]}>{idx + 1}</Text>
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colNama]}>
-                  <Text style={[styles.tdText, styles.tdBold, { fontSize: 7 }]}>{row.nama}</Text>
+                  <Text style={[styles.tdText, styles.tdBold, { fontSize: 7 }]}>
+                    {row.nama}{Boolean(row.isNonUndangan || row.faceMatchStatus === "PESERTA_TAMBAHAN") ? " [Non-Undangan]" : ""}
+                  </Text>
                   {row.nip && <Text style={[styles.tdText, { fontSize: 6, marginTop: 1 }]}>NIP: {row.nip}</Text>}
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colJabatan]}>

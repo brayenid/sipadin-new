@@ -427,7 +427,8 @@ model KehadiranPeserta {
   accuracyPulang    Float?
   lokasiPulangText  String?
   
-  // Audit Biometrik Wajah
+  // Audit Biometrik Wajah & Status Non-Undangan
+  isNonUndangan     Boolean         @default(false)
   faceScore         Float?          // Skor kemiripan biometrik (0.0 - 1.0)
   faceMatchStatus   String?         // "MATCH" | "MISMATCH" | "ENROLLED" | "PERWAKILAN" | "PESERTA_TAMBAHAN" | "BYPASS"
 

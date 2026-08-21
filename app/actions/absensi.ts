@@ -1139,6 +1139,7 @@ export async function submitSelfAbsensi(payload: {
         userAgent: payload.userAgent || null,
         faceScore,
         faceMatchStatus,
+        isNonUndangan: true,
       },
     });
   }
@@ -1425,6 +1426,7 @@ export async function updateKehadiranPesertaBatch(
     jabatanPerwakilan?: string | null;
     keterangan?: string | null;
     waktuPulang?: Date | string | null;
+    isNonUndangan?: boolean;
   }[],
   extraAgendaData?: {
     namaKegiatan?: string;
@@ -1474,6 +1476,9 @@ export async function updateKehadiranPesertaBatch(
       };
       if (item.waktuPulang !== undefined) {
         updateData.waktuPulang = item.waktuPulang ? new Date(item.waktuPulang) : null;
+      }
+      if (item.isNonUndangan !== undefined) {
+        updateData.isNonUndangan = item.isNonUndangan;
       }
       await tx.kehadiranPeserta.update({
         where: { id: item.id, agendaId },
@@ -1776,6 +1781,7 @@ export async function getRekapKehadiranOpd(params?: {
     distanceMeters?: number | null;
     isInsideRadius?: boolean | null;
     radiusToleransiMeters?: number | null;
+    isNonUndangan?: boolean;
   };
 
   // Akumulasi per Instansi / Perangkat Daerah dan Pegawai
@@ -1789,6 +1795,7 @@ export async function getRekapKehadiranOpd(params?: {
       hadirValid: number;
       hadirLuarRadius: number;
       hadirTanpaLokasi: number;
+      hadirNonUndangan: number;
       totalJarakLuarMeters: number;
       maxJarakLuarMeters: number;
       mewakili: number;
@@ -1810,6 +1817,7 @@ export async function getRekapKehadiranOpd(params?: {
       hadirValid: number;
       hadirLuarRadius: number;
       hadirTanpaLokasi: number;
+      hadirNonUndangan: number;
       totalJarakLuarMeters: number;
       maxJarakLuarMeters: number;
       mewakili: number;
@@ -1852,6 +1860,8 @@ export async function getRekapKehadiranOpd(params?: {
 
     for (const p of ag.peserta) {
       const instansiKey = p.instansi.trim();
+      const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
+
       if (!opdMap[instansiKey]) {
         opdMap[instansiKey] = {
           instansi: instansiKey,
@@ -1861,6 +1871,7 @@ export async function getRekapKehadiranOpd(params?: {
           hadirValid: 0,
           hadirLuarRadius: 0,
           hadirTanpaLokasi: 0,
+          hadirNonUndangan: 0,
           totalJarakLuarMeters: 0,
           maxJarakLuarMeters: 0,
           mewakili: 0,
@@ -1918,6 +1929,10 @@ export async function getRekapKehadiranOpd(params?: {
           else if (oldRecord.status === "IZIN") opdMap[instansiKey].izin -= 1;
           else opdMap[instansiKey].tidakHadir -= 1;
 
+          if (oldRecord.isNonUndangan && (oldRecord.status === "HADIR" || oldRecord.status === "MEWAKILI")) {
+            opdMap[instansiKey].hadirNonUndangan = Math.max(0, opdMap[instansiKey].hadirNonUndangan - 1);
+          }
+
           // Tambah counter status yang baru
           if (candidate === "HADIR") {
             opdMap[instansiKey].hadir += 1;
@@ -1933,6 +1948,10 @@ export async function getRekapKehadiranOpd(params?: {
           } else if (candidate === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
           else if (candidate === "IZIN") opdMap[instansiKey].izin += 1;
           else opdMap[instansiKey].tidakHadir += 1;
+
+          if (isNonUndangan && (candidate === "HADIR" || candidate === "MEWAKILI")) {
+            opdMap[instansiKey].hadirNonUndangan += 1;
+          }
 
           // Update riwayat history
           opdMap[instansiKey].history[existingHistoryIndex] = {
@@ -1957,6 +1976,7 @@ export async function getRekapKehadiranOpd(params?: {
             distanceMeters: distMeters,
             isInsideRadius: isInside,
             radiusToleransiMeters: radiusMeters,
+            isNonUndangan,
           };
         }
       } else {
@@ -1977,6 +1997,10 @@ export async function getRekapKehadiranOpd(params?: {
         } else if (p.status === "MEWAKILI") opdMap[instansiKey].mewakili += 1;
         else if (p.status === "IZIN") opdMap[instansiKey].izin += 1;
         else opdMap[instansiKey].tidakHadir += 1;
+
+        if (isNonUndangan && (p.status === "HADIR" || p.status === "MEWAKILI")) {
+          opdMap[instansiKey].hadirNonUndangan += 1;
+        }
 
         opdMap[instansiKey].history.push({
           agendaId: ag.id,
@@ -2000,6 +2024,7 @@ export async function getRekapKehadiranOpd(params?: {
           distanceMeters: distMeters,
           isInsideRadius: isInside,
           radiusToleransiMeters: radiusMeters,
+          isNonUndangan,
         });
       }
 
@@ -2016,6 +2041,7 @@ export async function getRekapKehadiranOpd(params?: {
           hadirValid: 0,
           hadirLuarRadius: 0,
           hadirTanpaLokasi: 0,
+          hadirNonUndangan: 0,
           totalJarakLuarMeters: 0,
           maxJarakLuarMeters: 0,
           mewakili: 0,
@@ -2041,6 +2067,10 @@ export async function getRekapKehadiranOpd(params?: {
       else if (p.status === "IZIN") pegawaiMap[pegawaiKey].izin += 1;
       else pegawaiMap[pegawaiKey].tidakHadir += 1;
 
+      if (isNonUndangan && (p.status === "HADIR" || p.status === "MEWAKILI")) {
+        pegawaiMap[pegawaiKey].hadirNonUndangan += 1;
+      }
+
       pegawaiMap[pegawaiKey].history.push({
         agendaId: ag.id,
         namaKegiatan: ag.namaKegiatan,
@@ -2063,6 +2093,7 @@ export async function getRekapKehadiranOpd(params?: {
         distanceMeters: distMeters,
         isInsideRadius: isInside,
         radiusToleransiMeters: radiusMeters,
+        isNonUndangan,
       });
     }
   }
@@ -2119,6 +2150,10 @@ export async function getRekapKehadiranOpd(params?: {
     } else {
       predikatKepatuhan = "Perlu Pembinaan";
       evaluasiSingkat = `Tingkat kehadiran rendah (${persentaseKehadiran}%). ${item.tidakHadir + item.izin} dari ${item.totalDiundang} penugasan tidak hadir.`;
+    }
+
+    if (item.hadirNonUndangan > 0) {
+      evaluasiSingkat += ` (Termasuk ${item.hadirNonUndangan} kehadiran non-undangan).`;
     }
 
     return {
@@ -2181,6 +2216,10 @@ export async function getRekapKehadiranOpd(params?: {
     } else {
       predikatKepatuhan = "Perlu Pembinaan";
       evaluasiSingkat = `Tingkat kehadiran rendah (${persentaseKehadiran}%). ${item.tidakHadir + item.izin} dari ${item.totalDiundang} penugasan tidak hadir.`;
+    }
+
+    if (item.hadirNonUndangan > 0) {
+      evaluasiSingkat += ` (Termasuk ${item.hadirNonUndangan} kehadiran non-undangan).`;
     }
 
     return {

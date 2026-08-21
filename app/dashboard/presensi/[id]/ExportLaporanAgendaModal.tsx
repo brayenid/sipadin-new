@@ -97,6 +97,7 @@ export default function ExportLaporanAgendaModal({
       jabatanPerwakilan: p.jabatanPerwakilan,
       keterangan: p.keterangan,
       isSelfInput: p.isSelfInput,
+      isNonUndangan: (p as any).isNonUndangan,
       waktuInput: p.waktuInput ? `${formatWita(p.waktuInput, "HH:mm")} WITA` : null,
       waktuPulang: p.waktuPulang ? `${formatWita(p.waktuPulang, "HH:mm")} WITA` : null,
       lokasiText: p.lokasiText,

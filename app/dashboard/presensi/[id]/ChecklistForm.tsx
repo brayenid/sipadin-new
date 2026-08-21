@@ -101,6 +101,7 @@ type Peserta = {
   accuracy: number | null;
   lokasiText: string | null;
   isSelfInput: boolean;
+  isNonUndangan?: boolean;
   faceScore?: number | null;
   faceMatchStatus?: string | null;
 };
@@ -648,6 +649,7 @@ export default function ChecklistForm({
   const countTidakHadir = pesertaList.filter((p) => p.status === "TIDAK_HADIR").length;
   const countIzin = pesertaList.filter((p) => p.status === "IZIN").length;
   const countSelfInput = pesertaList.filter((p) => p.isSelfInput).length;
+  const countNonUndangan = pesertaList.filter((p) => Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN")).length;
 
   const persentaseTotal =
     totalPeserta > 0
@@ -656,13 +658,19 @@ export default function ChecklistForm({
 
   // Filter list
   const filteredPeserta = pesertaList.filter((p) => {
+    const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
     const matchSearch =
       p.nama.toLowerCase().includes(search.toLowerCase()) ||
       p.jabatan.toLowerCase().includes(search.toLowerCase()) ||
       p.instansi.toLowerCase().includes(search.toLowerCase()) ||
       (p.namaPerwakilan && p.namaPerwakilan.toLowerCase().includes(search.toLowerCase()));
 
-    const matchStatus = filterStatus === "ALL" || p.status === filterStatus;
+    const matchStatus =
+      filterStatus === "ALL"
+        ? true
+        : filterStatus === "NON_UNDANGAN"
+        ? isNonUndangan
+        : p.status === filterStatus;
 
     return matchSearch && matchStatus;
   });
@@ -726,6 +734,7 @@ export default function ChecklistForm({
       "Jabatan",
       "Perangkat Daerah / Instansi",
       "Eselon",
+      "Kategori Undangan",
       "Status Kehadiran",
       "Nama Perwakilan",
       "Jabatan Perwakilan",
@@ -742,6 +751,7 @@ export default function ChecklistForm({
     ];
 
     const dataRows = pesertaList.map((p, idx) => {
+      const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
       const statusLabel =
         p.status === "HADIR"
           ? "HADIR"
@@ -804,6 +814,7 @@ export default function ChecklistForm({
         jabatan: p.jabatan,
         instansi: p.instansi,
         eselon: p.eselon || "-",
+        kategoriUndangan: isNonUndangan ? "Non-Undangan (Tamu/Tambahan)" : "Undangan Resmi",
         status: statusLabel,
         perwakilan: p.namaPerwakilan || "-",
         jabatanPerwakilan: p.jabatanPerwakilan || "-",
@@ -829,6 +840,7 @@ export default function ChecklistForm({
         r.jabatan,
         r.instansi,
         r.eselon,
+        r.kategoriUndangan,
         r.status,
         r.perwakilan,
         r.jabatanPerwakilan,
@@ -854,6 +866,7 @@ export default function ChecklistForm({
       { wch: 30 },
       { wch: 30 },
       { wch: 10 },
+      { wch: 25 },
       { wch: 18 },
       { wch: 25 },
       { wch: 25 },
@@ -1665,6 +1678,12 @@ export default function ChecklistForm({
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                 Belum Hadir: <b className="font-bold">{countTidakHadir}</b>
               </span>
+              {countNonUndangan > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-medium text-[11.5px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                  Non-Undangan: <b className="font-bold">{countNonUndangan}</b>
+                </span>
+              )}
               {countSelfInput > 0 && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium text-[11.5px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
@@ -1697,6 +1716,9 @@ export default function ChecklistForm({
               <option value="MEWAKILI">Mewakili ({countMewakili})</option>
               <option value="IZIN">Izin ({countIzin})</option>
               <option value="TIDAK_HADIR">Tidak Hadir ({countTidakHadir})</option>
+              {countNonUndangan > 0 && (
+                <option value="NON_UNDANGAN">Non-Undangan ({countNonUndangan})</option>
+              )}
             </select>
           </div>
 
@@ -1833,10 +1855,15 @@ export default function ChecklistForm({
 
                         {/* Nama & Instansi */}
                         <TableCell className="text-xs">
-                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                             <span>{p.nama}</span>
+                            {Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN") && (
+                              <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[9px] font-bold rounded-md border border-purple-200">
+                                Non-Undangan
+                              </span>
+                            )}
                             {p.isSelfInput && (
-                              <span className="px-1.5 py-0.2 bg-indigo-50 text-indigo-700 text-[9px] font-bold rounded-md border border-indigo-200">
+                              <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-bold rounded-md border border-indigo-200">
                                 Mandiri
                               </span>
                             )}

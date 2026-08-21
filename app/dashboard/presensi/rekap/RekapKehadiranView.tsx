@@ -29,6 +29,7 @@ import {
   MapPin,
   Smartphone,
   UserCheck,
+  Users,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import * as XLSX from "xlsx";
@@ -50,6 +51,7 @@ type HistoryItem = {
   latitude?: number | null;
   longitude?: number | null;
   isSelfInput?: boolean;
+  isNonUndangan?: boolean;
   waktuInput?: Date | null;
   waktuPulang?: Date | null;
   distanceMeters?: number | null;
@@ -64,6 +66,7 @@ type OpdSummaryItem = {
   hadir: number;
   hadirValid?: number;
   hadirLuarRadius?: number;
+  hadirNonUndangan?: number;
   mewakili: number;
   tidakHadir: number;
   izin: number;
@@ -87,6 +90,7 @@ type PegawaiSummaryItem = {
   hadir: number;
   hadirValid?: number;
   hadirLuarRadius?: number;
+  hadirNonUndangan?: number;
   mewakili: number;
   tidakHadir: number;
   izin: number;
@@ -228,6 +232,7 @@ export default function RekapKehadiranView({
       "Total Hadir": opd.hadir,
       "Hadir Valid (Di Lokasi)": opd.hadirValid ?? opd.hadir,
       "Hadir Luar Radius (Anomali)": opd.hadirLuarRadius ?? 0,
+      "Hadir Non-Undangan": opd.hadirNonUndangan ?? 0,
       Mewakili: opd.mewakili,
       "Izin / Sakit": opd.izin,
       "Tidak Hadir": opd.tidakHadir,
@@ -249,6 +254,7 @@ export default function RekapKehadiranView({
       { wch: 12 },
       { wch: 22 },
       { wch: 25 },
+      { wch: 20 },
       { wch: 10 },
       { wch: 12 },
       { wch: 12 },
@@ -274,6 +280,7 @@ export default function RekapKehadiranView({
       "Total Hadir": peg.hadir,
       "Hadir Valid (Di Lokasi)": peg.hadirValid ?? peg.hadir,
       "Hadir Luar Radius (Anomali)": peg.hadirLuarRadius ?? 0,
+      "Hadir Non-Undangan": peg.hadirNonUndangan ?? 0,
       Mewakili: peg.mewakili,
       "Tidak Hadir / Izin": peg.tidakHadir + peg.izin,
       "Persentase Kehadiran (%)": `${peg.persentaseKehadiran}%`,
@@ -296,6 +303,7 @@ export default function RekapKehadiranView({
       { wch: 12 },
       { wch: 22 },
       { wch: 25 },
+      { wch: 20 },
       { wch: 10 },
       { wch: 16 },
       { wch: 22 },
@@ -589,6 +597,11 @@ export default function RekapKehadiranView({
 
                               <TableCell className="text-center text-xs">
                                 <span className="font-bold text-emerald-700">{opd.hadir}</span>
+                                {opd.hadirNonUndangan && opd.hadirNonUndangan > 0 ? (
+                                  <p className="text-[9.5px] text-purple-700 font-semibold leading-none mt-0.5">
+                                    ({opd.hadirNonUndangan} Non-Undangan)
+                                  </p>
+                                ) : null}
                                 {opd.hadirLuarRadius && opd.hadirLuarRadius > 0 ? (
                                   <p className="text-[9.5px] text-amber-600 font-semibold leading-none mt-0.5">
                                     ({opd.hadirLuarRadius} Luar Rad.)
@@ -685,6 +698,13 @@ export default function RekapKehadiranView({
 
                                           {/* Metadata Metode, Foto & Geotag */}
                                           <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                                            {h.isNonUndangan && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Users className="w-2.5 h-2.5" />
+                                                Non-Undangan
+                                              </span>
+                                            )}
+
                                             {h.isSelfInput ? (
                                               <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
                                                 <Smartphone className="w-2.5 h-2.5" />
@@ -847,6 +867,11 @@ export default function RekapKehadiranView({
                               <TableCell className="text-center text-xs font-semibold text-slate-700">{peg.totalDiundang}</TableCell>
                               <TableCell className="text-center text-xs">
                                 <span className="font-bold text-emerald-700">{peg.hadir}</span>
+                                {peg.hadirNonUndangan && peg.hadirNonUndangan > 0 ? (
+                                  <p className="text-[9.5px] text-purple-700 font-semibold leading-none mt-0.5">
+                                    ({peg.hadirNonUndangan} Non-Undangan)
+                                  </p>
+                                ) : null}
                                 {peg.hadirLuarRadius && peg.hadirLuarRadius > 0 ? (
                                   <p className="text-[9.5px] text-amber-600 font-semibold leading-none mt-0.5">
                                     ({peg.hadirLuarRadius} Luar Rad.)
@@ -925,6 +950,13 @@ export default function RekapKehadiranView({
 
                                           {/* Metadata Metode, Foto & Geotag */}
                                           <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                                            {h.isNonUndangan && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
+                                                <Users className="w-2.5 h-2.5" />
+                                                Non-Undangan
+                                              </span>
+                                            )}
+
                                             {h.isSelfInput ? (
                                               <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded font-semibold">
                                                 <Smartphone className="w-2.5 h-2.5" />
@@ -1007,6 +1039,7 @@ export default function RekapKehadiranView({
             hadir: opd.hadir,
             hadirValid: opd.hadirValid,
             hadirLuarRadius: opd.hadirLuarRadius,
+            hadirNonUndangan: opd.hadirNonUndangan,
             mewakili: opd.mewakili,
             tidakHadir: opd.tidakHadir,
             izin: opd.izin,
@@ -1035,6 +1068,7 @@ export default function RekapKehadiranView({
             hadir: peg.hadir,
             hadirValid: peg.hadirValid,
             hadirLuarRadius: peg.hadirLuarRadius,
+            hadirNonUndangan: peg.hadirNonUndangan,
             mewakili: peg.mewakili,
             tidakHadir: peg.tidakHadir,
             izin: peg.izin,
