@@ -33,8 +33,6 @@ type Pegawai = {
   kategoriPegawai?: string | null;
   wajibAbsenOpd: boolean;
   urutanOpd: number | null;
-  faceDescriptor?: string | null;
-  faceEnrolledAt?: Date | string | null;
 };
 
 type PaginationMeta = {

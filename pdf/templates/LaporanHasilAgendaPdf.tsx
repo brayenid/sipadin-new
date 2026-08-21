@@ -34,8 +34,8 @@ export type LaporanHasilAgendaData = {
     lokasiText?: string | null;
     latitude?: number | null;
     longitude?: number | null;
-    faceScore?: number | null;
-    faceMatchStatus?: string | null;
+    distanceMeters?: number | null;
+    isInsideRadius?: boolean | null;
   }[];
 };
 
@@ -335,25 +335,6 @@ export default function LaporanHasilAgendaPdf({
 
   const pctInside = totalGps > 0 ? Math.round((countInside / totalGps) * 100) : 0;
 
-  // Perhitungan Analisis Audit Biometrik Pengenalan Wajah (Face Recognition)
-  const pesertaWithBio = data.peserta.filter(
-    (p) => p.faceMatchStatus && p.faceMatchStatus !== "BYPASS"
-  );
-  const totalBio = pesertaWithBio.length;
-  const countBioMatch = data.peserta.filter((p) => p.faceMatchStatus === "MATCH").length;
-  const countBioMismatch = data.peserta.filter((p) => p.faceMatchStatus === "MISMATCH").length;
-  const countBioEnrolled = data.peserta.filter((p) => p.faceMatchStatus === "ENROLLED").length;
-
-  const validScores = data.peserta
-    .filter((p) => typeof p.faceScore === "number" && p.faceScore > 0)
-    .map((p) => p.faceScore!);
-  const avgSimilarityPct =
-    validScores.length > 0
-      ? Math.round(
-          (validScores.reduce((acc, score) => acc + score, 0) / validScores.length) * 100
-        )
-      : 0;
-
   return (
     <Document>
       <Page size={pageDimensions as any} style={styles.page}>
@@ -512,7 +493,7 @@ export default function LaporanHasilAgendaPdf({
                 </View>
                 <View style={[styles.tdCell, styles.borderRight, styles.colNama]}>
                   <Text style={[styles.tdText, styles.tdBold, { fontSize: 7 }]}>
-                    {row.nama}{Boolean(row.isNonUndangan || row.faceMatchStatus === "PESERTA_TAMBAHAN") ? " [Non-Undangan]" : ""}
+                    {row.nama}{Boolean(row.isNonUndangan) ? " [Non-Undangan]" : ""}
                   </Text>
                   {row.nip && <Text style={[styles.tdText, { fontSize: 6, marginTop: 1 }]}>NIP: {row.nip}</Text>}
                 </View>
@@ -541,22 +522,7 @@ export default function LaporanHasilAgendaPdf({
                       Luar Radius: {formatDistanceMeters(dist!)}
                     </Text>
                   )}
-                  {row.faceMatchStatus === "MATCH" && (
-                    <Text style={[styles.tdText, { fontSize: 5.5, color: "#047857", marginTop: 1 }]}>
-                      Biometrik: Cocok ({Math.round((row.faceScore || 0) * 100)}%)
-                    </Text>
-                  )}
-                  {row.faceMatchStatus === "MISMATCH" && (
-                    <Text style={[styles.tdText, styles.tdBold, { fontSize: 5.5, color: "#b91c1c", marginTop: 1 }]}>
-                      Biometrik: Indikasi Beda ({Math.round((row.faceScore || 0) * 100)}%)
-                    </Text>
-                  )}
-                  {row.faceMatchStatus === "ENROLLED" && (
-                    <Text style={[styles.tdText, { fontSize: 5.5, color: "#1d4ed8", marginTop: 1 }]}>
-                      Biometrik: Terdaftar Baru (100%)
-                    </Text>
-                  )}
-                  {!row.namaPerwakilan && !row.keterangan && !isOutside && !row.faceMatchStatus && (
+                  {!row.namaPerwakilan && !row.keterangan && !isOutside && (
                     <Text style={[styles.tdText, { fontSize: 6.5 }]}>-</Text>
                   )}
                 </View>

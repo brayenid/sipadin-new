@@ -111,12 +111,14 @@ type Peserta = {
   longitudePulang?: number | null;
   accuracyPulang?: number | null;
   lokasiPulangText?: string | null;
+  distanceMeters?: number | null;
+  isInsideRadius?: boolean | null;
+  distanceMetersPulang?: number | null;
+  isInsideRadiusPulang?: boolean | null;
   waktuInput: Date | null;
   waktuPulang?: Date | null;
   isSelfInput: boolean;
   ipAddress: string | null;
-  faceMatchStatus?: string | null;
-  faceScore?: number | null;
   tanggalSesi?: Date | string | null;
   isNonUndangan?: boolean;
 };
@@ -177,6 +179,14 @@ export default function ChecklistForm({
 }) {
   const router = useRouter();
   const [pesertaList, setPesertaList] = useState<Peserta[]>(agenda.peserta || []);
+
+  const serializePeserta = (p: Peserta) =>
+    `${p.status}|${p.namaPerwakilan || ""}|${p.jabatanPerwakilan || ""}|${p.keterangan || ""}|${p.waktuPulang ? new Date(p.waktuPulang).getTime() : ""}`;
+
+  const initialPesertaMap = useRef<Map<string, string>>(
+    new Map((agenda.peserta || []).map((p) => [p.id, serializePeserta(p)]))
+  );
+
   const [isPublicActive, setIsPublicActive] = useState(agenda.isPublicActive);
   const [statusAgenda, setStatusAgenda] = useState<StatusAgendaAbsensi>(agenda.status);
   const [driveUrl, setDriveUrl] = useState<string>(agenda.driveUrl || "");
@@ -434,7 +444,8 @@ export default function ChecklistForm({
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
 
-  const [saving, setSaving] = useState(false);
+  const [savingAgenda, setSavingAgenda] = useState(false);
+  const [savingKehadiran, setSavingKehadiran] = useState(false);
   const [togglingPublic, setTogglingPublic] = useState(false);
   const [isCetakOpen, setIsCetakOpen] = useState(false);
   const [isLaporanPdfOpen, setIsLaporanPdfOpen] = useState(false);
@@ -541,7 +552,7 @@ export default function ChecklistForm({
     if (!clearBuktiTarget) return;
     setClearingBukti(true);
     try {
-      await clearBuktiKehadiranPeserta(clearBuktiTarget.id, false);
+      await clearBuktiKehadiranPeserta(clearBuktiTarget.id);
       setPesertaList((prev) =>
         prev.map((p) =>
           p.id === clearBuktiTarget.id
@@ -557,14 +568,17 @@ export default function ChecklistForm({
                 longitude: null,
                 accuracy: null,
                 lokasiText: null,
+                distanceMeters: null,
+                isInsideRadius: null,
                 latitudePulang: null,
                 longitudePulang: null,
                 accuracyPulang: null,
+                lokasiPulangText: null,
+                distanceMetersPulang: null,
+                isInsideRadiusPulang: null,
                 waktuInput: null,
                 waktuPulang: null,
                 isSelfInput: false,
-                faceScore: null,
-                faceMatchStatus: null,
               }
             : p
         )
@@ -584,7 +598,7 @@ export default function ChecklistForm({
     setClearingBulkBukti(true);
     try {
       const count = selectedPesertaIds.length;
-      await bulkClearBuktiKehadiranPeserta(selectedPesertaIds, false);
+      await bulkClearBuktiKehadiranPeserta(selectedPesertaIds);
       setPesertaList((prev) =>
         prev.map((p) =>
           selectedPesertaIds.includes(p.id)
@@ -600,14 +614,17 @@ export default function ChecklistForm({
                 longitude: null,
                 accuracy: null,
                 lokasiText: null,
+                distanceMeters: null,
+                isInsideRadius: null,
                 latitudePulang: null,
                 longitudePulang: null,
                 accuracyPulang: null,
+                lokasiPulangText: null,
+                distanceMetersPulang: null,
+                isInsideRadiusPulang: null,
                 waktuInput: null,
                 waktuPulang: null,
                 isSelfInput: false,
-                faceScore: null,
-                faceMatchStatus: null,
               }
             : p
         )
@@ -672,59 +689,87 @@ export default function ChecklistForm({
     );
   };
 
-  // Simpan data batch & metadata agenda
-  const handleSave = async () => {
-    setSaving(true);
+  // 1. Simpan Khusus Tab "Edit Agenda & Lokasi" (Hanya update agenda, tanpa kirim/sentuh peserta)
+  const handleSaveAgenda = async () => {
+    setSavingAgenda(true);
+    try {
+      await updateAgendaAbsensi(agenda.id, {
+        namaKegiatan: namaKegiatan.trim() || undefined,
+        driveUrl: driveUrl.trim() || undefined,
+        status: statusAgenda,
+        tanggal: tanggal || undefined,
+        waktu: waktu.trim() || undefined,
+        tempat: tempat.trim() || undefined,
+        deskripsi: deskripsi.trim() || undefined,
+        jamBuka: jamBuka.trim() || undefined,
+        jamTutup: jamTutup.trim() || undefined,
+        enableCheckOut,
+        targetLatitude: targetLatitude ?? null,
+        targetLongitude: targetLongitude ?? null,
+        radiusMeter: radiusMeter || 100,
+        requireLocation,
+        requirePhoto,
+        allowNonPeserta,
+        targetKategori: targetKategori || undefined,
+        targetPeserta: targetPeserta.trim() || undefined,
+        publicToken: publicToken.trim() || undefined,
+        picPegawaiId: picPegawaiId || null,
+        picNama: picNama.trim() || null,
+        picNip: picNip.trim() || null,
+        picJabatan: picJabatan.trim() || null,
+        isRecurring,
+        recurringDays,
+        recurringWeeks: isRecurring ? recurringWeeks : [],
+        recurringJamBuka,
+        recurringJamTutup,
+        kategori,
+      });
+
+      toast.success("Pengaturan agenda & lokasi berhasil disimpan");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan pengaturan agenda");
+    } finally {
+      setSavingAgenda(false);
+    }
+  };
+
+  // 2. Simpan Khusus Tab "Daftar Kehadiran Pegawai" (Hanya update data peserta yang diedit)
+  const handleSaveKehadiran = async () => {
+    const changedPeserta = pesertaList.filter((p) => {
+      const initial = initialPesertaMap.current.get(p.id);
+      return !initial || initial !== serializePeserta(p);
+    });
+
+    if (changedPeserta.length === 0) {
+      toast.info("Tidak ada perubahan status kehadiran yang perlu disimpan");
+      return;
+    }
+
+    setSavingKehadiran(true);
     try {
       await updateKehadiranPesertaBatch(
         agenda.id,
-        pesertaList.map((p) => ({
+        changedPeserta.map((p) => ({
           id: p.id,
           status: p.status,
           namaPerwakilan: p.namaPerwakilan,
           jabatanPerwakilan: p.jabatanPerwakilan,
           keterangan: p.keterangan,
           waktuPulang: p.waktuPulang,
-        })),
-        {
-          namaKegiatan: namaKegiatan.trim() || undefined,
-          driveUrl: driveUrl.trim() || undefined,
-          status: statusAgenda,
-          tanggal: tanggal || undefined,
-          waktu: waktu.trim() || undefined,
-          tempat: tempat.trim() || undefined,
-          deskripsi: deskripsi.trim() || null,
-          jamBuka: jamBuka.trim() || undefined,
-          jamTutup: jamTutup.trim() || undefined,
-          enableCheckOut,
-          targetLatitude: targetLatitude ?? null,
-          targetLongitude: targetLongitude ?? null,
-          radiusMeter: radiusMeter || 100,
-          requireLocation,
-          requirePhoto,
-          allowNonPeserta: allowNonPeserta,
-          targetKategori: targetKategori || undefined,
-          targetPeserta: targetPeserta.trim() || undefined,
-          publicToken: publicToken.trim() || undefined,
-          picPegawaiId: picPegawaiId || null,
-          picNama: picNama.trim() || null,
-          picNip: picNip.trim() || null,
-          picJabatan: picJabatan.trim() || null,
-          isRecurring,
-          recurringDays,
-          recurringWeeks: isRecurring ? recurringWeeks : [],
-          recurringJamBuka,
-          recurringJamTutup,
-          kategori,
-        }
+        }))
       );
 
-      toast.success("Data agenda dan absensi berhasil diperbarui");
+      changedPeserta.forEach((p) => {
+        initialPesertaMap.current.set(p.id, serializePeserta(p));
+      });
+
+      toast.success(`Daftar kehadiran (${changedPeserta.length} peserta) berhasil diperbarui`);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan data absensi");
+      toast.error(err.message || "Gagal menyimpan data kehadiran");
     } finally {
-      setSaving(false);
+      setSavingKehadiran(false);
     }
   };
 
@@ -735,7 +780,7 @@ export default function ChecklistForm({
   const countTidakHadir = pesertaList.filter((p) => p.status === "TIDAK_HADIR").length;
   const countIzin = pesertaList.filter((p) => p.status === "IZIN").length;
   const countSelfInput = pesertaList.filter((p) => p.isSelfInput).length;
-  const countNonUndangan = pesertaList.filter((p) => Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN")).length;
+  const countNonUndangan = pesertaList.filter((p) => Boolean(p.isNonUndangan)).length;
 
   const persentaseTotal =
     totalPeserta > 0
@@ -768,7 +813,7 @@ export default function ChecklistForm({
 
   // Filter list
   const filteredPeserta = pesertaList.filter((p) => {
-    const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
+    const isNonUndangan = Boolean(p.isNonUndangan);
     const matchSearch =
       p.nama.toLowerCase().includes(search.toLowerCase()) ||
       p.jabatan.toLowerCase().includes(search.toLowerCase()) ||
@@ -863,12 +908,10 @@ export default function ChecklistForm({
       "Waktu Pulang",
       "Lokasi Pulang (GPS)",
       "URL Foto Pulang",
-      "Audit Biometrik Wajah",
-      "Skor Kemiripan Biometrik",
     ];
 
     const dataRows = pesertaList.map((p, idx) => {
-      const isNonUndangan = Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN");
+      const isNonUndangan = Boolean(p.isNonUndangan);
       const statusLabel =
         p.status === "HADIR"
           ? "HADIR"
@@ -906,24 +949,6 @@ export default function ChecklistForm({
         lokasiPulangPlain = p.lokasiPulangText ? `${p.lokasiPulangText} (${mapsUrl})` : mapsUrl;
       }
 
-      const bioStatus =
-        p.faceMatchStatus === "MATCH"
-          ? "Cocok / Terverifikasi"
-          : p.faceMatchStatus === "MISMATCH"
-          ? "Indikasi Beda"
-          : p.faceMatchStatus === "ENROLLED"
-          ? "Biometrik Baru Terdaftar"
-          : p.faceMatchStatus === "PERWAKILAN"
-          ? "Perwakilan (Bypass)"
-          : "-";
-
-      const bioScore =
-        typeof p.faceScore === "number" && p.faceScore > 0
-          ? `${Math.round(p.faceScore * 100)}%`
-          : p.faceMatchStatus === "ENROLLED"
-          ? "100%"
-          : "-";
-
       return {
         no: idx + 1,
         nama: p.nama,
@@ -943,8 +968,6 @@ export default function ChecklistForm({
         waktuPulang: p.waktuPulang ? `${formatWita(p.waktuPulang, "dd/MM/yyyy HH:mm")} WITA` : (agenda.enableCheckOut ? "Belum Pulang" : "-"),
         lokasiPulangPlain,
         fotoPulangUrlPlain,
-        bioStatus,
-        bioScore,
       };
     });
 
@@ -969,8 +992,6 @@ export default function ChecklistForm({
         r.waktuPulang,
         r.lokasiPulangPlain,
         r.fotoPulangUrlPlain,
-        r.bioStatus,
-        r.bioScore,
       ]);
     });
 
@@ -1170,7 +1191,7 @@ export default function ChecklistForm({
                 : "bg-slate-100 text-slate-500"
             }`}
           >
-            {pesertaList.filter((p) => typeof p.latitude === "number" && typeof p.longitude === "number").length}
+            {pesertaList.reduce((acc, p) => acc + (typeof p.latitude === "number" && typeof p.longitude === "number" ? 1 : 0) + (typeof p.latitudePulang === "number" && typeof p.longitudePulang === "number" ? 1 : 0), 0)}
           </span>
         </button>
 
@@ -1569,7 +1590,7 @@ export default function ChecklistForm({
                       <LogOut className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="font-bold text-slate-900 block">Aktifkan Presensi Pulang (Check-out)</span>
+                      <span className="font-bold text-slate-900 block">Aktifkan Presensi Pulang</span>
                       <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
                         Peserta yang telah melakukan presensi Datang dapat membuka kembali link/QR untuk mengirim presensi kepulangan saat acara selesai.
                       </p>
@@ -1911,11 +1932,11 @@ export default function ChecklistForm({
               <Button
                 type="button"
                 size="sm"
-                onClick={handleSave}
-                disabled={saving}
+                onClick={handleSaveAgenda}
+                disabled={savingAgenda}
                 className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs"
               >
-                {saving ? (
+                {savingAgenda ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                     Menyimpan...
@@ -1923,7 +1944,7 @@ export default function ChecklistForm({
                 ) : (
                   <>
                     <Save className="w-3.5 h-3.5 mr-1.5" />
-                    Simpan Perubahan
+                    Simpan Pengaturan Agenda
                   </>
                 )}
               </Button>
@@ -1942,6 +1963,8 @@ export default function ChecklistForm({
             targetLatitude,
             targetLongitude,
             radiusMeter,
+            enableCheckOut: enableCheckOut ?? agenda.enableCheckOut,
+            isRecurring: agenda.isRecurring,
           }}
           pesertaList={pesertaList}
           initialSelectedPersonId={selectedGpsPesertaId}
@@ -2238,7 +2261,7 @@ export default function ChecklistForm({
                         <TableCell className="text-xs">
                           <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                             <span>{p.nama}</span>
-                            {Boolean(p.isNonUndangan || p.faceMatchStatus === "PESERTA_TAMBAHAN") && (
+                            {Boolean(p.isNonUndangan) && (
                               <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[9px] font-bold rounded-md border border-purple-200">
                                 Non-Undangan
                               </span>
@@ -2474,17 +2497,17 @@ export default function ChecklistForm({
               </Button>
 
               <Button
-                onClick={handleSave}
-                disabled={saving}
+                onClick={handleSaveKehadiran}
+                disabled={savingKehadiran}
                 size="sm"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shrink-0"
               >
-                {saving ? (
+                {savingKehadiran ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
                   <Save className="w-3.5 h-3.5 mr-1" />
                 )}
-                Simpan Perubahan
+                Simpan Kehadiran
               </Button>
             </div>
           </div>
@@ -2926,7 +2949,7 @@ export default function ChecklistForm({
         </Button>
 
         {activeTab === "EDIT_AGENDA" ? (
-          /* Tab EDIT_AGENDA: Cetak Blanko + Simpan Perubahan Utama */
+          /* Tab EDIT_AGENDA: Cetak Blanko + Simpan Pengaturan Agenda */
           <>
             <Button
               type="button"
@@ -2940,20 +2963,66 @@ export default function ChecklistForm({
             </Button>
 
             <Button
-              onClick={handleSave}
-              disabled={saving}
+              onClick={handleSaveAgenda}
+              disabled={savingAgenda}
               className="flex-1 h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
             >
-              {saving ? (
+              {savingAgenda ? (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
               ) : (
                 <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
               )}
-              Simpan Perubahan
+              Simpan Pengaturan Agenda
+            </Button>
+          </>
+        ) : activeTab === "DAFTAR_HADIR" ? (
+          /* Tab DAFTAR_HADIR: Simpan Kehadiran, Ekspor & Tambah Pegawai */
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleExportExcel}
+              className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
+              title="Ekspor Laporan ke Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setIsLaporanPdfOpen(true)}
+              className="h-9 w-9 shrink-0 border-indigo-200 bg-white"
+              title="Ekspor Laporan ke PDF"
+            >
+              <FileText className="w-4 h-4 text-indigo-700" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTambahOpen(true)}
+              className="h-9 px-2.5 border-slate-300 text-slate-700 text-xs font-semibold"
+            >
+              <UserPlus className="w-3.5 h-3.5 mr-1 text-slate-600" />
+              Tambah
+            </Button>
+            <Button
+              onClick={handleSaveKehadiran}
+              disabled={savingKehadiran}
+              className="flex-1 min-w-0 h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
+            >
+              {savingKehadiran ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
+              ) : (
+                <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+              )}
+              <span className="truncate">Simpan Kehadiran</span>
             </Button>
           </>
         ) : (
-          /* Tab DAFTAR_HADIR & PETA_GPS: Ekspor & Tambah Pegawai */
+          /* Tab PETA_GPS & PANDUAN_TEKNIS */
           <>
             <Button
               type="button"

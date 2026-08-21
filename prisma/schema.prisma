@@ -42,6 +42,12 @@ enum StatusAgendaAbsensi {
   DIBATALKAN
 }
 
+enum StatusSesiAgenda {
+  AKTIF
+  DITIADAKAN
+  SELESAI
+}
+
 enum StatusKehadiran {
   HADIR
   MEWAKILI
@@ -105,10 +111,6 @@ model Pegawai {
   // Status Tim Internal (Hanya muncul di pencarian SPJ & Tata Naskah Dinas)
   timInternal     Boolean  @default(false)
 
-  // Biometrik Wajah
-  faceDescriptor  String?   @db.Text
-  faceEnrolledAt  DateTime?
-
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
@@ -117,6 +119,7 @@ model Pegawai {
 
   rosterItems    SpjRosterItem[]
   kehadiranItems KehadiranPeserta[]
+  agendaTemplates AgendaPesertaTemplate[]
 
   @@unique([nip, teamId])
   @@index([teamId, nama])
@@ -360,7 +363,7 @@ model AgendaAbsensi {
   isRecurring       Boolean             @default(false)
   recurringDays     String[]            @default([]) // ["SENIN"] atau ["SENIN", "JUMAT"]
   recurringWeeks    Int[]               @default([]) // Contoh: [1, 3] untuk Pekan 1 & 3. [] berarti setiap pekan
-  cancelledSessions Json?               // Array JSON: [{ tanggal: "2026-08-17", alasan: "Libur Nasional HUT RI", cancelledAt: "..." }]
+  cancelledSessions Json?               // Backward compatibility backup
   recurringJamBuka  String?             // "07:00"
   recurringJamTutup String?             // "08:15"
   kategori          String?             @default("RAPAT") // "RAPAT" | "APEL" | "UPACARA" | "SENAM" | "LAINNYA"
@@ -389,6 +392,8 @@ model AgendaAbsensi {
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   
+  templates       AgendaPesertaTemplate[]
+  sesi            SesiAgendaAbsensi[]
   peserta         KehadiranPeserta[]
 
   @@index([teamId, tanggal])
@@ -396,59 +401,118 @@ model AgendaAbsensi {
   @@index([isRecurring])
 }
 
+model AgendaPesertaTemplate {
+  id         String        @id @default(uuid())
+  agendaId   String
+  agenda     AgendaAbsensi @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  
+  pegawaiId  String?
+  pegawai    Pegawai?      @relation(fields: [pegawaiId], references: [id], onDelete: SetNull)
+  
+  nama       String
+  nip        String?
+  jabatan    String
+  instansi   String
+  eselon     String?
+  urutan     Int           @default(0)
+  
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([agendaId, pegawaiId])
+  @@index([agendaId])
+  @@index([pegawaiId])
+}
+
+model SesiAgendaAbsensi {
+  id               String            @id @default(uuid())
+  agendaId         String
+  agenda           AgendaAbsensi     @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  
+  tanggalSesi      DateTime          // Tanggal sesi kegiatan (UTC midnight)
+  status           StatusSesiAgenda  @default(AKTIF)
+  alasanDitiadakan String?
+  
+  waktuBuka        DateTime?
+  waktuTutup       DateTime?
+  waktuBukaPulang  DateTime?
+  waktuTutupPulang DateTime?
+  
+  targetLatitude   Float?
+  targetLongitude  Float?
+  radiusMeter      Int?
+
+  peserta          KehadiranPeserta[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([agendaId, tanggalSesi])
+  @@index([agendaId])
+  @@index([tanggalSesi])
+}
+
 model KehadiranPeserta {
-  id                String          @id @default(uuid())
+  id                String             @id @default(uuid())
   agendaId          String
-  agenda            AgendaAbsensi   @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  agenda            AgendaAbsensi      @relation(fields: [agendaId], references: [id], onDelete: Cascade)
   
+  sesiId            String?
+  sesi              SesiAgendaAbsensi? @relation(fields: [sesiId], references: [id], onDelete: Cascade)
+
   pegawaiId         String?
-  pegawai           Pegawai?        @relation(fields: [pegawaiId], references: [id], onDelete: SetNull)
+  pegawai           Pegawai?           @relation(fields: [pegawaiId], references: [id], onDelete: SetNull)
   
-  // Tanggal Sesi Presensi (Khusus Agenda Rutin Berulang)
+  // Tanggal Sesi Presensi (Khusus Agenda Rutin Berulang / Backward Compatibility)
   tanggalSesi       DateTime?
   
   // Snapshot Data Pejabat / OPD
   nama              String
   nip               String?
   jabatan           String
-  instansi          String          // Nama Perangkat Daerah
-  eselon            String?         // "II.b" | "III.a"
-  urutan            Int             @default(0)
+  instansi          String             // Nama Perangkat Daerah
+  eselon            String?            // "II.b" | "III.a"
+  urutan            Int                @default(0)
   
   // Status dan Keterangan
-  status            StatusKehadiran @default(TIDAK_HADIR)
-  namaPerwakilan    String?         // Diisi jika status MEWAKILI
+  status            StatusKehadiran    @default(TIDAK_HADIR)
+  namaPerwakilan    String?            // Diisi jika status MEWAKILI
   jabatanPerwakilan String?
   keterangan        String?
 
   // Self Input Publik, Geotag, Foto, dan Waktu (Presensi Datang)
-  isSelfInput       Boolean         @default(false)
-  waktuInput        DateTime?       // Waktu saat melakukan submit absen datang
+  isSelfInput       Boolean            @default(false)
+  waktuInput        DateTime?          // Waktu saat melakukan submit absen datang
   latitude          Float?
   longitude         Float?
-  accuracy          Float?          // Akurasi GPS dalam meter
-  lokasiText        String?         // Geocoding / string lat,lng
-  fotoUrl           String?         // URL foto bukti di Cloudflare R2
+  accuracy          Float?             // Akurasi GPS dalam meter
+  lokasiText        String?            // Geocoding / string lat,lng
+  fotoUrl           String?            // URL foto bukti di Cloudflare R2
+  distanceMeters    Int?               // Snapshot jarak meter dari titik pusat
+  isInsideRadius    Boolean?           // Snapshot kepatuhan radius
   ipAddress         String?
   userAgent         String?
 
   // Presensi Pulang (Opsional)
-  waktuPulang       DateTime?       // Waktu saat melakukan submit absen pulang
-  fotoPulangUrl     String?         // URL foto bukti selfie pulang
-  latitudePulang    Float?
-  longitudePulang   Float?
-  accuracyPulang    Float?
-  lokasiPulangText  String?
+  waktuPulang          DateTime?       // Waktu saat melakukan submit absen pulang
+  fotoPulangUrl        String?         // URL foto bukti selfie pulang
+  latitudePulang       Float?
+  longitudePulang      Float?
+  accuracyPulang       Float?
+  lokasiPulangText     String?
+  distanceMetersPulang Int?            // Snapshot jarak meter pulang
+  isInsideRadiusPulang Boolean?        // Snapshot kepatuhan radius pulang
   
-  // Audit Biometrik Wajah & Status Non-Undangan
-  isNonUndangan     Boolean         @default(false)
-  faceScore         Float?          // Skor kemiripan biometrik (0.0 - 1.0)
-  faceMatchStatus   String?         // "MATCH" | "MISMATCH" | "ENROLLED" | "PERWAKILAN" | "PESERTA_TAMBAHAN" | "BYPASS"
+  // Status Non-Undangan
+  isNonUndangan     Boolean            @default(false)
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([agendaId])
+  @@index([sesiId])
+  @@index([pegawaiId])
+  @@index([nip])
   @@index([agendaId, tanggalSesi])
   @@index([instansi])
 }

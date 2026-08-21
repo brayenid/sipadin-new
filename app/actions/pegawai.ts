@@ -26,8 +26,6 @@ export async function getPegawais(params?: { timInternalOnly?: boolean }) {
       instansi: true,
       eselon: true,
       timInternal: true,
-      faceDescriptor: true,
-      faceEnrolledAt: true,
     }
   });
 }
@@ -104,8 +102,6 @@ export async function getPegawaisPaginated(params: {
         instansi: true,
         eselon: true,
         timInternal: true,
-        faceDescriptor: true,
-        faceEnrolledAt: true,
       },
     }),
     prisma.pegawai.count({ where }),

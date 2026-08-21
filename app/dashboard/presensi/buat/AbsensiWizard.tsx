@@ -783,7 +783,7 @@ export default function AbsensiWizard({
                     <div>
                       <span className="font-semibold text-slate-900 flex items-center gap-1.5">
                         <LogOut className="w-3.5 h-3.5 text-indigo-600" />
-                        Aktifkan Presensi Pulang (Check-out)
+                        Aktifkan Presensi Pulang
                       </span>
                       <p className="text-[10.5px] text-slate-500">Peserta dapat absen pulang saat acara berakhir</p>
                     </div>

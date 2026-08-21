@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { deleteAgendaAbsensi } from "@/app/actions/absensi";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type AgendaItem = {
   id: string;
@@ -95,7 +96,8 @@ export default function AgendaList({
   const [data, setData] = useState<AgendaItem[]>(initialData);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nama: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter Waktu State
   const [startDateInput, setStartDateInput] = useState(customStartDate);
@@ -129,19 +131,20 @@ export default function AgendaList({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const handleDelete = async (id: string, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus agenda "${nama}"?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
 
-    setDeletingId(id);
+    setIsDeleting(true);
     try {
-      await deleteAgendaAbsensi(id);
-      setData((prev) => prev.filter((item) => item.id !== id));
+      await deleteAgendaAbsensi(deleteTarget.id);
+      setData((prev) => prev.filter((item) => item.id !== deleteTarget.id));
       toast.success("Agenda berhasil dihapus");
+      setDeleteTarget(null);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus agenda");
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -557,9 +560,10 @@ export default function AgendaList({
                             <Button
                               size="sm"
                               variant="ghost"
-                              disabled={deletingId === item.id}
-                              onClick={() => handleDelete(item.id, item.namaKegiatan)}
+                              disabled={isDeleting && deleteTarget?.id === item.id}
+                              onClick={() => setDeleteTarget({ id: item.id, nama: item.namaKegiatan })}
                               className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Hapus Agenda"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -621,6 +625,33 @@ export default function AgendaList({
           )}
         </CardContent>
       </Card>
+
+      {/* Custom Modal Konfirmasi Hapus Agenda */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+        variant="danger"
+        title="Hapus Agenda Presensi?"
+        description={
+          deleteTarget ? (
+            <div className="text-xs text-slate-500 space-y-2 leading-relaxed">
+              <p>
+                Apakah Anda yakin ingin menghapus agenda presensi{" "}
+                <span className="font-bold text-slate-900">"{deleteTarget.nama}"</span>?
+              </p>
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-[11px]">
+                ⚠️ <strong>Peringatan:</strong> Seluruh data kehadiran, daftar hadir peserta, koordinat GPS, dan foto selfie pada agenda ini akan dihapus. Tindakan ini tidak dapat dibatalkan.
+              </div>
+            </div>
+          ) : null
+        }
+        confirmText={isDeleting ? "Menghapus..." : "Ya, Hapus Agenda"}
+        cancelText="Batal"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
 
       {/* Mobile Bottom Fixed Action Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">

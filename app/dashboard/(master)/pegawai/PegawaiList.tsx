@@ -36,8 +36,6 @@ type Pegawai = {
   instansi: string | null;
   eselon: string | null;
   timInternal?: boolean;
-  faceDescriptor?: string | null;
-  faceEnrolledAt?: Date | string | null;
 };
 
 type PaginationMeta = {
@@ -302,7 +300,6 @@ export default function PegawaiList({
         instansi: "Sekretariat Daerah",
         eselon: "",
         timInternal: false,
-        faceDescriptor: null,
       },
       ...bulkData,
     ]);
@@ -530,7 +527,6 @@ export default function PegawaiList({
               <TableBody>
                 {displayedData.map((row) => {
                   const rowIsNew = row.id.startsWith("temp-");
-                  const hasBiometric = !!row.faceDescriptor;
 
                   return (
                     <TableRow

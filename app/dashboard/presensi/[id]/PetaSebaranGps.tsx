@@ -17,8 +17,9 @@ import {
   Camera,
   Layers,
   Satellite,
-  Map,
+  Map as MapIcon,
   RefreshCw,
+  Clock,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { calculateDistanceMeters, formatDistance, isWithinRadius } from "@/lib/geo-utils";
@@ -63,6 +64,33 @@ interface PesertaWithGps {
   longitude: number | null;
   accuracy: number | null;
   fotoUrl: string | null;
+  waktuPulang?: Date | string | null;
+  latitudePulang?: number | null;
+  longitudePulang?: number | null;
+  accuracyPulang?: number | null;
+  fotoPulangUrl?: string | null;
+  lokasiPulangText?: string | null;
+}
+
+export interface GpsPointItem {
+  pointKey: string; // `${p.id}_DATANG` | `${p.id}_PULANG`
+  pesertaId: string;
+  tipe: "DATANG" | "PULANG";
+  nama: string;
+  nip: string | null;
+  jabatan: string;
+  instansi: string;
+  status: string;
+  namaPerwakilan?: string | null;
+  waktu: Date | string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  fotoUrl: string | null;
+  distanceMeters?: number | null;
+  distanceToCentroid?: number | null;
+  isInsideRadius?: boolean;
+  isAnomaly?: boolean;
 }
 
 interface AgendaVenueInfo {
@@ -73,6 +101,8 @@ interface AgendaVenueInfo {
   targetLatitude: number | null;
   targetLongitude: number | null;
   radiusMeter: number | null;
+  enableCheckOut?: boolean;
+  isRecurring?: boolean;
 }
 
 // Auto Fit Bounds Helper
@@ -133,9 +163,10 @@ export default function PetaSebaranGps({
   const [mounted, setMounted] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filterRadius, setFilterRadius] = useState<"ALL" | "INSIDE" | "OUTSIDE">("ALL");
+  const [filterTipe, setFilterTipe] = useState<"ALL" | "DATANG" | "PULANG">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [hoveredPersonId, setHoveredPersonId] = useState<string | null>(null);
+  const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
+  const [hoveredPointKey, setHoveredPointKey] = useState<string | null>(null);
   const [panTarget, setPanTarget] = useState<[number, number] | null>(null);
   const [mapLayer, setMapLayer] = useState<"ESRI" | "OSM">("ESRI");
   const [showCentroidAnalysis, setShowCentroidAnalysis] = useState(false);
@@ -152,40 +183,92 @@ export default function PetaSebaranGps({
     setMounted(true);
   }, []);
 
+  // 1. Ekstrak seluruh titik GPS dari presensi Datang dan presensi Pulang
+  const allGpsPoints: GpsPointItem[] = React.useMemo(() => {
+    const list: GpsPointItem[] = [];
+    (pesertaList || []).forEach((p) => {
+      // Titik Presensi Datang
+      if (typeof p.latitude === "number" && typeof p.longitude === "number") {
+        list.push({
+          pointKey: `${p.id}_DATANG`,
+          pesertaId: p.id,
+          tipe: "DATANG",
+          nama: p.nama,
+          nip: p.nip,
+          jabatan: p.jabatan,
+          instansi: p.instansi,
+          status: p.status,
+          namaPerwakilan: p.namaPerwakilan || null,
+          waktu: p.waktuInput || null,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          accuracy: p.accuracy || null,
+          fotoUrl: p.fotoUrl || null,
+        });
+      }
+
+      // Titik Presensi Pulang
+      if (typeof p.latitudePulang === "number" && typeof p.longitudePulang === "number") {
+        list.push({
+          pointKey: `${p.id}_PULANG`,
+          pesertaId: p.id,
+          tipe: "PULANG",
+          nama: p.nama,
+          nip: p.nip,
+          jabatan: p.jabatan,
+          instansi: p.instansi,
+          status: p.status,
+          namaPerwakilan: p.namaPerwakilan || null,
+          waktu: p.waktuPulang || null,
+          latitude: p.latitudePulang,
+          longitude: p.longitudePulang,
+          accuracy: p.accuracyPulang || null,
+          fotoUrl: p.fotoPulangUrl || null,
+        });
+      }
+    });
+    return list;
+  }, [pesertaList]);
+
+  const totalGps = allGpsPoints.length;
+  const countDatang = allGpsPoints.filter((p) => p.tipe === "DATANG").length;
+  const countPulang = allGpsPoints.filter((p) => p.tipe === "PULANG").length;
+
+  // Cek apakah agenda ini menggunakan presensi pulang
+  const hasPulangConfig = Boolean(
+    agenda.enableCheckOut ||
+    agenda.isRecurring ||
+    allGpsPoints.some((p) => p.tipe === "PULANG")
+  );
+
   // Responsif terhadap perpindahan dari tab daftar hadir untuk auto-focus ke marker peserta
   useEffect(() => {
     if (initialSelectedPersonId) {
-      setSelectedPersonId(initialSelectedPersonId);
-      const target = pesertaList.find((p) => p.id === initialSelectedPersonId);
-      if (target && typeof target.latitude === "number" && typeof target.longitude === "number") {
-        setPanTarget([target.latitude, target.longitude]);
+      const match = allGpsPoints.find((p) => p.pesertaId === initialSelectedPersonId);
+      if (match) {
+        setSelectedPointKey(match.pointKey);
+        setPanTarget([match.latitude, match.longitude]);
       }
     }
-  }, [initialSelectedPersonId, pesertaList]);
+  }, [initialSelectedPersonId, allGpsPoints]);
 
   // Auto-scroll pada daftar kanan saat marker di peta di-hover / di-select
   useEffect(() => {
-    const targetId = hoveredPersonId || selectedPersonId;
-    if (targetId && typeof document !== "undefined") {
-      const el = document.getElementById(`peserta-card-${targetId}`);
+    const targetKey = hoveredPointKey || selectedPointKey;
+    if (targetKey && typeof document !== "undefined") {
+      const el = document.getElementById(`peserta-card-${targetKey}`);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     }
-  }, [hoveredPersonId, selectedPersonId]);
+  }, [hoveredPointKey, selectedPointKey]);
 
   const hasVenue =
     typeof agenda.targetLatitude === "number" &&
     typeof agenda.targetLongitude === "number";
   const venueRadius = agenda.radiusMeter || 100;
 
-  // 1. Filter peserta yang memiliki koordinat GPS valid
-  const pesertaWithGps = pesertaList.filter(
-    (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
-  );
-  const totalGps = pesertaWithGps.length;
-
-  // 2. STATISTIK: Hitung Rata-Rata Posisi Geografis (Centroid) Peserta & Standar Deviasi
+  // 2. STATISTIK: Hitung Rata-Rata Posisi Geografis (Centroid) & Standar Deviasi
   const MIN_SAMPLE_SIZE = 4;
   const hasSufficientData = totalGps >= MIN_SAMPLE_SIZE;
 
@@ -196,14 +279,14 @@ export default function PetaSebaranGps({
   let estimatedRadiusMeter = 100; // Default radius sebelum data mencapai N=4
 
   if (totalGps > 0) {
-    const sumLat = pesertaWithGps.reduce((acc, p) => acc + (p.latitude || 0), 0);
-    const sumLng = pesertaWithGps.reduce((acc, p) => acc + (p.longitude || 0), 0);
+    const sumLat = allGpsPoints.reduce((acc, p) => acc + p.latitude, 0);
+    const sumLng = allGpsPoints.reduce((acc, p) => acc + p.longitude, 0);
     centroidLat = sumLat / totalGps;
     centroidLng = sumLng / totalGps;
 
-    // Hitung jarak setiap peserta ke titik rata-rata (Centroid)
-    const distancesFromCentroid = pesertaWithGps.map((p) =>
-      calculateDistanceMeters(centroidLat!, centroidLng!, p.latitude!, p.longitude!)
+    // Hitung jarak setiap titik ke titik rata-rata (Centroid)
+    const distancesFromCentroid = allGpsPoints.map((p) =>
+      calculateDistanceMeters(centroidLat!, centroidLng!, p.latitude, p.longitude)
     );
 
     meanDistanceToCentroid =
@@ -224,14 +307,11 @@ export default function PetaSebaranGps({
         Math.min(500, Math.round(meanDistanceToCentroid + 2 * stdDevMeters))
       );
     } else {
-      // Jika N < 4, gunakan batas default aman 100m agar tidak terjadi bias sebaran semu
       estimatedRadiusMeter = 100;
     }
   }
 
   // 3. Tentukan Titik Acuan Pusat & Radius Efektif
-  // Jika Titik Acara Diterapkan: Gunakan pengaturan manual titik kegiatan.
-  // Jika Titik Acara TIDAK Diterapkan: Gunakan estimasi rata-rata (Centroid) + Standar Deviasi (jika N >= 4).
   const effectiveCenterLat = hasVenue ? agenda.targetLatitude! : centroidLat;
   const effectiveCenterLng = hasVenue ? agenda.targetLongitude! : centroidLng;
   const effectiveRadius = hasVenue ? venueRadius : estimatedRadiusMeter;
@@ -239,14 +319,14 @@ export default function PetaSebaranGps({
     typeof effectiveCenterLat === "number" &&
     typeof effectiveCenterLng === "number";
 
-  // 4. Perhitungan Jarak & Status Kesesuaian Lokasi Peserta
-  const calculatedPeserta = pesertaWithGps.map((p) => {
+  // 4. Perhitungan Jarak & Status Kesesuaian Lokasi Tiap Titik
+  const calculatedPoints: GpsPointItem[] = allGpsPoints.map((p) => {
     let distance: number | null = null;
     let distanceToCentroid: number | null = null;
     let inRadius = true;
     let isAnomaly = false;
 
-    if (centroidLat !== null && centroidLng !== null && p.latitude && p.longitude) {
+    if (centroidLat !== null && centroidLng !== null) {
       distanceToCentroid = calculateDistanceMeters(
         centroidLat,
         centroidLng,
@@ -255,7 +335,7 @@ export default function PetaSebaranGps({
       );
     }
 
-    if (hasReferencePoint && p.latitude && p.longitude) {
+    if (hasReferencePoint) {
       distance = calculateDistanceMeters(
         effectiveCenterLat!,
         effectiveCenterLng!,
@@ -263,14 +343,7 @@ export default function PetaSebaranGps({
         p.longitude
       );
       inRadius = isWithinRadius(distance, effectiveRadius);
-
-      if (hasVenue) {
-        // Jika titik acara disetel: anomali adalah di luar radius titik kegiatan
-        isAnomaly = !inRadius;
-      } else {
-        // Jika titik acara tidak disetel: anomali adalah di luar radius estimasi
-        isAnomaly = !inRadius;
-      }
+      isAnomaly = !inRadius;
     }
 
     return {
@@ -282,8 +355,10 @@ export default function PetaSebaranGps({
     };
   });
 
-  // Filter data berdasarkan tombol filter & pencarian
-  const filteredPeserta = calculatedPeserta.filter((p) => {
+  // Filter data berdasarkan tipe presensi, radius & pencarian
+  const filteredPoints = calculatedPoints.filter((p) => {
+    if (filterTipe === "DATANG" && p.tipe !== "DATANG") return false;
+    if (filterTipe === "PULANG" && p.tipe !== "PULANG") return false;
     if (filterRadius === "INSIDE" && !p.isInsideRadius) return false;
     if (filterRadius === "OUTSIDE" && p.isInsideRadius) return false;
     if (searchQuery.trim()) {
@@ -297,20 +372,61 @@ export default function PetaSebaranGps({
     return true;
   });
 
+  // Grouping per-peserta untuk panel daftar samping (1 baris per pegawai)
+  const groupedSidebarPeserta = React.useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        pesertaId: string;
+        nama: string;
+        nip: string | null;
+        jabatan: string;
+        instansi: string;
+        status: string;
+        namaPerwakilan?: string | null;
+        fotoUrl: string | null;
+        datangPoint?: GpsPointItem | null;
+        pulangPoint?: GpsPointItem | null;
+      }
+    >();
+
+    filteredPoints.forEach((pt) => {
+      const existing = map.get(pt.pesertaId);
+      if (!existing) {
+        map.set(pt.pesertaId, {
+          pesertaId: pt.pesertaId,
+          nama: pt.nama,
+          nip: pt.nip,
+          jabatan: pt.jabatan,
+          instansi: pt.instansi,
+          status: pt.status,
+          namaPerwakilan: pt.namaPerwakilan,
+          fotoUrl: pt.fotoUrl,
+          datangPoint: pt.tipe === "DATANG" ? pt : null,
+          pulangPoint: pt.tipe === "PULANG" ? pt : null,
+        });
+      } else {
+        if (pt.tipe === "DATANG") existing.datangPoint = pt;
+        if (pt.tipe === "PULANG") existing.pulangPoint = pt;
+        if (!existing.fotoUrl && pt.fotoUrl) existing.fotoUrl = pt.fotoUrl;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [filteredPoints]);
+
   // Summary Metrics
-  const countInside = calculatedPeserta.filter((p) => p.isInsideRadius).length;
+  const countInside = calculatedPoints.filter((p) => p.isInsideRadius).length;
   const countOutside = totalGps - countInside;
-  const countAnomaly = calculatedPeserta.filter((p) => p.isAnomaly).length;
+  const countAnomaly = calculatedPoints.filter((p) => p.isAnomaly).length;
 
   // Kumpulan Semua Titik Koordinat untuk Auto-Zoom Bounds
   const allCoordinates: [number, number][] = [];
   if (hasReferencePoint) {
     allCoordinates.push([effectiveCenterLat!, effectiveCenterLng!]);
   }
-  pesertaWithGps.forEach((p) => {
-    if (p.latitude && p.longitude) {
-      allCoordinates.push([p.latitude, p.longitude]);
-    }
+  allGpsPoints.forEach((p) => {
+    allCoordinates.push([p.latitude, p.longitude]);
   });
 
   // Default Center Peta
@@ -386,11 +502,16 @@ export default function PetaSebaranGps({
     });
   };
 
-  const createPersonIcon = (isInside: boolean, isAnomaly: boolean, isHovered: boolean = false) => {
+  const createPersonIcon = (
+    isInside: boolean,
+    isAnomaly: boolean,
+    isHovered: boolean = false,
+    tipe: "DATANG" | "PULANG" = "DATANG"
+  ) => {
     if (typeof window === "undefined") return undefined;
     const L = require("leaflet");
-    let bg = "#10b981"; // Green (normal inside)
-    let shadow = "rgba(16, 185, 129, 0.4)";
+    let bg = hasPulangConfig && tipe === "PULANG" ? "#4f46e5" : "#10b981"; // Pulang (Indigo) / Datang (Emerald)
+    let shadow = hasPulangConfig && tipe === "PULANG" ? "rgba(79, 70, 229, 0.4)" : "rgba(16, 185, 129, 0.4)";
 
     if (isAnomaly) {
       bg = "#ef4444"; // Red warning (anomaly / far off)
@@ -480,17 +601,21 @@ export default function PetaSebaranGps({
 
   return (
     <div className="space-y-4">
-      {/* Metric Cards - Horizontal Scroll pada Mobile, Grid 4 Kolom pada Desktop */}
+      {/* Metric Cards */}
       <div className="flex sm:grid sm:grid-cols-4 gap-3 overflow-x-auto sm:overflow-visible pb-1.5 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Card 1: Total Rekap GPS */}
         <div className="min-w-[210px] sm:min-w-0 flex-1 shrink-0 snap-start bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-            Total Rekap GPS
+            Total Titik GPS
           </div>
           <div className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-rose-600" />
             {totalGps}{" "}
-            <span className="text-xs font-normal text-slate-400">/ {pesertaList.length}</span>
+            {hasPulangConfig && (
+              <span className="text-xs font-normal text-slate-400">
+                (🟢{countDatang} Datang, 🔵{countPulang} Pulang)
+              </span>
+            )}
           </div>
         </div>
 
@@ -561,7 +686,7 @@ export default function PetaSebaranGps({
           </div>
           <div className="text-[10px] opacity-75 truncate mt-0.5">
             {countAnomaly > 0
-              ? `${countAnomaly} peserta terdeteksi terlalu jauh`
+              ? `${countAnomaly} titik terdeteksi terlalu jauh`
               : "Semua titik presensi dalam batas wajar"}
           </div>
         </div>
@@ -576,21 +701,34 @@ export default function PetaSebaranGps({
               Peta Sebaran GPS:
             </span>
 
+            {/* Filter Sesi Datang / Pulang (Hanya tampil jika ada sesi pulang) */}
+            {hasPulangConfig && (
+              <select
+                value={filterTipe}
+                onChange={(e) => setFilterTipe(e.target.value as any)}
+                className="h-7.5 text-xs bg-white border border-slate-300 rounded-lg px-2 text-slate-700 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-none"
+              >
+                <option value="ALL">Semua Sesi ({totalGps})</option>
+                <option value="DATANG">🟢 Datang ({countDatang})</option>
+                <option value="PULANG">🔵 Pulang ({countPulang})</option>
+              </select>
+            )}
+
             {hasReferencePoint && (
               <select
                 value={filterRadius}
                 onChange={(e) => setFilterRadius(e.target.value as any)}
                 className="h-7.5 text-xs bg-white border border-slate-300 rounded-lg px-2 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-none"
               >
-                <option value="ALL">Semua ({totalGps})</option>
-                <option value="INSIDE">Sesuai ({countInside})</option>
+                <option value="ALL">Semua Radius ({totalGps})</option>
+                <option value="INSIDE">Sesuai Radius ({countInside})</option>
                 <option value="OUTSIDE">Luar / Terlalu Jauh ({countOutside})</option>
               </select>
             )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Checkbox Estimasi Centroid (Hadir jika lokasi manual disetel) */}
+            {/* Checkbox Estimasi Centroid */}
             {hasVenue && totalGps > 1 && (
               <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer bg-white px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition select-none">
                 <input
@@ -628,7 +766,7 @@ export default function PetaSebaranGps({
                     : "text-slate-700 hover:bg-slate-100"
                 }`}
               >
-                <Map className="w-3.5 h-3.5" />
+                <MapIcon className="w-3.5 h-3.5" />
                 Peta Jalan
               </button>
             </div>
@@ -662,6 +800,13 @@ export default function PetaSebaranGps({
         <div className="grid grid-cols-1 lg:grid-cols-12 h-auto lg:h-[500px] overflow-hidden">
           {/* SISI KIRI: Canvas Peta Leaflet */}
           <div className="lg:col-span-7 xl:col-span-8 relative h-[380px] lg:h-full bg-slate-100 border-b lg:border-b-0 lg:border-r border-slate-200 z-0 isolate">
+            {!mounted && (
+              <div className="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center text-slate-300 space-y-3">
+                <Satellite className="w-8 h-8 text-indigo-400 animate-spin" />
+                <p className="text-xs font-semibold text-white">Memuat Peta Satelit & Sebaran GPS...</p>
+              </div>
+            )}
+
             {totalGps === 0 && !hasReferencePoint ? (
               <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-6 text-center text-slate-500 space-y-2">
                 <MapPin className="w-10 h-10 text-slate-300 animate-bounce" />
@@ -672,12 +817,13 @@ export default function PetaSebaranGps({
               </div>
             ) : null}
 
-            <MapContainer
-              center={defaultCenter}
-              zoom={15}
-              scrollWheelZoom={true}
-              style={{ height: "100%", width: "100%" }}
-            >
+            {mounted && (
+              <MapContainer
+                center={defaultCenter}
+                zoom={15}
+                scrollWheelZoom={true}
+                style={{ height: "100%", width: "100%" }}
+              >
               {mapLayer === "ESRI" ? (
                 <>
                   <TileLayer
@@ -715,20 +861,15 @@ export default function PetaSebaranGps({
                     icon={createVenueIcon()}
                   >
                     <Popup>
-                      <div className="p-1 space-y-1.5 text-slate-800 min-w-[200px]">
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-rose-700">
-                          <Building2 className="w-4 h-4" />
-                          Titik Lokasi Kegiatan
+                      <div className="p-1 space-y-1 text-slate-800">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-rose-600">
+                          <Building2 className="w-3.5 h-3.5" />
+                          Lokasi Acara / Venue
                         </div>
-                        <div className="font-semibold text-xs text-slate-900">
-                          {agenda.namaKegiatan}
-                        </div>
-                        <div className="text-[11px] text-slate-600">
-                          📍 {agenda.tempat}
-                        </div>
-                        <div className="text-[10px] text-slate-500 bg-rose-50 p-1.5 rounded border border-rose-100 font-mono">
-                          Radius Area: {venueRadius} meter
-                        </div>
+                        <p className="font-semibold text-xs">{agenda.tempat || "Titik Acara"}</p>
+                        <p className="text-[11px] text-slate-500">
+                          Radius Absen: {venueRadius} meter
+                        </p>
                       </div>
                     </Popup>
                   </Marker>
@@ -786,17 +927,16 @@ export default function PetaSebaranGps({
                 </>
               )}
 
-              {/* 3. Marker Personel / Pegawai yang Hadir (Bereaksi saat di-hover) */}
-              {filteredPeserta.map((p) => {
-                if (!p.latitude || !p.longitude) return null;
-                const isHovered = hoveredPersonId === p.id;
-                const isSelected = selectedPersonId === p.id;
+              {/* 3. Marker Personel / Pegawai yang Hadir (Datang & Pulang) */}
+              {filteredPoints.map((p) => {
+                const isHovered = hoveredPointKey === p.pointKey;
+                const isSelected = selectedPointKey === p.pointKey;
 
                 return (
                   <Marker
-                    key={p.id}
+                    key={p.pointKey}
                     position={[p.latitude, p.longitude]}
-                    icon={createPersonIcon(p.isInsideRadius, p.isAnomaly, isHovered || isSelected)}
+                    icon={createPersonIcon(p.isInsideRadius ?? true, p.isAnomaly ?? false, isHovered || isSelected, p.tipe)}
                     zIndexOffset={isHovered || isSelected ? 2000 : 1}
                     ref={(markerRef: any) => {
                       if (markerRef && isSelected) {
@@ -804,11 +944,11 @@ export default function PetaSebaranGps({
                       }
                     }}
                     eventHandlers={{
-                      mouseover: () => setHoveredPersonId(p.id),
-                      mouseout: () => setHoveredPersonId(null),
+                      mouseover: () => setHoveredPointKey(p.pointKey),
+                      mouseout: () => setHoveredPointKey(null),
                       click: () => {
-                        setSelectedPersonId(p.id);
-                        setPanTarget([p.latitude!, p.longitude!]);
+                        setSelectedPointKey(p.pointKey);
+                        setPanTarget([p.latitude, p.longitude]);
                       },
                     }}
                   >
@@ -826,9 +966,18 @@ export default function PetaSebaranGps({
                           ) : (
                             <Users className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                           )}
-                          <span className="font-bold text-[11px] whitespace-nowrap text-white">{p.nama}</span>
-                          {p.distanceMeters !== null && (
-                            <span className="text-[10px] text-slate-300 font-mono">({formatDistance(p.distanceMeters)})</span>
+                          <span className="font-bold text-[11px] whitespace-nowrap text-white">
+                            {p.nama}
+                            {hasPulangConfig && (
+                              <span className={p.tipe === "PULANG" ? " text-indigo-300" : " text-emerald-300"}>
+                                {" "}({p.tipe === "PULANG" ? "Pulang" : "Datang"})
+                              </span>
+                            )}
+                          </span>
+                          {p.distanceMeters !== null && p.distanceMeters !== undefined && (
+                            <span className={`text-[10px] font-mono ${p.isAnomaly ? "text-red-300" : !p.isInsideRadius ? "text-amber-300" : "text-slate-300"}`}>
+                              ({formatDistance(p.distanceMeters)})
+                            </span>
                           )}
                         </div>
                       </Tooltip>
@@ -847,31 +996,45 @@ export default function PetaSebaranGps({
                         )}
 
                         <div>
-                          <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
                             <h4 className="font-bold text-xs text-slate-900 leading-tight">
-                              {p.nama}
+                              {p.nama && p.nama.trim() !== "." ? p.nama : (p.namaPerwakilan || "Peserta Presensi")}
                             </h4>
-                            {p.isAnomaly && (
+                            {hasPulangConfig && (
+                              <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                p.tipe === "PULANG" ? "bg-indigo-100 text-indigo-700 border border-indigo-200" : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                              }`}>
+                                {p.tipe === "PULANG" ? "🔵 Pulang" : "🟢 Datang"}
+                              </span>
+                            )}
+                            {p.isAnomaly ? (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full shrink-0 flex items-center gap-1">
                                 <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
                                 Terlalu Jauh
                               </span>
-                            )}
+                            ) : !p.isInsideRadius ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full shrink-0 flex items-center gap-1">
+                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                                Luar Radius
+                              </span>
+                            ) : null}
                           </div>
-                          <p className="text-[11px] text-slate-600 mt-0.5">
-                            {p.jabatan} • {p.instansi}
-                          </p>
+                          {(p.jabatan || p.instansi) ? (
+                            <p className="text-[11px] text-slate-600 mt-0.5">
+                              {[p.jabatan, p.instansi].filter(Boolean).join(" • ")}
+                            </p>
+                          ) : null}
                         </div>
 
                         <div className="pt-1.5 border-t border-slate-100 space-y-1 text-[10.5px]">
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Waktu Presensi:</span>
+                            <span className="text-slate-500">Waktu {p.tipe === "PULANG" ? "Pulang" : "Presensi"}:</span>
                             <span className="font-medium text-slate-700">
-                              {formatWita(p.waktuInput, "HH:mm")} WITA
+                              {p.waktu ? `${formatWita(p.waktu, "HH:mm")} WITA` : "-"}
                             </span>
                           </div>
 
-                          {p.distanceMeters !== null && (
+                          {p.distanceMeters !== null && p.distanceMeters !== undefined && (
                             <div className="flex justify-between items-center pt-0.5">
                               <span className="text-slate-500">Jarak ke Pusat Acara:</span>
                               <span
@@ -904,106 +1067,213 @@ export default function PetaSebaranGps({
                 );
               })}
             </MapContainer>
+            )}
           </div>
 
-          {/* SISI KANAN: Daftar Peserta Ber-GPS (Scrollable Panel dengan Hover Reaktif) */}
+          {/* SISI KANAN: Daftar Peserta Ber-GPS (1 Baris Per Pegawai) */}
           <div className="lg:col-span-5 xl:col-span-4 flex flex-col h-[380px] lg:h-full bg-white overflow-hidden">
             {/* Header Panel Daftar Peserta */}
             <div className="bg-slate-50/90 px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 shrink-0">
               <span className="text-xs font-bold text-slate-800">
-                Daftar Peserta ({filteredPeserta.length})
+                Daftar Peserta ({groupedSidebarPeserta.length})
               </span>
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                Jarak & Status
+                Sesi & Titik
               </span>
             </div>
 
             {/* List Item Peserta (Scroll Y Otomatis Mengikuti Tinggi Peta) */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs">
-              {filteredPeserta.length === 0 ? (
+              {groupedSidebarPeserta.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400">
-                  Tidak ada data peserta yang cocok dengan filter
+                  Tidak ada data peserta GPS yang cocok dengan filter
                 </div>
               ) : (
-                filteredPeserta.map((p, idx) => {
-                  const isHovered = hoveredPersonId === p.id;
-                  const isSelected = selectedPersonId === p.id;
+                groupedSidebarPeserta.map((item, idx) => {
+                  const hasActiveDatang = item.datangPoint && selectedPointKey === item.datangPoint.pointKey;
+                  const hasActivePulang = item.pulangPoint && selectedPointKey === item.pulangPoint.pointKey;
+                  const isHovered =
+                    (item.datangPoint && hoveredPointKey === item.datangPoint.pointKey) ||
+                    (item.pulangPoint && hoveredPointKey === item.pulangPoint.pointKey);
+                  const isSelected = hasActiveDatang || hasActivePulang;
+
+                  const defaultTargetPoint = item.pulangPoint || item.datangPoint;
 
                   return (
                     <div
-                      key={p.id}
-                      id={`peserta-card-${p.id}`}
-                      onMouseEnter={() => setHoveredPersonId(p.id)}
-                      onMouseLeave={() => setHoveredPersonId(null)}
+                      key={item.pesertaId}
+                      id={`peserta-card-${item.datangPoint?.pointKey || item.pulangPoint?.pointKey}`}
+                      onMouseEnter={() => {
+                        if (item.pulangPoint) setHoveredPointKey(item.pulangPoint.pointKey);
+                        else if (item.datangPoint) setHoveredPointKey(item.datangPoint.pointKey);
+                      }}
+                      onMouseLeave={() => setHoveredPointKey(null)}
                       onClick={() => {
-                        setSelectedPersonId(p.id);
-                        if (p.latitude && p.longitude) {
-                          setPanTarget([p.latitude, p.longitude]);
+                        if (defaultTargetPoint) {
+                          setSelectedPointKey(defaultTargetPoint.pointKey);
+                          setPanTarget([defaultTargetPoint.latitude, defaultTargetPoint.longitude]);
                         }
                       }}
-                      className={`p-3 flex items-center justify-between transition text-slate-700 gap-2 cursor-pointer border-l-[3px] ${
-                        isHovered || isSelected
+                      className={`p-3 flex flex-col gap-2 transition text-slate-700 cursor-pointer border-l-[3px] ${
+                        isSelected
                           ? "bg-indigo-50/90 border-l-indigo-600 shadow-2xs"
+                          : isHovered
+                          ? "bg-slate-50/90 border-l-indigo-300"
                           : "border-l-transparent hover:bg-slate-50/80"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-1">
-                        <span className="text-[10px] font-mono text-slate-400 w-3.5 shrink-0">
-                          {idx + 1}.
-                        </span>
-                        {p.fotoUrl ? (
-                          <img
-                            src={p.fotoUrl}
-                            alt={p.nama}
-                            className={`w-8 h-8 rounded-full object-cover shrink-0 border transition ${
-                              isHovered || isSelected
-                                ? "border-indigo-600 ring-2 ring-indigo-200"
-                                : "border-slate-200"
-                            }`}
-                          />
-                        ) : (
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${
-                            isHovered || isSelected
-                              ? "bg-indigo-600 text-white shadow-xs"
-                              : "bg-slate-100 text-slate-500"
-                          }`}>
-                            <Users className="w-4 h-4" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className={`font-bold text-xs truncate max-w-[130px] sm:max-w-[170px] transition ${
-                              isHovered || isSelected ? "text-indigo-900" : "text-slate-900"
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                          <span className="text-[10px] font-mono text-slate-400 w-3.5 shrink-0">
+                            {idx + 1}.
+                          </span>
+                          {item.fotoUrl ? (
+                            <img
+                              src={item.fotoUrl}
+                              alt={item.nama}
+                              className={`w-8 h-8 rounded-full object-cover shrink-0 border transition ${
+                                isSelected
+                                  ? "border-indigo-600 ring-2 ring-indigo-200"
+                                  : "border-slate-200"
+                              }`}
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${
+                              isSelected
+                                ? "bg-indigo-600 text-white shadow-xs"
+                                : "bg-slate-100 text-slate-500"
                             }`}>
-                              {p.nama}
+                              <Users className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-bold text-xs truncate max-w-[150px] sm:max-w-[190px] transition ${
+                              isSelected ? "text-indigo-900" : "text-slate-900"
+                            }`}>
+                              {item.nama && item.nama.trim() !== "." ? item.nama : (item.namaPerwakilan || "Peserta Presensi")}
                             </p>
-                            {p.isAnomaly && (
-                              <span className="text-[8.5px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full shrink-0 flex items-center gap-1">
-                                <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
-                                Terlalu Jauh
-                              </span>
+                            <p className="text-[10.5px] text-slate-500 truncate max-w-[150px] sm:max-w-[190px]">
+                              {[item.jabatan, item.instansi].filter(Boolean).join(" • ") || "-"}
+                            </p>
+                            {(item.datangPoint?.waktu || item.pulangPoint?.waktu) && (
+                              <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 flex-wrap">
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>
+                                  {hasPulangConfig ? (
+                                    <>
+                                      {item.datangPoint?.waktu && (
+                                        <span>Datang: <strong className="text-slate-700 font-semibold">{formatWita(item.datangPoint.waktu, "HH:mm:ss")} WITA</strong></span>
+                                      )}
+                                      {item.datangPoint?.waktu && item.pulangPoint?.waktu && <span className="text-slate-300 mx-1">•</span>}
+                                      {item.pulangPoint?.waktu && (
+                                        <span>Pulang: <strong className="text-slate-700 font-semibold">{formatWita(item.pulangPoint.waktu, "HH:mm:ss")} WITA</strong></span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span>Diisi: <strong className="text-slate-700 font-semibold">{formatWita(item.datangPoint?.waktu || item.pulangPoint?.waktu, "HH:mm:ss")} WITA</strong></span>
+                                  )}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          <p className="text-[10.5px] text-slate-500 truncate max-w-[150px] sm:max-w-[200px]">
-                            {p.jabatan} • {p.instansi}
-                          </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0 text-right">
-                        {p.distanceMeters !== null && (
-                          <span
-                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
-                              p.isAnomaly
-                                ? "bg-red-100 text-red-800"
-                                : p.isInsideRadius
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-amber-100 text-amber-800"
-                            }`}
-                          >
-                            {formatDistance(p.distanceMeters)}
-                          </span>
-                        )}
+                      {/* Baris Tombol Titik GPS (Datang & Pulang) */}
+                      <div className="flex items-center gap-1.5 flex-wrap pl-6 pt-0.5">
+                        {item.datangPoint && (() => {
+                          const pt = item.datangPoint;
+                          const isAnom = pt.isAnomaly;
+                          const isOut = !pt.isInsideRadius;
+                          const isActive = selectedPointKey === pt.pointKey;
+
+                          let btnClass = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100";
+                          let iconDot = "🟢";
+                          let labelText = hasPulangConfig ? "Datang" : "Sesuai Radius";
+
+                          if (isAnom) {
+                            btnClass = isActive
+                              ? "bg-red-600 text-white border-red-700 shadow-xs"
+                              : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
+                            iconDot = "🔴";
+                            labelText = hasPulangConfig ? "Datang (Terlalu Jauh)" : "Terlalu Jauh";
+                          } else if (isOut) {
+                            btnClass = isActive
+                              ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                              : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100";
+                            iconDot = "🟡";
+                            labelText = hasPulangConfig ? "Datang (Luar Radius)" : "Luar Radius";
+                          } else if (isActive) {
+                            btnClass = "bg-emerald-600 text-white border-emerald-700 shadow-xs";
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPointKey(pt.pointKey);
+                                setPanTarget([pt.latitude, pt.longitude]);
+                              }}
+                              className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold border transition flex items-center gap-1 cursor-pointer select-none ${btnClass}`}
+                              title={`Fokus ke titik presensi ${hasPulangConfig ? 'Datang' : ''} (${isAnom ? 'Terlalu Jauh' : isOut ? 'Luar Radius' : 'Dalam Radius'})`}
+                            >
+                              <span>{iconDot} {labelText}</span>
+                              {pt.distanceMeters !== null && (
+                                <span className="font-mono opacity-90">
+                                  ({formatDistance(pt.distanceMeters)})
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+
+                        {item.pulangPoint && hasPulangConfig && (() => {
+                          const pt = item.pulangPoint;
+                          const isAnom = pt.isAnomaly;
+                          const isOut = !pt.isInsideRadius;
+                          const isActive = selectedPointKey === pt.pointKey;
+
+                          let btnClass = "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100";
+                          let iconDot = "🔵";
+                          let labelText = "Pulang";
+
+                          if (isAnom) {
+                            btnClass = isActive
+                              ? "bg-red-600 text-white border-red-700 shadow-xs"
+                              : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
+                            iconDot = "🔴";
+                            labelText = "Pulang (Terlalu Jauh)";
+                          } else if (isOut) {
+                            btnClass = isActive
+                              ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                              : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100";
+                            iconDot = "🟡";
+                            labelText = "Pulang (Luar Radius)";
+                          } else if (isActive) {
+                            btnClass = "bg-indigo-600 text-white border-indigo-700 shadow-xs";
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPointKey(pt.pointKey);
+                                setPanTarget([pt.latitude, pt.longitude]);
+                              }}
+                              className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold border transition flex items-center gap-1 cursor-pointer select-none ${btnClass}`}
+                              title={`Fokus ke titik presensi Pulang (${isAnom ? 'Terlalu Jauh' : isOut ? 'Luar Radius' : 'Dalam Radius'})`}
+                            >
+                              <span>{iconDot} {labelText}</span>
+                              {pt.distanceMeters !== null && (
+                                <span className="font-mono opacity-90">
+                                  ({formatDistance(pt.distanceMeters)})
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -1037,7 +1307,7 @@ export default function PetaSebaranGps({
           </span>
           {centroidLat !== null && (
             <span className="font-mono text-[10px] text-slate-500 not-italic">
-              Rata-rata: {centroidLat.toFixed(5)}, {centroidLng?.toFixed(5)} (Std Dev ±{Math.round(stdDevMeters)}m)
+              Titik Rata-rata Kerumunan: {centroidLat.toFixed(5)}, {centroidLng?.toFixed(5)}
             </span>
           )}
         </div>

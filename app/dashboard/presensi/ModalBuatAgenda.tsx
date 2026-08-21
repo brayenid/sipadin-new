@@ -393,7 +393,7 @@ export default function ModalBuatAgenda({
                       <LogOut className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-slate-900 text-[11px] block">
-                          Aktifkan Presensi Pulang (Check-out)
+                          Aktifkan Presensi Pulang
                         </span>
                         <p className="text-[10px] text-slate-500 leading-tight mt-0.5">
                           Peserta dapat mengirim foto kepulangan saat acara selesai.

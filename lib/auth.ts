@@ -33,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const rateCheck = checkLoginRateLimit(username);
         if (!rateCheck.allowed) {
           console.warn(`[auth] Rate limit lockout for username: ${username}`);
-          throw new Error(rateCheck.message || "Terlalu banyak percobaan login gagal. Silakan coba lagi nanti.");
+          return null;
         }
 
         try {
@@ -65,9 +65,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             teamName: user.team.name,
           };
         } catch (error: any) {
-          if (error?.message?.includes("percobaan login")) {
-            throw error;
-          }
           console.error("[auth] authorize error:", error);
           return null;
         }

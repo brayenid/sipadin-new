@@ -41,8 +41,6 @@ type Pegawai = {
   instansi: string | null;
   eselon: string | null;
   timInternal: boolean;
-  faceDescriptor?: string | null;
-  faceEnrolledAt?: Date | string | null;
 };
 
 type PaginationMeta = {

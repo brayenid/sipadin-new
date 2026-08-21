@@ -609,6 +609,13 @@ export default function PublicAbsensiForm({
 
       if (!isCustomPeserta) {
         payload.pesertaId = selectedPesertaId;
+        if (activePeserta) {
+          payload.nama = activePeserta.nama;
+          payload.nip = activePeserta.nip || null;
+          payload.jabatan = activePeserta.jabatan;
+          payload.instansi = activePeserta.instansi;
+          payload.eselon = activePeserta.eselon;
+        }
       } else {
         payload.nama = manualNama.trim();
         payload.nip = manualNip.trim() || null;
@@ -1600,7 +1607,7 @@ export default function PublicAbsensiForm({
                   {isCheckOutMode ? (
                     <>
                       <LogOut className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span>Presensi Pulang (Check-out)</span>
+                      <span>Presensi Pulang</span>
                     </>
                   ) : status === "HADIR" ? (
                     <>

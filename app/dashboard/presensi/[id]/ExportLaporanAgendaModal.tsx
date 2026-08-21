@@ -60,8 +60,8 @@ export default function ExportLaporanAgendaModal({
       lokasiText?: string | null;
       latitude?: number | null;
       longitude?: number | null;
-      faceScore?: number | null;
-      faceMatchStatus?: string | null;
+      distanceMeters?: number | null;
+      isInsideRadius?: boolean | null;
     }[];
   };
 }) {
@@ -103,8 +103,8 @@ export default function ExportLaporanAgendaModal({
       lokasiText: p.lokasiText,
       latitude: p.latitude,
       longitude: p.longitude,
-      faceScore: p.faceScore,
-      faceMatchStatus: p.faceMatchStatus,
+      distanceMeters: (p as any).distanceMeters,
+      isInsideRadius: (p as any).isInsideRadius,
     })),
   };
 
