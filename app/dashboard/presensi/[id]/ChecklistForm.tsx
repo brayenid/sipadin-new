@@ -244,6 +244,13 @@ export default function ChecklistForm({
     alasan?: string
   ) => {
     if (!targetDate) return;
+    if (action === "RESTORE") {
+      const formattedDate = formatWita(new Date(targetDate), "EEEE, dd MMMM yyyy");
+      const confirmed = window.confirm(
+        `Konfirmasi Pengaktifan Kembali Sesi:\n\nApakah Anda yakin ingin MENGAKTIFKAN KEMBALI sesi presensi pada ${formattedDate}?\n\nSesi ini akan kembali dibuka untuk presensi pegawai dan diperhitungkan dalam rekapitulasi kehadiran.`
+      );
+      if (!confirmed) return;
+    }
     try {
       setIsSubmittingCancel(true);
       const res = await toggleCancelRecurringSession({
@@ -2804,36 +2811,54 @@ export default function ChecklistForm({
             </div>
 
             {/* Daftar Sesi Ditiadakan */}
-            <div>
-              <p className="text-xs font-bold text-slate-800 mb-2">
-                Daftar Sesi yang Sedang Ditiadakan ({cancelledSessions.length}):
-              </p>
-              {cancelledSessions.length === 0 ? (
-                <p className="text-xs text-slate-400 italic text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  Belum ada sesi yang ditiadakan. Seluruh jadwal sesi berjalan normal.
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-800">
+                  Daftar Sesi yang Sedang Ditiadakan ({cancelledSessions.length}):
                 </p>
+                {cancelledSessions.length > 0 && (
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Scroll untuk melihat riwayat
+                  </span>
+                )}
+              </div>
+
+              {cancelledSessions.length === 0 ? (
+                <div className="text-center py-6 px-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-1">
+                  <p className="text-xs font-semibold text-slate-600">Belum ada sesi yang ditiadakan</p>
+                  <p className="text-[11px] text-slate-400">Seluruh jadwal kegiatan presensi berjalan normal.</p>
+                </div>
               ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-slate-200">
                   {cancelledSessions.map((item: any, idx: number) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2.5 bg-rose-50/80 border border-rose-200 rounded-lg text-xs"
+                      className="flex items-center justify-between gap-3 p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl text-xs shadow-2xs hover:bg-rose-50 transition-colors"
                     >
-                      <div>
-                        <span className="font-bold text-rose-950 block">
-                          {formatWita(new Date(item.tanggal), "EEEE, dd MMMM yyyy")}
-                        </span>
-                        <span className="text-[11px] text-rose-700">
-                          {item.alasan || "Ditiadakan"}
-                        </span>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 font-bold text-rose-950">
+                          <CalendarDays className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span className="truncate">{formatWita(new Date(item.tanggal), "EEEE, dd MMMM yyyy")}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className="px-2 py-0.5 rounded-md font-semibold bg-rose-100/90 text-rose-800 border border-rose-200/60">
+                            {item.alasan || "Ditiadakan / Diliburkan"}
+                          </span>
+                          {item.cancelledBy && (
+                            <span className="text-slate-500 text-[10.5px]">
+                              Oleh: {item.cancelledBy}
+                            </span>
+                          )}
+                        </div>
                       </div>
+
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         disabled={isSubmittingCancel}
                         onClick={() => handleToggleCancelSession(item.tanggal, "RESTORE")}
-                        className="h-7 px-2.5 text-xs text-slate-700 bg-white hover:bg-rose-100 hover:text-rose-800 border-slate-300 font-semibold"
+                        className="h-8 px-3 text-xs text-rose-700 bg-white hover:bg-rose-600 hover:text-white border-rose-300 font-bold shrink-0 shadow-2xs transition-all cursor-pointer"
                       >
                         Aktifkan Kembali
                       </Button>
