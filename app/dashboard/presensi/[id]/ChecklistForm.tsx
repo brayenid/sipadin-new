@@ -43,6 +43,7 @@ import {
   FileText,
   Crosshair,
   Settings,
+  Eye,
   Users,
   RefreshCw,
   LogOut,
@@ -359,7 +360,8 @@ export default function ChecklistForm({
   }, [agenda]);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/presensi/${agenda.publicToken}` : "";
+  const publicAbsenUrl = agenda.publicToken ? `${baseUrl}/p/presensi/${agenda.publicToken}` : `${baseUrl}/p/presensi/${agenda.id}`;
+  const publicMonitorUrl = `${baseUrl}/p/presensi/${agenda.id}/monitor`;
 
   // Ubah status kehadiran satuan
   const handleStatusChange = (id: string, newStatus: StatusKehadiran) => {
@@ -1115,6 +1117,25 @@ export default function ChecklistForm({
                 {copiedLink ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                 {copiedLink ? "Tersalin" : "Salin Tautan"}
               </Button>
+
+              {publicMonitorUrl && (
+                <a
+                  href={publicMonitorUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs font-semibold border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 h-8"
+                    title="Buka Halaman Pantau Presensi Publik (Live Monitoring)"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                    Pantau Live
+                  </Button>
+                </a>
+              )}
             </div>
           </div>
 
@@ -2609,6 +2630,7 @@ export default function ChecklistForm({
       <QrCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
+        agendaId={agenda.id}
         publicToken={agenda.publicToken}
         namaKegiatan={agenda.namaKegiatan}
         tanggal={agenda.tanggal ? formatWita(agenda.tanggal, "EEEE, dd MMMM yyyy") : ""}

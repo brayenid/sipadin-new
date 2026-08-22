@@ -955,7 +955,10 @@ export async function getPublicAgendaByToken(token: string) {
 
   const agenda = await prisma.agendaAbsensi.findFirst({
     where: {
-      publicToken: token,
+      OR: [
+        { publicToken: token },
+        { id: token },
+      ],
       isDeleted: false,
     },
     select: {
@@ -1073,6 +1076,127 @@ export async function getPublicAgendaByToken(token: string) {
   };
 }
 
+export async function getPublicAgendaMonitorData(agendaId: string) {
+  if (!agendaId) throw new Error("ID pemantauan tidak valid");
+
+  const agenda = await prisma.agendaAbsensi.findFirst({
+    where: {
+      id: agendaId,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      publicToken: true,
+      namaKegiatan: true,
+      hari: true,
+      tanggal: true,
+      waktu: true,
+      tempat: true,
+      deskripsi: true,
+      targetPeserta: true,
+      targetKategori: true,
+      status: true,
+      isPublicActive: true,
+      waktuBukaAbsen: true,
+      waktuTutupAbsen: true,
+      enableCheckOut: true,
+      waktuBukaPulang: true,
+      waktuTutupPulang: true,
+      isRecurring: true,
+      recurringDays: true,
+      recurringWeeks: true,
+      recurringJamBuka: true,
+      recurringJamTutup: true,
+      kategori: true,
+      picNama: true,
+      picJabatan: true,
+    },
+  });
+
+  if (!agenda) {
+    throw new Error("Agenda presensi tidak ditemukan atau telah dihapus");
+  }
+
+  const now = new Date();
+  const todayStr = formatWita(now, "yyyy-MM-dd");
+  const sesi = await getOrCreateSesiAgenda(agenda.id, todayStr);
+
+  const rawPeserta = await prisma.kehadiranPeserta.findMany({
+    where: {
+      sesiId: sesi.id,
+    },
+    orderBy: [
+      { urutan: "asc" },
+      { instansi: "asc" },
+      { nama: "asc" },
+    ],
+    select: {
+      id: true,
+      urutan: true,
+      nama: true,
+      nip: true,
+      jabatan: true,
+      instansi: true,
+      eselon: true,
+      status: true,
+      namaPerwakilan: true,
+      jabatanPerwakilan: true,
+      keterangan: true,
+      waktuInput: true,
+      waktuPulang: true,
+      isSelfInput: true,
+      isNonUndangan: true,
+      fotoUrl: true,
+      fotoPulangUrl: true,
+      lokasiText: true,
+      distanceMeters: true,
+      isInsideRadius: true,
+    },
+  });
+
+  const total = rawPeserta.length;
+  const hadir = rawPeserta.filter((p) => p.status === "HADIR").length;
+  const mewakili = rawPeserta.filter((p) => p.status === "MEWAKILI").length;
+  const izin = rawPeserta.filter((p) => p.status === "IZIN").length;
+  const tidakHadir = rawPeserta.filter((p) => p.status === "TIDAK_HADIR").length;
+  const totalMengisi = hadir + mewakili + izin;
+  const persentase = total > 0 ? Math.round((totalMengisi / total) * 100) : 0;
+
+  return {
+    agenda: {
+      ...agenda,
+      tanggal: agenda.tanggal ? agenda.tanggal.toISOString() : null,
+      waktuBukaAbsen: agenda.waktuBukaAbsen ? agenda.waktuBukaAbsen.toISOString() : null,
+      waktuTutupAbsen: agenda.waktuTutupAbsen ? agenda.waktuTutupAbsen.toISOString() : null,
+      waktuBukaPulang: agenda.waktuBukaPulang ? agenda.waktuBukaPulang.toISOString() : null,
+      waktuTutupPulang: agenda.waktuTutupPulang ? agenda.waktuTutupPulang.toISOString() : null,
+    },
+    sesi: {
+      id: sesi.id,
+      tanggalSesi: sesi.tanggalSesi ? sesi.tanggalSesi.toISOString() : null,
+    },
+    stats: {
+      total,
+      hadir,
+      mewakili,
+      izin,
+      tidakHadir,
+      totalMengisi,
+      persentase,
+    },
+    peserta: rawPeserta.map((p) => ({
+      ...p,
+      hasFoto: !!p.fotoUrl,
+      hasFotoPulang: !!p.fotoPulangUrl,
+      fotoUrl: p.fotoUrl || null,
+      fotoPulangUrl: p.fotoPulangUrl || null,
+      waktuInput: p.waktuInput ? p.waktuInput.toISOString() : null,
+      waktuPulang: p.waktuPulang ? p.waktuPulang.toISOString() : null,
+    })),
+    lastUpdated: now.toISOString(),
+  };
+}
+
 export async function searchPublicPesertaAgenda(publicToken: string, query: string) {
   if (!publicToken || !query || !query.trim()) {
     return [];
@@ -1081,7 +1205,13 @@ export async function searchPublicPesertaAgenda(publicToken: string, query: stri
   const cleanQuery = query.trim();
 
   const agenda = await prisma.agendaAbsensi.findFirst({
-    where: { publicToken, isDeleted: false },
+    where: {
+      OR: [
+        { publicToken },
+        { id: publicToken },
+      ],
+      isDeleted: false,
+    },
     select: { id: true },
   });
 
@@ -1203,7 +1333,13 @@ export async function submitSelfAbsensi(payload: {
   if (!publicToken) throw new Error("Token tidak valid");
 
   const agenda = await prisma.agendaAbsensi.findFirst({
-    where: { publicToken, isDeleted: false },
+    where: {
+      OR: [
+        { publicToken },
+        { id: publicToken },
+      ],
+      isDeleted: false,
+    },
   });
 
   if (!agenda) throw new Error("Agenda presensi tidak ditemukan");
@@ -1280,11 +1416,13 @@ export async function submitSelfAbsensi(payload: {
     }
   }
 
-  if (agenda.requirePhoto && payload.status !== "IZIN" && !payload.fotoUrl) {
+  const isIzin = payload.status === "IZIN";
+
+  if (agenda.requirePhoto && !isIzin && !payload.fotoUrl) {
     throw new Error("Foto selfie bukti presensi wajib diambil dan diunggah");
   }
 
-  if (agenda.requireLocation && (payload.latitude === undefined || payload.longitude === undefined || payload.latitude === null || payload.longitude === null)) {
+  if (agenda.requireLocation && !isIzin && (payload.latitude === undefined || payload.longitude === undefined || payload.latitude === null || payload.longitude === null)) {
     throw new Error("Izin lokasi (Geotag/GPS) wajib diaktifkan untuk memastikan kehadiran Anda di lokasi kegiatan");
   }
 
@@ -1296,6 +1434,7 @@ export async function submitSelfAbsensi(payload: {
   const allowedRadius = sesi.radiusMeter ?? agenda.radiusMeter ?? 100;
 
   if (
+    !isIzin &&
     targetLat !== null &&
     targetLat !== undefined &&
     targetLng !== null &&
@@ -1419,13 +1558,13 @@ export async function submitSelfAbsensi(payload: {
         namaPerwakilan: payload.status === "MEWAKILI" ? payload.namaPerwakilan : null,
         jabatanPerwakilan: payload.status === "MEWAKILI" ? payload.jabatanPerwakilan : null,
         keterangan: payload.keterangan || null,
-        fotoUrl: payload.fotoUrl || null,
-        latitude: payload.latitude || null,
-        longitude: payload.longitude || null,
-        accuracy: payload.accuracy || null,
-        lokasiText: payload.lokasiText || null,
-        distanceMeters,
-        isInsideRadius,
+        fotoUrl: isIzin ? null : (payload.fotoUrl || null),
+        latitude: isIzin ? null : (payload.latitude || null),
+        longitude: isIzin ? null : (payload.longitude || null),
+        accuracy: isIzin ? null : (payload.accuracy || null),
+        lokasiText: isIzin ? null : (payload.lokasiText || null),
+        distanceMeters: isIzin ? null : distanceMeters,
+        isInsideRadius: isIzin ? null : isInsideRadius,
         waktuInput: now,
         isSelfInput: true,
         ipAddress: payload.ipAddress || null,
@@ -1471,13 +1610,13 @@ export async function submitSelfAbsensi(payload: {
         namaPerwakilan: payload.status === "MEWAKILI" ? payload.namaPerwakilan : null,
         jabatanPerwakilan: payload.status === "MEWAKILI" ? payload.jabatanPerwakilan : null,
         keterangan: payload.keterangan || null,
-        fotoUrl: payload.fotoUrl || null,
-        latitude: payload.latitude || null,
-        longitude: payload.longitude || null,
-        accuracy: payload.accuracy || null,
-        lokasiText: payload.lokasiText || null,
-        distanceMeters,
-        isInsideRadius,
+        fotoUrl: isIzin ? null : (payload.fotoUrl || null),
+        latitude: isIzin ? null : (payload.latitude || null),
+        longitude: isIzin ? null : (payload.longitude || null),
+        accuracy: isIzin ? null : (payload.accuracy || null),
+        lokasiText: isIzin ? null : (payload.lokasiText || null),
+        distanceMeters: isIzin ? null : distanceMeters,
+        isInsideRadius: isIzin ? null : isInsideRadius,
         waktuInput: now,
         isSelfInput: true,
         ipAddress: payload.ipAddress || null,
@@ -1633,7 +1772,13 @@ export async function submitSelfAbsensiPulang(payload: {
   if (!publicToken || !pesertaId) throw new Error("Parameter presensi tidak valid");
 
   const agenda = await prisma.agendaAbsensi.findFirst({
-    where: { publicToken, isDeleted: false },
+    where: {
+      OR: [
+        { publicToken },
+        { id: publicToken },
+      ],
+      isDeleted: false,
+    },
   });
 
   if (!agenda) throw new Error("Agenda presensi tidak ditemukan");

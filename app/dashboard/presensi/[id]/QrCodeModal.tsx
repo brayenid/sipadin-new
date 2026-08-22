@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { QrCode, Copy, Check, ExternalLink, Download, Sparkles } from "lucide-react";
+import { QrCode, Copy, Check, ExternalLink, Download, Sparkles, Eye } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
 export default function QrCodeModal({
   isOpen,
   onClose,
+  agendaId,
   publicToken,
   namaKegiatan,
   tanggal,
@@ -18,6 +19,7 @@ export default function QrCodeModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
+  agendaId?: string;
   publicToken: string | null;
   namaKegiatan: string;
   tanggal?: string;
@@ -26,10 +28,12 @@ export default function QrCodeModal({
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [copiedMonitor, setCopiedMonitor] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const publicUrl = publicToken ? `${baseUrl}/p/presensi/${publicToken}` : "";
+  const publicUrl = publicToken ? `${baseUrl}/p/presensi/${publicToken}` : (agendaId ? `${baseUrl}/p/presensi/${agendaId}` : "");
+  const monitorUrl = agendaId ? `${baseUrl}/p/presensi/${agendaId}/monitor` : "";
 
   useEffect(() => {
     if (publicUrl && isOpen) {
@@ -52,6 +56,14 @@ export default function QrCodeModal({
     setCopied(true);
     toast.success("Tautan presensi disalin ke clipboard");
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleCopyMonitorLink = () => {
+    if (!monitorUrl) return;
+    navigator.clipboard.writeText(monitorUrl);
+    setCopiedMonitor(true);
+    toast.success("Tautan live monitor disalin ke clipboard");
+    setTimeout(() => setCopiedMonitor(false), 2500);
   };
 
   const handleDownloadQr = async () => {
@@ -411,6 +423,36 @@ export default function QrCodeModal({
               </Button>
             </a>
           </div>
+
+          {/* Live Monitor Link Card */}
+          {monitorUrl && (
+            <div className="mt-1 p-2 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-bold text-indigo-900 flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-indigo-600" />
+                  Tautan Pemantau (Live Monitor):
+                </span>
+                <span className="text-[9.5px] font-semibold text-indigo-600 bg-white px-1.5 py-0.2 rounded border border-indigo-200">
+                  Read-Only
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-1 pl-2 bg-white border border-indigo-200/80 rounded-lg text-xs overflow-hidden">
+                <span className="font-mono text-slate-600 truncate text-[10.5px] pr-2">
+                  {monitorUrl}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyMonitorLink}
+                  className="h-6 px-2 text-indigo-700 font-bold shrink-0 hover:bg-indigo-50 bg-indigo-50/80 border border-indigo-200/60 rounded text-[11px]"
+                >
+                  {copiedMonitor ? <Check className="w-3 h-3 mr-1 text-emerald-600" /> : <Copy className="w-3 h-3 mr-1" />}
+                  {copiedMonitor ? "Tersalin" : "Salin"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

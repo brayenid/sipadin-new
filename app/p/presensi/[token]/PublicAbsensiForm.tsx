@@ -484,24 +484,26 @@ export default function PublicAbsensiForm({
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
 
-    // Paksaan & Validasi Akses Lokasi GPS
+    // Paksaan & Validasi Akses Lokasi GPS (Dilewati jika status IZIN)
     let currentGps = gpsLocation;
-    if (agenda.requireLocation || !currentGps) {
-      try {
-        currentGps = await getFreshLocation();
-      } catch (locErr: any) {
-        if (agenda.requireLocation) {
-          setIsSubmitting(false);
-          toast.error(locErr.message || "Akses lokasi (GPS) wajib diaktifkan untuk mengirim presensi.");
-          return;
+    if (status !== "IZIN") {
+      if (agenda.requireLocation || !currentGps) {
+        try {
+          currentGps = await getFreshLocation();
+        } catch (locErr: any) {
+          if (agenda.requireLocation) {
+            setIsSubmitting(false);
+            toast.error(locErr.message || "Akses lokasi (GPS) wajib diaktifkan untuk mengirim presensi.");
+            return;
+          }
         }
       }
-    }
 
-    if (agenda.requireLocation && !currentGps) {
-      setIsSubmitting(false);
-      toast.error("Akses lokasi (GPS) wajib diaktifkan dan diizinkan pada browser untuk mengirim presensi.");
-      return;
+      if (agenda.requireLocation && !currentGps) {
+        setIsSubmitting(false);
+        toast.error("Akses lokasi (GPS) wajib diaktifkan dan diizinkan pada browser untuk mengirim presensi.");
+        return;
+      }
     }
 
     // ALUR 1: SUBMIT PRESENSI PULANG
@@ -567,8 +569,9 @@ export default function PublicAbsensiForm({
     // ALUR 2: SUBMIT PRESENSI DATANG
     try {
       let uploadedPhotoUrl: string | null = null;
+      const isIzin = status === "IZIN";
 
-      if (photoBlob) {
+      if (photoBlob && !isIzin) {
         if (photoBlob.size > 5 * 1024 * 1024) {
           throw new Error("Ukuran foto melebihi batas maksimal 5MB. Silakan ambil ulang foto.");
         }
@@ -599,11 +602,11 @@ export default function PublicAbsensiForm({
         namaPerwakilan: status === "MEWAKILI" ? namaPerwakilan : null,
         jabatanPerwakilan: status === "MEWAKILI" ? jabatanPerwakilan : null,
         keterangan: keterangan || null,
-        fotoUrl: uploadedPhotoUrl,
-        latitude: currentGps?.lat || null,
-        longitude: currentGps?.lng || null,
-        accuracy: currentGps?.accuracy || null,
-        lokasiText: currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null,
+        fotoUrl: isIzin ? null : uploadedPhotoUrl,
+        latitude: isIzin ? null : (currentGps?.lat || null),
+        longitude: isIzin ? null : (currentGps?.lng || null),
+        accuracy: isIzin ? null : (currentGps?.accuracy || null),
+        lokasiText: isIzin ? null : (currentGps ? `${currentGps.lat.toFixed(6)}, ${currentGps.lng.toFixed(6)}` : null),
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       };
 
@@ -1633,7 +1636,15 @@ export default function PublicAbsensiForm({
                 Persetujuan Penggunaan Data
               </p>
               <p className="text-amber-800/90">
-                Dengan menekan tombol <strong>"Setuju & Kirim"</strong>, Anda menyatakan secara sadar bahwa data identitas, foto selfie kehadiran, dan titik koordinat lokasi (GPS) yang dikirimkan adalah benar serta bersedia digunakan sebagai dokumen bukti kehadiran resmi kegiatan Pemerintah Kabupaten Kutai Barat.
+                {status === "IZIN" && !isCheckOutMode ? (
+                  <>
+                    Dengan menekan tombol <strong>&quot;Setuju &amp; Kirim&quot;</strong>, Anda menyatakan secara sadar bahwa data identitas dan keterangan izin yang dikirimkan adalah benar serta bersedia digunakan sebagai dokumen laporan resmi kegiatan Pemerintah Kabupaten Kutai Barat.
+                  </>
+                ) : (
+                  <>
+                    Dengan menekan tombol <strong>&quot;Setuju &amp; Kirim&quot;</strong>, Anda menyatakan secara sadar bahwa data identitas, foto selfie kehadiran, dan titik koordinat lokasi (GPS) yang dikirimkan adalah benar serta bersedia digunakan sebagai dokumen bukti kehadiran resmi kegiatan Pemerintah Kabupaten Kutai Barat.
+                  </>
+                )}
               </p>
             </div>
 
