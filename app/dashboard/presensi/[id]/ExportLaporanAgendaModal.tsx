@@ -66,8 +66,20 @@ export default function ExportLaporanAgendaModal({
   };
 }) {
   const [pageSize, setPageSize] = useState<"F4" | "A4">("F4");
+  const [filterFilledOnly, setFilterFilledOnly] = useState(false);
 
   const formattedTanggal = formatWita(agenda.tanggal, "dd MMMM yyyy");
+
+  const countTotal = agenda.peserta.length;
+  const countFilled = agenda.peserta.filter(
+    (p) => p.status === "HADIR" || p.status === "MEWAKILI" || p.status === "IZIN"
+  ).length;
+
+  const targetPesertaList = filterFilledOnly
+    ? agenda.peserta.filter(
+        (p) => p.status === "HADIR" || p.status === "MEWAKILI" || p.status === "IZIN"
+      )
+    : agenda.peserta;
 
   const laporanData: LaporanHasilAgendaData = {
     namaKegiatan: agenda.namaKegiatan,
@@ -87,7 +99,7 @@ export default function ExportLaporanAgendaModal({
           jabatan: agenda.picJabatan,
         }
       : null,
-    peserta: agenda.peserta.map((p) => ({
+    peserta: targetPesertaList.map((p) => ({
       nama: p.nama,
       nip: p.nip,
       jabatan: p.jabatan,
@@ -115,7 +127,7 @@ export default function ExportLaporanAgendaModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="!max-w-[94vw] w-[94vw] sm:!max-w-[94vw] h-[94vh] flex flex-col p-3 sm:p-5 bg-white">
-        <DialogHeader className="pb-2.5 border-b shrink-0 flex flex-row items-center justify-between">
+        <DialogHeader className="pb-2.5 border-b shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
               Laporan Hasil Presensi Kegiatan
@@ -123,6 +135,37 @@ export default function ExportLaporanAgendaModal({
             <p className="text-xs text-slate-500 mt-0.5">
               {agenda.namaKegiatan} • {formattedTanggal}
             </p>
+          </div>
+
+          {/* Toggle Filter Peserta */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600 hidden sm:inline">
+              Filter Data:
+            </span>
+            <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-xs">
+              <button
+                type="button"
+                onClick={() => setFilterFilledOnly(false)}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  !filterFilledOnly
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Semua Peserta ({countTotal})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterFilledOnly(true)}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  filterFilledOnly
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Hanya Yang Mengisi ({countFilled})
+              </button>
+            </div>
           </div>
         </DialogHeader>
 

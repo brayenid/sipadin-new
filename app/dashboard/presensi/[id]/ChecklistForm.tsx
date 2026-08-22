@@ -52,6 +52,7 @@ import {
   HelpCircle,
   Ban,
   CalendarDays,
+  ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -79,6 +80,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import CetakModal from "./CetakModal";
 import ExportLaporanAgendaModal from "./ExportLaporanAgendaModal";
 import ModalTambahPeserta from "./ModalTambahPeserta";
@@ -886,8 +893,27 @@ export default function ChecklistForm({
     }
   };
 
-  const handleExportExcel = () => {
+  const countMengisi = pesertaList.filter(
+    (p) => p.status === "HADIR" || p.status === "MEWAKILI" || p.status === "IZIN"
+  ).length;
+
+  const handleExportExcel = (filledOnly = false) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+    const targetPeserta = filledOnly
+      ? pesertaList.filter(
+          (p) => p.status === "HADIR" || p.status === "MEWAKILI" || p.status === "IZIN"
+        )
+      : pesertaList;
+
+    if (targetPeserta.length === 0) {
+      toast.error(
+        filledOnly
+          ? "Belum ada peserta yang mengisi kehadiran (Hadir/Mewakili/Izin)"
+          : "Tidak ada data peserta untuk diekspor"
+      );
+      return;
+    }
 
     const headers = [
       "No",
@@ -910,7 +936,7 @@ export default function ChecklistForm({
       "URL Foto Pulang",
     ];
 
-    const dataRows = pesertaList.map((p, idx) => {
+    const dataRows = targetPeserta.map((p, idx) => {
       const isNonUndangan = Boolean(p.isNonUndangan);
       const statusLabel =
         p.status === "HADIR"
@@ -1022,14 +1048,19 @@ export default function ChecklistForm({
     worksheet["!cols"] = colWidths;
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Daftar Presensi");
+    XLSX.utils.book_append_sheet(workbook, worksheet, filledOnly ? "Presensi Yang Mengisi" : "Daftar Presensi");
 
     const safeTitle = agenda.namaKegiatan.replace(/[^a-zA-Z0-9]/g, "_");
+    const suffix = filledOnly ? "Yang_Mengisi" : "Semua";
     XLSX.writeFile(
       workbook,
-      `Laporan_Presensi_${safeTitle}_${new Date().toISOString().split("T")[0]}.xlsx`
+      `Laporan_Presensi_${suffix}_${safeTitle}_${new Date().toISOString().split("T")[0]}.xlsx`
     );
-    toast.success("Laporan kehadiran berhasil diekspor ke Excel!");
+    toast.success(
+      filledOnly
+        ? `Laporan presensi (${targetPeserta.length} peserta yang mengisi) berhasil diekspor ke Excel!`
+        : `Laporan presensi (${targetPeserta.length} peserta) berhasil diekspor ke Excel!`
+    );
   };
 
   return (
@@ -2474,16 +2505,38 @@ export default function ChecklistForm({
             </span>
 
             <div className="hidden lg:flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExportExcel}
-                className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold shadow-2xs"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
-                Ekspor Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold shadow-2xs gap-1"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 mr-0.5" />
+                      Ekspor Excel
+                      <ChevronDown className="w-3 h-3 text-emerald-600 ml-0.5" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="w-64 bg-white p-1.5 shadow-lg border border-slate-200">
+                  <DropdownMenuItem
+                    onClick={() => handleExportExcel(false)}
+                    className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-slate-50"
+                  >
+                    <span className="font-semibold text-slate-800">Semua Peserta Terdaftar</span>
+                    <span className="text-[11px] text-slate-500">Seluruh undangan terdata ({pesertaList.length} data)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExportExcel(true)}
+                    className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-emerald-50"
+                  >
+                    <span className="font-semibold text-emerald-800">Hanya Yang Mengisi Saja</span>
+                    <span className="text-[11px] text-emerald-600">Status Hadir, Mewakili, Izin ({countMengisi} data)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Button
                 type="button"
@@ -2978,16 +3031,37 @@ export default function ChecklistForm({
         ) : activeTab === "DAFTAR_HADIR" ? (
           /* Tab DAFTAR_HADIR: Simpan Kehadiran, Ekspor & Tambah Pegawai */
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleExportExcel}
-              className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
-              title="Ekspor Laporan ke Excel"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
+                    title="Ekspor Laporan ke Excel"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="start" side="top" className="w-60 bg-white p-1.5 shadow-lg border border-slate-200">
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel(false)}
+                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-slate-50"
+                >
+                  <span className="font-semibold text-slate-800">Semua Peserta ({pesertaList.length})</span>
+                  <span className="text-[10.5px] text-slate-500">Seluruh undangan terdata</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel(true)}
+                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-emerald-50"
+                >
+                  <span className="font-semibold text-emerald-800">Hanya Yang Mengisi ({countMengisi})</span>
+                  <span className="text-[10.5px] text-emerald-600">Hadir / Mewakili / Izin</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               variant="outline"
@@ -3024,16 +3098,37 @@ export default function ChecklistForm({
         ) : (
           /* Tab PETA_GPS & PANDUAN_TEKNIS */
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleExportExcel}
-              className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
-              title="Ekspor Laporan ke Excel"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
+                    title="Ekspor Laporan ke Excel"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="start" side="top" className="w-60 bg-white p-1.5 shadow-lg border border-slate-200">
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel(false)}
+                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-slate-50"
+                >
+                  <span className="font-semibold text-slate-800">Semua Peserta ({pesertaList.length})</span>
+                  <span className="text-[10.5px] text-slate-500">Seluruh undangan terdata</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel(true)}
+                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-emerald-50"
+                >
+                  <span className="font-semibold text-emerald-800">Hanya Yang Mengisi ({countMengisi})</span>
+                  <span className="text-[10.5px] text-emerald-600">Hadir / Mewakili / Izin</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               variant="outline"
