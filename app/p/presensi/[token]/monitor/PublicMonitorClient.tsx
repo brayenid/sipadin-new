@@ -47,7 +47,7 @@ interface MonitorData {
     picJabatan: string | null;
   };
   sesi: {
-    id: string;
+    id: string | null;
     tanggalSesi: string | null;
   };
   stats: {
