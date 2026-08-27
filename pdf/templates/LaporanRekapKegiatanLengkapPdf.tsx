@@ -440,7 +440,7 @@ export default function LaporanRekapKegiatanLengkapPdf({
                   <Text style={styles.analysisBold}>Titik Acuan Lokasi: </Text>
                   {hasVenue ? (
                     <>
-                      Titik lokasi kegiatan ditetapkan secara resmi pada koordinat <Text style={styles.analysisBold}>{agenda.targetLatitude?.toFixed(5)}, {agenda.targetLongitude?.toFixed(5)}</Text> ({agenda.tempat}) dengan batas toleransi radius <Text style={styles.analysisBold}>±{venueRadius} meter</Text>.
+                      Titik lokasi kegiatan ditetapkan pada koordinat <Text style={styles.analysisBold}>{agenda.targetLatitude?.toFixed(5)}, {agenda.targetLongitude?.toFixed(5)}</Text> ({agenda.tempat}) dengan batas toleransi radius <Text style={styles.analysisBold}>±{venueRadius} meter</Text>.
                     </>
                   ) : totalGps >= 4 ? (
                     <>
