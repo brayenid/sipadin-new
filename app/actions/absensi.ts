@@ -3370,3 +3370,89 @@ export async function addPesertaBulkToAgenda(
   return { success: true };
 }
 
+export async function getRekapKegiatanLengkap(params?: {
+  startDate?: string;
+  endDate?: string;
+  kategoriAgenda?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const whereAgenda: any = {
+    isDeleted: false,
+    status: { not: StatusAgendaAbsensi.DIBATALKAN },
+  };
+
+  if (params?.kategoriAgenda && params.kategoriAgenda !== "ALL") {
+    if (params.kategoriAgenda === "RUTIN") {
+      whereAgenda.isRecurring = true;
+    } else if (params.kategoriAgenda === "RAPAT") {
+      whereAgenda.isRecurring = false;
+    } else if (params.kategoriAgenda === "APEL") {
+      whereAgenda.kategori = "APEL";
+    }
+  }
+
+  if (params?.startDate || params?.endDate) {
+    whereAgenda.tanggal = {};
+    if (params.startDate) {
+      whereAgenda.tanggal.gte = parseWitaInput(params.startDate);
+    }
+    if (params.endDate) {
+      whereAgenda.tanggal.lte = parseWitaInput(params.endDate);
+    }
+  }
+
+  const agendas = await prisma.agendaAbsensi.findMany({
+    where: whereAgenda,
+    orderBy: { tanggal: "desc" },
+    include: {
+      peserta: {
+        orderBy: [
+          { urutan: "asc" },
+          { instansi: "asc" },
+          { nama: "asc" },
+        ],
+      },
+    },
+  });
+
+  return agendas.map((ag) => ({
+    id: ag.id,
+    namaKegiatan: ag.namaKegiatan,
+    hari: ag.hari,
+    tanggal: ag.tanggal,
+    waktu: ag.waktu,
+    tempat: ag.tempat,
+    targetPeserta: ag.targetPeserta,
+    targetLatitude: ag.targetLatitude,
+    targetLongitude: ag.targetLongitude,
+    radiusMeter: ag.radiusMeter,
+    enableCheckOut: ag.enableCheckOut,
+    picNama: ag.picNama,
+    picNip: ag.picNip,
+    picJabatan: ag.picJabatan,
+    peserta: ag.peserta.map((p) => ({
+      id: p.id,
+      nama: p.nama,
+      nip: p.nip,
+      jabatan: p.jabatan,
+      instansi: p.instansi,
+      status: p.status,
+      namaPerwakilan: p.namaPerwakilan,
+      jabatanPerwakilan: p.jabatanPerwakilan,
+      keterangan: p.keterangan,
+      isSelfInput: p.isSelfInput,
+      isNonUndangan: p.isNonUndangan,
+      waktuInput: p.waktuInput,
+      waktuPulang: p.waktuPulang,
+      lokasiText: p.lokasiText,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      distanceMeters: p.distanceMeters,
+      isInsideRadius: p.isInsideRadius,
+    })),
+  }));
+}
+
+

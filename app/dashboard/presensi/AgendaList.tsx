@@ -26,7 +26,16 @@ import {
   CheckCheck,
   Eye,
   Camera,
+  Download,
+  MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatWita } from "@/lib/date-utils";
 import { deleteAgendaAbsensi } from "@/app/actions/absensi";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -249,25 +258,50 @@ export default function AgendaList({
               </CardDescription>
             </div>
 
-            <div className="hidden lg:flex items-center gap-2">
-              <Link href="/dashboard/presensi/rekap">
-                <Button variant="outline" size="sm" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
-                  <BarChart3 className="w-3.5 h-3.5 mr-1" />
-                  Rekapitulasi
-                </Button>
-              </Link>
+            <div className="hidden sm:flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold h-9 px-3 gap-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-xs cursor-pointer transition-colors focus:outline-hidden"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <span>Menu Lainnya</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-lg rounded-xl border-slate-200">
+                  <DropdownMenuItem
+                    onClick={() => router.push("/dashboard/presensi/rekap")}
+                    className="flex items-center gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 focus:bg-indigo-50 focus:text-indigo-900"
+                  >
+                    <BarChart3 className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>Rekapitulasi Kehadiran</span>
+                  </DropdownMenuItem>
 
-              <Link href="/dashboard/presensi/pejabat">
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Users className="w-3.5 h-3.5 mr-1" />
-                  Master Pegawai
-                </Button>
-              </Link>
+                  <DropdownMenuItem
+                    onClick={() => router.push("/dashboard/presensi/pejabat")}
+                    className="flex items-center gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 focus:bg-indigo-50 focus:text-indigo-900 mt-0.5"
+                  >
+                    <Users className="w-4 h-4 text-slate-600 shrink-0" />
+                    <span>Kelola Master Pegawai</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.location.href = "/api/presensi/export-json";
+                      }
+                    }}
+                    className="flex items-center gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 focus:bg-emerald-50 focus:text-emerald-900 mt-0.5"
+                  >
+                    <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Ekspor Backup Data (JSON)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Link href="/dashboard/presensi/buat">
                 <Button
                   size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-9 px-3.5 shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Buat Agenda

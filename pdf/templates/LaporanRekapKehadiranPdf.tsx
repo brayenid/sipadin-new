@@ -144,7 +144,7 @@ export default function LaporanRekapKehadiranPdf({
           </View>
         </View>
 
-        {/* Tabel Data Rekap & Raport */}
+        {/* Tabel Data Rekap Kehadiran OPD */}
         <View style={styles.table}>
           <View style={styles.tableHeader} fixed>
             <View style={[styles.th, styles.colNo, styles.borderRight]}><Text style={styles.thText}>No</Text></View>
@@ -156,8 +156,7 @@ export default function LaporanRekapKehadiranPdf({
             <View style={[styles.th, styles.colIzin, styles.borderRight]}><Text style={styles.thText}>Izin</Text></View>
             <View style={[styles.th, styles.colAlpa, styles.borderRight]}><Text style={styles.thText}>Alpa</Text></View>
             <View style={[styles.th, styles.colPercent, styles.borderRight]}><Text style={styles.thText}>% Hadir</Text></View>
-            <View style={[styles.th, styles.colChart, styles.borderRight]}><Text style={styles.thText}>Komposisi Kehadiran</Text></View>
-            <View style={[styles.th, styles.colEvaluasi]}><Text style={styles.thText}>Raport & Catatan Evaluasi</Text></View>
+            <View style={[styles.th, styles.colChart]}><Text style={styles.thText}>Komposisi Kehadiran</Text></View>
           </View>
 
           {data.dataOpd.map((opd, idx) => {
@@ -214,15 +213,13 @@ export default function LaporanRekapKehadiranPdf({
                   </View>
                   <View style={[styles.td, styles.colWakili, styles.borderRight]}><Text style={styles.tdText}>{wakiliCount}</Text></View>
                   <View style={[styles.td, styles.colIzin, styles.borderRight]}><Text style={styles.tdText}>{izinCount}</Text></View>
-                  <View style={[styles.td, styles.colAlpa, styles.borderRight]}>
-                    <Text style={[styles.tdText, alpaCount > 0 ? styles.textRedBold : {}]}>{alpaCount}</Text>
-                  </View>
+                  <View style={[styles.td, styles.colAlpa, styles.borderRight]}><Text style={[styles.tdText, alpaCount > 0 ? styles.textRedBold : {}]}>{alpaCount}</Text></View>
                   <View style={[styles.td, styles.colPercent, styles.borderRight]}>
                     <Text style={[styles.tdText, styles.fontBold]}>{opd.persentaseKehadiran}%</Text>
                   </View>
 
                   {/* Black Monochrome Segmented Bar Chart */}
-                  <View style={[styles.td, styles.colChart, styles.borderRight]}>
+                  <View style={[styles.td, styles.colChart]}>
                     <View style={styles.barChartContainer}>
                       {pctValid > 0 && <View style={[styles.barSegment, { width: `${pctValid}%`, backgroundColor: "#0f172a" }]} />}
                       {pctLuar > 0 && <View style={[styles.barSegment, { width: `${pctLuar}%`, backgroundColor: "#d97706" }]} />}
@@ -230,16 +227,6 @@ export default function LaporanRekapKehadiranPdf({
                       {pctIzin > 0 && <View style={[styles.barSegment, { width: `${pctIzin}%`, backgroundColor: "#cbd5e1" }]} />}
                       {pctAlpa > 0 && <View style={[styles.barSegment, { width: `${pctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
                     </View>
-                  </View>
-
-                  {/* Raport & Evaluasi Singkat */}
-                  <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
-                    <Text style={styles.evalPredikat}>
-                      {opd.predikatKepatuhan || (opd.persentaseKehadiran >= 80 ? "Sangat Tertib" : "Cukup Tertib")}
-                    </Text>
-                    <Text style={styles.evalText}>
-                      {opd.evaluasiSingkat || "Kehadiran tertib di lokasi."}
-                    </Text>
                   </View>
                 </View>
 
@@ -279,7 +266,7 @@ export default function LaporanRekapKehadiranPdf({
                       <View style={[styles.td, styles.colPercent, styles.borderRight]}>
                         <Text style={[styles.subText, styles.fontBold]}>{h.isCancelledSession ? "-" : `${h.persentaseKehadiran}%`}</Text>
                       </View>
-                      <View style={[styles.td, styles.colChart, styles.borderRight]}>
+                      <View style={[styles.td, styles.colChart]}>
                         {h.isCancelledSession ? (
                           <View style={[styles.barChartContainer, { height: 5, backgroundColor: "#f1f5f9" }]} />
                         ) : (
@@ -291,17 +278,6 @@ export default function LaporanRekapKehadiranPdf({
                             {hPctAlpa > 0 && <View style={[styles.barSegment, { width: `${hPctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
                           </View>
                         )}
-                      </View>
-                      <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
-                        <Text style={[styles.subEvaluasiText, h.isCancelledSession ? { color: "#e11d48", fontWeight: "bold" } : {}]}>
-                          {h.isCancelledSession
-                            ? `Ditiadakan (${h.cancelReason || "Libur"})`
-                            : h.persentaseKehadiran === 100
-                            ? "Hadir Lengkap"
-                            : h.persentaseKehadiran > 0
-                            ? `${h.hadir} Hadir, ${h.tidakHadir} Absen`
-                            : "Tidak Hadir / Belum Presensi"}
-                        </Text>
                       </View>
                     </View>
                   );
@@ -471,17 +447,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingLeft: 6,
   },
-  colNo: { width: "3.5%" },
-  colOpd: { width: "22%" },
-  colUndang: { width: "5%" },
-  colHadirValid: { width: "6.5%" },
-  colHadirLuar: { width: "6%" },
-  colWakili: { width: "5%" },
-  colIzin: { width: "4%" },
-  colAlpa: { width: "4%" },
-  colPercent: { width: "5.5%" },
-  colChart: { width: "15%" },
-  colEvaluasi: { width: "23.5%" },
+  colNo: { width: "4%" },
+  colOpd: { width: "32%" },
+  colUndang: { width: "6%" },
+  colHadirValid: { width: "8%" },
+  colHadirLuar: { width: "7%" },
+  colWakili: { width: "6%" },
+  colIzin: { width: "5%" },
+  colAlpa: { width: "5%" },
+  colPercent: { width: "7%" },
+  colChart: { width: "20%" },
 
   fontBold: { fontWeight: "bold" },
   textAmberBold: { fontWeight: "bold", color: "#d97706" },

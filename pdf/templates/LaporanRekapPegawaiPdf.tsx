@@ -111,7 +111,7 @@ export default function LaporanRekapPegawaiPdf({
           </View>
         </View>
 
-        {/* Tabel Data Rekap & Raport */}
+        {/* Tabel Data Rekap Kehadiran Pegawai */}
         <View style={styles.table}>
           <View style={styles.tableHeader} fixed>
             <View style={[styles.th, styles.colNo, styles.borderRight]}><Text style={styles.thText}>No</Text></View>
@@ -124,8 +124,7 @@ export default function LaporanRekapPegawaiPdf({
             <View style={[styles.th, styles.colIzin, styles.borderRight]}><Text style={styles.thText}>Izin</Text></View>
             <View style={[styles.th, styles.colAlpa, styles.borderRight]}><Text style={styles.thText}>Alpa</Text></View>
             <View style={[styles.th, styles.colPercent, styles.borderRight]}><Text style={styles.thText}>% Hadir</Text></View>
-            <View style={[styles.th, styles.colChart, styles.borderRight]}><Text style={styles.thText}>Komposisi Kehadiran</Text></View>
-            <View style={[styles.th, styles.colEvaluasi]}><Text style={styles.thText}>Raport & Catatan Evaluasi</Text></View>
+            <View style={[styles.th, styles.colChart]}><Text style={styles.thText}>Komposisi Kehadiran</Text></View>
           </View>
 
           {data.dataPegawai.map((peg, idx) => {
@@ -172,7 +171,7 @@ export default function LaporanRekapPegawaiPdf({
                 </View>
 
                 {/* Black Monochrome Segmented Bar Chart */}
-                <View style={[styles.td, styles.colChart, styles.borderRight]}>
+                <View style={[styles.td, styles.colChart]}>
                   <View style={styles.barChartContainer}>
                     {pctValid > 0 && <View style={[styles.barSegment, { width: `${pctValid}%`, backgroundColor: "#0f172a" }]} />}
                     {pctLuar > 0 && <View style={[styles.barSegment, { width: `${pctLuar}%`, backgroundColor: "#d97706" }]} />}
@@ -180,16 +179,6 @@ export default function LaporanRekapPegawaiPdf({
                     {pctIzin > 0 && <View style={[styles.barSegment, { width: `${pctIzin}%`, backgroundColor: "#cbd5e1" }]} />}
                     {pctAlpa > 0 && <View style={[styles.barSegment, { width: `${pctAlpa}%`, backgroundColor: "#fecdd3" }]} />}
                   </View>
-                </View>
-
-                {/* Raport & Evaluasi Singkat */}
-                <View style={[styles.td, styles.colEvaluasi, styles.alignLeft]}>
-                  <Text style={styles.evalPredikat}>
-                    {peg.predikatKepatuhan || (peg.persentaseKehadiran >= 80 ? "Sangat Tertib" : "Cukup Tertib")}
-                  </Text>
-                  <Text style={styles.evalText}>
-                    {peg.evaluasiSingkat || "Kehadiran tertib di lokasi."}
-                  </Text>
                 </View>
               </View>
             );
@@ -360,18 +349,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingLeft: 6,
   },
-  colNo: { width: "3.5%" },
-  colNama: { width: "19%" },
-  colOpd: { width: "15%" },
-  colUndang: { width: "4.5%" },
-  colHadirValid: { width: "6%" },
-  colHadirLuar: { width: "5.5%" },
-  colWakili: { width: "4.5%" },
-  colIzin: { width: "4%" },
-  colAlpa: { width: "4%" },
-  colPercent: { width: "5%" },
-  colChart: { width: "13%" },
-  colEvaluasi: { width: "16%" },
+  colNo: { width: "4%" },
+  colNama: { width: "25%" },
+  colOpd: { width: "20%" },
+  colUndang: { width: "6%" },
+  colHadirValid: { width: "8%" },
+  colHadirLuar: { width: "7%" },
+  colWakili: { width: "6%" },
+  colIzin: { width: "5%" },
+  colAlpa: { width: "5%" },
+  colPercent: { width: "6%" },
+  colChart: { width: "8%" },
 
   fontBold: { fontWeight: "bold" },
   textAmberBold: { fontWeight: "bold", color: "#d97706" },
