@@ -443,6 +443,15 @@ export default function LaporanHasilAgendaPdf({
               )}
             </Text>
           </View>
+
+          <View style={styles.analysisItem}>
+            <Text style={styles.analysisNumber}>5.</Text>
+            <Text style={styles.analysisContent}>
+              <Text style={styles.analysisBold}>
+                Disclaimer / Catatan Teknis: Titik koordinat GPS direkam secara otomatis oleh perangkat pengguna saat presensi. Penyimpangan atau anomali jarak yang signifikan dapat dipengaruhi oleh faktor teknis perangkat (akurasi sensor GPS handphone, sinyal seluler/GPS, pemancar BTS, atau mode hemat daya), sehingga data geolokasi ini bersifat sebagai rujukan teknis pendukung dan bukan pembuktian mutlak.
+              </Text>
+            </Text>
+          </View>
         </View>
 
         {/* Tabel Data Kehadiran */}
