@@ -44,7 +44,7 @@ export default function CetakRekapLengkapModal({
     kategoriAgenda?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
   };
 }) {
-  const [filterFilledOnly, setFilterFilledOnly] = useState(false);
+  const [filterFilledOnly, setFilterFilledOnly] = useState(true);
   const [pageSize, setPageSize] = useState<"F4" | "A4">("F4");
   const [loading, setLoading] = useState(false);
   const [agendasData, setAgendasData] = useState<SingleAgendaData[]>([]);

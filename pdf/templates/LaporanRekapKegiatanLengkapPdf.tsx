@@ -397,7 +397,11 @@ export default function LaporanRekapKegiatanLengkapPdf({
                 <Text style={styles.metaLabel}>WAKTU</Text>
                 <Text style={styles.metaColon}>:</Text>
                 <Text style={styles.metaVal}>
-                  {agenda.waktu ? `${agenda.waktu} WITA` : "-"}
+                  {agenda.waktu
+                    ? agenda.waktu.toUpperCase().includes("WITA")
+                      ? agenda.waktu
+                      : `${agenda.waktu} WITA`
+                    : "-"}
                 </Text>
               </View>
               <View style={styles.metaRow}>
