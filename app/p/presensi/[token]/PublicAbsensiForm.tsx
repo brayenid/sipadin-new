@@ -1705,6 +1705,14 @@ export default function PublicAbsensiForm({
                   </div>
                 )}
               </div>
+
+              {/* Kotak Catatan Inisiatif Pilot Project (Compact & Jelas) */}
+              <div className="p-2.5 bg-indigo-50/60 border border-indigo-100 rounded-xl text-[11px] text-slate-600 leading-snug flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong className="text-slate-800 font-semibold">Inisiatif Mandiri:</strong> Sistem ini dibangun Tim PPTL Bagian Organisasi sebagai <em>pilot project</em> cepat tanpa anggaran khusus &amp; masih dalam pengembangan. Kritik dan saran dapat disampaikan ke Bagian Organisasi Setdakab Kutai Barat.
+                </p>
+              </div>
             </div>
           )}
 
