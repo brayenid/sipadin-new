@@ -1712,7 +1712,7 @@ export default function PublicAbsensiForm({
                 <div>
                   <strong className="text-indigo-950 font-bold block mb-0.5">Inisiatif Mandiri:</strong>
                   <p>
-                    Sistem ini dibangun oleh Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi guna merespons <strong>arahan pimpinan untuk kebutuhan kedinasan yang mendesak</strong>. Pengembangan dan penyesuaian sistem akan terus dilakukan sesuai dengan kebutuhan pengguna. Jika terdapat usulan, kritik, hingga saran, dapat disampaikan langsung kepada Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi. Masukan Bapak/Ibu sangat kami harapkan untuk perbaikan berkelanjutan 🙏.
+                    Sistem ini dibangun oleh Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi guna merespons <strong>arahan pimpinan untuk kebutuhan kedinasan yang mendesak</strong>. Pengembangan dan penyesuaian sistem akan terus dilakukan sesuai dengan kebutuhan pengguna. Jika terdapat usulan, kritik, maupun saran dapat disampaikan langsung kepada Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi. Masukan Bapak/Ibu sangat kami harapkan untuk perbaikan berkelanjutan 🙏.
                   </p>
                 </div>
               </div>
