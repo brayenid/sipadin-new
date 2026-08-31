@@ -1712,7 +1712,7 @@ export default function PublicAbsensiForm({
                 <div>
                   <strong className="text-indigo-950 font-bold block mb-0.5">Inisiatif Mandiri:</strong>
                   <p>
-                    Sistem ini dibangun oleh Tim PPTL Bagian Organisasi guna merespons <strong>kebutuhan kedinasan yang mendesak</strong> secara cepat sebagai <em>pilot project</em> <strong className="text-slate-900 font-bold underline decoration-indigo-300">tanpa menggunakan anggaran</strong> serta akan terus dikembangkan. Jika terdapat usulan, kebutuhan sistem lainnya, maupun kritik dan saran, dapat disampaikan langsung ke Bagian Organisasi Setdakab Kutai Barat.
+                    Sistem ini dibangun oleh Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi guna merespons <strong>kebutuhan kedinasan yang mendesak</strong> secara cepat sebagai <em>pilot project</em> <strong className="text-slate-900 font-bold underline decoration-indigo-300">tanpa menggunakan anggaran</strong> serta akan terus dikembangkan. Jika terdapat usulan, kebutuhan sistem lainnya, maupun kritik dan saran, dapat disampaikan langsung kepada Tim Pelayanan Publik dan Tata Laksana Bagian Organisasi Setdakab Kutai Barat.
                   </p>
                 </div>
               </div>
