@@ -29,6 +29,8 @@ import {
   Download,
   MoreHorizontal,
   ChevronDown,
+  Menu,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +38,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import { formatWita } from "@/lib/date-utils";
 import { deleteAgendaAbsensi } from "@/app/actions/absensi";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -107,6 +116,7 @@ export default function AgendaList({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; nama: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Filter Waktu State
   const [startDateInput, setStartDateInput] = useState(customStartDate);
@@ -688,26 +698,84 @@ export default function AgendaList({
       />
 
       {/* Mobile Bottom Fixed Action Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        <Link href="/dashboard/presensi/rekap">
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Rekapitulasi Kehadiran">
-            <BarChart3 className="w-4 h-4 text-slate-700" />
-          </Button>
-        </Link>
-        <Link href="/dashboard/presensi/pejabat">
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white border-slate-200" title="Master Pegawai Wajib Absen">
-            <Users className="w-4 h-4 text-slate-700" />
-          </Button>
-        </Link>
-        <Link href="/dashboard/presensi/buat" className="flex-1">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-3.5 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="h-10 px-3 bg-white border-slate-200 text-slate-700 font-semibold text-xs shrink-0 flex items-center gap-1.5 shadow-2xs"
+          title="Menu Opsi Presensi"
+        >
+          <Menu className="w-4 h-4 text-slate-600" />
+          <span>Menu</span>
+        </Button>
+        <Link href="/dashboard/presensi/buat" className="flex-1 min-w-0">
           <Button
-            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm justify-center"
           >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Buat Agenda
+            <Plus className="w-4 h-4 mr-1.5 shrink-0" />
+            <span>Buat Agenda</span>
           </Button>
         </Link>
       </div>
+
+      {/* Mobile Menu Drawer */}
+      <Drawer open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen} showSwipeHandle>
+        <DrawerContent className="lg:hidden bg-white outline-none rounded-t-2xl pb-6">
+          <DrawerHeader className="p-4 border-b border-slate-100 text-left">
+            <DrawerTitle className="text-sm font-bold text-slate-900">
+              Menu Presensi Digital
+            </DrawerTitle>
+            <DrawerDescription className="text-xs text-slate-500">
+              Akses rekapitulasi kehadiran dan master pegawai wajib absen
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="p-3 space-y-1.5">
+            <Link
+              href="/dashboard/presensi/rekap"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                    Rekapitulasi Kehadiran
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Lihat statistik dan laporan kehadiran presensi gabungan
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+            </Link>
+
+            <Link
+              href="/dashboard/presensi/pejabat"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                    Master Pegawai Wajib Absen
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Kelola daftar pegawai dan pejabat rekomendasi OPD
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+            </Link>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

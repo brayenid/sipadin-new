@@ -54,7 +54,16 @@ import {
   Ban,
   CalendarDays,
   ChevronDown,
+  Menu,
+  ChevronRight,
 } from "lucide-react";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import * as XLSX from "xlsx";
 import {
   updateKehadiranPesertaBatch,
@@ -461,6 +470,7 @@ export default function ChecklistForm({
   const [isTambahOpen, setIsTambahOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
+  const [isMobileActionDrawerOpen, setIsMobileActionDrawerOpen] = useState(false);
   const [selectedFotoPeserta, setSelectedFotoPeserta] = useState<Peserta | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -669,11 +679,35 @@ export default function ChecklistForm({
     }
   };
 
+  const getSalamWaktu = () => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 11) return "Selamat Pagi";
+    if (hour >= 11 && hour < 15) return "Selamat Siang";
+    if (hour >= 15 && hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  };
+
   const handleCopyPublicLink = () => {
     if (!publicAbsenUrl) return;
-    navigator.clipboard.writeText(publicAbsenUrl);
+
+    const salam = getSalamWaktu();
+    let textToCopy = `${salam} Bapak/Ibu 🙏\n\nDengan hormat, kami sampaikan link Website Presensi Kehadiran untuk kegiatan:\n📌 *${namaKegiatan}*`;
+
+    if (tempat) {
+      textToCopy += `\n📍 Tempat: ${tempat}`;
+    }
+    if (waktu) {
+      textToCopy += `\n⏰ Waktu Pelaksanaan: ${waktu}`;
+    }
+    if (jamBuka && jamTutup) {
+      textToCopy += `\n⏳ Rentang Presensi: ${jamBuka} s/d ${jamTutup} WITA`;
+    }
+
+    textToCopy += `\n\n${publicAbsenUrl}\n\nAtas perhatian dan partisipasinya kami ucapkan terima kasih 🙏`;
+
+    navigator.clipboard.writeText(textToCopy);
     setCopiedLink(true);
-    toast.success("Tautan presensi online berhasil disalin");
+    toast.success("Tautan & pesan presensi berhasil disalin");
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
@@ -3009,178 +3043,198 @@ export default function ChecklistForm({
         }
       />
 
-      {/* Mobile Bottom Fixed Action Bar (Tab-Aware & Tanpa Duplikasi) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-3 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        {/* Tombol QR Code selalu ada */}
+      {/* Mobile Bottom Fixed Action Bar (1 Tombol Menu Drawer Sekunder + 1 Tombol Utama Primer) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-3.5 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
+        {/* Tombol Menu Drawer Opsi Tambahan / Sekunder */}
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          onClick={() => setIsQrOpen(true)}
-          className="h-9 w-9 shrink-0 border-slate-200 bg-white"
-          title="Tampilkan QR Code"
+          onClick={() => setIsMobileActionDrawerOpen(true)}
+          className="h-10 px-3 bg-white border-slate-200 text-slate-700 font-semibold text-xs shrink-0 flex items-center gap-1.5 shadow-2xs"
+          title="Menu Opsi Agenda"
         >
-          <QrCode className="w-4 h-4 text-indigo-700" />
+          <Menu className="w-4 h-4 text-slate-600" />
+          <span>Menu</span>
         </Button>
 
+        {/* Tombol Aksi Utama Sesuai Tab */}
         {activeTab === "EDIT_AGENDA" ? (
-          /* Tab EDIT_AGENDA: Cetak Blanko + Simpan Pengaturan Agenda */
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCetakOpen(true)}
-              className="h-9 px-3 shrink-0 border-slate-300 text-slate-700 text-xs font-semibold"
-            >
-              <Printer className="w-3.5 h-3.5 mr-1 text-slate-600" />
-              Cetak Blanko
-            </Button>
-
-            <Button
-              onClick={handleSaveAgenda}
-              disabled={savingAgenda}
-              className="flex-1 h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
-            >
-              {savingAgenda ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
-              ) : (
-                <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              )}
-              Simpan Pengaturan Agenda
-            </Button>
-          </>
+          <Button
+            onClick={handleSaveAgenda}
+            disabled={savingAgenda}
+            className="flex-1 min-w-0 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
+          >
+            {savingAgenda ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
+            ) : (
+              <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+            )}
+            <span className="truncate">Simpan Pengaturan Agenda</span>
+          </Button>
         ) : activeTab === "DAFTAR_HADIR" ? (
-          /* Tab DAFTAR_HADIR: Simpan Kehadiran, Ekspor & Tambah Pegawai */
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
-                    title="Ekspor Laporan ke Excel"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="start" side="top" className="w-60 bg-white p-1.5 shadow-lg border border-slate-200">
-                <DropdownMenuItem
-                  onClick={() => handleExportExcel(false)}
-                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-slate-50"
-                >
-                  <span className="font-semibold text-slate-800">Semua Peserta ({pesertaList.length})</span>
-                  <span className="text-[10.5px] text-slate-500">Seluruh undangan terdata</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleExportExcel(true)}
-                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-emerald-50"
-                >
-                  <span className="font-semibold text-emerald-800">Hanya Yang Mengisi ({countMengisi})</span>
-                  <span className="text-[10.5px] text-emerald-600">Hadir / Mewakili / Izin</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setIsLaporanPdfOpen(true)}
-              className="h-9 w-9 shrink-0 border-indigo-200 bg-white"
-              title="Ekspor Laporan ke PDF"
-            >
-              <FileText className="w-4 h-4 text-indigo-700" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsTambahOpen(true)}
-              className="h-9 px-2.5 border-slate-300 text-slate-700 text-xs font-semibold"
-            >
-              <UserPlus className="w-3.5 h-3.5 mr-1 text-slate-600" />
-              Tambah
-            </Button>
-            <Button
-              onClick={handleSaveKehadiran}
-              disabled={savingKehadiran}
-              className="flex-1 min-w-0 h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
-            >
-              {savingKehadiran ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
-              ) : (
-                <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              )}
-              <span className="truncate">Simpan Kehadiran</span>
-            </Button>
-          </>
+          <Button
+            onClick={handleSaveKehadiran}
+            disabled={savingKehadiran}
+            className="flex-1 min-w-0 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
+          >
+            {savingKehadiran ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
+            ) : (
+              <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+            )}
+            <span className="truncate">Simpan Kehadiran</span>
+          </Button>
         ) : (
-          /* Tab PETA_GPS & PANDUAN_TEKNIS */
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 border-emerald-200 bg-white"
-                    title="Ekspor Laporan ke Excel"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="start" side="top" className="w-60 bg-white p-1.5 shadow-lg border border-slate-200">
-                <DropdownMenuItem
-                  onClick={() => handleExportExcel(false)}
-                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-slate-50"
-                >
-                  <span className="font-semibold text-slate-800">Semua Peserta ({pesertaList.length})</span>
-                  <span className="text-[10.5px] text-slate-500">Seluruh undangan terdata</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleExportExcel(true)}
-                  className="text-xs py-2 px-2.5 cursor-pointer flex flex-col items-start gap-0.5 focus:bg-emerald-50"
-                >
-                  <span className="font-semibold text-emerald-800">Hanya Yang Mengisi ({countMengisi})</span>
-                  <span className="text-[10.5px] text-emerald-600">Hadir / Mewakili / Izin</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setIsLaporanPdfOpen(true)}
-              className="h-9 w-9 shrink-0 border-indigo-200 bg-white"
-              title="Ekspor Laporan ke PDF"
-            >
-              <FileText className="w-4 h-4 text-indigo-700" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setIsCetakOpen(true)}
-              className="h-9 w-9 shrink-0 border-slate-200 bg-white"
-              title="Cetak Blanko Fisik"
-            >
-              <Printer className="w-4 h-4 text-slate-700" />
-            </Button>
-            <Button
-              onClick={() => setIsTambahOpen(true)}
-              className="flex-1 min-w-0 h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
-            >
-              <UserPlus className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              <span className="truncate">Tambah Manual</span>
-            </Button>
-          </>
+          <Button
+            onClick={() => setIsTambahOpen(true)}
+            className="flex-1 min-w-0 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm px-3 justify-center"
+          >
+            <UserPlus className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+            <span className="truncate">Tambah Peserta Manual</span>
+          </Button>
         )}
       </div>
+
+      {/* Mobile Drawer Menu untuk Opsi / Aksi Tambahan */}
+      <Drawer open={isMobileActionDrawerOpen} onOpenChange={setIsMobileActionDrawerOpen} showSwipeHandle>
+        <DrawerContent className="lg:hidden bg-white outline-none rounded-t-2xl pb-6">
+          <DrawerHeader className="p-4 border-b border-slate-100 text-left">
+            <DrawerTitle className="text-sm font-bold text-slate-900">
+              Menu & Aksi Agenda
+            </DrawerTitle>
+            <DrawerDescription className="text-xs text-slate-500">
+              Pilih tindakan atau ekspor dokumen untuk agenda ini
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="p-3 space-y-1.5">
+            {/* Tampilkan QR Code */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileActionDrawerOpen(false);
+                setIsQrOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                    Tampilkan QR Code & Tautan
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Lihat barcode dan bagikan form absensi mandiri
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+            </button>
+
+            {/* Tambah Peserta Manual */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileActionDrawerOpen(false);
+                setIsTambahOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-violet-600">
+                    Tambah Peserta Manual
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Masukkan pegawai atau tamu undangan ke daftar hadir
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-violet-600" />
+            </button>
+
+            {/* Cetak Blanko */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileActionDrawerOpen(false);
+                setIsCetakOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-slate-950">
+                    Cetak Blanko Presensi Fisik
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Format lembar tanda tangan manual / offline
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </button>
+
+            {/* Ekspor Laporan PDF */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileActionDrawerOpen(false);
+                setIsLaporanPdfOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-rose-600">
+                    Ekspor Laporan Resmi (PDF)
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Unduh berita acara dan rekap kehadiran ber-kop
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600" />
+            </button>
+
+            {/* Ekspor Excel */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileActionDrawerOpen(false);
+                handleExportExcel(false);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                    Ekspor Data ke Excel (.xlsx)
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Unduh semua data rekap peserta ({pesertaList.length} orang)
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

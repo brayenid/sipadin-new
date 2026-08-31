@@ -16,10 +16,10 @@ export default async function BuatAgendaPresensiPage() {
   const allPegawai = await getAllPegawaiForBinding();
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="p-3 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full space-y-4 sm:space-y-6 pb-12">
       {/* Header & Breadcrumb */}
       <div>
-        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-2 sm:mb-3">
           <Link
             href="/dashboard/presensi"
             className="hover:text-slate-900 transition-colors flex items-center gap-1"
@@ -30,10 +30,10 @@ export default async function BuatAgendaPresensiPage() {
           <span>/</span>
           <span className="font-medium text-slate-900">Buat Agenda Baru</span>
         </div>
-        <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900">
           Buat Agenda Presensi Baru
         </h1>
-        <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
           Lengkapi detail kegiatan, tentukan daftar pegawai yang diundang, dan terbitkan tautan presensi online.
         </p>
       </div>

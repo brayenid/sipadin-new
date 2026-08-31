@@ -253,19 +253,20 @@ export default function AbsensiWizard({
     filteredPegawai.every((p) => selectedPesertaIds.includes(p.id));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ── STEP INDICATOR BAR ── */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-xs">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           {/* Step 1 */}
-          <div
+          <button
+            type="button"
             onClick={() => setCurrentStep(1)}
-            className={`flex items-center gap-3 cursor-pointer select-none transition-colors ${
+            className={`flex items-center gap-2 sm:gap-3 cursor-pointer select-none transition-colors text-left ${
               currentStep === 1 ? "text-indigo-600 font-bold" : "text-slate-500 font-medium"
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                 currentStep === 1
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-100 ring-4 ring-indigo-50"
                   : currentStep > 1
@@ -273,27 +274,28 @@ export default function AbsensiWizard({
                   : "bg-slate-100 text-slate-500"
               }`}
             >
-              {currentStep > 1 ? <Check className="w-4 h-4" /> : "1"}
+              {currentStep > 1 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : "1"}
             </div>
-            <div>
-              <p className="text-xs">Langkah 1</p>
-              <p className="text-[11px] text-slate-400 hidden sm:block">Informasi Kegiatan</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-semibold sm:font-bold truncate">1. Info</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block truncate">Informasi Kegiatan</p>
             </div>
-          </div>
+          </button>
 
-          <div className="flex-1 h-[2px] bg-slate-100 mx-4 max-w-[80px]" />
+          <div className="flex-1 h-[2px] bg-slate-100 mx-2 sm:mx-4 max-w-[40px] sm:max-w-[80px]" />
 
           {/* Step 2 */}
-          <div
+          <button
+            type="button"
             onClick={() => {
               if (form.namaKegiatan.trim() && form.tempat.trim()) setCurrentStep(2);
             }}
-            className={`flex items-center gap-3 cursor-pointer select-none transition-colors ${
+            className={`flex items-center gap-2 sm:gap-3 cursor-pointer select-none transition-colors text-left ${
               currentStep === 2 ? "text-indigo-600 font-bold" : "text-slate-500 font-medium"
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                 currentStep === 2
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-100 ring-4 ring-indigo-50"
                   : currentStep > 2
@@ -301,27 +303,28 @@ export default function AbsensiWizard({
                   : "bg-slate-100 text-slate-500"
               }`}
             >
-              {currentStep > 2 ? <Check className="w-4 h-4" /> : "2"}
+              {currentStep > 2 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : "2"}
             </div>
-            <div>
-              <p className="text-xs">Langkah 2</p>
-              <p className="text-[11px] text-slate-400 hidden sm:block">Pilih Peserta Diundang</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-semibold sm:font-bold truncate">2. Peserta</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block truncate">Pilih Peserta</p>
             </div>
-          </div>
+          </button>
 
-          <div className="flex-1 h-[2px] bg-slate-100 mx-4 max-w-[80px]" />
+          <div className="flex-1 h-[2px] bg-slate-100 mx-2 sm:mx-4 max-w-[40px] sm:max-w-[80px]" />
 
           {/* Step 3 */}
-          <div
+          <button
+            type="button"
             onClick={() => {
               if (form.namaKegiatan.trim() && form.tempat.trim()) setCurrentStep(3);
             }}
-            className={`flex items-center gap-3 cursor-pointer select-none transition-colors ${
+            className={`flex items-center gap-2 sm:gap-3 cursor-pointer select-none transition-colors text-left ${
               currentStep === 3 ? "text-indigo-600 font-bold" : "text-slate-500 font-medium"
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                 currentStep === 3
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-100 ring-4 ring-indigo-50"
                   : "bg-slate-100 text-slate-500"
@@ -329,38 +332,38 @@ export default function AbsensiWizard({
             >
               3
             </div>
-            <div>
-              <p className="text-xs">Langkah 3</p>
-              <p className="text-[11px] text-slate-400 hidden sm:block">Ringkasan & Terbitkan</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-semibold sm:font-bold truncate">3. Terbitkan</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block truncate">Ringkasan & Terbitkan</p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
       {/* ── STEP 1: INFORMASI KEGIATAN & PENGATURAN ── */}
       {currentStep === 1 && (
         <Card className="bg-white border-slate-200/80 shadow-xs overflow-hidden">
-          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/40">
-            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <CalendarPlus className="w-5 h-5 text-indigo-600" />
-              Langkah 1: Informasi Kegiatan & Pengaturan Presensi
+          <CardHeader className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/40">
+            <CardTitle className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 shrink-0" />
+              <span>Langkah 1: Informasi Kegiatan & Pengaturan Presensi</span>
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 mt-1">
               Isi nama agenda, waktu pelaksanaan WITA, lokasi acara, dan konfigurasi validasi foto/GPS.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-6 space-y-5">
+          <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             {/* TIPE AGENDA: SEKALI SAJA VS AGENDA RUTIN */}
-            <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
+            <div className="p-3 sm:p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
               <Label className="text-xs font-bold text-slate-800 flex items-center justify-between">
                 <span>Tipe Agenda Presensi</span>
-                <span className="text-[10px] font-semibold text-slate-400">Pilih jenis frekuensi kegiatan</span>
+                <span className="text-[10px] font-semibold text-slate-400">Pilih jenis frekuensi</span>
               </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 <div
                   onClick={() => setForm({ ...form, isRecurring: false, kategori: "RAPAT" })}
-                  className={`p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
+                  className={`p-3 sm:p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
                     !form.isRecurring
                       ? "bg-white border-indigo-600 shadow-xs ring-2 ring-indigo-100"
                       : "bg-white/60 border-slate-200 hover:bg-white text-slate-600"
@@ -371,13 +374,13 @@ export default function AbsensiWizard({
                   </div>
                   <div>
                     <p className="font-bold text-slate-900">Agenda Sekali Saja</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Untuk rapat koordinasi, sosialisasi, atau acara ad-hoc satu tanggal.</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">Untuk rapat koordinasi, sosialisasi, atau acara ad-hoc satu tanggal.</p>
                   </div>
                 </div>
 
                 <div
                   onClick={() => setForm({ ...form, isRecurring: true, kategori: "APEL", namaKegiatan: form.namaKegiatan || "Apel Pagi Gabungan Perangkat Daerah" })}
-                  className={`p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
+                  className={`p-3 sm:p-3.5 rounded-xl border text-xs cursor-pointer transition flex items-start gap-3 ${
                     form.isRecurring
                       ? "bg-white border-indigo-600 shadow-xs ring-2 ring-indigo-100"
                       : "bg-white/60 border-slate-200 hover:bg-white text-slate-600"
@@ -387,19 +390,19 @@ export default function AbsensiWizard({
                     {form.isRecurring && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-bold text-slate-900">Agenda Rutin (Apel/Senam)</p>
                       <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[9px] px-1.5 py-0">Reusable QR</Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">1 Link & QR tetap untuk kegiatan mingguan berulang (tiap Senin, dll).</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">1 Link & QR tetap untuk kegiatan mingguan berulang (tiap Senin, dll).</p>
                   </div>
                 </div>
               </div>
               {/* Form Tambahan Khusus Kegiatan Rutin (Apel/Upacara/Senam) */}
               {form.isRecurring && (
-                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-4 mt-2 animate-in fade-in-50 duration-200">
+                <div className="p-3 sm:p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-4 mt-2 animate-in fade-in-50 duration-200">
                   {/* Baris 1: Kategori & Hari */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-indigo-950">
                         Kategori Kegiatan Rutin
@@ -440,7 +443,7 @@ export default function AbsensiWizard({
                                   setForm({ ...form, recurringDays: nextDays });
                                 }
                               }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
                                 isChecked
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-indigo-100"
                                   : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
@@ -455,7 +458,7 @@ export default function AbsensiWizard({
                   </div>
 
                   {/* Baris 2: Frekuensi Pekan (Jeda / Rutin Khusus) */}
-                  <div className="p-3.5 bg-white/95 rounded-xl border border-indigo-100 space-y-2.5 shadow-2xs">
+                  <div className="p-3 sm:p-3.5 bg-white/95 rounded-xl border border-indigo-100 space-y-2.5 shadow-2xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
@@ -463,7 +466,7 @@ export default function AbsensiWizard({
                           Frekuensi Pekan (Jeda / Jadwal Khusus)
                         </span>
                       </div>
-                      <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 self-start sm:self-auto">
+                      <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 self-start sm:self-auto">
                         {form.recurringWeeks.length === 0
                           ? "Berjalan Setiap Pekan"
                           : `Aktif di Pekan ke-${form.recurringWeeks.sort().join(" & ke-")}`}
@@ -474,7 +477,7 @@ export default function AbsensiWizard({
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, recurringWeeks: [] })}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
                           form.recurringWeeks.length === 0
                             ? "bg-indigo-600 text-white border-indigo-600"
                             : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
@@ -490,11 +493,11 @@ export default function AbsensiWizard({
                             type="button"
                             onClick={() => {
                               const nextWeeks = isWkChecked
-                                ? form.recurringWeeks.filter((w) => w !== wk)
-                                : [...form.recurringWeeks, wk];
+                                  ? form.recurringWeeks.filter((w) => w !== wk)
+                                  : [...form.recurringWeeks, wk];
                               setForm({ ...form, recurringWeeks: nextWeeks });
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
                               isWkChecked
                                 ? "bg-indigo-600 text-white border-indigo-600"
                                 : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200"
@@ -506,15 +509,15 @@ export default function AbsensiWizard({
                       })}
                     </div>
 
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                    <p className="text-[10.5px] sm:text-[11px] text-slate-500 leading-relaxed">
                       {form.recurringWeeks.length === 0
                         ? "• Agenda ini berlangsung rutin setiap minggu tanpa jeda."
-                        : `• Agenda hanya dibuka dan direkap pada minggu ke-${form.recurringWeeks.sort().join(" dan ke-")} dalam setiap bulan (contoh: Apel Gabungan Senin ke-1 & ke-3).`}
+                        : `• Agenda hanya dibuka dan direkap pada minggu ke-${form.recurringWeeks.sort().join(" dan ke-")} dalam setiap bulan.`}
                     </p>
                   </div>
 
                   {/* Baris 3: Jam Pelaksanaan & Jam Presensi */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 pt-1">
                     <div className="p-3 bg-white/95 rounded-xl border border-indigo-100 space-y-2 shadow-2xs">
                       <Label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-indigo-600" />
@@ -592,14 +595,14 @@ export default function AbsensiWizard({
             </div>
 
             {/* Baris 2: Tanggal & Tempat (Maksimal 2 Kolom) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700">
                     {form.isRecurring ? "Mulai Berlaku Sejak Tanggal" : "Tanggal Pelaksanaan"}{" "}
                     <span className="text-red-500">*</span>
                   </Label>
-                  <span className="text-[10.5px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                  <span className="text-[10px] sm:text-[10.5px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
                     {form.isRecurring ? `Rutin: ${form.recurringDays.join(", ")}` : `Hari ${form.hari}`}
                   </span>
                 </div>
@@ -633,14 +636,14 @@ export default function AbsensiWizard({
 
             {/* Baris 3: Waktu Acara & Rentang Presensi (Hanya Tampil pada Agenda Sekali Saja) */}
             {!form.isRecurring && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-200">
-                <div className="p-4 bg-slate-50/80 border border-slate-200/80 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 animate-in fade-in duration-200">
+                <div className="p-3.5 sm:p-4 bg-slate-50/80 border border-slate-200/80 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                      <Clock className="w-4 h-4 text-indigo-600" />
-                      <span>Waktu Pelaksanaan Acara (WITA)</span>
+                      <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>Waktu Acara (WITA)</span>
                     </div>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded truncate max-w-[120px]">
                       {form.waktu}
                     </span>
                   </div>
@@ -660,7 +663,7 @@ export default function AbsensiWizard({
                     </div>
                     <div>
                       <Label className="text-[10.5px] font-semibold text-slate-600">
-                        Jam Selesai (Opsional):
+                        Jam Selesai:
                       </Label>
                       <Input
                         type="time"
@@ -674,13 +677,13 @@ export default function AbsensiWizard({
                 </div>
 
                 {/* RENTANG WAKTU PENGISIAN ABSEN (TIME WINDOW) */}
-                <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
+                <div className="p-3.5 sm:p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
-                      <Clock className="w-4 h-4 text-indigo-600" />
-                      <span>Rentang Waktu Presensi Publik (WITA)</span>
+                      <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>Rentang Presensi</span>
                     </div>
-                    <span className="text-[9.5px] text-indigo-700 font-semibold bg-white border border-indigo-200 px-1.5 py-0.5 rounded">
+                    <span className="text-[9px] sm:text-[9.5px] text-indigo-700 font-semibold bg-white border border-indigo-200 px-1.5 py-0.5 rounded shrink-0">
                       H-1 Jam s/d Selesai
                     </span>
                   </div>
@@ -717,50 +720,50 @@ export default function AbsensiWizard({
             )}
 
             {/* Baris 4: Validasi Presensi & Presensi Pulang (2 Kolom) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
               {/* Kolom Kiri: Opsi Validasi Foto & GPS */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <h4 className="text-xs font-bold text-slate-900">Validasi Kehadiran Peserta</h4>
-                <div className="space-y-2.5 text-xs">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                <div className="space-y-3 text-xs">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={form.requirePhoto}
                       onChange={(e) => setForm({ ...form, requirePhoto: e.target.checked })}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 shrink-0"
                     />
                     <div>
                       <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                        <Camera className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                         Wajib Foto Selfie Kehadiran
                       </span>
-                      <p className="text-[10.5px] text-slate-500">Verifikasi wajah peserta secara visual</p>
+                      <p className="text-[10.5px] text-slate-500 leading-tight mt-0.5">Verifikasi wajah peserta secara visual</p>
                     </div>
                   </label>
 
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={form.requireLocation}
                       onChange={(e) => setForm({ ...form, requireLocation: e.target.checked })}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 shrink-0"
                     />
                     <div>
                       <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                        <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                         Wajib Kunci Lokasi GPS
                       </span>
-                      <p className="text-[10.5px] text-slate-500">Memastikan peserta berada di tempat acara</p>
+                      <p className="text-[10.5px] text-slate-500 leading-tight mt-0.5">Memastikan peserta berada di tempat acara</p>
                     </div>
                   </label>
                 </div>
               </div>
 
               {/* Kolom Kanan: Presensi Pulang & Peserta Luar */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <h4 className="text-xs font-bold text-slate-900">Pengaturan Tambahan</h4>
-                <div className="space-y-2.5 text-xs">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                <div className="space-y-3 text-xs">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={form.enableCheckOut}
@@ -778,30 +781,30 @@ export default function AbsensiWizard({
                           };
                         });
                       }}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 shrink-0"
                     />
                     <div>
                       <span className="font-semibold text-slate-900 flex items-center gap-1.5">
-                        <LogOut className="w-3.5 h-3.5 text-indigo-600" />
+                        <LogOut className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                         Aktifkan Presensi Pulang
                       </span>
-                      <p className="text-[10.5px] text-slate-500">Peserta dapat absen pulang saat acara berakhir</p>
+                      <p className="text-[10.5px] text-slate-500 leading-tight mt-0.5">Peserta dapat absen pulang saat acara berakhir</p>
                     </div>
                   </label>
 
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={form.allowNonPeserta}
                       onChange={(e) => setForm({ ...form, allowNonPeserta: e.target.checked })}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 shrink-0"
                     />
                     <div>
                       <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-indigo-600" />
+                        <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                         Izinkan Peserta Luar (Di Luar Undangan)
                       </span>
-                      <p className="text-[10.5px] text-slate-500">Tamu yang tidak terdaftar tetap dapat mengisi presensi</p>
+                      <p className="text-[10.5px] text-slate-500 leading-tight mt-0.5">Tamu yang tidak terdaftar tetap dapat mengisi presensi</p>
                     </div>
                   </label>
                 </div>
@@ -820,14 +823,14 @@ export default function AbsensiWizard({
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <Button
                 type="button"
                 onClick={handleNextToStep2}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-6 h-10 shadow-xs"
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-6 h-11 sm:h-10 shadow-xs justify-center"
               >
                 <span>Lanjut: Pilih Peserta Diundang</span>
-                <ArrowRight className="w-4 h-4 ml-1.5" />
+                <ArrowRight className="w-4 h-4 ml-1.5 shrink-0" />
               </Button>
             </div>
           </CardContent>
@@ -837,31 +840,31 @@ export default function AbsensiWizard({
       {/* ── STEP 2: PILIH PEGAWAI / PESERTA YANG DIUNDANG (FULL-WIDTH SELEKTOR) ── */}
       {currentStep === 2 && (
         <Card className="bg-white border-slate-200/80 shadow-xs overflow-hidden">
-          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <CardHeader className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-indigo-600" />
-                Langkah 2: Pilih Pegawai / Pejabat yang Diundang
+              <CardTitle className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 shrink-0" />
+                <span>Langkah 2: Pilih Pegawai yang Diundang</span>
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-1">
-                Centang pegawai yang diundang. Pegawai berstatus rekomendasi OPD otomatis tercentang secara default.
+                Centang pegawai yang diundang. Pegawai rekomendasi OPD otomatis tercentang.
               </CardDescription>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-3 py-1.5">
-                {selectedPesertaIds.length} dari {allPegawai.length} Pegawai Terpilih
+              <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-2.5 sm:px-3 py-1">
+                {selectedPesertaIds.length} dari {allPegawai.length} Terpilih
               </Badge>
             </div>
           </CardHeader>
 
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-4 sm:p-6 space-y-3.5 sm:space-y-4">
             {/* Filter & Action Controls Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center justify-between">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
-                  placeholder="Cari nama pegawai, jabatan, NIP, atau OPD..."
+                  placeholder="Cari nama, NIP, jabatan, OPD..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 text-xs h-9.5 bg-white"
@@ -873,7 +876,7 @@ export default function AbsensiWizard({
                   value={filterEselon}
                   onValueChange={(val) => setFilterEselon(val || "ALL")}
                 >
-                  <SelectTrigger className="text-xs h-9.5 w-44 bg-white font-medium">
+                  <SelectTrigger className="text-xs h-9.5 w-full sm:w-44 bg-white font-medium">
                     <SelectValue placeholder="Filter Eselon" />
                   </SelectTrigger>
                   <SelectContent>
@@ -889,36 +892,37 @@ export default function AbsensiWizard({
             </div>
 
             {/* Quick Action Selection Bar */}
-            <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl flex items-center justify-between flex-wrap gap-2 text-xs">
+            <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="wizard-select-all"
                   checked={allFilteredSelected}
                   onCheckedChange={handleSelectAllFiltered}
+                  className="shrink-0"
                 />
                 <Label
                   htmlFor="wizard-select-all"
                   className="text-xs font-semibold text-slate-700 cursor-pointer select-none"
                 >
-                  Pilih Semua Hasil Filter ({filteredPegawai.length} Pegawai)
+                  Pilih Semua Hasil Filter ({filteredPegawai.length})
                 </Label>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <button
                   type="button"
                   onClick={handleSelectAllRecommended}
-                  className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer flex items-center gap-1.5 bg-indigo-50/70 hover:bg-indigo-100/70 px-2.5 py-1 rounded-md transition"
+                  className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1.5 rounded-lg border border-indigo-200/60 transition text-[11px] sm:text-xs"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Semua Rekomendasi OPD ({recommendedCount})</span>
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>Semua Rekomendasi ({recommendedCount})</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleClearSelection}
-                  className="text-slate-500 hover:text-red-600 font-medium cursor-pointer px-2 py-1"
+                  className="text-slate-500 hover:text-red-600 font-medium cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-slate-200/50 transition text-[11px] sm:text-xs"
                 >
-                  Kosongkan Pilihan
+                  Kosongkan
                 </button>
               </div>
             </div>
@@ -926,10 +930,10 @@ export default function AbsensiWizard({
             {/* Spacious Pegawai Table List with Lazy Loading */}
             <div
               onScroll={handleScrollPegawai}
-              className="border border-slate-200/80 rounded-xl overflow-y-auto max-h-[480px] divide-y divide-slate-100 bg-white"
+              className="border border-slate-200/80 rounded-xl overflow-y-auto max-h-[420px] sm:max-h-[480px] divide-y divide-slate-100 bg-white"
             >
               {filteredPegawai.length === 0 ? (
-                <div className="p-12 text-center text-xs text-slate-400">
+                <div className="p-8 sm:p-12 text-center text-xs text-slate-400">
                   Tidak ada data pegawai yang sesuai dengan filter pencarian
                 </div>
               ) : (
@@ -940,31 +944,31 @@ export default function AbsensiWizard({
                       <div
                         key={p.id}
                         onClick={() => toggleSelectPegawai(p.id)}
-                        className={`p-3 text-xs flex items-center justify-between gap-4 transition-colors cursor-pointer ${
+                        className={`p-3 text-xs flex items-start sm:items-center justify-between gap-3 transition-colors cursor-pointer ${
                           isSelected ? "bg-indigo-50/40 hover:bg-indigo-50/60" : "hover:bg-slate-50"
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleSelectPegawai(p.id)}
-                            className="shrink-0"
+                            className="mt-0.5 sm:mt-0 shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                               <span className="font-bold text-slate-900 text-xs">
                                 {p.nama}
                               </span>
                               {p.nip && (
-                                <span className="text-[11px] text-slate-400 font-mono">
+                                <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
                                   NIP. {p.nip}
                                 </span>
                               )}
                               {p.eselon && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[9.5px] px-1.5 py-0 border-slate-300 text-slate-600 font-medium"
+                                  className="text-[9px] sm:text-[9.5px] px-1.5 py-0 border-slate-300 text-slate-600 font-medium"
                                 >
                                   Eselon {p.eselon}
                                 </Badge>
@@ -972,30 +976,30 @@ export default function AbsensiWizard({
                               {p.wajibAbsenOpd && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[9.5px] px-1.5 py-0 bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold"
+                                  className="text-[9px] sm:text-[9.5px] px-1.5 py-0 bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold"
                                 >
                                   Rekomendasi OPD
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-slate-600 text-xs truncate mt-0.5">
+                            <p className="text-slate-600 text-[11px] sm:text-xs truncate mt-0.5">
                               {p.jabatan}
                             </p>
-                            <p className="text-slate-400 text-[11px] truncate">
+                            <p className="text-slate-400 text-[10.5px] sm:text-[11px] truncate">
                               {p.instansi}
                             </p>
                           </div>
                         </div>
 
-                        <div className="shrink-0 text-right">
+                        <div className="shrink-0 text-right mt-0.5 sm:mt-0">
                           <span
-                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                            className={`text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full ${
                               isSelected
                                 ? "bg-indigo-600 text-white"
                                 : "bg-slate-100 text-slate-400"
                             }`}
                           >
-                            {isSelected ? "Diundang" : "Tidak Diundang"}
+                            {isSelected ? "Diundang" : "Tidak"}
                           </span>
                         </div>
                       </div>
@@ -1005,8 +1009,8 @@ export default function AbsensiWizard({
                   {/* Lazy load indicator */}
                   {displayLimit < filteredPegawai.length && (
                     <div className="p-3 text-center text-xs text-slate-500 flex items-center justify-center gap-2 bg-slate-50/60 font-medium">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                      <span>Menampilkan {visiblePegawai.length} dari {filteredPegawai.length} pegawai (gulir ke bawah untuk memuat lagi)...</span>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 shrink-0" />
+                      <span className="text-[11px] sm:text-xs">Memuat lebih banyak ({visiblePegawai.length}/{filteredPegawai.length})...</span>
                     </div>
                   )}
                 </>
@@ -1014,24 +1018,27 @@ export default function AbsensiWizard({
             </div>
 
             {/* Step 2 Bottom Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 pt-4 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setCurrentStep(1)}
-                className="text-xs h-10 px-4"
+                onClick={() => {
+                  setCurrentStep(1);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full sm:w-auto text-xs h-11 sm:h-10 px-4 justify-center"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" />
-                <span>Kembali: Edit Informasi</span>
+                <ArrowLeft className="w-4 h-4 mr-1.5 shrink-0" />
+                <span>Kembali: Edit Info</span>
               </Button>
 
               <Button
                 type="button"
                 onClick={handleNextToStep3}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 h-10 shadow-xs"
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 h-11 sm:h-10 shadow-xs justify-center"
               >
                 <span>Lanjut: Ringkasan & Terbitkan</span>
-                <ArrowRight className="w-4 h-4 ml-1.5" />
+                <ArrowRight className="w-4 h-4 ml-1.5 shrink-0" />
               </Button>
             </div>
           </CardContent>
@@ -1041,83 +1048,83 @@ export default function AbsensiWizard({
       {/* ── STEP 3: RINGKASAN & TERBITKAN AGENDA ── */}
       {currentStep === 3 && (
         <Card className="bg-white border-slate-200/80 shadow-xs overflow-hidden">
-          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/40">
-            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              Langkah 3: Konfirmasi Ringkasan & Terbitkan Agenda
+          <CardHeader className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/40">
+            <CardTitle className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
+              <span>Langkah 3: Konfirmasi Ringkasan & Terbitkan</span>
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 mt-1">
               Periksa kembali seluruh informasi sebelum agenda resmi diterbitkan dan tautan presensi diaktifkan.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Box Info Agenda */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="p-3.5 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Detail Kegiatan
                 </h3>
                 <div className="space-y-2 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Nama Kegiatan:</span>
-                    <span className="font-bold text-slate-900 text-sm">{form.namaKegiatan}</span>
+                    <span className="text-slate-400 block text-[10.5px] sm:text-[11px]">Nama Kegiatan:</span>
+                    <span className="font-bold text-slate-900 text-sm leading-snug">{form.namaKegiatan}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Tanggal & Hari:</span>
-                      <span className="font-semibold text-slate-800">{form.hari}, {form.tanggal}</span>
+                      <span className="text-slate-400 block text-[10.5px] sm:text-[11px]">Tanggal & Hari:</span>
+                      <span className="font-semibold text-slate-800 text-[11px] sm:text-xs">{form.hari}, {form.tanggal}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Waktu Acara:</span>
-                      <span className="font-semibold text-indigo-700">{form.waktu}</span>
+                      <span className="text-slate-400 block text-[10.5px] sm:text-[11px]">Waktu Acara:</span>
+                      <span className="font-semibold text-indigo-700 text-[11px] sm:text-xs">{form.waktu}</span>
                     </div>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Tempat Pelaksanaan:</span>
-                    <span className="font-semibold text-slate-800">{form.tempat}</span>
+                    <span className="text-slate-400 block text-[10.5px] sm:text-[11px]">Tempat Pelaksanaan:</span>
+                    <span className="font-semibold text-slate-800 text-[11px] sm:text-xs">{form.tempat}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Rentang Waktu Presensi:</span>
-                    <span className="font-semibold text-slate-800">{form.jamBuka} s/d {form.jamTutup} WITA</span>
+                    <span className="text-slate-400 block text-[10.5px] sm:text-[11px]">Rentang Waktu Presensi:</span>
+                    <span className="font-semibold text-slate-800 text-[11px] sm:text-xs">{form.jamBuka} s/d {form.jamTutup} WITA</span>
                   </div>
                 </div>
               </div>
 
               {/* Box Info Peserta & Validasi */}
-              <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3">
+              <div className="p-3.5 sm:p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3">
                 <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
-                  Peserta & Pengaturan Presensi
+                  Peserta & Pengaturan
                 </h3>
                 <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-indigo-100">
-                    <span className="text-slate-600 font-medium">Total Pegawai Diundang:</span>
-                    <span className="text-base font-black text-indigo-600">{selectedPesertaIds.length} Orang</span>
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 bg-white rounded-xl border border-indigo-100">
+                    <span className="text-slate-600 font-medium text-xs">Total Pegawai Diundang:</span>
+                    <span className="text-sm sm:text-base font-black text-indigo-600">{selectedPesertaIds.length} Orang</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-indigo-600" />
-                      <span className="text-[11px] font-semibold text-slate-700">
-                        {form.requirePhoto ? "Wajib Foto Selfie" : "Tanpa Foto"}
+                    <div className="p-2 sm:p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-1.5 sm:gap-2">
+                      <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" />
+                      <span className="text-[10.5px] sm:text-[11px] font-semibold text-slate-700 leading-tight">
+                        {form.requirePhoto ? "Wajib Foto" : "Tanpa Foto"}
                       </span>
                     </div>
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
-                      <span className="text-[11px] font-semibold text-slate-700">
-                        {form.requireLocation ? "Wajib Kunci GPS" : "Tanpa GPS"}
+                    <div className="p-2 sm:p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-1.5 sm:gap-2">
+                      <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" />
+                      <span className="text-[10.5px] sm:text-[11px] font-semibold text-slate-700 leading-tight">
+                        {form.requireLocation ? "Kunci GPS" : "Tanpa GPS"}
                       </span>
                     </div>
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-2">
-                      <LogOut className="w-4 h-4 text-indigo-600" />
-                      <span className="text-[11px] font-semibold text-slate-700">
-                        {form.enableCheckOut ? "Presensi Pulang Aktif" : "Hanya Datang"}
+                    <div className="p-2 sm:p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-1.5 sm:gap-2">
+                      <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" />
+                      <span className="text-[10.5px] sm:text-[11px] font-semibold text-slate-700 leading-tight">
+                        {form.enableCheckOut ? "Absen Pulang" : "Hanya Datang"}
                       </span>
                     </div>
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-indigo-600" />
-                      <span className="text-[11px] font-semibold text-slate-700">
-                        {form.allowNonPeserta ? "Peserta Luar Diizinkan" : "Khusus Undangan"}
+                    <div className="p-2 sm:p-2.5 bg-white rounded-lg border border-slate-200/60 flex items-center gap-1.5 sm:gap-2">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" />
+                      <span className="text-[10.5px] sm:text-[11px] font-semibold text-slate-700 leading-tight">
+                        {form.allowNonPeserta ? "Peserta Luar OK" : "Khusus Undangan"}
                       </span>
                     </div>
                   </div>
@@ -1126,15 +1133,18 @@ export default function AbsensiWizard({
             </div>
 
             {/* Bottom Final Submit Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 pt-4 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setCurrentStep(2)}
+                onClick={() => {
+                  setCurrentStep(2);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
                 disabled={loading}
-                className="text-xs h-10 px-4"
+                className="w-full sm:w-auto text-xs h-11 sm:h-10 px-4 justify-center"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                <ArrowLeft className="w-4 h-4 mr-1.5 shrink-0" />
                 <span>Ubah Peserta</span>
               </Button>
 
@@ -1142,17 +1152,17 @@ export default function AbsensiWizard({
                 type="button"
                 onClick={handleSubmitFinal}
                 disabled={loading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 h-11 shadow-md shadow-indigo-100"
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 h-11 shadow-md shadow-indigo-100 justify-center"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin shrink-0" />
                     <span>Menerbitkan Agenda...</span>
                   </>
                 ) : (
                   <>
-                    <CalendarPlus className="w-4 h-4 mr-2" />
-                    <span>Terbitkan Agenda Absensi & Buka Link</span>
+                    <CalendarPlus className="w-4 h-4 mr-2 shrink-0" />
+                    <span>Terbitkan Agenda & Buka Link</span>
                   </>
                 )}
               </Button>

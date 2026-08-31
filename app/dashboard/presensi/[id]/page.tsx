@@ -20,8 +20,8 @@ export default async function AgendaDetailPage({
   ]);
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto w-full">
-      <div className="mb-6">
+    <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-16 lg:pb-8">
+      <div className="mb-4 sm:mb-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-3">
           <Link
