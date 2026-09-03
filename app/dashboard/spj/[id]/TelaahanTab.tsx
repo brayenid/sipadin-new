@@ -47,14 +47,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
     penandatanganId: data.penandatanganId || "",
     aiInitData: data.aiInitData || null,
     isAiInitialized: data.isAiInitialized || false,
-    refineQuota: data.refineQuota || {
-      dasar: 3,
-      praAnggapan: 3,
-      fakta: 3,
-      analisis: 3,
-      kesimpulan: 3,
-      saran: 3
-    }
   });
 
   const [initialForm, setInitialForm] = useState(form);
@@ -195,14 +187,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 ...form,
                 aiInitData: null,
                 isAiInitialized: false,
-                refineQuota: {
-                  dasar: 3,
-                  praAnggapan: 3,
-                  fakta: 3,
-                  analisis: 3,
-                  kesimpulan: 3,
-                  saran: 3
-                }
               };
               setForm(updatedForm);
               try {
@@ -308,11 +292,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.dasar}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, dasar: Math.max(0, prev.refineQuota.dasar - 1) }
-                }))}
                 onApplyText={(text) => setForm({ ...form, dasar: text })}
               />
               <PresetDialog 
@@ -336,11 +315,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.praAnggapan}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, praAnggapan: Math.max(0, prev.refineQuota.praAnggapan - 1) }
-                }))}
                 onApplyList={(items) => setForm({ ...form, praAnggapan: items.length > 0 ? items : [""] })}
               />
               <PresetDialog 
@@ -382,11 +356,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.fakta}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, fakta: Math.max(0, prev.refineQuota.fakta - 1) }
-                }))}
                 onApplyList={(items) => setForm({ ...form, fakta: items.length > 0 ? items : [""] })}
               />
               <PresetDialog 
@@ -428,11 +397,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.analisis}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, analisis: Math.max(0, prev.refineQuota.analisis - 1) }
-                }))}
                 onApplyText={(text) => setForm({ ...form, analisis: text })}
               />
               <PresetDialog 
@@ -456,11 +420,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.kesimpulan}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, kesimpulan: Math.max(0, prev.refineQuota.kesimpulan - 1) }
-                }))}
                 onApplyText={(text) => setForm({ ...form, kesimpulan: text })}
               />
               <PresetDialog 
@@ -484,11 +443,6 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
                 currentDoc={form}
                 aiInitData={form.aiInitData}
                 isAiInitialized={form.isAiInitialized}
-                quotaRemaining={form.refineQuota.saran}
-                onUseQuota={() => setForm(prev => ({
-                  ...prev,
-                  refineQuota: { ...prev.refineQuota, saran: Math.max(0, prev.refineQuota.saran - 1) }
-                }))}
                 onApplyText={(text) => setForm({ ...form, saran: text })}
               />
               <PresetDialog 
