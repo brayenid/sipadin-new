@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { formatWita } from "@/lib/date-utils";
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog";
 
 export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: any[] }) {
   const [loading, setLoading] = useState(false);
@@ -157,7 +158,13 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
         {/* BAGIAN NOMOR & TANGGAL */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-2">
-            <Label className="text-[10px] sm:text-sm">Nomor BAPB</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] sm:text-sm">Nomor BAPB</Label>
+              <PresetNomorDialog
+                currentPrefix={form.nomorPrefix}
+                onSelect={(prefix) => setForm({ ...form, nomorPrefix: prefix })}
+              />
+            </div>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 

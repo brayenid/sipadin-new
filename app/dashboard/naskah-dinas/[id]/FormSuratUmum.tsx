@@ -19,6 +19,7 @@ import SuratUmumPdf from "@/pdf/templates/SuratUmumPdf"
 import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 import { getDefaultNomorSuffix } from "@/lib/utils"
 import { MarkdownLiteEditor } from "@/components/ui/markdown-lite-editor"
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog"
 
 function DynamicStringList({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder?: string }) {
   const handleAdd = () => onChange([...items, ""])
@@ -132,7 +133,7 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
     penerimaLokasi: meta.penerimaLokasi ?? "",
 
     // Basic Info
-    nomorPrefix: meta.nomorPrefix ?? "800.1.11.1/",
+    nomorPrefix: meta.nomorPrefix ?? "000.1.5/",
     nomorTengah: meta.nomorTengah ?? "",
     nomorSuffix: meta.nomorSuffix ?? getDefaultNomorSuffix(),
     sifat: meta.sifat ?? "Biasa",
@@ -332,7 +333,14 @@ export default function FormSuratUmum({ naskah, pegawaiList }: { naskah: any, pe
           <CardContent className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2 sm:col-span-2">
-                <Label>Nomor Surat</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Nomor Surat</Label>
+                  <PresetNomorDialog
+                    currentPrefix={form.nomorPrefix}
+                    formatTrailingSlash={false}
+                    onSelect={(prefix) => setForm({ ...form, nomorPrefix: prefix })}
+                  />
+                </div>
                 <div className="flex items-center">
                   <Input 
                     name="nomorPrefix" 

@@ -17,6 +17,7 @@ import SuratEdaranPdf from "@/pdf/templates/SuratEdaranPdf"
 import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 import { getDefaultNomorSuffix } from "@/lib/utils"
 import { MarkdownLiteEditor } from "@/components/ui/markdown-lite-editor"
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog"
 
 function DynamicStringList({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder?: string }) {
   const handleAdd = () => onChange([...items, ""])
@@ -111,7 +112,7 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
   const meta = typeof naskah.data === 'object' && naskah.data !== null ? naskah.data : {}
 
   const [form, setForm] = useState({
-    nomorPrefix: meta.nomorPrefix ?? "800.1.11.1/",
+    nomorPrefix: meta.nomorPrefix ?? "180.34/",
     nomorTengah: meta.nomorTengah ?? "",
     nomorSuffix: meta.nomorSuffix ?? getDefaultNomorSuffix(),
     sifat: meta.sifat ?? "Penting",
@@ -176,7 +177,14 @@ export default function FormSuratEdaran({ naskah, pegawaiList }: { naskah: any, 
             <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
           </div>
           <div className="space-y-2">
-            <Label>Nomor Surat Edaran Sekda</Label>
+            <div className="flex items-center justify-between">
+              <Label>Nomor Surat Edaran Sekda</Label>
+              <PresetNomorDialog
+                currentPrefix={form.nomorPrefix}
+                formatTrailingSlash={false}
+                onSelect={(prefix) => setForm({ ...form, nomorPrefix: prefix })}
+              />
+            </div>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 

@@ -14,6 +14,7 @@ import NaskahDinasPdfPreview from "./NaskahDinasPdfPreview"
 import SuratPerintahPdf from "@/pdf/templates/SuratPerintahPdf"
 import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 import { getDefaultNomorSuffix } from "@/lib/utils"
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog"
 
 function DynamicListInput({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder?: string }) {
   const handleAdd = () => onChange([...items, ""])
@@ -119,7 +120,14 @@ export default function FormSuratPerintah({ naskah, pegawaiList }: { naskah: any
             <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
           </div>
           <div className="space-y-2">
-            <Label>Nomor Surat Perintah</Label>
+            <div className="flex items-center justify-between">
+              <Label>Nomor Surat Perintah</Label>
+              <PresetNomorDialog
+                currentPrefix={form.nomorPrefix}
+                formatTrailingSlash={false}
+                onSelect={(prefix) => setForm({ ...form, nomorPrefix: prefix })}
+              />
+            </div>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 

@@ -15,6 +15,7 @@ import TelaahanStafPdf from "@/pdf/templates/TelaahanStafPdf"
 import { CreatableCombobox } from "@/components/ui/creatable-combobox"
 import { PresetDialog } from "@/components/ui/preset-dialog"
 import telaahanPresets from "@/lib/presets/telaahan.json"
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog"
 
 export default function FormTelaahanStaf({
   naskah,
@@ -142,8 +143,15 @@ export default function FormTelaahanStaf({
             <Input type="date" name="tanggal" value={form.tanggal} onChange={handleChange} />
           </div>
           <div className="space-y-2">
-            <Label>Nomor Surat (Opsional)</Label>
-            <Input name="nomorSurat" value={form.nomorSurat} onChange={handleChange} placeholder="Contoh: 800.1.11.1/123/UMUM" />
+            <div className="flex items-center justify-between">
+              <Label>Nomor Surat (Opsional)</Label>
+              <PresetNomorDialog
+                currentPrefix={form.nomorSurat}
+                formatTrailingSlash={false}
+                onSelect={(prefix) => setForm({ ...form, nomorSurat: `${prefix}` })}
+              />
+            </div>
+            <Input name="nomorSurat" value={form.nomorSurat} onChange={handleChange} placeholder="Contoh: 000.2.3.6/123/Org-TU.P" />
           </div>
           <div className="space-y-2">
             <Label>Lampiran</Label>

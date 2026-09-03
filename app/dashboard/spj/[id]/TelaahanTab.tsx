@@ -20,6 +20,7 @@ import telaahanPresets from "@/lib/presets/telaahan.json";
 import { getDefaultNomorSuffix } from "@/lib/utils";
 import InitTelaahanAiModal from "./InitTelaahanAiModal";
 import RefineFieldAiButton from "./RefineFieldAiButton";
+import { PresetNomorDialog } from "@/components/ui/preset-nomor-dialog";
 
 export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: any, pegawaiList: any[], onDirtyChange?: (dirty: boolean) => void }) {
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
   const data = meta.telaahan || {};
 
   const [form, setForm] = useState({
-    nomorPrefix: data.nomorPrefix ?? "000.8 / ",
+    nomorPrefix: data.nomorPrefix ?? "000.2.3.6 / ",
     nomorTengah: data.nomorTengah ?? "",
     nomorSuffix: data.nomorSuffix ?? getDefaultNomorSuffix(" /Org-TU.P"),
     tanggal: data.tanggal || "",
@@ -222,7 +223,13 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             )}
           </div>
           <div className="space-y-2">
-            <Label className="text-xs sm:text-sm">Nomor Telaahan</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs sm:text-sm">Nomor Telaahan</Label>
+              <PresetNomorDialog
+                currentPrefix={form.nomorPrefix}
+                onSelect={(prefix) => setForm({ ...form, nomorPrefix: prefix })}
+              />
+            </div>
             <div className="flex items-center">
               <Input 
                 name="nomorPrefix" 
