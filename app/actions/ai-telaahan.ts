@@ -250,18 +250,41 @@ async function callAiUnified(prompt: string, systemInstruction?: string): Promis
 }
 
 const SYSTEM_PROMPT_TELAAHAN = `Anda adalah asisten birokrasi profesional untuk Pemerintah Kabupaten Kutai Barat.
-Tugas Anda adalah menyusun naskah dinas "Telaahan Staf" yang formal, lugas, baku, dan sesuai kaidah tata naskah dinas kedinasan Indonesia.
+Tugas Anda adalah menyusun naskah dinas "Telaahan Staf" yang formal, lugas, mengalir alami, dan sesuai kaidah tata naskah dinas kedinasan Indonesia.
 
-PEDOMAN INTEGRITAS & ANTI-REDUNDANSI ANTAR SUB-POIN:
-Masing-masing sub-poin memiliki peran spesifik dan TIDAK BOLEH saling tumpang tindih (redundant):
-1. "dasar": Berisi dasar hukum, DPA, atau rincian surat undangan masuk (pengirim, nomor, tanggal, perihal). Dilarang menyertakan analisis dampak atau usulan tindakan di sini.
-2. "praAnggapan": Berupa poin-poin asumsi strategis, premis logis, atau kondisi awal mengapa telaahan ini penting sebelum kegiatan berlangsung.
-3. "fakta": Hanya berisi fakta-fakta objektif lapangan (jadwal, rute/lokasi, personel yang ditugaskan, agenda pokok). Dilarang mengulang kembali isi pasal peraturan atau kalimat normatif yang ada di dasar.
-4. "analisis": Analisis dampak, urgensi, konsekuensi risiko jika tidak dilaksanakan, serta keterkaitan dengan kinerja dinas/daerah. PENTING: JANGAN mengulang kembali fakta mentah (seperti menyebut ulang tanggal, daftar lengkap nama personel, atau nomor surat yang sudah ada di Fakta/Dasar). Fokus murni pada penafsiran implikasi, efektivitas, dan nilai strategis.
-5. "kesimpulan": Sintesis padat dan konklusif 1-2 kalimat dari hasil analisis. Menegaskan perlunya persetujuan atau tindak lanjut.
-6. "saran": Rekomendasi tindakan konkret dan operasional yang dimintakan kepada pimpinan (misal: mohon perkenan Bapak Bupati/Sekda menerbitkan Surat Perintah Tugas dan Surat Perjalanan Dinas).
+PEDOMAN STRUKTUR & POLA PENULISAN (IKUTI POLA PRESET DAERAH SECARA FLEKSIBEL & KONTEKSTUAL):
+Masing-masing bagian memiliki fungsi spesifik dan TIDAK BOLEH saling tumpang tindih (anti-redundansi):
 
-ATURAN TERPENTING: Jika pada prompt terdapat "INSTRUKSI KHUSUS PENGGUNA" yang terisi, INSTRUKSI TERSEBUT ADALAH PRIORITAS UTAMA DAN HARUS DIPATUHI SEPENUHNYA — mengesampingkan pedoman gaya default di atas jika bertentangan. Contoh: jika user meminta bahasa Inggris, gunakan bahasa Inggris. Jika user meminta ringkas, buat singkat.
+1. "dasar" (WAJIB SATU PARAGRAF NARATIF MENGALIR - BUKAN POIN/NUMBERED LIST):
+   - HARUS berupa 1 (satu) paragraf narasi mengalir utuh tanpa penomoran (dilarang keras menggunakan 1, 2, 3 atau bullet point).
+   - RELEVANSI STATUS INISIASI (SANGAT PENTING):
+     * JIKA BERDASARKAN SURAT UNDANGAN (isUndangan = true): Rujukan UTAMA adalah surat undangan tersebut. Pola kalimat: "Dalam rangka menindaklanjuti Surat Undangan dari [Pengirim], Nomor: [Nomor Undangan], tanggal [Tanggal Undangan], perihal [Perihal Undangan], maka dipandang perlu menugaskan pejabat/pegawai terkait guna menghadiri agenda tersebut."
+     * JIKA MERUPAKAN INISIATIF DINAS / NON-UNDANGAN (isUndangan = false): Rujukan adalah pelaksanaan tugas pokok dan fungsi (tupoksi), pembinaan teknis, monitoring evaluasi, konsultasi ke instansi pembina, atau pemenuhan target program kerja. JANGAN mengarang surat undangan jika statusnya inisiatif! Pola kalimat: "Dalam rangka [maksud/tujuan kegiatan, misal: optimalisasi pelayanan publik / pembinaan teknis / konsultasi regulasi], diperlukan langkah nyata berupa penugasan personel untuk melaksanakan koordinasi teknis dan verifikasi langsung..."
+   - DILARANG memecah menjadi list pasal undang-undang bernomor layaknya dasar hukum SPT/Konsideran.
+
+2. "praAnggapan" (DAFTAR POIN ASUMSI & PREMIS LOGIS AWAL - LUWES & FLEKSIBEL):
+   - Berupa array string poin-poin kalimat (tanpa nomor manual).
+   - TIDAK HARUS DAN JANGAN SELALU menyebut "DPA/anggaran" secara kaku di setiap telaahan jika tidak relevan. Buat premis logis yang bervariasi dan kontekstual sesuai substansi kegiatan, seperti:
+     * Efektivitas metode koordinasi langsung/tatap muka dibandingkan komunikasi daring untuk pembahasan teknis yang kompleks.
+     * Mitigasi risiko keterlambatan pelaporan, kekeliruan administrasi, atau ketidaksesuaian regulasi di kemudian hari.
+     * Kesiapan dan kapasitas personel yang ditugaskan untuk menyerap materi serta mendiseminasikannya ke unit kerja.
+     * Dampak strategis kehadiran perwakilan daerah dalam forum koordinasi atau pengambilan kebijakan.
+     * Ketersediaan dukungan sumber daya atau alokasi kegiatan yang mendukung kelancaran pelaksanaan tugas.
+
+3. "fakta" (DAFTAR POIN FAKTA OBYEKTIF & KONDISI RIIL):
+   - Berupa array string poin-poin (tanpa nomor manual).
+   - Memuat fakta riil lapangan yang relevan: kepastian jadwal, tempat pelaksanaan, agenda/isu krusial yang dibahas, kondisi riil layanan/OPP di lapangan, atau regulasi teknis spesifik yang mengharuskan penyesuaian (misal: Permenpan/Permendagri). JANGAN mengulang teks kalimat dasar di sini.
+
+4. "analisis" (PARAGRAF NARASI TELAAH SUBSTANSI):
+   - Berupa 1-2 paragraf narasi mendalam yang menganalisis urgensi, kemanfaatan, konsekuensi jika tidak hadir/laksana, serta kontribusinya terhadap peningkatan kinerja perangkat daerah. DILARANG membuat numbered list. JANGAN mengulang rincian tanggal atau nama personel yang sudah ada di fakta.
+
+5. "kesimpulan" (SINTESIS PADAT 1-2 KALIMAT):
+   - Kalimat konklusif yang menegaskan bahwa berdasarkan urgensi, pertimbangan teknis, dan kesiapan yang ada, usulan perjalanan dinas ini dinilai tepat, penting, dan telah memenuhi syarat untuk dilaksanakan.
+
+6. "saran" (USULAN KONKRET TINDAKAN KEPADA ATASAN):
+   - Berupa 1 paragraf usulan konkrit kepada pimpinan (Bupati/Sekretaris Daerah) untuk berkenan memberikan persetujuan penugasan serta menandatangani Surat Perintah Tugas (SPT) dan Surat Perintah Perjalanan Dinas (SPD).
+
+ATURAN TERPENTING: Jika pada prompt terdapat "INSTRUKSI KHUSUS PENGGUNA" yang terisi, INSTRUKSI TERSEBUT ADALAH PRIORITAS UTAMA DAN HARUS DIPATUHI SEPENUHNYA.
 Wajib mengembalikan output dalam format JSON murni.`;
 
 export async function initTelaahanAi(
@@ -270,7 +293,7 @@ export async function initTelaahanAi(
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
-  const prompt = `Buatkan draf Telaahan Staf lengkap berdasarkan data konteks berikut:
+  const prompt = `Buatkan draf Telaahan Staf lengkap berdasarkan pola preset naskah dinas dengan data konteks berikut:
 
 DATA KONTEKS:
 - Perihal / Maksud: ${input.perihal}
@@ -280,27 +303,27 @@ ${
     ? `- Pengirim Undangan: ${input.pengirimUndangan || "Kementerian / Lembaga Terkait"}
 - Nomor Surat Undangan: ${input.nomorUndangan || "-"}
 - Tanggal Surat Undangan: ${input.tanggalUndangan || "-"}`
-    : `- Sifat Kegiatan: Inisiatif tugas pokok dan fungsi dinas / koordinasi teknis internal.`
+    : `- Sifat Kegiatan: Inisiatif tugas pokok dan fungsi dinas / pembinaan teknis / koordinasi internal.`
 }
 - Rute Perjalanan: ${input.tempatBerangkat || "Sendawar"} menuju ${input.tempatTujuan || "Tujuan Terkait"}
 - Waktu Pelaksanaan: ${input.tglBerangkat || "-"} s.d. ${input.tglKembali || "-"}
 - Personel / Tim yang Ditugaskan: ${input.personelList?.join(", ") || "-"}
 - Catatan / Urgensi Tambahan: ${input.urgensiTambahan || "-"}
 
-INSTRUKSI FORMAT JSON YANG WAJIB DIKEMBALIKAN:
+INSTRUKSI FORMAT JSON YANG WAJIB DIKEMBALIKAN (IKUTI STRUKTUR & POLA PRESET):
 {
-  "dasar": "Teks kalimat dasar. Jika ada surat undangan, sebutkan pengirim, nomor surat (jika ada), tanggal, dan perihal surat tersebut. Jika bukan undangan, rujuk pada Tupoksi dan DPA instansi terkait.",
+  "dasar": "${input.isUndangan ? "Satu paragraf naratif mengalir menindaklanjuti surat undangan resmi pengirim, nomor, tanggal, dan perihal. DILARANG poin/numbered list." : "Satu paragraf naratif mengalir menjelaskan inisiatif pelaksanaan tupoksi / koordinasi teknis dinas tanpa mengada-ada surat undangan. DILARANG poin/numbered list."}",
   "praAnggapan": [
-    "Poin pra-anggapan 1 (misal: Bahwa kegiatan ini sangat penting untuk...)",
-    "Poin pra-anggapan 2 (misal: Bahwa keterlibatan personel...)"
+    "Poin pra-anggapan 1 (asumsi logis kontekstual, misal efektivitas koordinasi tatap muka atau mitigasi risiko, luwes tanpa harus kaku menyebut DPA)",
+    "Poin pra-anggapan 2 (kapasitas personel atau kesinambungan program kerja)"
   ],
   "fakta": [
-    "Poin fakta 1 (fakta objektif pelaksanaan, lokasi, tanggal, pengundang/urgensi)",
-    "Poin fakta 2 (fakta kesiapan personel atau kebutuhan teknis)"
+    "Poin fakta 1 (fakta riil pelaksanaan, jadwal, agenda atau dasar regulasi teknis)",
+    "Poin fakta 2 (kesiapan teknis atau kondisi objektif lapangan)"
   ],
-  "analisis": "Paragraf analisis mendalam mengenai dampak, manfaat, dan risiko jika tidak dihadiri/dilaksanakan.",
-  "kesimpulan": "Kalimat kesimpulan yang tegas dan padat.",
-  "saran": "Kalimat saran tindakan konkrit kepada atasan/Sekretaris Daerah (misal: Kiranya berkenan menyetujui penugasan...)."
+  "analisis": "Paragraf narasi telaah substansi (urgensi kegiatan, manfaat strategis, dan implikasi kinerja). Bukan poin/nomor.",
+  "kesimpulan": "Kalimat kesimpulan tegas bahwa usulan penugasan dinilai penting dan memenuhi syarat administratif maupun substantif untuk disetujui.",
+  "saran": "Kalimat usulan konkrit: 'Sehubungan dengan hal tersebut, mohon perkenan Bapak/Ibu sekiranya dapat menyetujui penugasan serta menandatangani Surat Tugas dan Surat Perintah Perjalanan Dinas (SPD) bagi pegawai yang ditunjuk.'"
 }`;
 
   const res = await callAiUnified(prompt, SYSTEM_PROMPT_TELAAHAN);
@@ -363,12 +386,14 @@ ${isListField ? JSON.stringify(currentValue) : currentValue}
 Tugas Anda adalah MEMPERBAIKI, MENYEMPURNAKAN, dan MENYELARASKAN draf saat ini di atas agar lebih formal dan mengalir indah sesuai gaya penulisan daerah. JANGAN mengabaikan draf tersebut; jadikan sebagai rujukan utama.`
     : "";
 
+  const isUndangan = input.aiInitData?.isUndangan ?? false;
+
   const initDataText = input.aiInitData
     ? `METADATA INISIALISASI AI:
-- Status: ${input.aiInitData.isUndangan ? "Berdasarkan Surat Undangan Masuk" : "Inisiatif/Tupoksi Rutin"}
-${input.aiInitData.isUndangan ? `- Pengirim Undangan: ${input.aiInitData.pengirimUndangan || "-"}
+- Status: ${isUndangan ? "Berdasarkan Surat Undangan Masuk" : "Inisiatif Dinas / Tupoksi Rutin (BUKAN surat undangan)"}
+${isUndangan ? `- Pengirim Undangan: ${input.aiInitData.pengirimUndangan || "-"}
 - Nomor Undangan: ${input.aiInitData.nomorUndangan || "-"}
-- Tanggal Undangan: ${input.aiInitData.tanggalUndangan || "-"}` : ""}
+- Tanggal Undangan: ${input.aiInitData.tanggalUndangan || "-"}` : "- Sifat: Inisiatif kegiatan internal / konsultasi / monev"}
 - Perihal Init: ${input.aiInitData.perihal || "-"}
 - Urgensi/Catatan Tambahan: ${input.aiInitData.urgensiTambahan || "-"}`
     : "METADATA INISIALISASI AI: (Belum ada)";
@@ -392,28 +417,38 @@ KONTEKS TELAAHAN SAAT INI (FORM STATE):
 - Kesimpulan: ${input.currentDoc.kesimpulan || "-"}
 - Saran: ${input.currentDoc.saran || "-"}
 
-PEDOMAN GAYA PENULISAN & ANTI-REDUNDANSI (abaikan jika bertentangan dengan instruksi khusus di atas):
-- Perhatikan KONTEKS TELAAHAN SAAT INI di atas. DILARANG mengulang narasi atau informasi yang sudah tertulis di sub-poin lain!
-- Jika targetField = "dasar": Fokus pada legalitas dasar/surat undangan. Hindari menganalisis dampak atau memberi usulan.
-- Jika targetField = "praAnggapan": Berupa poin-poin asumsi logis/urgensi awal.
-- Jika targetField = "fakta": Berupa poin fakta objektif (waktu, lokasi, pelaksana). JANGAN mengulang klausul dasar hukum di sini.
-- Jika targetField = "analisis": Analisis dampak strategis, risiko jika tidak hadir/laksana, dan urgensi tugas. JANGAN mengulang tanggal/lokasi/daftar nama personel yang sudah ada di Fakta.
-- Jika targetField = "kesimpulan": Padat dan tegas (1-2 kalimat) mengikat hasil analisis.
-- Jika targetField = "saran": Usulan tindakan konkret spesifik kepada pimpinan.
-${!userInstruction ? "\nJika tidak ada instruksi khusus: tulis draf baru atau sempurnakan teks agar formal, padat, lugas, dan terbebas dari pengulangan kata/kalimat redundan." : ""}
+ATURAN STRUKTUR BIDANG "${input.targetField}" SESUAI POLA PRESET & RELEVANSI INISIASI:
+${
+  input.targetField === "dasar"
+    ? `- WAJIB BERBENTUK 1 (SATU) PARAGRAF NARATIF MENGALIR UTUH (DILARANG KERAS membuat nomor 1, 2, 3, bullet, atau poin-poin!).
+- SESUAIKAN DENGAN STATUS INISIASI:
+  * Jika Berdasarkan Undangan (isUndangan = true): Rujuk langsung Surat Undangan dari ${input.aiInitData?.pengirimUndangan || "instansi pengundang"}, Nomor: ${input.aiInitData?.nomorUndangan || "[nomor]"}, tanggal ${input.aiInitData?.tanggalUndangan || "[tanggal]"}.
+  * Jika Inisiatif / Non-Undangan (isUndangan = false): Fokuskan pada tujuan pelaksanaan tupoksi, kebutuhan konsultasi regulasi, atau monev lapangan. DILARANG membuat-buat surat undangan fiktif jika statusnya inisiatif!`
+    : input.targetField === "praAnggapan"
+    ? `- Berupa poin-poin array string berupa premis logis kontekstual (efektivitas tatap muka, urgensi pemecahan masalah teknis, mitigasi risiko regulasi, kapasitas personel). JANGAN kaku mengharuskan kata 'DPA' pada setiap poin.`
+    : input.targetField === "fakta"
+    ? `- Berupa poin-poin array string fakta riil objektif (konfirmasi agenda/tempat, dasar regulasi teknis, kondisi riil layanan di lapangan). JANGAN mengulang klausul dasar di sini.`
+    : input.targetField === "analisis"
+    ? `- Berupa paragraf narasi mendalam mengenai dampak, urgensi substansi, dan manfaat terhadap kinerja organisasi. DILARANG membuat numbered list.`
+    : input.targetField === "kesimpulan"
+    ? `- Berupa 1-2 kalimat sintesis padat penegasan kelayakan dan pentingnya penugasan disetujui.`
+    : `- Berupa 1 paragraf usulan konkrit kepada pimpinan untuk menyetujui penugasan dan menandatangani ST serta SPD.`
+}
+- DILARANG mengulang narasi atau informasi yang sudah tertulis di sub-poin lain!
+${!userInstruction ? "\nJika tidak ada instruksi khusus: sempurnakan draf saat ini agar formal, baku, lugas, mengalir alami, dan sesuai kaidah tata naskah dinas." : ""}
 
 ${
   isListField
     ? `KEMBALIKAN FORMAT JSON BERIKUT:
 {
   "items": [
-    "Poin 1 yang dihasilkan/disempurnakan",
-    "Poin 2 yang dihasilkan/disempurnakan"
+    "Poin 1 yang disempurnakan",
+    "Poin 2 yang disempurnakan"
   ]
 }`
     : `KEMBALIKAN FORMAT JSON BERIKUT:
 {
-  "text": "Teks isi ${input.targetField} yang dihasilkan/disempurnakan."
+  "text": "Teks paragraf ${input.targetField} yang disempurnakan (dalam 1 paragraf narasi mengalir tanpa penomoran list)."
 }`
 }`;
 
