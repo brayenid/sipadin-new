@@ -165,21 +165,13 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
       textAlign: 'center',
       lineHeight: 1.2
     },
-    titleSub: {
-      fontSize: globalFontSize,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      textAlign: 'center',
-      marginTop: 2,
-      lineHeight: 1.2
-    },
     titleObject: {
       fontSize: globalFontSize,
-      fontWeight: 700,
+      fontWeight: 'normal',
       textTransform: 'uppercase',
       textAlign: 'center',
-      marginTop: 2,
-      maxWidth: 420,
+      marginTop: 3,
+      maxWidth: 440,
       lineHeight: 1.25
     },
     sectionWrap: {
@@ -343,7 +335,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
     return (
       <View style={styles.pointsContainer}>
         {cleaned.map((p, idx) => (
-          <View key={idx} style={styles.pointRow} wrap={false}>
+          <View key={idx} style={styles.pointRow}>
             <Text style={styles.pointNo}>{idx + 1}.</Text>
             <Text style={styles.pointText}>{p}</Text>
           </View>
@@ -362,10 +354,9 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
           alamatLine="Jalan Kompleks Perkantoran Pemerintah Kabupaten Kutai Barat, Telepon (0542) 594754\nKode Pos 75776 Fax (0542) 404384 Website: setda.kutaibaratkab.go.id"
         />
 
-        {/* Format Judul Tata Naskah Dinas: LAPORAN TENTANG [KEGIATAN] */}
+        {/* Format Judul Tata Naskah Dinas: LAPORAN [KEGIATAN] */}
         <View style={styles.titleWrap}>
           <Text style={styles.titleHeader}>LAPORAN</Text>
-          <Text style={styles.titleSub}>TENTANG</Text>
           <Text style={styles.titleObject}>{kegiatanRaw.toUpperCase() || 'PELAKSANAAN PERJALANAN DINAS'}</Text>
         </View>
 
