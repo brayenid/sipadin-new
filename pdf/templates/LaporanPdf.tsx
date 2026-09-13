@@ -248,24 +248,15 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
       lineHeight: globalLineHeight
     },
     pointsContainer: {
-      marginLeft: 16,
       marginTop: 4
     },
-    pointRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: 6
-    },
-    pointNo: {
-      width: 18,
-      fontSize: globalFontSize,
-      lineHeight: globalLineHeight
-    },
-    pointText: {
-      flex: 1,
+    pointParagraph: {
+      paddingLeft: 34,
+      textIndent: -18,
       textAlign: 'justify',
       fontSize: globalFontSize,
-      lineHeight: globalLineHeight
+      lineHeight: globalLineHeight,
+      marginBottom: 6
     },
     signWrap: {
       marginTop: 28,
@@ -350,10 +341,9 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
     return (
       <View style={styles.pointsContainer}>
         {cleaned.map((p, idx) => (
-          <View key={idx} style={styles.pointRow}>
-            <Text style={styles.pointNo}>{idx + 1}.</Text>
-            <Text style={styles.pointText}>{p}</Text>
-          </View>
+          <Text key={idx} style={styles.pointParagraph}>
+            {`${idx + 1}.  ${p}`}
+          </Text>
         ))}
       </View>
     )
