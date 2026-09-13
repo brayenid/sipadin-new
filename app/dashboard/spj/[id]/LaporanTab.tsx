@@ -43,11 +43,6 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
     hasilNarasi: data.hasilNarasi || "",
     aiInitData: data.aiInitData || null,
     isAiInitialized: data.isAiInitialized || false,
-    refineQuota: data.refineQuota || {
-      hasilPembuka: 3,
-      hasilPoin: 3,
-      hasilNarasi: 3,
-    },
   });
 
   const [hasilPoin, setHasilPoin] = useState<string[]>(data.hasilPoin && data.hasilPoin.length > 0 ? data.hasilPoin : [""]);
@@ -211,11 +206,6 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
                 ...form,
                 aiInitData: null,
                 isAiInitialized: false,
-                refineQuota: {
-                  hasilPembuka: 3,
-                  hasilPoin: 3,
-                  hasilNarasi: 3,
-                },
               };
               setForm(updatedForm);
               try {
@@ -424,11 +414,6 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
                   currentDoc={{ ...form, hasilPoin }}
                   aiInitData={form.aiInitData}
                   isAiInitialized={form.isAiInitialized}
-                  quotaRemaining={form.refineQuota.hasilPembuka}
-                  onUseQuota={() => setForm(prev => ({
-                    ...prev,
-                    refineQuota: { ...prev.refineQuota, hasilPembuka: Math.max(0, prev.refineQuota.hasilPembuka - 1) }
-                  }))}
                   onApplyText={(text) => {
                     setForm({ ...form, hasilPembuka: text });
                     onDirtyChange?.(true);
@@ -463,11 +448,6 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
                     currentDoc={{ ...form, hasilPoin }}
                     aiInitData={form.aiInitData}
                     isAiInitialized={form.isAiInitialized}
-                    quotaRemaining={form.refineQuota.hasilPoin}
-                    onUseQuota={() => setForm(prev => ({
-                      ...prev,
-                      refineQuota: { ...prev.refineQuota, hasilPoin: Math.max(0, prev.refineQuota.hasilPoin - 1) }
-                    }))}
                     onApplyList={(items) => {
                       setHasilPoin(items.length > 0 ? items : [""]);
                       onDirtyChange?.(true);
@@ -522,11 +502,6 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
                     currentDoc={{ ...form, hasilPoin }}
                     aiInitData={form.aiInitData}
                     isAiInitialized={form.isAiInitialized}
-                    quotaRemaining={form.refineQuota.hasilNarasi}
-                    onUseQuota={() => setForm(prev => ({
-                      ...prev,
-                      refineQuota: { ...prev.refineQuota, hasilNarasi: Math.max(0, prev.refineQuota.hasilNarasi - 1) }
-                    }))}
                     onApplyText={(text) => {
                       setForm({ ...form, hasilNarasi: text });
                       onDirtyChange?.(true);

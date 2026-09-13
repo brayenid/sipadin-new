@@ -142,7 +142,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
   const pageMarginBottom = config?.styles?.marginBottom ?? 32
   const pageMarginHorizontal = config?.styles?.marginHorizontal ?? 40
   const globalFontSize = config?.styles?.fontSize ?? 11
-  const globalLineHeight = config?.styles?.lineHeight ?? 1.35
+  const globalLineHeight = config?.styles?.lineHeight ?? 1.4
 
   const styles = StyleSheet.create({
     page: {
@@ -154,76 +154,114 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
       fontFamily: 'Helvetica'
     },
     titleWrap: {
-      marginTop: -8,
+      marginTop: -4,
       alignItems: 'center',
-      marginBottom: 2
+      marginBottom: 10
     },
-    title: {
+    titleHeader: {
+      fontSize: globalFontSize + 1,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      textAlign: 'center',
+      lineHeight: 1.2
+    },
+    titleSub: {
       fontSize: globalFontSize,
       fontWeight: 700,
       textTransform: 'uppercase',
-      textDecoration: 'underline'
+      textAlign: 'center',
+      marginTop: 2,
+      lineHeight: 1.2
     },
-    metaWrap: {
+    titleObject: {
+      fontSize: globalFontSize,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      textAlign: 'center',
+      marginTop: 2,
+      maxWidth: 420,
+      lineHeight: 1.25
+    },
+    sectionWrap: {
       marginTop: 10
     },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: 2
+    sectionHeading: {
+      fontSize: globalFontSize,
+      fontWeight: 700,
+      marginBottom: 4
     },
-    metaLabel: {
-      width: 150,
+    subItemBlock: {
+      marginLeft: 16,
+      marginBottom: 6
+    },
+    subItemTitle: {
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight,
+      fontWeight: 700
+    },
+    subItemContent: {
+      marginLeft: 16,
+      marginTop: 2,
+      textAlign: 'justify',
       fontSize: globalFontSize,
       lineHeight: globalLineHeight
     },
-    metaColon: {
-      width: 10,
+    paragraph: {
+      textAlign: 'justify',
+      marginLeft: 16,
+      marginBottom: 6,
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight
+    },
+    kvTable: {
+      marginLeft: 16,
+      marginTop: 2,
+      marginBottom: 4
+    },
+    kvRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 3
+    },
+    kvLabel: {
+      width: 140,
+      fontSize: globalFontSize,
+      lineHeight: globalLineHeight
+    },
+    kvColon: {
+      width: 12,
       textAlign: 'center',
       fontSize: globalFontSize,
       lineHeight: globalLineHeight
     },
-    metaValue: {
+    kvValue: {
       flex: 1,
       textAlign: 'justify',
       fontSize: globalFontSize,
       lineHeight: globalLineHeight
     },
-    sectionRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
+    pointsContainer: {
+      marginLeft: 16,
       marginTop: 4
-    },
-    sectionValue: {
-      flex: 1
-    },
-    bodyText: {
-      fontSize: globalFontSize,
-      lineHeight: globalLineHeight * 1.1,
-      textAlign: 'justify'
-    },
-    paragraph: {
-      textAlign: 'justify',
-      textIndent: 28
     },
     pointRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 3
+      marginBottom: 6
     },
     pointNo: {
-      width: 14,
+      width: 18,
       fontSize: globalFontSize,
-      lineHeight: globalLineHeight * 1.1
+      lineHeight: globalLineHeight
     },
     pointText: {
       flex: 1,
       textAlign: 'justify',
       fontSize: globalFontSize,
-      lineHeight: globalLineHeight * 1.1
+      lineHeight: globalLineHeight
     },
     signWrap: {
-      marginTop: 36,
+      marginTop: 28,
       flexDirection: 'row',
       justifyContent: excludeMengetahui ? 'flex-end' : 'space-between',
       break: false
@@ -232,7 +270,10 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
       width: '45%'
     },
     signColRight: {
-      width: excludeMengetahui ? '50%' : '50%'
+      width: '50%'
+    },
+    signDateRow: {
+      marginBottom: 2
     },
     signLabel: {
       fontSize: globalFontSize,
@@ -243,7 +284,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
       fontSize: globalFontSize,
       minHeight: 14,
       lineHeight: globalLineHeight,
-      marginLeft: excludeMengetahui ? 0 : -40
+      marginLeft: excludeMengetahui ? 0 : -35
     },
     signSpace: {
       height: 48
@@ -268,7 +309,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
     execNo: {
       width: 15,
       fontSize: Math.max(8, globalFontSize - 1),
-      marginLeft: excludeMengetahui ? 0 : -40
+      marginLeft: excludeMengetahui ? 0 : -35
     },
     execContent: {
       flex: 1,
@@ -295,24 +336,14 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
     }
   })
 
-  function MetaRow({ label, value }: { label: string; value: string }) {
-    return (
-      <View style={styles.metaRow}>
-        <Text style={styles.metaLabel}>{label}</Text>
-        <Text style={styles.metaColon}>:</Text>
-        <Text style={styles.metaValue}>{value}</Text>
-      </View>
-    )
-  }
-
   function PointsBlock({ points }: { points: string[] }) {
     const cleaned = (points ?? []).map((x) => normalizeMultiline(String(x || ''))).filter(Boolean)
-    if (cleaned.length === 0) return <Text style={styles.bodyText}>-</Text>
+    if (cleaned.length === 0) return <Text style={styles.paragraph}>-</Text>
 
     return (
-      <View style={{ marginTop: 2 }}>
+      <View style={styles.pointsContainer}>
         {cleaned.map((p, idx) => (
-          <View key={idx} style={styles.pointRow}>
+          <View key={idx} style={styles.pointRow} wrap={false}>
             <Text style={styles.pointNo}>{idx + 1}.</Text>
             <Text style={styles.pointText}>{p}</Text>
           </View>
@@ -324,41 +355,100 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Kop Surat Tetap Dipertahankan */}
         <KopSurat 
           instansiLine1="PEMERINTAH KABUPATEN KUTAI BARAT"
           instansiLine2="SEKRETARIAT DAERAH"
           alamatLine="Jalan Kompleks Perkantoran Pemerintah Kabupaten Kutai Barat, Telepon (0542) 594754\nKode Pos 75776 Fax (0542) 404384 Website: setda.kutaibaratkab.go.id"
         />
 
+        {/* Format Judul Tata Naskah Dinas: LAPORAN TENTANG [KEGIATAN] */}
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>LAPORAN PERJALANAN DINAS</Text>
+          <Text style={styles.titleHeader}>LAPORAN</Text>
+          <Text style={styles.titleSub}>TENTANG</Text>
+          <Text style={styles.titleObject}>{kegiatanRaw.toUpperCase() || 'PELAKSANAAN PERJALANAN DINAS'}</Text>
         </View>
 
-        <View style={styles.metaWrap}>
-          <MetaRow label="Dasar Laporan" value={dasar} />
-          <MetaRow label="Kegiatan Yang Di Lakukan" value={kegiatan} />
-          <MetaRow label="Waktu" value={waktu} />
-          <MetaRow label="1. Lokasi" value={lokasi} />
-          <MetaRow label="2. Tujuan" value={tujuan} />
-        </View>
+        {/* A. PENDAHULUAN */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionHeading}>A. Pendahuluan</Text>
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.metaLabel}>3. Hasil Pelaksanaan</Text>
-          <Text style={styles.metaColon}>:</Text>
+          {/* 1. Umum / Latar Belakang */}
+          <View style={styles.subItemBlock}>
+            <Text style={styles.subItemTitle}>1. Umum / Latar Belakang</Text>
+            <Text style={styles.subItemContent}>
+              Dalam rangka pelaksanaan tugas dan fungsi kedinasan, telah dilaksanakan perjalanan dinas untuk {kegiatan.toLowerCase().startsWith('melakukan') || kegiatan.toLowerCase().startsWith('mengikuti') || kegiatan.toLowerCase().startsWith('menghadiri') ? kegiatan : `pelaksanaan ${kegiatan}`}.
+            </Text>
+          </View>
 
-          <View style={styles.sectionValue}>
-            {pembukaFinal ? <Text style={styles.bodyText}>{pembukaFinal}</Text> : null}
-            {hasilMode === 'POINTS' ? <PointsBlock points={laporan?.hasilPoin ?? []} /> : null}
-            {hasilMode === 'NARRATIVE' ? (
-              <Text style={[styles.bodyText, { marginTop: pembukaFinal ? 6 : 0 }]}>{hasilNarasi || '-'}</Text>
-            ) : null}
+          {/* 2. Landasan Hukum */}
+          <View style={styles.subItemBlock}>
+            <Text style={styles.subItemTitle}>2. Landasan Hukum</Text>
+            <Text style={styles.subItemContent}>
+              {dasar}
+            </Text>
+          </View>
+
+          {/* 3. Maksud dan Tujuan */}
+          <View style={styles.subItemBlock}>
+            <Text style={styles.subItemTitle}>3. Maksud dan Tujuan</Text>
+            <Text style={styles.subItemContent}>
+              Maksud dan tujuan dilaksanakannya kegiatan ini adalah untuk {kegiatan} dengan tujuan ke {tujuan}.
+            </Text>
           </View>
         </View>
 
-        <View style={{ marginTop: 10 }}>
-          <Text style={[styles.bodyText, styles.paragraph]}>
-            Demikian laporan Perjalanan Dinas ini kami sampaikan untuk bahan pertanggungjawaban kerja sesuai dengan
-            bidang tugas dan untuk bahan tindak lanjut bagaimana mestinya.
+        {/* B. KEGIATAN YANG DILAKSANAKAN */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionHeading}>B. Kegiatan yang Dilaksanakan</Text>
+          <View style={styles.kvTable}>
+            <View style={styles.kvRow}>
+              <Text style={styles.kvLabel}>1. Waktu Pelaksanaan</Text>
+              <Text style={styles.kvColon}>:</Text>
+              <Text style={styles.kvValue}>{waktu || '-'}</Text>
+            </View>
+            <View style={styles.kvRow}>
+              <Text style={styles.kvLabel}>2. Tempat / Lokasi</Text>
+              <Text style={styles.kvColon}>:</Text>
+              <Text style={styles.kvValue}>{lokasi}</Text>
+            </View>
+            <View style={styles.kvRow}>
+              <Text style={styles.kvLabel}>3. Kota / Daerah Tujuan</Text>
+              <Text style={styles.kvColon}>:</Text>
+              <Text style={styles.kvValue}>{tujuan}</Text>
+            </View>
+            <View style={styles.kvRow}>
+              <Text style={styles.kvLabel}>4. Uraian Kegiatan</Text>
+              <Text style={styles.kvColon}>:</Text>
+              <Text style={styles.kvValue}>{kegiatan}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* C. HASIL YANG DICAPAI */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionHeading}>C. Hasil yang Dicapai</Text>
+
+          {pembukaFinal ? (
+            <Text style={styles.paragraph}>{pembukaFinal}</Text>
+          ) : null}
+
+          {hasilMode === 'POINTS' ? (
+            <PointsBlock points={laporan?.hasilPoin ?? []} />
+          ) : null}
+
+          {hasilMode === 'NARRATIVE' ? (
+            <Text style={[styles.paragraph, { marginTop: pembukaFinal ? 4 : 0 }]}>
+              {hasilNarasi || '-'}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* D. PENUTUP */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionHeading}>D. Penutup</Text>
+          <Text style={styles.paragraph}>
+            Demikian laporan perjalanan dinas ini dibuat dan disampaikan sebagai bahan pertanggungjawaban pelaksanaan tugas serta bahan tindak lanjut sebagaimana mestinya.
           </Text>
         </View>
 

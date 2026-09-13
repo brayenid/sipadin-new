@@ -45,8 +45,8 @@ export default function RefineLaporanFieldAiButton({
   };
   aiInitData: any;
   isAiInitialized: boolean;
-  quotaRemaining: number;
-  onUseQuota: () => void;
+  quotaRemaining?: number;
+  onUseQuota?: () => void;
   onApplyText?: (text: string) => void;
   onApplyList?: (items: string[]) => void;
 }) {
@@ -60,7 +60,7 @@ export default function RefineLaporanFieldAiButton({
   const [aiSource, setAiSource] = useState<string>("OpenRouter");
 
   const isListField = fieldName === "hasilPoin";
-  const disabled = quotaRemaining <= 0;
+  const disabled = false;
 
   const currentValue = isListField
     ? currentDoc.hasilPoin.filter(i => i.trim() !== "")
@@ -69,11 +69,6 @@ export default function RefineLaporanFieldAiButton({
   const handleRefine = async () => {
     if (!isAiInitialized) {
       toast.warning("Harap lakukan inisialisasi AI terlebih dahulu dengan mengklik tombol 'Init AI' di bagian atas.");
-      return;
-    }
-
-    if (quotaRemaining <= 0) {
-      toast.error("Kuota AI Refine untuk item ini sudah habis (Maksimal 3x).");
       return;
     }
 
@@ -94,7 +89,7 @@ export default function RefineLaporanFieldAiButton({
         setProposedText(result.text);
       }
 
-      onUseQuota();
+      onUseQuota?.();
       setShowResolution(true);
       setOpen(false);
       setInstruction("");
@@ -142,12 +137,12 @@ export default function RefineLaporanFieldAiButton({
               className="h-7 text-[10px] sm:text-xs text-indigo-700 bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100 hover:text-indigo-900 font-semibold px-2 gap-1"
             >
               <Sparkles className="w-3 h-3 text-indigo-500" />
-              <span>AI ({quotaRemaining})</span>
+              <span>AI Refine</span>
             </Button>
           }
         >
           <Sparkles className="w-3 h-3 text-indigo-500" />
-          <span>AI ({quotaRemaining})</span>
+          <span>AI Refine</span>
         </PopoverTrigger>
 
         <PopoverContent className="w-[280px] sm:w-[320px] p-3 text-xs space-y-2.5" align="end">
@@ -157,7 +152,7 @@ export default function RefineLaporanFieldAiButton({
               Sempurnakan {fieldLabel}
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">
-              AI akan menyusun ulang bagian ini berdasarkan konteks hasil kegiatan yang telah di-init. (Sisa kuota: {quotaRemaining}x)
+              AI akan menyusun ulang bagian ini berdasarkan konteks hasil kegiatan yang telah di-init.
             </p>
           </div>
 
