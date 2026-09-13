@@ -45,6 +45,8 @@ export type Laporan = {
 export type LaporanPdfProps = {
   spj: {
     noSuratTugas: string | null
+    tglBerangkat?: Date | string | null
+    tglKembali?: Date | string | null
   }
   roster: RosterItem[]
   laporan: Laporan | null
@@ -84,6 +86,18 @@ function normalizeOneLine(s: string) {
   return normalizeMultiline(s).replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
+function formatRentangWaktu(tglA?: Date | string | null, tglB?: Date | string | null): string {
+  if (!tglA && !tglB) return ''
+  const strA = tglA ? formatWita(tglA, 'dd MMMM yyyy') : ''
+  const strB = tglB ? formatWita(tglB, 'dd MMMM yyyy') : ''
+
+  if (strA && strB) {
+    if (strA === strB) return strA
+    return `${strA} s.d. ${strB}`
+  }
+  return strA || strB || ''
+}
+
 export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<DocumentProps> {
   const rosterSorted = sortRoster(props.roster ?? [])
   const laporan = props.laporan
@@ -97,16 +111,17 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
   const kegiatanRaw = (config?.content?.kegiatan ?? laporan?.kegiatan ?? '').trim()
   const kegiatan = safeText(kegiatanRaw, '-')
   
-  // Custom format date if time is provided
-  let waktu = '';
-  const waktuRaw = config?.content?.waktu ?? laporan?.waktu;
-  if (waktuRaw) {
+  // Ambil waktu dari rentang perjalanan di master SPJ (a-b, jika sama maka a saja)
+  const masterRentangWaktu = formatRentangWaktu(props.spj.tglBerangkat, props.spj.tglKembali)
+  let waktu = config?.content?.waktu || masterRentangWaktu
+  if (!waktu && laporan?.waktu) {
     try {
-      waktu = formatWita(waktuRaw, 'dd MMMM yyyy');
+      waktu = formatWita(laporan.waktu, 'dd MMMM yyyy')
     } catch {
-      waktu = waktuRaw;
+      waktu = laporan.waktu
     }
   }
+  waktu = safeText(waktu, '-')
 
   const lokasi = safeText(config?.content?.lokasi ?? laporan?.lokasi, '-')
   const tujuan = safeText(config?.content?.tujuan ?? laporan?.tujuan, '-')

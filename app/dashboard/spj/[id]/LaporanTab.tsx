@@ -594,7 +594,11 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
 
           return (
             <LaporanPdf 
-              spj={{ noSuratTugas: getNomorSuratTugasFull() }} 
+              spj={{
+                noSuratTugas: getNomorSuratTugasFull(),
+                tglBerangkat: spj.perjadinDetail?.tglBerangkat,
+                tglKembali: spj.perjadinDetail?.tglKembali,
+              }} 
               roster={rosterData}
               laporan={laporanData}
               config={config}

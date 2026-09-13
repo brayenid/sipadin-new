@@ -526,7 +526,11 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
         title: "Laporan Hasil Perjalanan",
         tabId: "laporan",
         render: () => {
-          const lSpj = { noSuratTugas: `${st.nomorPrefix || ""}${st.nomorTengah || ""}${st.nomorSuffix || ""}` };
+          const lSpj = {
+            noSuratTugas: `${st.nomorPrefix || ""}${st.nomorTengah || ""}${st.nomorSuffix || ""}`,
+            tglBerangkat: spj.perjadinDetail?.tglBerangkat,
+            tglKembali: spj.perjadinDetail?.tglKembali,
+          };
           const lapSignerId = lap.penandatanganId || st.penandatanganId;
           const lapSigner = pegawaiList.find((p) => p.id === lapSignerId);
           const lapConfig = meta.laporanPdf || meta.laporanPdfConfig;
