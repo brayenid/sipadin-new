@@ -53,6 +53,7 @@ import {
 import { createAgenda, updateAgenda, deleteAgenda } from "@/app/actions/agenda";
 import { KategoriAgenda, StatusAgenda } from "@prisma/client";
 import { AgendaExcelActions } from "./AgendaExcelActions";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 interface AgendaItem {
   id: string;
@@ -865,6 +866,51 @@ export default function AgendaCalendarView({ initialAgendas }: { initialAgendas:
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Bottom Navigation (3-button standard) */}
+      <MobileBottomNav
+        primaryAction={
+          <Button
+            onClick={() => handleOpenAddModal(selectedMobileDate)}
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Tambah Agenda
+          </Button>
+        }
+        secondaryDrawer={{
+          title: "Opsi Agenda Kegiatan",
+          description: "Navigasi kalender dan ekspor data agenda",
+          children: (close) => (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  const now = new Date();
+                  setCurrentDate(now);
+                  setSelectedMobileDate(now);
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <CalendarIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                      Hari Ini
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Lompat langsung ke tanggal dan bulan hari ini
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          ),
+        }}
+      />
     </div>
   );
 }

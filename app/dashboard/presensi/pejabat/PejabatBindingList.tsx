@@ -22,6 +22,7 @@ import {
   bulkUpdateBindingPejabat,
   getPegawaiForBindingPaginated,
 } from "@/app/actions/absensi";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type Pegawai = {
   id: string;
@@ -505,21 +506,23 @@ export default function PejabatBindingList({
         </CardContent>
       </Card>
 
-      {/* Mobile Bottom Fixed Action Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        <Button
-          onClick={handleSaveBulk}
-          disabled={saving || dirtyCount === 0}
-          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
-        >
-          {saving ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4 mr-2" />
-          )}
-          Simpan Perubahan {dirtyCount > 0 ? `(${dirtyCount})` : ""}
-        </Button>
-      </div>
+      {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
+      <MobileBottomNav
+        primaryAction={
+          <Button
+            onClick={handleSaveBulk}
+            disabled={saving || dirtyCount === 0}
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-1.5" />
+            )}
+            Simpan Perubahan {dirtyCount > 0 ? `(${dirtyCount})` : ""}
+          </Button>
+        }
+      />
     </div>
   );
 }

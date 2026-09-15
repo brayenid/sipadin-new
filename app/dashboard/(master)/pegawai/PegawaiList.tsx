@@ -22,7 +22,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import PegawaiExcelActions from "./PegawaiExcelActions";
 import ExcelColumnFilter, { FilterOption } from "./ExcelColumnFilter";
 
@@ -708,23 +708,36 @@ export default function PegawaiList({
         </CardContent>
       </Card>
 
-      {/* Mobile Bottom Action Bar */}
+      {/* Mobile Bottom Action Bar (3-button standard) */}
       {isSuperAdmin && (
-        <MobileActionBar>
-          <div className="flex gap-2">
-            <Button className="flex-1 text-xs" variant="outline" onClick={addBulkRow}>
-              <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
-            </Button>
+        <MobileBottomNav
+          primaryAction={
             <Button
-              className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
               onClick={saveBulk}
               disabled={bulkLoading || totalChanges === 0}
             >
               {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
-              Simpan
+              Simpan {totalChanges > 0 ? `(${totalChanges})` : ""}
             </Button>
-          </div>
-        </MobileActionBar>
+          }
+          secondaryDrawer={{
+            title: "Opsi Pegawai",
+            description: "Tambahkan baris pegawai baru ke dalam daftar",
+            children: (close) => (
+              <Button
+                className="w-full text-xs font-semibold"
+                variant="outline"
+                onClick={() => {
+                  close();
+                  addBulkRow();
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris Pegawai
+              </Button>
+            ),
+          }}
+        />
       )}
     </div>
   );

@@ -28,6 +28,7 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
   const meta = typeof spj.metaDokumen === "object" && spj.metaDokumen !== null ? spj.metaDokumen : {};
   const data = meta.laporan || {};
   const dataSuratTugas = meta.suratTugas || {};
+  const dataTelaahan = meta.telaahan || {};
 
   const [form, setForm] = useState({
     dasarLaporan: data.dasarLaporan || "",
@@ -35,7 +36,8 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
     waktu: data.waktu || "",
     lokasi: data.lokasi || "",
     tujuan: data.tujuan || "",
-    penandatanganId: data.penandatanganId || dataSuratTugas.penandatanganId || "",
+    // Prioritas: 1) data laporan yang sudah tersimpan, 2) penandatangan telaahan staf, 3) kosong
+    penandatanganId: data.penandatanganId || dataTelaahan.penandatanganId || "",
     jabatanTampil: data.jabatanTampil || "",
     excludeMengetahui: data.excludeMengetahui ?? false,
     hasilMode: (data.hasilMode as LaporanHasilMode) || "POINTS",
@@ -229,19 +231,19 @@ export default function LaporanTab({ spj, pegawaiList, onDirtyChange }: { spj: a
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Label className="text-xs sm:text-sm font-semibold text-slate-800">Pejabat Penandatangan</Label>
-                {dataSuratTugas.penandatanganId && form.penandatanganId !== dataSuratTugas.penandatanganId && (
+                {dataTelaahan.penandatanganId && form.penandatanganId !== dataTelaahan.penandatanganId ? (
                   <button
                     type="button"
                     className="text-[10px] font-bold text-primary hover:underline"
                     onClick={() => {
-                      setForm({ ...form, penandatanganId: dataSuratTugas.penandatanganId });
+                      setForm({ ...form, penandatanganId: dataTelaahan.penandatanganId });
                       onDirtyChange?.(true);
-                      toast.info("Disinkronkan dengan penandatangan Surat Tugas");
+                      toast.info("Disinkronkan dengan penandatangan Telaahan Staf");
                     }}
                   >
-                    (Sinkron Surat Tugas)
+                    (Sinkron Telaahan Staf)
                   </button>
-                )}
+                ) : null}
               </div>
 
               {/* Action Toggle Eksklusi Mengetahui */}

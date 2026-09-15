@@ -28,18 +28,42 @@ import {
   updateKegiatan,
   updateSubKegiatan,
   updateKodeRekening,
+  adjustPaguRekening,
+  getRiwayatPerubahanRekening,
 } from "@/app/actions/anggaran";
-import { Loader2, Plus, Trash2, Save, Edit, X, ChevronLeft, FileDown, FileText, MoreVertical } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Save,
+  Edit,
+  X,
+  ChevronLeft,
+  FileDown,
+  FileText,
+  MoreVertical,
+  History,
+  SlidersHorizontal,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 import { formatCurrency, parseCurrency } from "@/lib/utils";
 import Link from "next/link";
-import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import * as XLSX from "xlsx";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { ReportPDF } from "@/components/ReportPDF";
 import { useEffect } from "react";
 
 // Tipe data berdasarkan Prisma include
-type KodeRekening = { id: string; kodeRekening: string; judulRekening: string; saldoAwal: bigint; sisaSaldo: bigint };
+type KodeRekening = {
+  id: string;
+  kodeRekening: string;
+  judulRekening: string;
+  saldoAwal: bigint;
+  sisaSaldo: bigint;
+  _count?: { riwayatPerubahan: number };
+};
 type SubKegiatan = { id: string; kodeSub: string; judulSub: string; rekening: KodeRekening[]; users?: any[] };
 type Kegiatan = { id: string; kodeKegiatan: string; judulKegiatan: string; subKegiatan: SubKegiatan[] };
 type TahunAnggaran = { id: string; tahun: string; kegiatan: Kegiatan[] };
@@ -164,9 +188,95 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
   const [isSubOpen, setIsSubOpen] = useState(false);
   const [isRekeningOpen, setIsRekeningOpen] = useState(false);
 
+  // Modals for Penyesuaian Anggaran & Riwayat
+  const [adjustTargetRek, setAdjustTargetRek] = useState<KodeRekening | null>(null);
+  const [adjustMode, setAdjustMode] = useState<"TAMBAH" | "KURANG" | "SET">("TAMBAH");
+  const [adjustAmount, setAdjustAmount] = useState<string>("");
+  const [adjustKeterangan, setAdjustKeterangan] = useState<string>("");
+  const [isAdjusting, setIsAdjusting] = useState<boolean>(false);
+
+  const [historyTargetRek, setHistoryTargetRek] = useState<KodeRekening | null>(null);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+
   const [activeKegiatanId, setActiveKegiatanId] = useState<string | null>(null);
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
   const [selectedUsersForSub, setSelectedUsersForSub] = useState<string[]>([]);
+
+  const openAdjustDialog = (rek: KodeRekening) => {
+    setAdjustTargetRek(rek);
+    setAdjustMode("TAMBAH");
+    setAdjustAmount("");
+    setAdjustKeterangan("");
+  };
+
+  const openHistoryDialog = async (rek: KodeRekening) => {
+    setHistoryTargetRek(rek);
+    setHistoryLoading(true);
+    try {
+      const logs = await getRiwayatPerubahanRekening(rek.id);
+      setHistoryList(logs);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memuat riwayat perubahan");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleAdjustSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustTargetRek) return;
+
+    const rawInput = parseCurrency(adjustAmount);
+    const amountVal = BigInt(rawInput || 0);
+
+    if (amountVal <= BigInt(0) && adjustMode !== "SET") {
+      toast.error("Nominal penyesuaian harus lebih besar dari 0");
+      return;
+    }
+
+    if (!adjustKeterangan.trim()) {
+      toast.error("Harap isi keterangan/alasan perubahan anggaran");
+      return;
+    }
+
+    let newPagu = adjustTargetRek.saldoAwal;
+    if (adjustMode === "TAMBAH") {
+      newPagu = adjustTargetRek.saldoAwal + amountVal;
+    } else if (adjustMode === "KURANG") {
+      newPagu = adjustTargetRek.saldoAwal - amountVal;
+    } else {
+      newPagu = amountVal;
+    }
+
+    if (newPagu < BigInt(0)) {
+      toast.error("Nominal pagu anggaran baru tidak boleh negatif");
+      return;
+    }
+
+    const selisih = newPagu - adjustTargetRek.saldoAwal;
+    if (selisih === BigInt(0)) {
+      toast.error("Pagu baru sama persis dengan pagu saat ini");
+      return;
+    }
+
+    if (adjustTargetRek.sisaSaldo + selisih < BigInt(0)) {
+      toast.error("Pengurangan pagu melebihi sisa saldo anggaran yang belum terpakai!");
+      return;
+    }
+
+    setIsAdjusting(true);
+    try {
+      await adjustPaguRekening(adjustTargetRek.id, newPagu, adjustKeterangan);
+      toast.success("Perubahan pagu anggaran berhasil dicatat!");
+      setAdjustTargetRek(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyesuaikan anggaran");
+    } finally {
+      setIsAdjusting(false);
+    }
+  };
 
   // Delete confirmation dialog
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
@@ -459,6 +569,240 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
               {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null} Simpan
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Penyesuaian Anggaran (Tambah / Kurang / Set Pagu Baru) */}
+      <Dialog open={!!adjustTargetRek} onOpenChange={(open) => !open && setAdjustTargetRek(null)}>
+        <DialogContent className="sm:max-w-md">
+          {adjustTargetRek && (
+            <form onSubmit={handleAdjustSubmit} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <SlidersHorizontal className="w-5 h-5 text-indigo-600" />
+                  Penyesuaian Anggaran
+                </DialogTitle>
+              </DialogHeader>
+
+              {/* Info Rekening */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1 text-xs">
+                <div className="font-mono text-slate-500 font-semibold">{adjustTargetRek.kodeRekening}</div>
+                <div className="font-medium text-slate-800">{adjustTargetRek.judulRekening}</div>
+                <div className="flex justify-between pt-1.5 border-t border-slate-200 mt-1.5 text-slate-600">
+                  <span>Pagu Saat Ini: <strong className="text-slate-900">Rp {Number(adjustTargetRek.saldoAwal).toLocaleString("id-ID")}</strong></span>
+                  <span>Sisa Saldo: <strong className="text-indigo-700">Rp {Number(adjustTargetRek.sisaSaldo).toLocaleString("id-ID")}</strong></span>
+                </div>
+              </div>
+
+              {/* Mode Penyesuaian */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Jenis Perubahan</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={adjustMode === "TAMBAH" ? "default" : "outline"}
+                    className={`text-xs h-9 ${adjustMode === "TAMBAH" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
+                    onClick={() => setAdjustMode("TAMBAH")}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah (+)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={adjustMode === "KURANG" ? "default" : "outline"}
+                    className={`text-xs h-9 ${adjustMode === "KURANG" ? "bg-rose-600 hover:bg-rose-700 text-white" : ""}`}
+                    onClick={() => setAdjustMode("KURANG")}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Kurang (-)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={adjustMode === "SET" ? "default" : "outline"}
+                    className="text-xs h-9"
+                    onClick={() => setAdjustMode("SET")}
+                  >
+                    Pagu Baru
+                  </Button>
+                </div>
+              </div>
+
+              {/* Input Nominal */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">
+                  {adjustMode === "TAMBAH" && "Nominal Tambahan (Rp)"}
+                  {adjustMode === "KURANG" && "Nominal Pengurangan (Rp)"}
+                  {adjustMode === "SET" && "Nominal Pagu Baru (Rp)"}
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 text-sm">Rp</span>
+                  <Input
+                    required
+                    value={adjustAmount}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setAdjustAmount(raw ? new Intl.NumberFormat("id-ID").format(parseInt(raw, 10)) : "");
+                    }}
+                    placeholder={adjustMode === "SET" ? Number(adjustTargetRek.saldoAwal).toLocaleString("id-ID") : "10.000.000"}
+                    className="pl-9 font-mono font-semibold text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Preview Kalkulasi */}
+              {adjustAmount && (
+                (() => {
+                  const val = BigInt(parseCurrency(adjustAmount) || 0);
+                  let calculatedPagu = adjustTargetRek.saldoAwal;
+                  if (adjustMode === "TAMBAH") calculatedPagu += val;
+                  else if (adjustMode === "KURANG") calculatedPagu -= val;
+                  else calculatedPagu = val;
+
+                  const selisih = calculatedPagu - adjustTargetRek.saldoAwal;
+                  const calculatedSisa = adjustTargetRek.sisaSaldo + selisih;
+                  const isSisaMinus = calculatedSisa < BigInt(0);
+
+                  return (
+                    <div className={`p-2.5 rounded-lg border text-xs space-y-1 ${isSisaMinus ? "bg-red-50 border-red-200 text-red-800" : "bg-indigo-50/70 border-indigo-100 text-indigo-900"}`}>
+                      <div className="flex justify-between">
+                        <span>Pagu Baru Menjadi:</span>
+                        <strong>Rp {Number(calculatedPagu).toLocaleString("id-ID")}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Estimasi Sisa Saldo:</span>
+                        <strong className={isSisaMinus ? "text-red-600 font-bold" : "text-indigo-700"}>
+                          Rp {Number(calculatedSisa).toLocaleString("id-ID")}
+                        </strong>
+                      </div>
+                      {isSisaMinus && (
+                        <p className="text-[11px] text-red-600 font-medium pt-1">
+                          ⚠️ Peringatan: Sisa saldo menjadi minus karena anggaran sudah terpakai oleh SPJ.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Keterangan / Alasan Perubahan */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">
+                  Alasan / Keterangan Perubahan <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  required
+                  value={adjustKeterangan}
+                  onChange={(e) => setAdjustKeterangan(e.target.value)}
+                  placeholder="Contoh: APBD-P TA 2026 / Pergeseran Kas Triwulan III..."
+                  className="text-xs sm:text-sm"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Keterangan ini akan disimpan ke riwayat jejak rekam anggaran.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setAdjustTargetRek(null)} disabled={isAdjusting}>
+                  Batal
+                </Button>
+                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white" disabled={isAdjusting || !adjustAmount}>
+                  {isAdjusting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                  Simpan Perubahan
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Riwayat Perubahan Anggaran Dialog */}
+      <Dialog open={!!historyTargetRek} onOpenChange={(open) => !open && setHistoryTargetRek(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <History className="w-5 h-5 text-indigo-600" />
+              Riwayat Perubahan Anggaran
+            </DialogTitle>
+          </DialogHeader>
+
+          {historyTargetRek && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1">
+              <div className="font-mono text-slate-500 font-semibold">{historyTargetRek.kodeRekening}</div>
+              <div className="font-medium text-slate-800">{historyTargetRek.judulRekening}</div>
+              <div className="flex gap-4 pt-1 text-slate-600">
+                <span>Pagu Saat Ini: <strong className="text-slate-900">Rp {Number(historyTargetRek.saldoAwal).toLocaleString("id-ID")}</strong></span>
+                <span>Sisa Saldo: <strong className="text-indigo-700">Rp {Number(historyTargetRek.sisaSaldo).toLocaleString("id-ID")}</strong></span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto py-2">
+            {historyLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin mb-2 text-indigo-600" />
+                <p className="text-xs">Memuat riwayat perubahan...</p>
+              </div>
+            ) : historyList.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <History className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-medium">Belum ada catatan perubahan anggaran.</p>
+                <p className="text-xs text-slate-400 mt-1">Setiap penyesuaian pagu akan otomatis tercatat di sini.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {historyList.map((log) => {
+                  const selisihBig = BigInt(log.selisih || "0");
+                  const isPositif = selisihBig > BigInt(0);
+                  return (
+                    <div
+                      key={log.id}
+                      className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs space-y-2 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-medium text-slate-800">
+                            {new Date(log.createdAt).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <span className="text-slate-400 text-[11px] ml-2">oleh {log.createdByNama || "Pengguna"}</span>
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            isPositif
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
+                        >
+                          {isPositif ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          {isPositif ? "+" : ""}
+                          Rp {Number(log.selisih).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-slate-600 text-[11px] bg-slate-50 p-2 rounded">
+                        <span>Pagu Semula: <strong>Rp {Number(log.saldoSebelum).toLocaleString("id-ID")}</strong></span>
+                        <span>→</span>
+                        <span>Pagu Menjadi: <strong className="text-slate-900">Rp {Number(log.saldoSesudah).toLocaleString("id-ID")}</strong></span>
+                      </div>
+
+                      {log.keterangan && (
+                        <p className="text-slate-700 font-medium text-[11px] bg-indigo-50/50 border border-indigo-100/60 p-2 rounded">
+                          <span className="text-slate-400 font-normal">Keterangan: </span>
+                          {log.keterangan}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -782,16 +1126,46 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
                                       </div>
                                     )}
                                   </div>
-                                  {!isEditMode && hasSubAccess(sub) && (
-                                    <div className="w-8 shrink-0 flex justify-end">
+                                  {!isEditMode && (
+                                    <div className="flex items-center gap-1 shrink-0 justify-end">
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleDelete("rekening", rek.id)}
+                                        className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600 hover:bg-blue-50 relative"
+                                        title="Riwayat Perubahan Anggaran"
+                                        onClick={() => openHistoryDialog(rek)}
                                       >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <History className="w-3.5 h-3.5" />
+                                        {(rek._count?.riwayatPerubahan ?? 0) > 0 && (
+                                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white">
+                                            {rek._count?.riwayatPerubahan}
+                                          </span>
+                                        )}
                                       </Button>
+
+                                      {hasSubAccess(sub) && (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0 text-slate-600 hover:text-amber-600 hover:bg-amber-50"
+                                            title="Sesuaikan Anggaran (Tambah/Kurang)"
+                                            onClick={() => openAdjustDialog(rek)}
+                                          >
+                                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                                          </Button>
+
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                                            title="Hapus Rekening"
+                                            onClick={() => handleDelete("rekening", rek.id)}
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -809,59 +1183,141 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
         </Card>
 
         {/* Mobile Actions */}
-        <MobileActionBar>
-          {isEditMode ? (
-            <div className="flex gap-2 w-full">
-              <Button variant="outline" className="flex-1" onClick={toggleEditMode} disabled={isSaving}>
-                <X className="w-4 h-4 mr-1" /> Batal
+        {/* Mobile Actions (3-button standard) */}
+        {isEditMode ? (
+          <MobileBottomNav
+            primaryAction={
+              <Button
+                className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+                onClick={saveBulkEdit}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+                Simpan Perubahan
               </Button>
-              <Button className="flex-1" onClick={saveBulkEdit} disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-                Simpan
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2 w-full">
-              {isSuperAdmin && (
-                <Button className="flex-1" onClick={() => setIsKegiatanOpen(true)}>
-                  <Plus className="w-4 h-4 mr-1" /> Kegiatan Baru
+            }
+            secondaryDrawer={{
+              title: "Batal Pengeditan",
+              description: "Kembalikan perubahan formulir anggaran",
+              children: (close) => (
+                <Button
+                  variant="outline"
+                  className="w-full text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                  onClick={() => {
+                    close();
+                    toggleEditMode();
+                  }}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4 mr-1.5" /> Batalkan Mode Edit
                 </Button>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger className={buttonVariants({ variant: "outline", className: isSuperAdmin ? "shrink-0 bg-white px-3" : "w-full bg-white font-medium" })}>
-                  <MoreVertical className={isSuperAdmin ? "w-5 h-5 text-slate-700" : "w-4 h-4 mr-2 text-slate-700"} />
-                  {!isSuperAdmin && "Opsi Anggaran"}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 mb-2">
-                  <DropdownMenuItem onClick={toggleEditMode} className="cursor-pointer py-2.5">
-                    <Edit className="w-4 h-4 mr-2 text-slate-500" /> 
-                    <span>Bulk Edit</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer py-2.5">
-                    <FileDown className="w-4 h-4 mr-2 text-slate-500" /> 
-                    <span>Export Excel</span>
-                  </DropdownMenuItem>
+              ),
+            }}
+          />
+        ) : (
+          <MobileBottomNav
+            primaryAction={
+              isSuperAdmin ? (
+                <Button
+                  className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+                  onClick={() => setIsKegiatanOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Kegiatan Baru
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full h-10 bg-white font-semibold text-xs border-slate-200"
+                  onClick={toggleEditMode}
+                >
+                  <Edit className="w-4 h-4 mr-1.5 text-slate-600" />
+                  Mode Edit Massal
+                </Button>
+              )
+            }
+            secondaryDrawer={{
+              title: "Opsi & Ekspor Anggaran",
+              description: "Pengaturan pengeditan massal dan ekspor berkas",
+              children: (close) => (
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      toggleEditMode();
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <Edit className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                          Bulk Edit Anggaran
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Ubah kode, judul, dan pagu langsung di tabel
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      exportToExcel();
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <FileDown className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                          Ekspor ke Excel
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Unduh rincian anggaran ke dalam file .xlsx
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
                   {mounted && (
-                    <DropdownMenuItem className="p-0">
+                    <div className="p-1">
                       <PDFDownloadLink
                         document={<ReportPDF data={data} />}
                         fileName={`Laporan_Anggaran_${data.tahun}.pdf`}
-                        className="flex items-center w-full cursor-pointer py-2.5 px-2 text-sm text-slate-700 hover:bg-slate-100/50 rounded-sm"
+                        className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+                        onClick={close}
                       >
                         {({ loading }) => (
-                          <>
-                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-slate-500" /> : <FileText className="w-4 h-4 mr-2 text-slate-500" />}
-                            <span>Export PDF</span>
-                          </>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-900 group-hover:text-rose-600">
+                                Ekspor ke PDF
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                {loading ? "Menyiapkan PDF..." : "Unduh lembar laporan cetak format PDF"}
+                              </p>
+                            </div>
+                          </div>
                         )}
                       </PDFDownloadLink>
-                    </DropdownMenuItem>
+                    </div>
                   )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
-        </MobileActionBar>
+                </div>
+              ),
+            }}
+          />
+        )}
       </div>
     </>
   );

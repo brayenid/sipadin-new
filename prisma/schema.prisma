@@ -189,7 +189,26 @@ model KodeRekening {
   saldoAwal     BigInt
   sisaSaldo     BigInt
 
-  spjs          Spj[]
+  spjs             Spj[]
+  riwayatPerubahan RiwayatPerubahanAnggaran[]
+}
+
+model RiwayatPerubahanAnggaran {
+  id             String       @id @default(uuid())
+  kodeRekeningId String
+  kodeRekening   KodeRekening @relation(fields: [kodeRekeningId], references: [id], onDelete: Cascade)
+
+  saldoSebelum   BigInt
+  saldoSesudah   BigInt
+  selisih        BigInt       // Positif (+) jika penambahan, Negatif (-) jika pengurangan
+  keterangan     String?      // Cth: "Perubahan APBD (APBD-P)", "Pergeseran Anggaran", dll.
+
+  createdById    String
+  createdByNama  String?
+  createdAt      DateTime     @default(now())
+
+  @@index([kodeRekeningId])
+  @@index([createdAt])
 }
 
 // ==========================================

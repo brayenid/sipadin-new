@@ -27,7 +27,7 @@ import { UserRole } from "@prisma/client";
 import { createAkun, updateAkun, deleteAkun } from "@/app/actions/akun";
 import { Loader2, Plus, Trash2, Edit, ShieldAlert, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type Akun = {
   id: string;
@@ -283,9 +283,13 @@ export default function AkunList({ initialData }: { initialData: Akun[] }) {
       </div>
       {renderPagination()}
 
-      <MobileActionBar>
-        <Button className="w-full" onClick={handleOpenCreate}><Plus className="w-4 h-4 mr-2" /> Tambah Akun</Button>
-      </MobileActionBar>
+      <MobileBottomNav
+        primaryAction={
+          <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm" onClick={handleOpenCreate}>
+            <Plus className="w-4 h-4 mr-1.5" /> Tambah Akun
+          </Button>
+        }
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

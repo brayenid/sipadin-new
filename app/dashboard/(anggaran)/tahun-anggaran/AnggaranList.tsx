@@ -14,10 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTahunAnggaran, deleteTahunAnggaran } from "@/app/actions/anggaran";
-import { Loader2, Plus, Trash2, ChevronLeft, Search, Eye, Settings2, PieChart } from "lucide-react";
+import { Loader2, Plus, Trash2, ChevronLeft, Search, Eye, Settings2, PieChart, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
-import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -301,22 +301,52 @@ export default function AnggaranList({
           </CardContent>
         </Card>
 
-        <MobileActionBar>
-          <div className="flex gap-2 w-full">
-            <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`} className="flex-1">
-              <Button variant="outline" className="w-full bg-white font-medium">
-                <PieChart className="w-4 h-4 mr-2" />
-                Serapan Anggaran
-              </Button>
-            </Link>
-            {isSuperAdmin && (
-              <Button onClick={() => setIsTahunOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                <Plus className="w-4 h-4 mr-2" />
+        <MobileBottomNav
+          primaryAction={
+            isSuperAdmin ? (
+              <Button
+                onClick={() => setIsTahunOpen(true)}
+                className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
                 Tahun Baru
               </Button>
-            )}
-          </div>
-        </MobileActionBar>
+            ) : (
+              <Link href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`} className="block w-full">
+                <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm">
+                  <PieChart className="w-4 h-4 mr-1.5" />
+                  Serapan Anggaran
+                </Button>
+              </Link>
+            )
+          }
+          secondaryDrawer={{
+            title: "Opsi Tahun Anggaran",
+            description: "Akses visualisasi dan laporan serapan anggaran",
+            children: (close) => (
+              <Link
+                href={`/dashboard/tahun-anggaran/serapan?tahun=${new Date().getFullYear()}`}
+                onClick={close}
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <PieChart className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600">
+                      Serapan Anggaran
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Pantau grafik realisasi dan serapan per kegiatan & rekening
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+              </Link>
+            ),
+          }}
+        />
       </div>
     </>
   );

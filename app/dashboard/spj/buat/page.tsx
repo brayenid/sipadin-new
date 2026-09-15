@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import SpjWizard from "./SpjWizard";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
   title: "Buat SPJ Baru - SIPADIN",
@@ -53,7 +54,7 @@ export default async function BuatSpjPage() {
   ]);
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
+    <div className="p-4 sm:p-8 space-y-6 pb-24 lg:pb-0">
       <div className="flex items-center justify-between">
         <div>
           {/* Breadcrumb */}
@@ -82,6 +83,9 @@ export default async function BuatSpjPage() {
         userTeamId={session.user.teamId}
         userId={session.user.id}
       />
+
+      {/* Floating Hamburger Menu for Mobile */}
+      <MobileBottomNav />
     </div>
   );
 }

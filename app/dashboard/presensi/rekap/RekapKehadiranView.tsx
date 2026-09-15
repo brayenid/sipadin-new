@@ -45,6 +45,7 @@ import {
 import CetakRekapModal from "./CetakRekapModal";
 import CetakRekapPegawaiModal from "./CetakRekapPegawaiModal";
 import CetakRekapLengkapModal from "./CetakRekapLengkapModal";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type HistoryItem = {
   agendaId: string;
@@ -1282,56 +1283,79 @@ export default function RekapKehadiranView({
         }}
       />
 
-      {/* Mobile Bottom Fixed Action Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        <Button
-          onClick={() => setIsCetakLengkapOpen(true)}
-          className="h-10 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm flex items-center gap-1.5 shrink-0"
-          title="Laporan Lengkap Seluruh Kegiatan"
-        >
-          <FileText className="w-4 h-4" />
-          <span>Lap. Lengkap</span>
-        </Button>
-        {activeTab === "opd" ? (
-          <>
-            <Button
-              onClick={() => setIsCetakPdfOpen(true)}
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 shrink-0 border-red-200 text-red-700 bg-white"
-              title="Ekspor ke PDF"
-            >
-              <FileText className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={handleExportExcelOpd}
-              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm"
-            >
-              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-              Ekspor ke Excel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              onClick={() => setIsCetakPegPdfOpen(true)}
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 shrink-0 border-red-200 text-red-700 bg-white"
-              title="Ekspor ke PDF"
-            >
-              <FileText className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={handleExportExcelPegawai}
-              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm"
-            >
-              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-              Ekspor ke Excel
-            </Button>
-          </>
-        )}
-      </div>
+      {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
+      <MobileBottomNav
+        primaryAction={
+          <Button
+            onClick={() => setIsCetakLengkapOpen(true)}
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+          >
+            <FileText className="w-4 h-4 mr-1.5" />
+            Lap. Lengkap
+          </Button>
+        }
+        secondaryDrawer={{
+          title: "Opsi Ekspor Kehadiran",
+          description: `Ekspor data presensi untuk tab ${activeTab === "opd" ? "Perangkat Daerah (OPD)" : "Pegawai"}`,
+          children: (close) => (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  if (activeTab === "opd") {
+                    setIsCetakPdfOpen(true);
+                  } else {
+                    setIsCetakPegPdfOpen(true);
+                  }
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-rose-600">
+                      Ekspor ke PDF
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Cetak laporan rekap kehadiran ke dokumen PDF
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  if (activeTab === "opd") {
+                    handleExportExcelOpd();
+                  } else {
+                    handleExportExcelPegawai();
+                  }
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                      Ekspor ke Excel
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Unduh data mentah rekapitulasi ke file spreadsheet .xlsx
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          ),
+        }}
+      />
     </div>
   );
 }

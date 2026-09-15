@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { bulkUpsertVendor } from "@/app/actions/vendor";
 import { Loader2, Plus, Trash2, Save, AlertCircle, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import MobileActionBar from "@/components/dashboard/MobileActionBar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type Vendor = {
   id: string;
@@ -299,22 +299,35 @@ export default function VendorList({
         </CardContent>
       </Card>
 
-      {/* Mobile Bottom Action Bar */}
-      <MobileActionBar>
-        <div className="flex gap-2">
-          <Button className="flex-1 text-xs" variant="outline" onClick={addBulkRow}>
-            <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris
-          </Button>
+      {/* Mobile Bottom Action Bar (3-button standard) */}
+      <MobileBottomNav
+        primaryAction={
           <Button
-            className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
             onClick={saveBulk}
             disabled={bulkLoading || totalChanges === 0}
           >
             {bulkLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
-            Simpan
+            Simpan {totalChanges > 0 ? `(${totalChanges})` : ""}
           </Button>
-        </div>
-      </MobileActionBar>
+        }
+        secondaryDrawer={{
+          title: "Opsi Vendor",
+          description: "Tambahkan baris rekanan / penyedia baru",
+          children: (close) => (
+            <Button
+              className="w-full text-xs font-semibold"
+              variant="outline"
+              onClick={() => {
+                close();
+                addBulkRow();
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1.5 text-indigo-600" /> Tambah Baris Vendor
+            </Button>
+          ),
+        }}
+      />
     </div>
   );
 }

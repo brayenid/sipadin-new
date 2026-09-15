@@ -17,6 +17,7 @@ import { formatWita } from "@/lib/date-utils";
 import SerapanAnggaranCard from "./SerapanAnggaranCard";
 import KelengkapanBerkasCards from "./KelengkapanBerkasCards";
 import { getTahunAnggaranDetail } from "@/app/actions/anggaran";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
   title: "Dashboard - SIPADIN",
@@ -232,7 +233,7 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="p-4 sm:p-8 space-y-4">
+    <div className="p-4 pb-20 sm:p-8 space-y-4">
       {/* Header */}
       <div>
         <h1 className="text-xl font-extrabold sm:text-2xl sm:font-bold tracking-tight text-slate-900">Ikhtisar Dashboard</h1>
@@ -480,6 +481,9 @@ export default async function DashboardPage() {
         </CardContent>
         </Card>
       </div>
+
+      {/* Floating Bottom Menu for Mobile */}
+      <MobileBottomNav />
     </div>
   );
 }

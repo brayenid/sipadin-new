@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { serializeBigInt } from "@/lib/utils";
 import { formatWita } from "@/lib/date-utils";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
   title: "Detail SPJ - SIPADIN",
@@ -99,7 +100,7 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
   const serializedTahunAnggarans = serializeBigInt(tahunAnggarans);
 
   return (
-    <div className="p-4 sm:p-8 space-y-4">
+    <div className="p-4 sm:p-8 space-y-4 pb-24 lg:pb-0">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-sm text-slate-500">
         <Link
@@ -140,6 +141,9 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
         vendorList={serializedVendorList} 
         tahunAnggarans={serializedTahunAnggarans} 
       />
+
+      {/* Floating Hamburger Menu for Mobile */}
+      <MobileBottomNav />
     </div>
   );
 }

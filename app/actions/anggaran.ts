@@ -295,7 +295,14 @@ export async function getTahunAnggaranDetail(tahunString: string) {
         include: { 
           subKegiatan: {
             include: { 
-              rekening: { orderBy: { kodeRekening: "asc" } },
+              rekening: { 
+                orderBy: { kodeRekening: "asc" },
+                include: {
+                  _count: {
+                    select: { riwayatPerubahan: true }
+                  }
+                }
+              },
               users: true,
             },
             orderBy: { kodeSub: "asc" }
@@ -363,9 +370,10 @@ export async function updateSubKegiatan(id: string, kodeSub: string, judulSub: s
 
   if (session.user.role !== "SUPER_ADMIN") {
     const isAssigned = sub.users.some((u) => u.id === session.user.id);
-    if (!isAssigned) {throw new Error("Akses ditolak: Tim Anda tidak berhak mengedit Sub Kegiatan ini");
+    if (!isAssigned) {
+      throw new Error("Akses ditolak: Tim Anda tidak berhak mengedit Sub Kegiatan ini");
+    }
   }
-}
 
   const updateData: any = { kodeSub, judulSub };
   if (userIds) {
@@ -379,7 +387,13 @@ export async function updateSubKegiatan(id: string, kodeSub: string, judulSub: s
   revalidatePath(`/dashboard/tahun-anggaran/${sub.kegiatan.tahunAnggaran.tahun}`);
 }
 
-export async function updateKodeRekening(id: string, kodeRekening: string, judulRekening: string, saldoAwal: bigint) {
+export async function updateKodeRekening(
+  id: string, 
+  kodeRekening: string, 
+  judulRekening: string, 
+  saldoAwal: bigint,
+  keterangan?: string
+) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -391,21 +405,119 @@ export async function updateKodeRekening(id: string, kodeRekening: string, judul
 
   if (session.user.role !== "SUPER_ADMIN") {
     const isAssigned = rek.subKegiatan.users.some((u) => u.id === session.user.id);
-    if (!isAssigned) {throw new Error("Akses ditolak: Tim Anda tidak berhak mengedit Rekening di Sub Kegiatan ini");
+    if (!isAssigned) {
+      throw new Error("Akses ditolak: Tim Anda tidak berhak mengedit Rekening di Sub Kegiatan ini");
+    }
   }
-}
 
   const selisih = saldoAwal - rek.saldoAwal;
   const newSisaSaldo = rek.sisaSaldo + selisih;
 
-  await prisma.kodeRekening.update({
-    where: { id },
-    data: { 
-      kodeRekening, 
-      judulRekening, 
-      saldoAwal, 
-      sisaSaldo: newSisaSaldo 
+  await prisma.$transaction(async (tx) => {
+    await tx.kodeRekening.update({
+      where: { id },
+      data: { 
+        kodeRekening, 
+        judulRekening, 
+        saldoAwal, 
+        sisaSaldo: newSisaSaldo 
+      }
+    });
+
+    if (selisih !== BigInt(0)) {
+      await tx.riwayatPerubahanAnggaran.create({
+        data: {
+          kodeRekeningId: id,
+          saldoSebelum: rek.saldoAwal,
+          saldoSesudah: saldoAwal,
+          selisih,
+          keterangan: keterangan || "Penyesuaian Pagu Anggaran (Edit Data)",
+          createdById: session.user.id,
+          createdByNama: session.user.name || session.user.email || "Pengguna",
+        }
+      });
     }
   });
+
   revalidatePath(`/dashboard/tahun-anggaran/${rek.subKegiatan.kegiatan.tahunAnggaran.tahun}`);
+}
+
+// --- PENYESUAIAN PAGU & RECORD RIWAYAT ANGGARAN ---
+export async function adjustPaguRekening(
+  kodeRekeningId: string,
+  newSaldoAwal: bigint,
+  keterangan: string
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const rek = await prisma.kodeRekening.findUnique({
+    where: { id: kodeRekeningId },
+    include: { subKegiatan: { include: { kegiatan: { include: { tahunAnggaran: true } }, users: true } } }
+  });
+  if (!rek) throw new Error("Rekening tidak ditemukan");
+
+  if (session.user.role !== "SUPER_ADMIN") {
+    const isAssigned = rek.subKegiatan.users.some((u) => u.id === session.user.id);
+    if (!isAssigned) {
+      throw new Error("Akses ditolak: Tim Anda tidak berhak mengubah anggaran Rekening ini");
+    }
+  }
+
+  const selisih = newSaldoAwal - rek.saldoAwal;
+  if (selisih === BigInt(0)) {
+    throw new Error("Nominal pagu baru sama dengan pagu saat ini.");
+  }
+
+  const newSisaSaldo = rek.sisaSaldo + selisih;
+  if (newSisaSaldo < BigInt(0)) {
+    throw new Error("Pengurangan pagu melebihi sisa saldo anggaran yang belum terpakai!");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.kodeRekening.update({
+      where: { id: kodeRekeningId },
+      data: {
+        saldoAwal: newSaldoAwal,
+        sisaSaldo: newSisaSaldo,
+      },
+    });
+
+    await tx.riwayatPerubahanAnggaran.create({
+      data: {
+        kodeRekeningId,
+        saldoSebelum: rek.saldoAwal,
+        saldoSesudah: newSaldoAwal,
+        selisih,
+        keterangan: keterangan.trim() || "Penyesuaian Anggaran",
+        createdById: session.user.id,
+        createdByNama: session.user.name || session.user.email || "Pengguna",
+      },
+    });
+  });
+
+  revalidatePath(`/dashboard/tahun-anggaran/${rek.subKegiatan.kegiatan.tahunAnggaran.tahun}`);
+  return { success: true };
+}
+
+export async function getRiwayatPerubahanRekening(kodeRekeningId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const list = await prisma.riwayatPerubahanAnggaran.findMany({
+    where: { kodeRekeningId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return list.map((item) => ({
+    id: item.id,
+    kodeRekeningId: item.kodeRekeningId,
+    saldoSebelum: item.saldoSebelum.toString(),
+    saldoSesudah: item.saldoSesudah.toString(),
+    selisih: item.selisih.toString(),
+    keterangan: item.keterangan,
+    createdById: item.createdById,
+    createdByNama: item.createdByNama,
+    createdAt: item.createdAt.toISOString(),
+  }));
 }

@@ -6,6 +6,7 @@ import { ChevronLeft, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import TahunSelector from "./TahunSelector";
 import RekapList, { type RekapItem } from "./RekapList";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
   title: "Rekap Perjalanan Dinas - SIPADIN",
@@ -244,6 +245,8 @@ export default async function RekapPerjadinPage({
           <RekapList items={rekapList} />
         </CardContent>
       </Card>
+
+      <MobileBottomNav />
     </div>
   );
 }

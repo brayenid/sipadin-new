@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Eye, ChevronLeft, ExternalLink, FolderKanban, X } from 'lucide-react'
+import { Plus, Eye, ChevronLeft, ExternalLink, FolderKanban, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatWita } from '@/lib/date-utils'
 import NaskahDinasDeleteButton from './NaskahDinasDeleteButton'
 import NaskahDinasSearch from './NaskahDinasSearch'
+import MobileBottomNav from '@/components/dashboard/MobileBottomNav'
 
 function getBadgeColor(jenis: string) {
   switch (jenis) {
@@ -257,20 +258,43 @@ export default async function NaskahDinasListPage(props: {
         </CardContent>
       </Card>
 
-      {/* Mobile bottom action bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white/90 backdrop-blur border-t border-slate-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] flex items-center gap-2">
-        <Link href="/dashboard/naskah-dinas/agenda">
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Cari Berdasarkan Agenda">
-            <FolderKanban className="w-4 h-4 text-slate-700" />
-          </Button>
-        </Link>
-        <Link href="/dashboard/naskah-dinas/buat" className="flex-1">
-          <Button className="w-full h-10">
-            <Plus className="w-4 h-4 mr-2" />
-            Buat Naskah Baru
-          </Button>
-        </Link>
-      </div>
+      {/* Mobile bottom action bar (3-button standard) */}
+      <MobileBottomNav
+        primaryAction={
+          <Link href="/dashboard/naskah-dinas/buat" className="block w-full">
+            <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Buat Naskah Baru
+            </Button>
+          </Link>
+        }
+        secondaryDrawer={{
+          title: "Opsi Naskah Dinas",
+          description: "Cari dan kelompokkan naskah dinas berdasarkan agenda kegiatan",
+          children: (close) => (
+            <Link
+              href="/dashboard/naskah-dinas/agenda"
+              onClick={close}
+              className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <FolderKanban className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                    Cari Berdasarkan Agenda
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Filter arsip naskah dinas berdasarkan kegiatan agenda tim
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+            </Link>
+          ),
+        }}
+      />
     </div>
   )
 }

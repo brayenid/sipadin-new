@@ -20,8 +20,21 @@ import { Download, Loader2 } from "lucide-react";
 import { getSpjForExport } from "@/app/actions/spj";
 import { toast } from "sonner";
 
-export default function SpjExportModal({ iconOnly = false }: { iconOnly?: boolean }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function SpjExportModal({
+  iconOnly = false,
+  customTrigger,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
+}: {
+  iconOnly?: boolean;
+  customTrigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setIsOpen = setControlledOpen || setUncontrolledOpen;
+
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -123,27 +136,31 @@ export default function SpjExportModal({ iconOnly = false }: { iconOnly?: boolea
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        render={
-          iconOnly ? (
-            <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Ekspor Data">
-              <Download className="w-4 h-4 text-slate-700" />
-            </Button>
+      {customTrigger ? (
+        <DialogTrigger render={customTrigger as React.ReactElement} />
+      ) : controlledOpen === undefined ? (
+        <DialogTrigger
+          render={
+            iconOnly ? (
+              <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-white" title="Ekspor Data">
+                <Download className="w-4 h-4 text-slate-700" />
+              </Button>
+            ) : (
+              <Button variant="outline" className="bg-white">
+                <Download className="w-4 h-4 mr-2" /> Ekspor Data
+              </Button>
+            )
+          }
+        >
+          {iconOnly ? (
+            <Download className="w-4 h-4 text-slate-700" />
           ) : (
-            <Button variant="outline" className="bg-white">
+            <>
               <Download className="w-4 h-4 mr-2" /> Ekspor Data
-            </Button>
-          )
-        }
-      >
-        {iconOnly ? (
-          <Download className="w-4 h-4 text-slate-700" />
-        ) : (
-          <>
-            <Download className="w-4 h-4 mr-2" /> Ekspor Data
-          </>
-        )}
-      </DialogTrigger>
+            </>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
