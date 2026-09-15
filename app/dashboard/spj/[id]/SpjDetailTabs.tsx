@@ -178,6 +178,14 @@ export default function SpjDetailTabs({
   }
 
   const handleSaveMaster = async () => {
+    // Validasi tanggal jika PERJADIN
+    if (spj.jenisSpj === 'PERJADIN' && editForm.tglBerangkat && editForm.tglKembali) {
+      if (editForm.tglKembali < editForm.tglBerangkat) {
+        toast.error('Tanggal kembali tidak boleh sebelum tanggal berangkat.')
+        return
+      }
+    }
+
     // TRIGGER TURBOPACK CLIENT RECOMPILE
     setLoadingEdit(true)
     try {
@@ -452,7 +460,16 @@ export default function SpjDetailTabs({
                                 type="date"
                                 name="tglBerangkat"
                                 value={editForm.tglBerangkat}
-                                onChange={handleEditChange}
+                                onChange={(e) => {
+                                  const newBerangkat = e.target.value
+                                  setEditForm((prev) => {
+                                    const updated = { ...prev, tglBerangkat: newBerangkat }
+                                    if (updated.tglKembali && newBerangkat && updated.tglKembali < newBerangkat) {
+                                      updated.tglKembali = newBerangkat
+                                    }
+                                    return updated
+                                  })
+                                }}
                               />
                             </div>
                             <div className="space-y-2">
@@ -460,9 +477,15 @@ export default function SpjDetailTabs({
                               <Input
                                 type="date"
                                 name="tglKembali"
+                                min={editForm.tglBerangkat || undefined}
                                 value={editForm.tglKembali}
                                 onChange={handleEditChange}
                               />
+                              {editForm.tglBerangkat && editForm.tglKembali && editForm.tglKembali < editForm.tglBerangkat && (
+                                <p className="text-xs text-red-500 font-medium">
+                                  Tanggal kembali tidak boleh sebelum tanggal berangkat.
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="space-y-2">
@@ -513,7 +536,17 @@ export default function SpjDetailTabs({
                       </Button>
                       <Button
                         onClick={handleSaveMaster}
-                        disabled={loadingEdit || !editForm.tanggalSpj || !editForm.perihal}>
+                        disabled={
+                          loadingEdit ||
+                          !editForm.tanggalSpj ||
+                          !editForm.perihal ||
+                          (spj.jenisSpj === 'PERJADIN' &&
+                            Boolean(
+                              editForm.tglBerangkat &&
+                              editForm.tglKembali &&
+                              editForm.tglKembali < editForm.tglBerangkat
+                            ))
+                        }>
                         {loadingEdit ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (

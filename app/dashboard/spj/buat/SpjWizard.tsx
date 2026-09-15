@@ -378,11 +378,34 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
               </div>
               <div className="space-y-2">
                 <Label>Tanggal Berangkat</Label>
-                <Input type="date" value={perjadin.tglBerangkat} onChange={(e) => setPerjadin({...perjadin, tglBerangkat: e.target.value})} />
+                <Input
+                  type="date"
+                  value={perjadin.tglBerangkat}
+                  onChange={(e) => {
+                    const newBerangkat = e.target.value;
+                    setPerjadin((prev) => {
+                      const updated = { ...prev, tglBerangkat: newBerangkat };
+                      if (updated.tglKembali && newBerangkat && updated.tglKembali < newBerangkat) {
+                        updated.tglKembali = newBerangkat;
+                      }
+                      return updated;
+                    });
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Tanggal Kembali</Label>
-                <Input type="date" value={perjadin.tglKembali} onChange={(e) => setPerjadin({...perjadin, tglKembali: e.target.value})} />
+                <Input
+                  type="date"
+                  value={perjadin.tglKembali}
+                  min={perjadin.tglBerangkat || undefined}
+                  onChange={(e) => setPerjadin({ ...perjadin, tglKembali: e.target.value })}
+                />
+                {perjadin.tglBerangkat && perjadin.tglKembali && perjadin.tglKembali < perjadin.tglBerangkat && (
+                  <p className="text-xs text-red-500 font-medium">
+                    Tanggal kembali tidak boleh sebelum tanggal berangkat.
+                  </p>
+                )}
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Alat Angkut</Label>
@@ -433,7 +456,13 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
             <Button 
               onClick={() => setActiveTab(jenisSpj === "PERJADIN" ? "step-4" : "step-3")}
               disabled={
-                (jenisSpj === "PERJADIN" && (!perjadin.tempatBerangkat || !perjadin.tempatTujuan || !perjadin.tglBerangkat || !perjadin.tglKembali)) ||
+                (jenisSpj === "PERJADIN" && (
+                  !perjadin.tempatBerangkat ||
+                  !perjadin.tempatTujuan ||
+                  !perjadin.tglBerangkat ||
+                  !perjadin.tglKembali ||
+                  perjadin.tglKembali < perjadin.tglBerangkat
+                )) ||
                 (jenisSpj === "MAKAN_MINUM" && (!mamin.vendorId || !mamin.jumlahPeserta)) ||
                 (jenisSpj === "OPERASIONAL" && !tanggalPelaksanaan)
               }

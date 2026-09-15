@@ -110,6 +110,9 @@ export async function createSpjTransaction(payload: any) {
     if (jenisSpj === "PERJADIN" && spesifik) {
       const dKembali = parseWitaInput(spesifik.tglKembali) || new Date();
       const dBerangkat = parseWitaInput(spesifik.tglBerangkat) || new Date();
+      if (dKembali < dBerangkat) {
+        throw new Error("Tanggal kembali tidak boleh sebelum tanggal berangkat.");
+      }
       const msDiff = dKembali.getTime() - dBerangkat.getTime();
       const calcLama = Math.max(1, Math.round(msDiff / (1000 * 60 * 60 * 24)) + 1);
       
@@ -193,6 +196,9 @@ export async function updateSpjMasterData(spjId: string, payload: any) {
     if (spj.jenisSpj === "PERJADIN" && payload.tempatBerangkat) {
       const dKembali = parseWitaInput(payload.tglKembali) || new Date();
       const dBerangkat = parseWitaInput(payload.tglBerangkat) || new Date();
+      if (dKembali < dBerangkat) {
+        throw new Error("Tanggal kembali tidak boleh sebelum tanggal berangkat.");
+      }
       const msDiff = dKembali.getTime() - dBerangkat.getTime();
       const calcLama = Math.max(1, Math.round(msDiff / (1000 * 60 * 60 * 24)) + 1);
       await tx.spjPerjadinDetail.update({
