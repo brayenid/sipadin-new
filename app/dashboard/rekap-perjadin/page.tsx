@@ -50,7 +50,7 @@ export default async function RekapPerjadinPage({
     where: { spj: spjWhereFilter },
     select: {
       pegawaiId: true,
-      pengeluaranDetails: { select: { hargaSatuan: true, faktorPengali: true } },
+      pengeluaranDetails: { select: { kategori: true, hargaSatuan: true, faktorPengali: true } },
       spj: {
         select: {
           id: true,
@@ -79,6 +79,7 @@ export default async function RekapPerjadinPage({
       count: number;
       totalHari: number;
       totalPengeluaran: bigint;
+      totalUangHarian: bigint;
       trips: {
         spjId: string;
         perihal: string;
@@ -92,7 +93,13 @@ export default async function RekapPerjadinPage({
 
   for (const r of rosterRaw) {
     if (!pegawaiMap[r.pegawaiId]) {
-      pegawaiMap[r.pegawaiId] = { count: 0, totalHari: 0, totalPengeluaran: BigInt(0), trips: [] };
+      pegawaiMap[r.pegawaiId] = {
+        count: 0,
+        totalHari: 0,
+        totalPengeluaran: BigInt(0),
+        totalUangHarian: BigInt(0),
+        trips: [],
+      };
     }
     pegawaiMap[r.pegawaiId].count += 1;
 
@@ -102,8 +109,13 @@ export default async function RekapPerjadinPage({
         (acc, f) => acc * (parseInt(String(f.value)) || 1),
         1
       );
-      pegawaiMap[r.pegawaiId].totalPengeluaran +=
-        BigInt(d.hargaSatuan.toString()) * BigInt(pengali);
+      const subtotal = BigInt(d.hargaSatuan.toString()) * BigInt(pengali);
+      pegawaiMap[r.pegawaiId].totalPengeluaran += subtotal;
+
+      const katLower = d.kategori?.trim().toLowerCase() || "";
+      if (katLower.includes("harian")) {
+        pegawaiMap[r.pegawaiId].totalUangHarian += subtotal;
+      }
     }
 
     // Simpan trip + hitung hari
@@ -142,6 +154,7 @@ export default async function RekapPerjadinPage({
         count: data.count,
         totalHari: data.totalHari,
         totalPengeluaran: data.totalPengeluaran.toString(),
+        totalUangHarian: data.totalUangHarian.toString(),
         trips: data.trips,
       };
     });
