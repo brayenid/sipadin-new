@@ -70,9 +70,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             spj={{
               kotaTandaTangan: "Sendawar",
               tglSuratTugas: getWitaToday(),
-              noTelaahan: tel.nomorTengah 
-                ? `${tel.nomorPrefix || ""}${tel.nomorTengah}${tel.nomorSuffix || ""}`
-                : null
+              noTelaahan: `${tel.nomorPrefix || ""}${tel.nomorTengah ? tel.nomorTengah : '           '}${tel.nomorSuffix || ""}`
             }}
             telaahan={{
               kepada: tel.kepada,

@@ -487,9 +487,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             spj={{
               kotaTandaTangan: "Sendawar",
               tglSuratTugas: getWitaToday(),
-              noTelaahan: form.nomorTengah 
-                ? `${form.nomorPrefix || ""}${form.nomorTengah}${form.nomorSuffix || ""}`
-                : null
+              noTelaahan: `${form.nomorPrefix || ""}${form.nomorTengah ? form.nomorTengah : '           '}${form.nomorSuffix || ""}`
             }}
             telaahan={{
               kepada: form.kepada,
