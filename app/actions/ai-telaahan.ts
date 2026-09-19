@@ -464,3 +464,83 @@ ${
     return { text: String(result.text || ""), source: res.source };
   }
 }
+
+export type EvaluasiKonteksResult = {
+  status: "RANCU" | "CUKUP" | "LENGKAP";
+  ringkasanStatus: string;
+  catatanKritis: string;
+  saranPertanyaan: string[];
+};
+
+export async function evaluasiKonteksTelaahanAi(input: {
+  isUndangan: boolean;
+  pengirimUndangan?: string;
+  nomorUndangan?: string;
+  tanggalUndangan?: string;
+  perihal: string;
+  urgensiTambahan?: string;
+}): Promise<EvaluasiKonteksResult> {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const prompt = `Anda adalah asisten birokrasi pemerintahan daerah yang kritis dan analitis.
+Evaluasi apakah konteks inisialisasi dokumen Telaahan Staf berikut sudah cukup jelas untuk dijadikan bahan penyusunan dokumen dinas berkualitas, atau masih terlalu rancu/generik.
+
+DATA INPUT PENGGUNA:
+- Jenis Acuan: ${input.isUndangan ? `Surat Undangan dari "${input.pengirimUndangan || "-"}"` : "Inisiatif Dinas / Tupoksi Rutin"}
+- Perihal / Maksud: "${input.perihal || "-"}"
+- Poin Urgensi / Catatan Tambahan: "${input.urgensiTambahan || "(Kosong)"}"
+
+KRITERIA STATUS:
+- "RANCU": Jika perihal sangat umum/hanya 2-5 kata (misal: "Menghadiri FGD", "Konsultasi ke Samarinda", "Rapat Koordinasi") tanpa kejelasan topik substansi atau urgensi.
+- "CUKUP": Jika perihal jelas dan spesifik, tetapi belum ada konteks urgensi atau output kegiatan.
+- "LENGKAP": Jika perihal spesifik dan dilengkapi poin urgensi/konteks teknis yang memadai.
+
+INSTRUKSI:
+- Berikan catatan kritis yang jujur, lugas, dan ringkas (maksimal 1-2 kalimat pendek).
+- DILARANG mengutip atau menyebut ulang isi teks input pengguna (jangan tulis "Perihal hanya menyebut '...'"). Langsung tuliskan inti kekurangannya (contoh: "Belum mencakup topik bahasan utama, urgensi kegiatan, atau output yang diharapkan.").
+- Jika status RANCU atau CUKUP, berikan 2 butir saran pertanyaan pemantik singkat (maksimal 1 baris per pertanyaan).
+
+KEMBALIKAN FORMAT JSON TEPAT SEPERTI INI:
+{
+  "status": "RANCU" | "CUKUP" | "LENGKAP",
+  "ringkasanStatus": "Label status singkat (contoh: 'Konteks Masih Terlalu Umum / Rancu')",
+  "catatanKritis": "Inti kekurangan informasi tanpa mengulang teks input...",
+  "saranPertanyaan": [
+    "Pertanyaan pemantik 1...",
+    "Pertanyaan pemantik 2..."
+  ]
+}`;
+
+  try {
+    const res = await callAiUnified(prompt, "Anda adalah evaluator kesiapan prompt birokrasi.");
+    const data = res.data;
+    return {
+      status: data.status || "CUKUP",
+      ringkasanStatus: data.ringkasanStatus || (data.status === "RANCU" ? "Konteks Kurang Spesifik" : "Konteks Cukup"),
+      catatanKritis: data.catatanKritis || "Konteks telaahan siap digunakan.",
+      saranPertanyaan: Array.isArray(data.saranPertanyaan) ? data.saranPertanyaan.slice(0, 2) : []
+    };
+  } catch (err: any) {
+    // Fallback heuristik jika AI offline
+    const isShort = (input.perihal || "").trim().split(/\s+/).length <= 4;
+    const hasUrgensi = Boolean(input.urgensiTambahan && input.urgensiTambahan.trim().length > 10);
+    if (isShort && !hasUrgensi) {
+      return {
+        status: "RANCU",
+        ringkasanStatus: "Konteks Masih Terlalu Singkat",
+        catatanKritis: "Perihal masih bersifat umum. AI membutuhkan gambaran topik spesifik atau urgensi agar butir analisis tidak normatif.",
+        saranPertanyaan: [
+          "Apa agenda atau isu teknis utama yang akan dibahas?",
+          "Apa dampak atau hasil yang diharapkan dari kegiatan ini?"
+        ]
+      };
+    }
+    return {
+      status: "CUKUP",
+      ringkasanStatus: "Konteks Terisi",
+      catatanKritis: "Konteks dasar telah terpenuhi dan siap digunakan untuk refine.",
+      saranPertanyaan: []
+    };
+  }
+}

@@ -255,10 +255,17 @@ model Spj {
   maminDetail        SpjMaminDetail?
 }
 
+enum VersiDopd {
+  PANJAR
+  RIIL
+}
+
 model SpjPengeluaranDetail {
   id              String @id @default(uuid())
   spjId           String
   spj             Spj    @relation(fields: [spjId], references: [id], onDelete: Cascade)
+
+  versi           VersiDopd @default(RIIL)
 
   // Ekstensi khusus DOPD Perjadin (menempel ke personel)
   spjRosterItemId String?
@@ -272,6 +279,8 @@ model SpjPengeluaranDetail {
   qty             Int    @default(1)
   satuan          String @default("Orang")
   total           BigInt
+
+  @@index([spjId, versi])
 }
 
 // ==========================================

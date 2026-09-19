@@ -40,6 +40,7 @@ export type DopdSpj = {
   tingkatPerjalananLabel: string // mis: "Perjalanan Dinas Luar Daerah"
   kotaTandaTangan?: string
   tglSuratTugas?: Date
+  judulOverride?: string
 }
 
 export type DopdSigner = {
@@ -281,7 +282,7 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>DAFTAR ONGKOS PERJALANAN DINAS</Text>
+          <Text style={styles.title}>{spj.judulOverride || "DAFTAR ONGKOS PERJALANAN DINAS"}</Text>
         </View>
 
         <Row3 leftNo="1" label="Pejabat yang memberikan perintah" value={spj.pejabatMemberiPerintahLabel} />

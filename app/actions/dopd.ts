@@ -7,7 +7,8 @@ import { formatCurrency } from "@/lib/utils";
 export async function saveDopdTransaction(
   spjId: string,
   dopdItems: any[],
-  dopdMeta?: any
+  dopdMeta?: any,
+  versi: "PANJAR" | "RIIL" = "RIIL"
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
@@ -44,6 +45,7 @@ export async function saveDopdTransaction(
         return {
           spjId: spj.id,
           spjRosterItemId: item.spjRosterItemId,
+          versi: versi as any,
           kategori: item.kategori,
           uraian: item.uraian,
           hargaSatuan,
@@ -55,55 +57,67 @@ export async function saveDopdTransaction(
         };
       });
 
-      // 3. Validasi Saldo Pagu
-      // Cari selisih
-      const oldTotal = spj.totalPengeluaran;
-      const diff = newTotalDopd - oldTotal;
+      // 3. Jika versi RIIL, lakukan validasi dan sinkronisasi saldo anggaran pagu SPJ
+      if (versi === "RIIL") {
+        const oldTotal = spj.totalPengeluaran;
+        const diff = newTotalDopd - oldTotal;
 
-      if (diff > BigInt(0)) {
-        // Jika bertambah, pastikan sisa saldo mencukupi
-        if (spj.kodeRekening.sisaSaldo < diff) {
-          throw new Error(
-            `Saldo Kode Rekening tidak mencukupi untuk penambahan DOPD ini. Sisa Saldo: ${formatCurrency(
-              spj.kodeRekening.sisaSaldo
-            )}`
-          );
+        if (diff > BigInt(0)) {
+          // Jika bertambah, pastikan sisa saldo mencukupi
+          if (spj.kodeRekening.sisaSaldo < diff) {
+            throw new Error(
+              `Saldo Kode Rekening tidak mencukupi untuk penambahan DOPD ini. Sisa Saldo: ${formatCurrency(
+                spj.kodeRekening.sisaSaldo
+              )}`
+            );
+          }
+        }
+
+        // Update Saldo (Kurangi atau Tambah kembali jika minus)
+        await tx.kodeRekening.update({
+          where: { id: spj.kodeRekeningId },
+          data: {
+            sisaSaldo: {
+              decrement: diff,
+            },
+          },
+        });
+
+        // Update Total Pengeluaran di SPJ
+        const newMeta = spj.metaDokumen ? { ...(spj.metaDokumen as any) } : {};
+        if (dopdMeta) {
+          newMeta.dopd = { ...newMeta.dopd, ...dopdMeta };
+        }
+
+        await tx.spj.update({
+          where: { id: spj.id },
+          data: {
+            totalPengeluaran: newTotalDopd,
+            ...(dopdMeta ? { metaDokumen: newMeta } : {}),
+          },
+        });
+      } else {
+        // Jika versi PANJAR, simpan dopdMeta saja jika ada perubahan
+        if (dopdMeta) {
+          const newMeta = spj.metaDokumen ? { ...(spj.metaDokumen as any) } : {};
+          newMeta.dopd = { ...newMeta.dopd, ...dopdMeta };
+          await tx.spj.update({
+            where: { id: spj.id },
+            data: { metaDokumen: newMeta },
+          });
         }
       }
 
-      // 4. Update Saldo (Kurangi atau Tambah kembali jika minus)
-      await tx.kodeRekening.update({
-        where: { id: spj.kodeRekeningId },
-        data: {
-          sisaSaldo: {
-            decrement: diff,
-          },
-        },
-      });
-
-      // 5. Update Total Pengeluaran di SPJ
-      const newMeta = spj.metaDokumen ? { ...(spj.metaDokumen as any) } : {};
-      if (dopdMeta) {
-        newMeta.dopd = { ...newMeta.dopd, ...dopdMeta };
-      }
-
-      await tx.spj.update({
-        where: { id: spj.id },
-        data: {
-          totalPengeluaran: newTotalDopd,
-          ...(dopdMeta ? { metaDokumen: newMeta } : {}),
-        },
-      });
-
-      // 6. Hapus semua DOPD lama (khusus Perjadin / yang punya rosterItemId)
+      // 4. Hapus DOPD lama hanya untuk VERSI yang sedang diedit
       await tx.spjPengeluaranDetail.deleteMany({
         where: {
           spjId: spj.id,
           spjRosterItemId: { not: null },
+          versi: versi as any,
         },
       });
 
-      // 7. Insert DOPD baru
+      // 5. Insert DOPD baru untuk versi tersebut
       if (validItemsToInsert.length > 0) {
         await tx.spjPengeluaranDetail.createMany({
           data: validItemsToInsert,

@@ -597,34 +597,40 @@ export default function AnggaranDetailView({ tahunData, session, allTimKerja = [
               {/* Mode Penyesuaian */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Jenis Perubahan</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
+                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg">
+                  <button
                     type="button"
-                    size="sm"
-                    variant={adjustMode === "TAMBAH" ? "default" : "outline"}
-                    className={`text-xs h-9 ${adjustMode === "TAMBAH" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
+                    className={`h-8 text-xs font-semibold rounded-md transition-all ${
+                      adjustMode === "TAMBAH"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
                     onClick={() => setAdjustMode("TAMBAH")}
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah (+)
-                  </Button>
-                  <Button
+                    Tambah (+)
+                  </button>
+                  <button
                     type="button"
-                    size="sm"
-                    variant={adjustMode === "KURANG" ? "default" : "outline"}
-                    className={`text-xs h-9 ${adjustMode === "KURANG" ? "bg-rose-600 hover:bg-rose-700 text-white" : ""}`}
+                    className={`h-8 text-xs font-semibold rounded-md transition-all ${
+                      adjustMode === "KURANG"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
                     onClick={() => setAdjustMode("KURANG")}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Kurang (-)
-                  </Button>
-                  <Button
+                    Kurang (-)
+                  </button>
+                  <button
                     type="button"
-                    size="sm"
-                    variant={adjustMode === "SET" ? "default" : "outline"}
-                    className="text-xs h-9"
+                    className={`h-8 text-xs font-semibold rounded-md transition-all ${
+                      adjustMode === "SET"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
                     onClick={() => setAdjustMode("SET")}
                   >
                     Pagu Baru
-                  </Button>
+                  </button>
                 </div>
               </div>
 

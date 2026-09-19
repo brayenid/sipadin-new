@@ -328,3 +328,76 @@ ${
     return { text: String(result.text || ""), source: res.source };
   }
 }
+
+export type EvaluasiLaporanResult = {
+  status: "RANCU" | "CUKUP" | "LENGKAP";
+  ringkasanStatus: string;
+  catatanKritis: string;
+  saranPertanyaan: string[];
+};
+
+export async function evaluasiKonteksLaporanAi(input: {
+  konteksKegiatan: string;
+  kegiatanDefault?: string;
+}): Promise<EvaluasiLaporanResult> {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const prompt = `Anda adalah asisten birokrasi pemerintahan daerah yang kritis dan analitis.
+Evaluasi apakah catatan hasil kegiatan berikut sudah cukup spesifik dan memuat poin hasil riil untuk menyusun Laporan Hasil Perjalanan Dinas yang bermutu tinggi, atau masih terlalu rancu/generik.
+
+DATA INPUT PENGGUNA:
+- Catatan / Hasil Kegiatan: "${input.konteksKegiatan || "-"}"
+- Nama Kegiatan Acuan: "${input.kegiatanDefault || "-"}"
+
+KRITERIA STATUS:
+- "RANCU": Jika hanya mengulang nama kegiatan tanpa poin hasil (misal: "Kegiatan berjalan lancar dan aman", "Telah mengikuti rapat di Samarinda") tanpa menyebut substansi materi yang disepakati/dibahas.
+- "CUKUP": Menyebut 1-2 hasil pembahasan, tetapi belum memuat poin tindak lanjut / rekomendasi ke daerah.
+- "LENGKAP": Memuat materi hasil pembahasan yang jelas beserta arahan tindak lanjut konkret.
+
+INSTRUKSI:
+- Berikan catatan kritis yang jujur, lugas, dan ringkas (maksimal 1-2 kalimat pendek).
+- DILARANG mengutip atau menyebut ulang isi teks input pengguna. Langsung tuliskan inti kekurangannya (contoh: "Belum memuat substansi materi rapat atau kesepakatan tindak lanjut yang dicapai.").
+- Jika status RANCU atau CUKUP, berikan 2 butir pertanyaan pemantik singkat (maksimal 1 baris per pertanyaan).
+
+KEMBALIKAN FORMAT JSON TEPAT SEPERTI INI:
+{
+  "status": "RANCU" | "CUKUP" | "LENGKAP",
+  "ringkasanStatus": "Label status singkat (contoh: 'Poin Hasil Masih Normatif / Belum Riil')",
+  "catatanKritis": "Inti kekurangan informasi tanpa mengulang teks input...",
+  "saranPertanyaan": [
+    "Pertanyaan pemantik 1...",
+    "Pertanyaan pemantik 2..."
+  ]
+}`;
+
+  try {
+    const res = await callAiUnified(prompt, "Anda adalah evaluator kesiapan prompt laporan birokrasi.");
+    const data = res.data;
+    return {
+      status: data.status || "CUKUP",
+      ringkasanStatus: data.ringkasanStatus || (data.status === "RANCU" ? "Catatan Hasil Kurang Spesifik" : "Catatan Hasil Cukup"),
+      catatanKritis: data.catatanKritis || "Konteks hasil kegiatan siap digunakan.",
+      saranPertanyaan: Array.isArray(data.saranPertanyaan) ? data.saranPertanyaan.slice(0, 2) : []
+    };
+  } catch (err: any) {
+    const isShort = (input.konteksKegiatan || "").trim().split(/\s+/).length <= 8;
+    if (isShort) {
+      return {
+        status: "RANCU",
+        ringkasanStatus: "Catatan Hasil Masih Terlalu Singkat",
+        catatanKritis: "Inputan belum memuat poin substansi hasil rapat atau kesepakatan. Narasi laporan berisiko normatif.",
+        saranPertanyaan: [
+          "Apa kesepakatan atau poin penting yang dihasilkan dari forum tersebut?",
+          "Apa tindak lanjut yang perlu dilaksanakan oleh instansi setelah perjalanan ini?"
+        ]
+      };
+    }
+    return {
+      status: "CUKUP",
+      ringkasanStatus: "Konteks Hasil Terisi",
+      catatanKritis: "Konteks hasil telah memadai untuk merancang butir laporan.",
+      saranPertanyaan: []
+    };
+  }
+}

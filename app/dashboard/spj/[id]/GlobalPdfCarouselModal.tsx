@@ -445,13 +445,17 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
         let rincian: { label: string; jumlah: number }[] = [];
         const rincianMap = new Map<string, number>();
         (spj.pengeluaranDetails || []).forEach((d: any) => {
-          const cat = d.kategori || "Biaya Lainnya";
-          rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+          if (d.versi === "RIIL" || !d.versi) {
+            const cat = d.kategori || "Biaya Lainnya";
+            rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+          }
         });
         (spj.roster || []).forEach((r: any) => {
           (r.pengeluaranDetails || []).forEach((d: any) => {
-            const cat = d.kategori || "Biaya Lainnya";
-            rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+            if (d.versi === "RIIL" || !d.versi) {
+              const cat = d.kategori || "Biaya Lainnya";
+              rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+            }
           });
         });
         rincian = Array.from(rincianMap.entries()).filter(([_, jumlah]) => jumlah > 0).map(([label, jumlah]) => ({ label, jumlah }));
@@ -474,31 +478,40 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
       }
     });
 
-    // --- DOPD ---
+    // --- DOPD (RIIL & PANJAR) ---
     if (spj.jenisSpj === 'PERJADIN') {
       const dopdMeta = meta.dopd || {};
       const kpaD = dopdMeta.kpaId ? pegawaiList.find(p => p.id === dopdMeta.kpaId) : null;
       const bppD = dopdMeta.bppId ? pegawaiList.find(p => p.id === dopdMeta.bppId) : null;
-      const dopdItems: any[] = [];
+      
+      const dopdRiilItems: any[] = [];
+      const dopdPanjarItems: any[] = [];
+
       (spj.roster || []).forEach((r: any) => {
         (r.pengeluaranDetails || []).forEach((d: any) => {
-          if (d.tampilDiDopd) dopdItems.push(d);
+          if (d.versi === "PANJAR") {
+            dopdPanjarItems.push(d);
+          } else {
+            dopdRiilItems.push(d);
+          }
         });
       });
+
+      // 1. Dokumen DOPD Riil (Definitif)
       docs.push({
         id: "dopd",
-        title: "DOPD",
+        title: "DOPD (Riil)",
         tabId: "dopd",
         render: () => (
           <DopdPdf 
             spj={{
-              pejabatMemberiPerintahLabel: "Asisten Pemerintahan dan Kesejahteraan Rakyat",
+              pejabatMemberiPerintahLabel: dopdMeta.pejabatMemberiPerintahLabel || "Asisten Pemerintahan dan Kesejahteraan Rakyat",
               tingkatPerjalananLabel: "Perjalanan Dinas Jabatan",
               kotaTandaTangan: dopdMeta.kotaTandaTangan || "Sendawar",
               tglSuratTugas: st.tanggalSurat || undefined
             }}
             roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))}
-            items={dopdItems.map(item => {
+            items={dopdRiilItems.map(item => {
               const qty = item.faktorPengali?.reduce((acc: number, cur: any) => acc * (parseInt(cur.value) || 1), 1) || 1;
               return {
                 id: item.id,
@@ -514,6 +527,40 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           />
         )
       });
+
+      // 2. Dokumen DOPD Panjar (Jika ada rincian panjar)
+      if (dopdPanjarItems.length > 0) {
+        docs.push({
+          id: "dopd-panjar",
+          title: "DOPD (Panjar)",
+          tabId: "dopd",
+          render: () => (
+            <DopdPdf 
+              spj={{
+                pejabatMemberiPerintahLabel: dopdMeta.pejabatMemberiPerintahLabel || "Asisten Pemerintahan dan Kesejahteraan Rakyat",
+                tingkatPerjalananLabel: "Perjalanan Dinas Jabatan",
+                kotaTandaTangan: dopdMeta.kotaTandaTangan || "Sendawar",
+                tglSuratTugas: st.tanggalSurat || undefined,
+                judulOverride: "DAFTAR ONGKOS PERJALANAN DINAS (RANCANGAN PANJAR)"
+              }}
+              roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))}
+              items={dopdPanjarItems.map(item => {
+                const qty = item.faktorPengali?.reduce((acc: number, cur: any) => acc * (parseInt(cur.value) || 1), 1) || 1;
+                return {
+                  id: item.id,
+                  rosterItemId: item.spjRosterItemId,
+                  kategori: item.kategori,
+                  uraian: item.uraian,
+                  hargaSatuan: parseInt(item.hargaSatuan) || 0,
+                  total: (parseInt(item.hargaSatuan) || 0) * qty,
+                  factors: (item.faktorPengali || []).map((f: any, i: number) => ({ id: String(i), order: i, label: f.label, qty: parseInt(f.value) || 1 }))
+                };
+              })}
+              signers={{ kpa: kpaD ? { nama: kpaD.nama, nip: kpaD.nip } : null, bpp: bppD ? { nama: bppD.nama, nip: bppD.nip } : null }}
+            />
+          )
+        });
+      }
     }
 
     // --- LAPORAN ---

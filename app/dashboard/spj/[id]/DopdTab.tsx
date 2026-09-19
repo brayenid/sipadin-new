@@ -10,19 +10,29 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Save, Loader2, FileText, Edit, Copy, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Save, Loader2, FileText, Edit, Copy, ChevronDown, Sparkles, Layers } from "lucide-react";
 import { saveDopdTransaction, saveDopdHonorarium } from "@/app/actions/dopd";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import PdfPreviewModal from "@/components/pdf/PdfPreviewModal";
 import { PresetDialog } from "@/components/ui/preset-dialog";
 import DopdPdf from "@/pdf/templates/DopdPdf";
 import { Combobox } from "@/components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import dopdPresets from "@/lib/presets/dopd.json";
 import { toast } from "sonner";
 
 export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj: any; pegawaiList?: any[]; onDirtyChange?: (dirty: boolean) => void }) {
   const router = useRouter();
   
+  // -- STATE VERSI DOPD --
+  const [versi, setVersi] = useState<"PANJAR" | "RIIL">("RIIL");
+
   // -- STATE --
   const [activePersonIdx, setActivePersonIdx] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -86,34 +96,75 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     }));
   }, [pegawaiList]);
   
-  // Initialize local items from database
-  const initialItems = useMemo(() => {
+  // Initialize local items from database based on selected versi
+  const initialItemsByVersi = useMemo(() => {
     if (isHonor) {
-       return spj.metaDokumen?.dopdHonorarium?.items || [];
+       return {
+         PANJAR: spj.metaDokumen?.dopdHonorarium?.itemsPanjar || [],
+         RIIL: spj.metaDokumen?.dopdHonorarium?.items || []
+       };
     }
-    const items: any[] = [];
+    const panjarItems: any[] = [];
+    const riilItems: any[] = [];
+
     rosterList.forEach((r: any) => {
       if (r.pengeluaranDetails && r.pengeluaranDetails.length > 0) {
         r.pengeluaranDetails.forEach((d: any) => {
-          items.push({
-            id: d.id, // could be uuid from db or temp
+          const itemObj = {
+            id: d.id,
             spjRosterItemId: d.spjRosterItemId,
             kategori: d.kategori || "Biaya Lainnya",
             uraian: d.uraian,
             hargaSatuan: d.hargaSatuan.toString(),
             faktorPengali: d.faktorPengali || [{ label: "kali", value: 1 }],
-          });
+          };
+          if (d.versi === "PANJAR") {
+            panjarItems.push(itemObj);
+          } else {
+            riilItems.push(itemObj);
+          }
         });
       }
     });
-    return items;
+    return { PANJAR: panjarItems, RIIL: riilItems };
   }, [spj, isHonor, rosterList]);
 
-  const [dopdItems, setDopdItems] = useState<any[]>(initialItems);
+  const [itemsStore, setItemsStore] = useState<{ PANJAR: any[]; RIIL: any[] }>({
+    PANJAR: initialItemsByVersi.PANJAR,
+    RIIL: initialItemsByVersi.RIIL,
+  });
+
+  // Sinkronisasi jika data dari server berubah
+  useEffect(() => {
+    setItemsStore({
+      PANJAR: initialItemsByVersi.PANJAR,
+      RIIL: initialItemsByVersi.RIIL,
+    });
+  }, [initialItemsByVersi]);
+
+  const dopdItems = itemsStore[versi];
 
   const updateDopdItems = (items: any[]) => {
-    setDopdItems(items);
+    setItemsStore((prev) => ({
+      ...prev,
+      [versi]: items,
+    }));
     onDirtyChange?.(true);
+  };
+
+  const handleSalinDariVersiLain = () => {
+    const sumber = versi === "PANJAR" ? "RIIL" : "PANJAR";
+    const sumberItems = itemsStore[sumber];
+    if (!sumberItems || sumberItems.length === 0) {
+      toast.error(`Tidak ada data di Versi ${sumber === "PANJAR" ? "Panjar" : "Riil"} untuk disalin.`);
+      return;
+    }
+    const duplicated = sumberItems.map((item) => ({
+      ...item,
+      id: `temp-copy-${Date.now()}-${Math.random()}`,
+    }));
+    updateDopdItems(duplicated);
+    toast.success(`Data berhasil disalin dari Versi ${sumber === "PANJAR" ? "Panjar" : "Riil"}.`);
   };
 
   // Dialog Add/Edit State
@@ -138,13 +189,16 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   const calculateItemTotal = (item: any) => {
     const harga = BigInt(item.hargaSatuan || 0);
     let multi = 1;
-    item.faktorPengali.forEach((f: any) => { multi *= (parseInt(f.value) || 1) });
+    (item.faktorPengali || []).forEach((f: any) => { multi *= (parseInt(f.value) || 1) });
     return harga * BigInt(multi);
   };
 
   const activePersonSubtotal = activePersonItems.reduce((acc, curr) => acc + calculateItemTotal(curr), BigInt(0));
-
   const totalDopdAll = dopdItems.reduce((acc, curr) => acc + calculateItemTotal(curr), BigInt(0));
+
+  // Hitung total untuk kedua versi sebagai perbandingan
+  const totalPanjarAll = itemsStore.PANJAR.reduce((acc, curr) => acc + calculateItemTotal(curr), BigInt(0));
+  const totalRiilAll = itemsStore.RIIL.reduce((acc, curr) => acc + calculateItemTotal(curr), BigInt(0));
   
   const formatRupiah = (val: bigint) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(val));
@@ -170,7 +224,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       if (isHonor) {
         res = await saveDopdHonorarium(spj.id, payload, dopdMeta);
       } else {
-        res = await saveDopdTransaction(spj.id, payload, dopdMeta);
+        res = await saveDopdTransaction(spj.id, payload, dopdMeta, versi);
       }
 
       if (res && !res.success) {
@@ -179,7 +233,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
 
       onDirtyChange?.(false);
       router.refresh();
-      toast.success("Rincian DOPD berhasil disimpan.");
+      toast.success(`Rincian DOPD (${versi === "PANJAR" ? "Panjar / Estimasi" : "Realisasi Riil"}) berhasil disimpan.`);
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan DOPD.");
       setErrorMsg(err.message || "Gagal menyimpan DOPD.");
@@ -243,13 +297,60 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
   return (
     <div className="space-y-6">
       
-      {/* HEADER DOPD */}
+      {/* HEADER DOPD DENGAN DROPDOWN VERSI */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-slate-200/60 rounded-lg shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)]">
-        <div className="text-center md:text-left w-full md:w-auto">
-          <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Total Pengeluaran</p>
-          <p className="text-base sm:text-lg font-black text-slate-900 mt-0.5">{formatRupiah(totalDopdAll)}</p>
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+          {/* Dropdown Versi DOPD */}
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Versi DOPD</span>
+            <div className="w-[180px] sm:w-[210px]">
+              <Select value={versi} onValueChange={(v: any) => setVersi(v)}>
+                <SelectTrigger className="h-8 sm:h-9 bg-slate-50 font-medium border-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PANJAR">
+                    Panjar (Rancangan)
+                  </SelectItem>
+                  <SelectItem value="RIIL">
+                    Riil (Selesai)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator orientation="vertical" className="h-10 hidden sm:block" />
+
+          {/* Total Angka Sesuai Versi */}
+          <div className="text-left">
+            <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+              {versi === "PANJAR" ? "Total Estimasi Panjar" : "Total Realisasi Riil"}
+            </p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <p className="text-base sm:text-lg font-black text-slate-900">{formatRupiah(totalDopdAll)}</p>
+              {versi === "RIIL" && totalPanjarAll > BigInt(0) && (
+                <span className="text-[11px] text-slate-500 font-medium">
+                  (Panjar: {formatRupiah(totalPanjarAll)})
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
+
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          {/* Tombol Salin Antar Versi */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-8 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            onClick={handleSalinDariVersiLain}
+            title={versi === "PANJAR" ? "Salin dari Versi Riil" : "Salin dari Versi Panjar"}
+          >
+            <Copy className="w-3.5 h-3.5 mr-1" />
+            Salin dari {versi === "PANJAR" ? "Riil" : "Panjar"}
+          </Button>
+
           <Button variant="outline" className="flex-1 md:flex-none h-8 px-2 text-[10px] sm:h-9 sm:px-4 sm:text-sm" onClick={() => setShowPreview(true)}>
             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             Preview
@@ -644,7 +745,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       <PdfPreviewModal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
-        title="Preview Daftar Ongkos Perjalanan Dinas (DOPD)"
+        title={`Preview DOPD (${versi === "PANJAR" ? "Versi 1: Panjar / Rancangan" : "Versi 2: Riil / Selesai"})`}
         spjId={spj.id}
         docKey="dopd"
         initialConfig={spj.metaDokumen?.dopdConfig}
@@ -664,7 +765,8 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 pejabatMemberiPerintahLabel: dopdMeta.pejabatMemberiPerintahLabel,
                 tingkatPerjalananLabel: "Perjalanan Dinas Dalam Daerah", // bisa dinamis nanti
                 kotaTandaTangan: dopdMeta.kotaTandaTangan,
-                tglSuratTugas: spj.tanggalAwal || undefined
+                tglSuratTugas: spj.tanggalAwal || undefined,
+                judulOverride: versi === "PANJAR" ? "DAFTAR ONGKOS PERJALANAN DINAS (RANCANGAN PANJAR)" : "DAFTAR ONGKOS PERJALANAN DINAS"
               }}
               roster={[...rosterList]
                 .sort((a: any, b: any) => (a.role === 'KEPALA_JALAN' ? -1 : (b.role === 'KEPALA_JALAN' ? 1 : 0)))
