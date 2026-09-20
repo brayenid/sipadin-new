@@ -500,7 +500,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
       // 1. Dokumen DOPD Riil (Definitif)
       docs.push({
         id: "dopd",
-        title: "DOPD (Riil)",
+        title: "DOPD Riil",
         tabId: "dopd",
         render: () => (
           <DopdPdf 
@@ -528,11 +528,11 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
         )
       });
 
-      // 2. Dokumen DOPD Panjar (Jika ada rincian panjar)
+      // 2. Dokumen DOPD Pengajuan (Jika ada rincian pengajuan)
       if (dopdPanjarItems.length > 0) {
         docs.push({
           id: "dopd-panjar",
-          title: "DOPD (Panjar)",
+          title: "DOPD Pengajuan",
           tabId: "dopd",
           render: () => (
             <DopdPdf 
@@ -541,7 +541,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
                 tingkatPerjalananLabel: "Perjalanan Dinas Jabatan",
                 kotaTandaTangan: dopdMeta.kotaTandaTangan || "Sendawar",
                 tglSuratTugas: st.tanggalSurat || undefined,
-                judulOverride: "DAFTAR ONGKOS PERJALANAN DINAS (RANCANGAN PANJAR)"
+                judulOverride: "DAFTAR ONGKOS PERJALANAN DINAS (PENGAJUAN)"
               }}
               roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))}
               items={dopdPanjarItems.map(item => {

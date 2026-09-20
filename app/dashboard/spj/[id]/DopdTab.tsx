@@ -156,7 +156,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
     const sumber = versi === "PANJAR" ? "RIIL" : "PANJAR";
     const sumberItems = itemsStore[sumber];
     if (!sumberItems || sumberItems.length === 0) {
-      toast.error(`Tidak ada data di Versi ${sumber === "PANJAR" ? "Panjar" : "Riil"} untuk disalin.`);
+      toast.error(`Tidak ada data di Versi ${sumber === "PANJAR" ? "Pengajuan" : "Riil"} untuk disalin.`);
       return;
     }
     const duplicated = sumberItems.map((item) => ({
@@ -164,7 +164,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       id: `temp-copy-${Date.now()}-${Math.random()}`,
     }));
     updateDopdItems(duplicated);
-    toast.success(`Data berhasil disalin dari Versi ${sumber === "PANJAR" ? "Panjar" : "Riil"}.`);
+    toast.success(`Data berhasil disalin dari Versi ${sumber === "PANJAR" ? "Pengajuan" : "Riil"}.`);
   };
 
   // Dialog Add/Edit State
@@ -233,7 +233,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
 
       onDirtyChange?.(false);
       router.refresh();
-      toast.success(`Rincian DOPD (${versi === "PANJAR" ? "Panjar / Estimasi" : "Realisasi Riil"}) berhasil disimpan.`);
+      toast.success(`Rincian DOPD (${versi === "PANJAR" ? "Pengajuan" : "Riil"}) berhasil disimpan.`);
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan DOPD.");
       setErrorMsg(err.message || "Gagal menyimpan DOPD.");
@@ -303,17 +303,17 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
           {/* Dropdown Versi DOPD */}
           <div className="flex flex-col gap-1">
             <span className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Versi DOPD</span>
-            <div className="w-[180px] sm:w-[210px]">
+            <div className="w-[150px] sm:w-[170px]">
               <Select value={versi} onValueChange={(v: any) => setVersi(v)}>
                 <SelectTrigger className="h-8 sm:h-9 bg-slate-50 font-medium border-slate-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PANJAR">
-                    Panjar (Rancangan)
+                    Pengajuan
                   </SelectItem>
                   <SelectItem value="RIIL">
-                    Riil (Selesai)
+                    Riil
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -325,13 +325,13 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
           {/* Total Angka Sesuai Versi */}
           <div className="text-left">
             <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
-              {versi === "PANJAR" ? "Total Estimasi Panjar" : "Total Realisasi Riil"}
+              {versi === "PANJAR" ? "Total Pengajuan" : "Total Riil"}
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <p className="text-base sm:text-lg font-black text-slate-900">{formatRupiah(totalDopdAll)}</p>
               {versi === "RIIL" && totalPanjarAll > BigInt(0) && (
                 <span className="text-[11px] text-slate-500 font-medium">
-                  (Panjar: {formatRupiah(totalPanjarAll)})
+                  (Pengajuan: {formatRupiah(totalPanjarAll)})
                 </span>
               )}
             </div>
@@ -345,10 +345,10 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
             size="sm"
             className="h-8 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50"
             onClick={handleSalinDariVersiLain}
-            title={versi === "PANJAR" ? "Salin dari Versi Riil" : "Salin dari Versi Panjar"}
+            title={versi === "PANJAR" ? "Salin dari Riil" : "Salin dari Pengajuan"}
           >
             <Copy className="w-3.5 h-3.5 mr-1" />
-            Salin dari {versi === "PANJAR" ? "Riil" : "Panjar"}
+            Salin dari {versi === "PANJAR" ? "Riil" : "Pengajuan"}
           </Button>
 
           <Button variant="outline" className="flex-1 md:flex-none h-8 px-2 text-[10px] sm:h-9 sm:px-4 sm:text-sm" onClick={() => setShowPreview(true)}>
@@ -745,7 +745,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
       <PdfPreviewModal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
-        title={`Preview DOPD (${versi === "PANJAR" ? "Versi 1: Panjar / Rancangan" : "Versi 2: Riil / Selesai"})`}
+        title={`Preview DOPD (${versi === "PANJAR" ? "Pengajuan" : "Riil"})`}
         spjId={spj.id}
         docKey="dopd"
         initialConfig={spj.metaDokumen?.dopdConfig}
@@ -766,7 +766,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                 tingkatPerjalananLabel: "Perjalanan Dinas Dalam Daerah", // bisa dinamis nanti
                 kotaTandaTangan: dopdMeta.kotaTandaTangan,
                 tglSuratTugas: spj.tanggalAwal || undefined,
-                judulOverride: versi === "PANJAR" ? "DAFTAR ONGKOS PERJALANAN DINAS (RANCANGAN PANJAR)" : "DAFTAR ONGKOS PERJALANAN DINAS"
+                judulOverride: versi === "PANJAR" ? "DAFTAR ONGKOS PERJALANAN DINAS (PENGAJUAN)" : "DAFTAR ONGKOS PERJALANAN DINAS"
               }}
               roster={[...rosterList]
                 .sort((a: any, b: any) => (a.role === 'KEPALA_JALAN' ? -1 : (b.role === 'KEPALA_JALAN' ? 1 : 0)))
