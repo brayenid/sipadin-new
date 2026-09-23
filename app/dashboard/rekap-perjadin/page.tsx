@@ -4,15 +4,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Users, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import PeriodeFilterSelector, { NAMA_BULAN } from "./PeriodeFilterSelector";
+import PeriodeFilterSelector from "./PeriodeFilterSelector";
+import { NAMA_BULAN, SHORT_MONTH_NAMES } from "./constants";
 import RekapList, { type RekapItem, type MonthStat } from "./RekapList";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
   title: "Rekap Perjalanan Dinas - SIPADIN",
 };
-
-const SHORT_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 export default async function RekapPerjadinPage({
   searchParams,
