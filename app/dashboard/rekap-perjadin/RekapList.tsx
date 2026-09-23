@@ -285,7 +285,7 @@ export default function RekapList({
                               title={`${ms.monthName}: ${ms.count}x jalan (${ms.totalHari} hari)${ms.isOverLimit ? ' - Melebihi limit 15 hari/bulan' : ''}`}
                               className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium transition-all ${
                                 ms.isOverLimit
-                                  ? "bg-rose-600 text-white font-bold ring-2 ring-rose-300 animate-pulse"
+                                  ? "bg-rose-500 text-white font-bold"
                                   : hasTrip
                                   ? "bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-semibold"
                                   : "bg-slate-100 text-slate-300"
