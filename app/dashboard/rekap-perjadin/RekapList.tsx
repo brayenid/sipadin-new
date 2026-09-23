@@ -224,9 +224,9 @@ export default function RekapList({
                 ? item.totalUangHarian || "0"
                 : item.totalPengeluaran;
 
-            // Apakah baris ini over limit?
+            // Apakah baris ini over limit (akumulasi hari > 15)?
             const isRowOverLimit = isMonthFiltered
-              ? item.count > 15
+              ? item.totalHari > 15
               : item.monthlyStats.some((m) => m.isOverLimit);
 
             return (
@@ -282,7 +282,7 @@ export default function RekapList({
                           return (
                             <span
                               key={ms.month}
-                              title={`${ms.monthName}: ${ms.count}x jalan (${ms.totalHari} hari)`}
+                              title={`${ms.monthName}: ${ms.count}x jalan (${ms.totalHari} hari)${ms.isOverLimit ? ' - Melebihi limit 15 hari/bulan' : ''}`}
                               className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium transition-all ${
                                 ms.isOverLimit
                                   ? "bg-rose-600 text-white font-bold ring-2 ring-rose-300 animate-pulse"
@@ -291,7 +291,7 @@ export default function RekapList({
                                   : "bg-slate-100 text-slate-300"
                               }`}
                             >
-                              {ms.monthName}:{ms.count}
+                              {ms.monthName}:{ms.totalHari}h
                             </span>
                           );
                         })}
@@ -325,44 +325,44 @@ export default function RekapList({
                     </p>
                   </div>
 
-                  {/* Frekuensi & Limit Warning */}
+                  {/* Frekuensi & Total Hari (Limit Warning pada total hari) */}
                   <div className="shrink-0 flex flex-col items-end gap-1 min-w-[70px]">
                     {/* Badge Frekuensi */}
-                    {isRowOverLimit ? (
-                      <Badge
-                        variant="destructive"
-                        className="font-black text-xs px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-sm"
-                        title="Melebihi batas maksimal 15x perjalanan dalam satu bulan"
-                      >
-                        <AlertTriangle className="w-3 h-3" />
-                        {item.count}×
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className={`font-bold text-xs px-2 py-0.5 ${
-                          item.count === 0
-                            ? "bg-slate-100 text-slate-400"
-                            : sortBy === "count"
-                            ? "bg-indigo-600 text-white"
-                            : isTop3
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {item.count}×
-                      </Badge>
-                    )}
-
-                    <span
-                      className={`text-[10px] font-medium ${
-                        sortBy === "totalHari"
-                          ? "text-indigo-600 font-bold"
-                          : "text-slate-400"
+                    <Badge
+                      variant="secondary"
+                      className={`font-bold text-xs px-2 py-0.5 ${
+                        item.count === 0
+                          ? "bg-slate-100 text-slate-400"
+                          : sortBy === "count"
+                          ? "bg-indigo-600 text-white"
+                          : isTop3
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                          : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      {item.totalHari} hari
-                    </span>
+                      {item.count}×
+                    </Badge>
+
+                    {/* Total Hari - Tandai merah jika over limit */}
+                    {isRowOverLimit ? (
+                      <span
+                        className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 rounded px-1.5 py-0.2 inline-flex items-center gap-0.5"
+                        title="Melebihi batas maksimal 15 hari perjalanan dinas dalam satu bulan"
+                      >
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        {item.totalHari} hari
+                      </span>
+                    ) : (
+                      <span
+                        className={`text-[10px] font-medium ${
+                          sortBy === "totalHari"
+                            ? "text-indigo-600 font-bold"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {item.totalHari} hari
+                      </span>
+                    )}
                   </div>
 
                   {/* Chevron */}
@@ -378,10 +378,10 @@ export default function RekapList({
                   <div className="bg-slate-50/70 border-t border-slate-100 px-4 sm:px-6 py-3.5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <span>Riwayat Perjalanan ({item.trips.length} kegiatan)</span>
+                        <span>Riwayat Perjalanan ({item.trips.length} kegiatan &bull; {item.totalHari} hari)</span>
                         {isRowOverLimit && (
                           <span className="text-rose-600 font-bold normal-case text-xs inline-flex items-center gap-1 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
-                            <AlertCircle className="w-3 h-3" /> Melebihi limit 15x/bulan
+                            <AlertCircle className="w-3 h-3" /> Melebihi limit 15 hari/bulan
                           </span>
                         )}
                       </p>

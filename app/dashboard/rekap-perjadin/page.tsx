@@ -141,18 +141,7 @@ export default async function RekapPerjadinPage({
 
   const pegawaiMap: Record<string, PegawaiAgg> = {};
 
-  // Inisialisasi semua pegawai internal ke map dengan 0 data
-  for (const peg of allInternalPegawai) {
-    pegawaiMap[peg.id] = {
-      countTotal: 0,
-      totalHari: 0,
-      totalPengeluaran: BigInt(0),
-      totalUangHarian: BigInt(0),
-      monthlyData: createEmptyMonthlyData(),
-    };
-  }
-
-  // Iterasi roster data
+  // Iterasi roster data (hanya pegawai yang memiliki riwayat perjalanan dinas)
   for (const r of rosterRaw) {
     if (!pegawaiMap[r.pegawaiId]) {
       pegawaiMap[r.pegawaiId] = {
@@ -222,69 +211,70 @@ export default async function RekapPerjadinPage({
     }
   }
 
-  // Ambil pegawai luar yang ikut perjadin tapi bukan internal
+  // Ambil detail data pegawai yang memiliki riwayat perjalanan dinas
   const allPegawaiIds = Object.keys(pegawaiMap);
-  const extraPegawais = await prisma.pegawai.findMany({
+  const pegawaiList = await prisma.pegawai.findMany({
     where: {
       id: { in: allPegawaiIds },
-      timInternal: false,
     },
     select: { id: true, nama: true, jabatan: true, nip: true, timInternal: true },
   });
 
-  const fullPegawaiList = [...allInternalPegawai, ...extraPegawais];
-
   // Susun data rekap sesuai filter bulan aktif
-  const rekapList: RekapItem[] = Object.entries(pegawaiMap).map(([pegId, data]) => {
-    const peg = fullPegawaiList.find((p) => p.id === pegId);
+  const rekapList: RekapItem[] = Object.entries(pegawaiMap)
+    .map(([pegId, data]) => {
+      const peg = pegawaiList.find((p) => p.id === pegId);
 
-    // Buat monthlyStats (12 bulan)
-    const monthlyStats: MonthStat[] = [];
-    for (let m = 1; m <= 12; m++) {
-      const mCount = data.monthlyData[m]?.count || 0;
-      monthlyStats.push({
-        month: m,
-        monthName: SHORT_MONTH_NAMES[m - 1],
-        count: mCount,
-        totalHari: data.monthlyData[m]?.totalHari || 0,
-        isOverLimit: mCount > 15,
-      });
-    }
+      // Buat monthlyStats (12 bulan)
+      const monthlyStats: MonthStat[] = [];
+      for (let m = 1; m <= 12; m++) {
+        const mData = data.monthlyData[m];
+        const mCount = mData?.count || 0;
+        const mHari = mData?.totalHari || 0;
+        monthlyStats.push({
+          month: m,
+          monthName: SHORT_MONTH_NAMES[m - 1],
+          count: mCount,
+          totalHari: mHari,
+          isOverLimit: mHari > 15,
+        });
+      }
 
-    // Tentukan count & trips berdasarkan filter bulan aktif
-    let activeCount = data.countTotal;
-    let activeHari = data.totalHari;
-    let activePengeluaran = data.totalPengeluaran;
-    let activeUangHarian = data.totalUangHarian;
-    let activeTrips = Object.values(data.monthlyData).flatMap((m) => m.trips);
-    let isOverLimit = monthlyStats.some((m) => m.isOverLimit);
+      // Tentukan count & trips berdasarkan filter bulan aktif
+      let activeCount = data.countTotal;
+      let activeHari = data.totalHari;
+      let activePengeluaran = data.totalPengeluaran;
+      let activeUangHarian = data.totalUangHarian;
+      let activeTrips = Object.values(data.monthlyData).flatMap((m) => m.trips);
+      let isOverLimit = monthlyStats.some((m) => m.isOverLimit);
 
-    if (selectedBulan) {
-      const mData = data.monthlyData[selectedBulan];
-      activeCount = mData?.count || 0;
-      activeHari = mData?.totalHari || 0;
-      activePengeluaran = mData?.totalPengeluaran || BigInt(0);
-      activeUangHarian = mData?.totalUangHarian || BigInt(0);
-      activeTrips = mData?.trips || [];
-      isOverLimit = activeCount > 15;
-    }
+      if (selectedBulan) {
+        const mData = data.monthlyData[selectedBulan];
+        activeCount = mData?.count || 0;
+        activeHari = mData?.totalHari || 0;
+        activePengeluaran = mData?.totalPengeluaran || BigInt(0);
+        activeUangHarian = mData?.totalUangHarian || BigInt(0);
+        activeTrips = mData?.trips || [];
+        isOverLimit = activeHari > 15;
+      }
 
-    return {
-      rank: 0, // nanti disort
-      pegawaiId: pegId,
-      nama: peg?.nama || "Pegawai Tidak Dikenal",
-      jabatan: peg?.jabatan,
-      nip: peg?.nip,
-      timInternal: peg?.timInternal ?? true,
-      count: activeCount,
-      totalHari: activeHari,
-      totalPengeluaran: activePengeluaran.toString(),
-      totalUangHarian: activeUangHarian.toString(),
-      isOverLimit,
-      monthlyStats,
-      trips: activeTrips,
-    };
-  });
+      return {
+        rank: 0, // nanti disort
+        pegawaiId: pegId,
+        nama: peg?.nama || "Pegawai Tidak Dikenal",
+        jabatan: peg?.jabatan,
+        nip: peg?.nip,
+        timInternal: peg?.timInternal ?? true,
+        count: activeCount,
+        totalHari: activeHari,
+        totalPengeluaran: activePengeluaran.toString(),
+        totalUangHarian: activeUangHarian.toString(),
+        isOverLimit,
+        monthlyStats,
+        trips: activeTrips,
+      };
+    })
+    .filter((item) => item.count > 0); // Hanya tampilkan yang memiliki data perjalanan pada periode aktif
 
   // Sort default: frekuensi terbanyak
   rekapList.sort((a, b) => {
@@ -331,7 +321,7 @@ export default async function RekapPerjadinPage({
             Rekap Perjalanan Dinas Pegawai
           </h2>
           <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">
-            Rangkuman frekuensi &amp; hari perjalanan dinas per bulan dengan batasan maksimal 15×/bulan.
+            Rangkuman frekuensi &amp; akumulasi hari perjalanan dinas per bulan dengan batasan maksimal 15 hari/bulan.
           </p>
         </div>
 
@@ -345,13 +335,13 @@ export default async function RekapPerjadinPage({
         </div>
       </div>
 
-      {/* Over Limit Alert Banner jika ada pegawai > 15x */}
+      {/* Over Limit Alert Banner jika ada pegawai > 15 hari */}
       {totalPegawaiOverLimit > 0 && (
         <div className="flex items-center gap-3 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs sm:text-sm font-medium">
           <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
           <div className="flex-1">
             <span>
-              Perhatian: Ditemukan <strong>{totalPegawaiOverLimit} pegawai</strong> yang melakukan perjalanan dinas lebih dari <strong>15×</strong> dalam sebulan.
+              Perhatian: Ditemukan <strong>{totalPegawaiOverLimit} pegawai</strong> yang melakukan perjalanan dinas lebih dari <strong>15 hari</strong> dalam satu bulan.
             </span>
           </div>
         </div>
@@ -377,7 +367,7 @@ export default async function RekapPerjadinPage({
 
         <Card className="border-slate-200/60 py-4 shadow-none">
           <CardContent className="px-4 pb-0">
-            <p className="text-xs text-slate-500 font-medium">Over Limit (&gt;15×)</p>
+            <p className="text-xs text-slate-500 font-medium">Over Limit (&gt;15 Hari)</p>
             <p className={`text-2xl font-black mt-1 ${totalPegawaiOverLimit > 0 ? "text-rose-600" : "text-emerald-600"}`}>
               {totalPegawaiOverLimit}
             </p>
@@ -398,16 +388,13 @@ export default async function RekapPerjadinPage({
 
       {/* Tabel Rekap */}
       <Card className="border-slate-200/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0">
-        <CardHeader className="pt-4 pb-4 bg-slate-50 border-b border-slate-100">
+        <CardHeader className="py-3.5 bg-slate-50 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <CardTitle className="text-sm font-extrabold sm:text-base sm:font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 text-indigo-500" />
                 Distribusi &amp; Frekuensi Perjalanan Pegawai
               </CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Periode: <strong className="text-slate-700">{bulanLabel}</strong> (Tahun Anggaran {selectedTahun || "-"}) &bull; Limit: 15×/bulan.
-              </CardDescription>
             </div>
           </div>
         </CardHeader>
