@@ -25,13 +25,19 @@ export default function SpjDuplicateButton({ spjId }: { spjId: string }) {
   const handleDuplicate = async () => {
     setLoading(true);
     try {
-      const newSpjId = await duplicateSpjTransaction(spjId);
+      const res = await duplicateSpjTransaction(spjId);
+      if (!res.success) {
+        toast.error(res.error || "Gagal menduplikasi SPJ.");
+        setLoading(false);
+        return;
+      }
+
       setOpen(false);
       
       // Delay sedikit agar animasi modal menutup (Radix UI) 
       // bisa membersihkan pointer-events dari body sebelum routing
       setTimeout(() => {
-        router.push(`/dashboard/spj/${newSpjId}`);
+        router.push(`/dashboard/spj/${res.newSpjId}`);
       }, 300);
       
     } catch (err: any) {

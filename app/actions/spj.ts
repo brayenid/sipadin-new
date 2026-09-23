@@ -322,125 +322,141 @@ export async function permanentDeleteSpj(spjId: string) {
 }
 
 export async function duplicateSpjTransaction(spjId: string) {
-  const session = await auth();
-  if (!session) throw new Error("Unauthorized");
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, error: "Sesi anda telah berakhir. Silakan login kembali." };
+    }
 
-  return await prisma.$transaction(async (tx) => {
-    // 1. Ambil data original
-    const spj = await tx.spj.findFirst({
-      where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
-      include: {
-        perjadinDetail: true,
-        maminDetail: true,
-        roster: true,
-        pengeluaranDetails: true,
+    const newSpjId = await prisma.$transaction(async (tx) => {
+      // 1. Ambil data original
+      const spj = await tx.spj.findFirst({
+        where: { id: spjId, ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }) },
+        include: {
+          perjadinDetail: true,
+          maminDetail: true,
+          roster: true,
+          pengeluaranDetails: true,
+        }
+      });
+
+      if (!spj) {
+        throw new Error("SPJ tidak ditemukan atau Anda tidak memiliki akses.");
       }
-    });
 
-    if (!spj) throw new Error("SPJ tidak ditemukan atau akses ditolak.");
-
-    // 2. Validasi Saldo
-    const rek = await tx.kodeRekening.findUnique({ where: { id: spj.kodeRekeningId } });
-    if (!rek) throw new Error("Kode Rekening tidak ditemukan.");
-    if (rek.sisaSaldo < spj.totalPengeluaran) {
-      throw new Error(`Saldo tidak mencukupi untuk menduplikasi SPJ ini! Sisa saldo: Rp ${rek.sisaSaldo.toString()}, dibutuhkan: Rp ${spj.totalPengeluaran.toString()}`);
-    }
-
-    // 3. Kurangi Saldo
-    if (spj.totalPengeluaran > BigInt(0)) {
-      await tx.kodeRekening.update({
-        where: { id: spj.kodeRekeningId },
-        data: {
-          sisaSaldo: {
-            decrement: spj.totalPengeluaran
-          }
-        }
-      });
-    }
-
-    // 4. Buat SPJ Baru
-    const newSpj = await tx.spj.create({
-      data: {
-        jenisSpj: spj.jenisSpj,
-        perihal: spj.perihal ? `${spj.perihal} (Salinan)` : "(Salinan)",
-        kodeRekeningId: spj.kodeRekeningId,
-        teamId: spj.teamId,
-        createdById: session.user.id,
-        totalPengeluaran: spj.totalPengeluaran,
-        metaDokumen: spj.metaDokumen ? JSON.parse(JSON.stringify(spj.metaDokumen)) : null,
-        // nomorBku & driveUrl dibiarkan default/null karena ini transaksi baru
+      // 2. Validasi Saldo
+      const rek = await tx.kodeRekening.findUnique({ where: { id: spj.kodeRekeningId } });
+      if (!rek) {
+        throw new Error("Kode Rekening tidak ditemukan.");
       }
-    });
 
-    // 5. Salin Relasi Spesifik
-    if (spj.perjadinDetail) {
-      await tx.spjPerjadinDetail.create({
-        data: {
-          spjId: newSpj.id,
-          tempatBerangkat: spj.perjadinDetail.tempatBerangkat,
-          tempatTujuan: spj.perjadinDetail.tempatTujuan,
-          tglBerangkat: spj.perjadinDetail.tglBerangkat,
-          tglKembali: spj.perjadinDetail.tglKembali,
-          lamaPerjalanan: spj.perjadinDetail.lamaPerjalanan,
-          alatAngkut: spj.perjadinDetail.alatAngkut,
-          tingkatPerjadin: spj.perjadinDetail.tingkatPerjadin,
-        }
-      });
-    }
+      if (rek.sisaSaldo < spj.totalPengeluaran) {
+        const sisaFmt = Number(rek.sisaSaldo).toLocaleString("id-ID");
+        const butuhFmt = Number(spj.totalPengeluaran).toLocaleString("id-ID");
+        throw new Error(`Saldo tidak mencukupi untuk menduplikasi SPJ ini! Sisa saldo: Rp ${sisaFmt}, dibutuhkan: Rp ${butuhFmt}`);
+      }
 
-    if (spj.maminDetail) {
-      await tx.spjMaminDetail.create({
-        data: {
-          spjId: newSpj.id,
-          vendorId: spj.maminDetail.vendorId,
-          namaRapat: spj.maminDetail.namaRapat,
-          jumlahPeserta: spj.maminDetail.jumlahPeserta,
-        }
-      });
-    }
-
-    // 6. Salin Roster & Map IDs
-    const rosterMap = new Map<string, string>();
-    if (spj.roster.length > 0) {
-      for (const r of spj.roster) {
-        const newRoster = await tx.spjRosterItem.create({
+      // 3. Kurangi Saldo
+      if (spj.totalPengeluaran > BigInt(0)) {
+        await tx.kodeRekening.update({
+          where: { id: spj.kodeRekeningId },
           data: {
-            spjId: newSpj.id,
-            pegawaiId: r.pegawaiId,
-            order: r.order,
-            role: r.role,
-            nama: r.nama,
-            nip: r.nip,
-            jabatan: r.jabatan,
-            golongan: r.golongan,
-            pangkat: r.pangkat,
-          }
-        });
-        rosterMap.set(r.id, newRoster.id);
-      }
-    }
-
-    // 7. Salin Rincian Pengeluaran
-    if (spj.pengeluaranDetails.length > 0) {
-      for (const pd of spj.pengeluaranDetails) {
-        await tx.spjPengeluaranDetail.create({
-          data: {
-            spjId: newSpj.id,
-            spjRosterItemId: pd.spjRosterItemId ? (rosterMap.get(pd.spjRosterItemId) || null) : null,
-            kategori: pd.kategori,
-            faktorPengali: pd.faktorPengali ? JSON.parse(JSON.stringify(pd.faktorPengali)) : null,
-            uraian: pd.uraian,
-            hargaSatuan: pd.hargaSatuan,
-            qty: pd.qty,
-            satuan: pd.satuan,
-            total: pd.total,
+            sisaSaldo: {
+              decrement: spj.totalPengeluaran
+            }
           }
         });
       }
-    }
 
-    return newSpj.id;
-  });
+      // 4. Buat SPJ Baru
+      const newSpj = await tx.spj.create({
+        data: {
+          jenisSpj: spj.jenisSpj,
+          perihal: spj.perihal ? `${spj.perihal} (Salinan)` : "(Salinan)",
+          kodeRekeningId: spj.kodeRekeningId,
+          teamId: spj.teamId,
+          createdById: session.user.id,
+          totalPengeluaran: spj.totalPengeluaran,
+          metaDokumen: spj.metaDokumen ? JSON.parse(JSON.stringify(spj.metaDokumen)) : null,
+          // nomorBku & driveUrl dibiarkan default/null karena ini transaksi baru
+        }
+      });
+
+      // 5. Salin Relasi Spesifik
+      if (spj.perjadinDetail) {
+        await tx.spjPerjadinDetail.create({
+          data: {
+            spjId: newSpj.id,
+            tempatBerangkat: spj.perjadinDetail.tempatBerangkat,
+            tempatTujuan: spj.perjadinDetail.tempatTujuan,
+            tglBerangkat: spj.perjadinDetail.tglBerangkat,
+            tglKembali: spj.perjadinDetail.tglKembali,
+            lamaPerjalanan: spj.perjadinDetail.lamaPerjalanan,
+            alatAngkut: spj.perjadinDetail.alatAngkut,
+            tingkatPerjadin: spj.perjadinDetail.tingkatPerjadin,
+          }
+        });
+      }
+
+      if (spj.maminDetail) {
+        await tx.spjMaminDetail.create({
+          data: {
+            spjId: newSpj.id,
+            vendorId: spj.maminDetail.vendorId,
+            namaRapat: spj.maminDetail.namaRapat,
+            jumlahPeserta: spj.maminDetail.jumlahPeserta,
+          }
+        });
+      }
+
+      // 6. Salin Roster & Map IDs
+      const rosterMap = new Map<string, string>();
+      if (spj.roster.length > 0) {
+        for (const r of spj.roster) {
+          const newRoster = await tx.spjRosterItem.create({
+            data: {
+              spjId: newSpj.id,
+              pegawaiId: r.pegawaiId,
+              order: r.order,
+              role: r.role,
+              nama: r.nama,
+              nip: r.nip,
+              jabatan: r.jabatan,
+              golongan: r.golongan,
+              pangkat: r.pangkat,
+            }
+          });
+          rosterMap.set(r.id, newRoster.id);
+        }
+      }
+
+      // 7. Salin Rincian Pengeluaran
+      if (spj.pengeluaranDetails.length > 0) {
+        for (const pd of spj.pengeluaranDetails) {
+          await tx.spjPengeluaranDetail.create({
+            data: {
+              spjId: newSpj.id,
+              spjRosterItemId: pd.spjRosterItemId ? (rosterMap.get(pd.spjRosterItemId) || null) : null,
+              kategori: pd.kategori,
+              faktorPengali: pd.faktorPengali ? JSON.parse(JSON.stringify(pd.faktorPengali)) : null,
+              uraian: pd.uraian,
+              hargaSatuan: pd.hargaSatuan,
+              qty: pd.qty,
+              satuan: pd.satuan,
+              total: pd.total,
+            }
+          });
+        }
+      }
+
+      return newSpj.id;
+    });
+
+    revalidatePath("/dashboard/spj");
+    return { success: true, newSpjId };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Terjadi kesalahan saat menduplikasi SPJ." };
+  }
 }
 
 export async function getSpjForExport(startDateStr: string | null, endDateStr: string | null, jenisSpj: string | null = null) {

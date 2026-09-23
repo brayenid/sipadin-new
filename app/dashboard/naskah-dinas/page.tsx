@@ -271,10 +271,9 @@ export default async function NaskahDinasListPage(props: {
         secondaryDrawer={{
           title: "Opsi Naskah Dinas",
           description: "Cari dan kelompokkan naskah dinas berdasarkan agenda kegiatan",
-          children: (close) => (
+          children: (
             <Link
               href="/dashboard/naskah-dinas/agenda"
-              onClick={close}
               className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group"
             >
               <div className="flex items-center gap-3">
