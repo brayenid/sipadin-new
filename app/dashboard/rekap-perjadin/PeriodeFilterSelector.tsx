@@ -38,7 +38,7 @@ export default function PeriodeFilterSelector({
   };
 
   return (
-    <div className="inline-flex items-center bg-white border border-slate-200/90 rounded-lg p-0.5 shadow-2xs divide-x divide-slate-200">
+    <div className="inline-flex items-center bg-white border border-slate-200/90 rounded-lg p-0.5 shadow-none divide-x divide-slate-200">
       {/* Selector Tahun */}
       <div className="flex items-center gap-1.5 px-2.5 py-1">
         <CalendarRange className="w-3.5 h-3.5 text-slate-400 shrink-0" />

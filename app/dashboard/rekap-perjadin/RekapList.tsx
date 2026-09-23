@@ -154,14 +154,14 @@ export default function RekapList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nama, NIP, jabatan..."
-            className="pl-8 h-8 text-xs bg-white border-slate-200/90 shadow-2xs"
+            className="pl-8 h-8 text-xs bg-white border-slate-200/90 shadow-none focus-visible:ring-1 focus-visible:ring-indigo-400"
           />
         </div>
 
         {/* Compact Segmented Filter Group */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
           {/* Segmented Controls Wrapper */}
-          <div className="inline-flex items-center bg-white border border-slate-200/90 rounded-lg p-0.5 shadow-2xs divide-x divide-slate-200 w-full sm:w-auto overflow-x-auto">
+          <div className="inline-flex items-center bg-white border border-slate-200/90 rounded-lg p-0.5 shadow-none divide-x divide-slate-200 w-full sm:w-auto overflow-x-auto">
             {/* Filter Scope Pegawai */}
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 shrink-0">
               <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
