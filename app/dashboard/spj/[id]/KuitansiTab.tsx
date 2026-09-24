@@ -231,17 +231,21 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
                 }));
             }
           } else {
-            // Untuk Perjadin, gabungkan berdasarkan kategori
+            // Untuk Perjadin, gabungkan berdasarkan kategori (hanya versi RIIL)
             const rincianMap = new Map<string, number>();
             (spj.pengeluaranDetails || []).forEach((d: any) => {
-              const cat = d.kategori || "Biaya Lainnya";
-              rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+              if (d.versi === "RIIL" || !d.versi) {
+                const cat = d.kategori || "Biaya Lainnya";
+                rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+              }
             });
             
             (spj.roster || []).forEach((r: any) => {
               (r.pengeluaranDetails || []).forEach((d: any) => {
-                const cat = d.kategori || "Biaya Lainnya";
-                rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+                if (d.versi === "RIIL" || !d.versi) {
+                  const cat = d.kategori || "Biaya Lainnya";
+                  rincianMap.set(cat, (rincianMap.get(cat) || 0) + Number(d.total));
+                }
               });
             });
 

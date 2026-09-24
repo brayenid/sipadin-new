@@ -145,7 +145,11 @@ export default function PersonelTab({ spj, pegawaiList }: { spj: any, pegawaiLis
         ) : (
           <div className="space-y-3 sm:space-y-4">
             {spj.roster.map((r: any, idx: number) => {
-              const dopdAmount = r.pengeluaranDetails ? r.pengeluaranDetails.reduce((acc: any, curr: any) => acc + BigInt(curr.total), BigInt(0)) : BigInt(0);
+              const dopdAmount = r.pengeluaranDetails
+                ? r.pengeluaranDetails
+                    .filter((d: any) => d.versi === "RIIL" || !d.versi)
+                    .reduce((acc: any, curr: any) => acc + BigInt(curr.total), BigInt(0))
+                : BigInt(0);
               
               return (
                 <div key={r.id} className="flex flex-row items-start justify-between p-3 sm:p-4 border rounded-lg bg-white">

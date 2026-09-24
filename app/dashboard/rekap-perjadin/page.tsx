@@ -77,7 +77,10 @@ export default async function RekapPerjadinPage({
     where: { spj: spjWhereFilter },
     select: {
       pegawaiId: true,
-      pengeluaranDetails: { select: { kategori: true, hargaSatuan: true, faktorPengali: true } },
+      pengeluaranDetails: {
+        where: { versi: "RIIL" },
+        select: { kategori: true, hargaSatuan: true, faktorPengali: true },
+      },
       spj: {
         select: {
           id: true,

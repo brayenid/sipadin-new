@@ -1409,7 +1409,10 @@ export async function executeToolCall(
               : {}),
           },
           include: {
-            pengeluaranDetails: { select: { hargaSatuan: true, faktorPengali: true } },
+            pengeluaranDetails: { 
+              where: { versi: "RIIL" },
+              select: { hargaSatuan: true, faktorPengali: true } 
+            },
             spj: {
               select: {
                 id: true,

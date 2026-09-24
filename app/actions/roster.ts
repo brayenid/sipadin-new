@@ -90,8 +90,10 @@ export async function deleteRoster(spjId: string, rosterItemId: string) {
     });
     if (!rosterItem) throw new Error("Personel tidak ditemukan.");
 
-    // 1. Hitung total uang DOPD yang menempel di personel ini
-    const dopdRefundAmount = rosterItem.pengeluaranDetails.reduce((acc, curr) => acc + BigInt(curr.total), BigInt(0));
+    // 1. Hitung total uang DOPD yang menempel di personel ini (hanya versi RIIL yang memotong pagu & totalPengeluaran)
+    const dopdRefundAmount = rosterItem.pengeluaranDetails
+      .filter((d) => d.versi === "RIIL" || !d.versi)
+      .reduce((acc, curr) => acc + BigInt(curr.total), BigInt(0));
 
     // 2. Jika ada uang yang harus di-refund
     if (dopdRefundAmount > BigInt(0)) {
