@@ -182,7 +182,6 @@ export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentP
   const pengikut = rosterSorted.filter((r) => r.role === 'PENGIKUT')
   const signer = props.signer
   const signerJabatan = signer?.jabatanTampil?.trim() || signer?.jabatan || ''
-  const MAX_PENGIKUT = 5
   
   const lamaPerjalanan = props.spj.lamaPerjalanan || 1;
   const lamaText = props.spj.overrideLamaText || terbilangId(lamaPerjalanan) + ' hari';
@@ -365,7 +364,7 @@ export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentP
                   <Text>Keterangan</Text>
                 </View>
               </View>
-              {Array.from({ length: MAX_PENGIKUT }).map((_, i) => {
+              {Array.from({ length: Math.max(pengikut.length, 1) }).map((_, i) => {
                 const p = pengikut[i]
                 return (
                   <View key={i} style={styles.row8Body}>
