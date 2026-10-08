@@ -167,7 +167,7 @@ export default function SpjExportModal({
             <Download className="w-5 h-5 text-primary" /> Konfigurasi Ekspor
           </DialogTitle>
           <DialogDescription>
-            Pilih rentang tanggal pembuatan SPJ (kosongkan untuk mengekspor semua data) dan kolom yang ingin Anda sertakan.
+            Pilih rentang tanggal keberangkatan / pelaksanaan (kosongkan untuk mengekspor semua data) dan kolom yang ingin Anda sertakan.
           </DialogDescription>
         </DialogHeader>
 

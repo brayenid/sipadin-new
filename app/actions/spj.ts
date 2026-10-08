@@ -476,13 +476,37 @@ export async function getSpjForExport(startDateStr: string | null, endDateStr: s
     const end = new Date(endDateStr);
     // Set end date to end of day to include the entire last day
     end.setHours(23, 59, 59, 999);
-    whereClause.tanggalSpj = {
-      gte: start,
-      lte: end,
-    };
+    
+    // Filter berdasarkan awal perjalanan (tglBerangkat untuk Perjadin)
+    // atau tanggalPelaksanaan / tanggalSpj untuk jenis SPJ lainnya
+    whereClause.OR = [
+      {
+        perjadinDetail: {
+          tglBerangkat: {
+            gte: start,
+            lte: end,
+          },
+        },
+      },
+      {
+        perjadinDetail: null,
+        tanggalPelaksanaan: {
+          gte: start,
+          lte: end,
+        },
+      },
+      {
+        perjadinDetail: null,
+        tanggalPelaksanaan: null,
+        tanggalSpj: {
+          gte: start,
+          lte: end,
+        },
+      },
+    ];
   }
 
-  return await prisma.spj.findMany({
+  const results = await prisma.spj.findMany({
     where: whereClause,
     include: {
       perjadinDetail: true,
@@ -496,5 +520,12 @@ export async function getSpjForExport(startDateStr: string | null, endDateStr: s
     orderBy: {
       tanggalSpj: 'asc'
     }
+  });
+
+  // Urutkan berdasarkan tanggal awal perjalanan / pelaksanaan
+  return results.sort((a, b) => {
+    const dateA = a.perjadinDetail?.tglBerangkat || a.tanggalPelaksanaan || a.tanggalSpj;
+    const dateB = b.perjadinDetail?.tglBerangkat || b.tanggalPelaksanaan || b.tanggalSpj;
+    return new Date(dateA).getTime() - new Date(dateB).getTime();
   });
 }
