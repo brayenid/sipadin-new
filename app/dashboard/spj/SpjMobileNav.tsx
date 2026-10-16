@@ -2,12 +2,17 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Plus, BarChart2, Download, ChevronRight } from "lucide-react";
+import { Plus, BarChart2, Download, ChevronRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import SpjExportModal from "./SpjExportModal";
+import VisumCepatModal from "./VisumCepatModal";
 
-export default function SpjMobileNav() {
+export default function SpjMobileNav({
+  pegawaiList = [],
+}: {
+  pegawaiList?: any[];
+}) {
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   return (
@@ -26,6 +31,32 @@ export default function SpjMobileNav() {
           description: "Akses rekapitulasi perjalanan dinas dan ekspor data",
           children: (close) => (
             <>
+              <VisumCepatModal
+                pegawaiList={pegawaiList}
+                customTrigger={
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                          Visum Cepat
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Pratinjau &amp; cetak lembar visum langsung tanpa SPJ
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  </button>
+                }
+              />
+
               <Link
                 href="/dashboard/rekap-perjadin"
                 onClick={close}

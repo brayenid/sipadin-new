@@ -12,6 +12,7 @@ import SpjDeleteButton from './SpjDeleteButton'
 import SpjDuplicateButton from './SpjDuplicateButton'
 import SpjExportModal from './SpjExportModal'
 import SpjMobileNav from './SpjMobileNav'
+import VisumCepatModal from './VisumCepatModal'
 import { Prisma } from '@prisma/client'
 import { formatWita } from '@/lib/date-utils'
 
@@ -75,7 +76,7 @@ export default async function SpjListPage({
       : {})
   }
 
-  const [spjList, totalData] = await Promise.all([
+  const [spjList, totalData, internalPegawais] = await Promise.all([
     prisma.spj.findMany({
       where: whereClause,
       include: {
@@ -93,6 +94,36 @@ export default async function SpjListPage({
     }),
     prisma.spj.count({
       where: whereClause
+    }),
+    prisma.pegawai.findMany({
+      where: session.user.role === 'SUPER_ADMIN'
+        ? { timInternal: true }
+        : { teamId: session.user.teamId, timInternal: true },
+      orderBy: { nama: 'asc' },
+      select: {
+        id: true,
+        nama: true,
+        nip: true,
+        jabatan: true,
+        pangkat: true,
+        golongan: true,
+        instansi: true,
+      }
+    }).then(async (list) => {
+      if (list.length > 0) return list
+      return prisma.pegawai.findMany({
+        where: session.user.role === 'SUPER_ADMIN' ? undefined : { teamId: session.user.teamId },
+        orderBy: { nama: 'asc' },
+        select: {
+          id: true,
+          nama: true,
+          nip: true,
+          jabatan: true,
+          pangkat: true,
+          golongan: true,
+          instansi: true,
+        }
+      })
     })
   ])
 
@@ -179,6 +210,9 @@ export default async function SpjListPage({
           <p className="text-xs font-medium sm:text-sm sm:font-normal text-slate-500 mt-1">Kelola dan pantau seluruh Surat Pertanggungjawaban.</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <div className="hidden lg:block">
+            <VisumCepatModal pegawaiList={internalPegawais} />
+          </div>
           <Link href="/dashboard/rekap-perjadin" className="hidden lg:block">
             <Button variant="outline" className="text-slate-600">
               <BarChart2 className="w-4 h-4 mr-2" />
@@ -384,7 +418,7 @@ export default async function SpjListPage({
       </Card>
 
       {/* Mobile bottom action bar (3-button standard) */}
-      <SpjMobileNav />
+      <SpjMobileNav pegawaiList={internalPegawais} />
     </div>
   )
 }
