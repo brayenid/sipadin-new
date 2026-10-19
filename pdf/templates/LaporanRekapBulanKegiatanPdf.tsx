@@ -199,7 +199,6 @@ const styles = StyleSheet.create({
     padding: 6,
     fontSize: 7.5,
     color: "#64748b",
-    fontStyle: "italic",
     textAlign: "center",
   },
   footerPageNum: {
