@@ -2528,15 +2528,6 @@ export async function getRekapKehadiranOpd(params?: {
     keterangan?: string | null;
     namaPerwakilan?: string | null;
     jabatanPerwakilan?: string | null;
-    fotoUrl?: string | null;
-    fotoPulangUrl?: string | null;
-    lokasiText?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-    isSelfInput?: boolean;
-    waktuInput?: Date | null;
-    waktuPulang?: Date | null;
-    distanceMeters?: number | null;
     isInsideRadius?: boolean | null;
     isNonUndangan?: boolean;
   };
@@ -2958,15 +2949,6 @@ export async function getRekapKehadiranOpd(params?: {
           keterangan: p.keterangan,
           namaPerwakilan: p.namaPerwakilan,
           jabatanPerwakilan: p.jabatanPerwakilan,
-          fotoUrl: p.fotoUrl,
-          fotoPulangUrl: p.fotoPulangUrl,
-          lokasiText: p.lokasiText,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          isSelfInput: p.isSelfInput,
-          waktuInput: p.waktuInput,
-          waktuPulang: p.waktuPulang,
-          distanceMeters: distMeters,
           isInsideRadius: isInside,
           isNonUndangan,
         };

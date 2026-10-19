@@ -333,7 +333,10 @@ export default function RekapKehadiranView({
   const topAttendance = initialData.opdSummary.filter((d) => d.persentaseKehadiran >= 80).length;
 
   // Data hierarki untuk Laporan Rekap PDF (Bulan > Kegiatan > Pegawai Hadir)
+  // Dihitung HANYA jika modal cetak dibuka (on-demand) agar rendering halaman rekap awal instan
   const bulanGroupsData = React.useMemo(() => {
+    if (!isCetakHierarkiOpen) return [];
+
     // Kumpulkan agenda unik berdasarkan key agendaId_tanggal
     const agendaMap = new Map<
       string,
@@ -441,10 +444,11 @@ export default function RekapKehadiranView({
     });
 
     return sortedBulan;
-  }, [initialData.opdSummary]);
+  }, [initialData.opdSummary, isCetakHierarkiOpen]);
 
-  // Data ringkasan pegawai untuk halaman awal PDF
+  // Data ringkasan pegawai untuk halaman awal PDF (on-demand)
   const rekapPegawaiData = React.useMemo(() => {
+    if (!isCetakHierarkiOpen) return [];
     return (initialData.pegawaiSummary || []).map((p) => ({
       nama: p.nama,
       nip: p.nip,
@@ -454,7 +458,7 @@ export default function RekapKehadiranView({
       totalDiundang: p.totalDiundang || 0,
       persentaseKehadiran: p.persentaseKehadiran || 0,
     })).sort((a, b) => b.totalHadir - a.totalHadir || a.nama.localeCompare(b.nama));
-  }, [initialData.pegawaiSummary]);
+  }, [initialData.pegawaiSummary, isCetakHierarkiOpen]);
 
   const handleExportExcelOpd = () => {
     // Sheet 1: Ringkasan Rangking OPD
@@ -1474,82 +1478,90 @@ export default function RekapKehadiranView({
         </Tabs>
 
       {/* Modal PDF Viewer Rekapitulasi */}
-      <CetakRekapModal
-        isOpen={isCetakPdfOpen}
-        onClose={() => setIsCetakPdfOpen(false)}
-        data={{
-          tahun: selectedYear,
-          periodeLabel: periodeLabelText,
-          judulLaporan: getJudulLaporanOpd(),
-          totalAgenda: initialData.totalAgenda,
-          dataOpd: filteredOpd.map((opd) => ({
-            instansi: opd.instansi,
-            totalDiundang: opd.totalDiundang,
-            hadir: opd.hadir,
-            hadirValid: opd.hadirValid,
-            hadirLuarRadius: opd.hadirLuarRadius,
-            hadirNonUndangan: opd.hadirNonUndangan,
-            mewakili: opd.mewakili,
-            tidakHadir: opd.tidakHadir,
-            izin: opd.izin,
-            persentaseKehadiran: opd.persentaseKehadiran,
-            persentaseValidLokasi: opd.persentaseValidLokasi,
-            predikatKepatuhan: opd.predikatKepatuhan,
-            evaluasiSingkat: opd.evaluasiSingkat,
-            history: opd.history,
-          })),
-        }}
-      />
+      {isCetakPdfOpen && (
+        <CetakRekapModal
+          isOpen={isCetakPdfOpen}
+          onClose={() => setIsCetakPdfOpen(false)}
+          data={{
+            tahun: selectedYear,
+            periodeLabel: periodeLabelText,
+            judulLaporan: getJudulLaporanOpd(),
+            totalAgenda: initialData.totalAgenda,
+            dataOpd: filteredOpd.map((opd) => ({
+              instansi: opd.instansi,
+              totalDiundang: opd.totalDiundang,
+              hadir: opd.hadir,
+              hadirValid: opd.hadirValid,
+              hadirLuarRadius: opd.hadirLuarRadius,
+              hadirNonUndangan: opd.hadirNonUndangan,
+              mewakili: opd.mewakili,
+              tidakHadir: opd.tidakHadir,
+              izin: opd.izin,
+              persentaseKehadiran: opd.persentaseKehadiran,
+              persentaseValidLokasi: opd.persentaseValidLokasi,
+              predikatKepatuhan: opd.predikatKepatuhan,
+              evaluasiSingkat: opd.evaluasiSingkat,
+              history: opd.history,
+            })),
+          }}
+        />
+      )}
 
       {/* Modal PDF Viewer Rekapitulasi Individu */}
-      <CetakRekapPegawaiModal
-        isOpen={isCetakPegPdfOpen}
-        onClose={() => setIsCetakPegPdfOpen(false)}
-        data={{
-          tahun: selectedYear,
-          periodeLabel: periodeLabelText,
-          judulLaporan: getJudulLaporanPegawai(),
-          totalAgenda: initialData.totalAgenda,
-          dataPegawai: filteredPegawai.map((peg) => ({
-            nama: peg.nama,
-            nip: peg.nip,
-            jabatan: peg.jabatan,
-            instansi: peg.instansi,
-            totalDiundang: peg.totalDiundang,
-            hadir: peg.hadir,
-            hadirValid: peg.hadirValid,
-            hadirLuarRadius: peg.hadirLuarRadius,
-            hadirNonUndangan: peg.hadirNonUndangan,
-            mewakili: peg.mewakili,
-            tidakHadir: peg.tidakHadir,
-            izin: peg.izin,
-            persentaseKehadiran: peg.persentaseKehadiran,
-            persentaseValidLokasi: peg.persentaseValidLokasi,
-            predikatKepatuhan: peg.predikatKepatuhan,
-            evaluasiSingkat: peg.evaluasiSingkat,
-          })),
-        }}
-      />
+      {isCetakPegPdfOpen && (
+        <CetakRekapPegawaiModal
+          isOpen={isCetakPegPdfOpen}
+          onClose={() => setIsCetakPegPdfOpen(false)}
+          data={{
+            tahun: selectedYear,
+            periodeLabel: periodeLabelText,
+            judulLaporan: getJudulLaporanPegawai(),
+            totalAgenda: initialData.totalAgenda,
+            dataPegawai: filteredPegawai.map((peg) => ({
+              nama: peg.nama,
+              nip: peg.nip,
+              jabatan: peg.jabatan,
+              instansi: peg.instansi,
+              totalDiundang: peg.totalDiundang,
+              hadir: peg.hadir,
+              hadirValid: peg.hadirValid,
+              hadirLuarRadius: peg.hadirLuarRadius,
+              hadirNonUndangan: peg.hadirNonUndangan,
+              mewakili: peg.mewakili,
+              tidakHadir: peg.tidakHadir,
+              izin: peg.izin,
+              persentaseKehadiran: peg.persentaseKehadiran,
+              persentaseValidLokasi: peg.persentaseValidLokasi,
+              predikatKepatuhan: peg.predikatKepatuhan,
+              evaluasiSingkat: peg.evaluasiSingkat,
+            })),
+          }}
+        />
+      )}
 
-      <CetakRekapLengkapModal
-        isOpen={isCetakLengkapOpen}
-        onClose={() => setIsCetakLengkapOpen(false)}
-        periodeLabel={periodeLabelText}
-        filters={{
-          startDate: customStartDate || (selectedBulan !== "ALL" ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-01` : `${selectedYear}-01-01`),
-          endDate: customEndDate || (selectedBulan !== "ALL" ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-${new Date(parseInt(selectedYear, 10), parseInt(selectedBulan, 10), 0).getDate()}` : `${selectedYear}-12-31`),
-          kategoriAgenda: selectedKategori,
-        }}
-      />
+      {isCetakLengkapOpen && (
+        <CetakRekapLengkapModal
+          isOpen={isCetakLengkapOpen}
+          onClose={() => setIsCetakLengkapOpen(false)}
+          periodeLabel={periodeLabelText}
+          filters={{
+            startDate: customStartDate || (selectedBulan !== "ALL" ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-01` : `${selectedYear}-01-01`),
+            endDate: customEndDate || (selectedBulan !== "ALL" ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-${new Date(parseInt(selectedYear, 10), parseInt(selectedBulan, 10), 0).getDate()}` : `${selectedYear}-12-31`),
+            kategoriAgenda: selectedKategori,
+          }}
+        />
+      )}
 
-      <CetakRekapHierarkiModal
-        isOpen={isCetakHierarkiOpen}
-        onClose={() => setIsCetakHierarkiOpen(false)}
-        tahun={selectedYear}
-        periodeLabel={periodeLabelText}
-        rekapPegawai={rekapPegawaiData}
-        bulanGroups={bulanGroupsData}
-      />
+      {isCetakHierarkiOpen && (
+        <CetakRekapHierarkiModal
+          isOpen={isCetakHierarkiOpen}
+          onClose={() => setIsCetakHierarkiOpen(false)}
+          tahun={selectedYear}
+          periodeLabel={periodeLabelText}
+          rekapPegawai={rekapPegawaiData}
+          bulanGroups={bulanGroupsData}
+        />
+      )}
 
       {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
       <MobileBottomNav
