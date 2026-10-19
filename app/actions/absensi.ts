@@ -2475,8 +2475,45 @@ export async function getRekapKehadiranOpd(params?: {
   const agendas = await prisma.agendaAbsensi.findMany({
     where: whereAgenda,
     orderBy: { tanggal: "desc" },
-    include: {
-      peserta: true,
+    select: {
+      id: true,
+      namaKegiatan: true,
+      tanggal: true,
+      isRecurring: true,
+      kategori: true,
+      targetLatitude: true,
+      targetLongitude: true,
+      radiusMeter: true,
+      cancelledSessions: true,
+      recurringWeeks: true,
+      peserta: {
+        select: {
+          id: true,
+          agendaId: true,
+          pegawaiId: true,
+          nama: true,
+          nip: true,
+          jabatan: true,
+          instansi: true,
+          status: true,
+          keterangan: true,
+          namaPerwakilan: true,
+          jabatanPerwakilan: true,
+          fotoUrl: true,
+          fotoPulangUrl: true,
+          lokasiText: true,
+          lokasiPulangText: true,
+          latitude: true,
+          longitude: true,
+          latitudePulang: true,
+          longitudePulang: true,
+          isSelfInput: true,
+          isNonUndangan: true,
+          waktuInput: true,
+          waktuPulang: true,
+          tanggalSesi: true,
+        },
+      },
     },
   });
 
@@ -2803,15 +2840,8 @@ export async function getRekapKehadiranOpd(params?: {
               fotoPulangUrl: null,
               latitude: null,
               longitude: null,
-              accuracy: null,
               lokasiText: null,
-              latitudePulang: null,
-              longitudePulang: null,
-              accuracyPulang: null,
-              lokasiPulangText: null,
               isSelfInput: false,
-              ipAddress: null,
-              userAgent: null,
             });
           }
         }
@@ -3325,7 +3355,6 @@ export async function getRekapKehadiranOpd(params?: {
 
   return {
     totalAgenda,
-    agendas,
     opdSummary,
     pegawaiSummary,
   };

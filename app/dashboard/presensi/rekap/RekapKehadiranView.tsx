@@ -45,6 +45,7 @@ import {
 import CetakRekapModal from "./CetakRekapModal";
 import CetakRekapPegawaiModal from "./CetakRekapPegawaiModal";
 import CetakRekapLengkapModal from "./CetakRekapLengkapModal";
+import CetakRekapHierarkiModal from "./CetakRekapHierarkiModal";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type HistoryItem = {
@@ -201,6 +202,7 @@ export default function RekapKehadiranView({
   const [isCetakPdfOpen, setIsCetakPdfOpen] = useState(false);
   const [isCetakPegPdfOpen, setIsCetakPegPdfOpen] = useState(false);
   const [isCetakLengkapOpen, setIsCetakLengkapOpen] = useState(false);
+  const [isCetakHierarkiOpen, setIsCetakHierarkiOpen] = useState(false);
 
   // Filter state untuk rentang tanggal opsional
   const [startDateInput, setStartDateInput] = useState(customStartDate);
@@ -268,17 +270,52 @@ export default function RekapKehadiranView({
     }
   };
 
-  // Filter OPD
-  const filteredOpd = initialData.opdSummary.filter((item) =>
-    item.instansi.toLowerCase().includes(search.toLowerCase())
-  );
+  // Pagination state
+  const [pagePegawai, setPagePegawai] = useState<number>(1);
+  const pageSizePegawai = 50;
 
-  // Filter Pegawai
-  const filteredPegawai = (initialData.pegawaiSummary || []).filter((item) =>
-    item.nama.toLowerCase().includes(search.toLowerCase()) ||
-    item.jabatan.toLowerCase().includes(search.toLowerCase()) ||
-    item.instansi.toLowerCase().includes(search.toLowerCase())
-  );
+  const [pageOpd, setPageOpd] = useState<number>(1);
+  const pageSizeOpd = 50;
+
+  // Filter OPD (memoized)
+  const filteredOpd = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return initialData.opdSummary;
+    return initialData.opdSummary.filter((item) =>
+      item.instansi.toLowerCase().includes(q)
+    );
+  }, [initialData.opdSummary, search]);
+
+  // Filter Pegawai (memoized)
+  const filteredPegawai = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return initialData.pegawaiSummary || [];
+    return (initialData.pegawaiSummary || []).filter((item) =>
+      item.nama.toLowerCase().includes(q) ||
+      item.jabatan.toLowerCase().includes(q) ||
+      item.instansi.toLowerCase().includes(q)
+    );
+  }, [initialData.pegawaiSummary, search]);
+
+  // Reset page when search or tab changes
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPagePegawai(1);
+    setPageOpd(1);
+  };
+
+  // Paged slices
+  const totalPagesPegawai = Math.ceil(filteredPegawai.length / pageSizePegawai) || 1;
+  const pagedPegawai = React.useMemo(() => {
+    const start = (pagePegawai - 1) * pageSizePegawai;
+    return filteredPegawai.slice(start, start + pageSizePegawai);
+  }, [filteredPegawai, pagePegawai, pageSizePegawai]);
+
+  const totalPagesOpd = Math.ceil(filteredOpd.length / pageSizeOpd) || 1;
+  const pagedOpd = React.useMemo(() => {
+    const start = (pageOpd - 1) * pageSizeOpd;
+    return filteredOpd.slice(start, start + pageSizeOpd);
+  }, [filteredOpd, pageOpd, pageSizeOpd]);
 
   const totalOpd = initialData.opdSummary.length;
   const totalPegawaiDiundangMacro = initialData.opdSummary.reduce(
@@ -294,6 +331,130 @@ export default function RekapKehadiranView({
     : (totalOpd > 0 ? Math.round(initialData.opdSummary.reduce((acc, curr) => acc + curr.persentaseKehadiran, 0) / totalOpd) : 0);
 
   const topAttendance = initialData.opdSummary.filter((d) => d.persentaseKehadiran >= 80).length;
+
+  // Data hierarki untuk Laporan Rekap PDF (Bulan > Kegiatan > Pegawai Hadir)
+  const bulanGroupsData = React.useMemo(() => {
+    // Kumpulkan agenda unik berdasarkan key agendaId_tanggal
+    const agendaMap = new Map<
+      string,
+      {
+        agendaId: string;
+        namaKegiatan: string;
+        tanggal: Date;
+        pesertaHadir: {
+          nama: string;
+          nip?: string | null;
+          jabatan: string;
+          instansi: string;
+          status: string;
+          namaPerwakilan?: string | null;
+          jabatanPerwakilan?: string | null;
+          keterangan?: string | null;
+          isInsideRadius?: boolean | null;
+        }[];
+      }
+    >();
+
+    initialData.opdSummary.forEach((opd) => {
+      (opd.history || []).forEach((h) => {
+        if (h.isCancelledSession) return;
+        const dateStr = formatWita(h.tanggal, "yyyy-MM-dd");
+        const key = `${h.agendaId}_${dateStr}`;
+
+        if (!agendaMap.has(key)) {
+          agendaMap.set(key, {
+            agendaId: h.agendaId,
+            namaKegiatan: h.namaKegiatan,
+            tanggal: h.tanggal,
+            pesertaHadir: [],
+          });
+        }
+
+        const currentAgenda = agendaMap.get(key)!;
+        (h.pesertaList || []).forEach((p) => {
+          if (p.status === "HADIR" || p.status === "MEWAKILI") {
+            const isAlreadyAdded = currentAgenda.pesertaHadir.some(
+              (exist) => (exist.nip && p.nip && exist.nip === p.nip) || (exist.nama && exist.nama.toLowerCase() === p.nama.toLowerCase())
+            );
+            if (!isAlreadyAdded) {
+              currentAgenda.pesertaHadir.push({
+                nama: p.nama,
+                nip: p.nip,
+                jabatan: p.jabatan || "-",
+                instansi: opd.instansi,
+                status: p.status,
+                namaPerwakilan: p.namaPerwakilan,
+                jabatanPerwakilan: p.jabatanPerwakilan,
+                keterangan: p.keterangan,
+                isInsideRadius: p.isInsideRadius,
+              });
+            }
+          }
+        });
+      });
+    });
+
+    // Kelompokkan per bulan (format key: yyyy-MM)
+    const bulanMap = new Map<
+      string,
+      {
+        bulanKey: string;
+        bulanLabel: string;
+        kegiatanList: {
+          agendaId: string;
+          namaKegiatan: string;
+          tanggal: Date | string;
+          pesertaHadir: {
+            nama: string;
+            nip?: string | null;
+            jabatan: string;
+            instansi: string;
+            status: string;
+            namaPerwakilan?: string | null;
+            jabatanPerwakilan?: string | null;
+            keterangan?: string | null;
+            isInsideRadius?: boolean | null;
+          }[];
+        }[];
+      }
+    >();
+
+    Array.from(agendaMap.values()).forEach((agenda) => {
+      const bKey = formatWita(agenda.tanggal, "yyyy-MM");
+      const bLabel = formatWita(agenda.tanggal, "MMMM yyyy");
+
+      if (!bulanMap.has(bKey)) {
+        bulanMap.set(bKey, {
+          bulanKey: bKey,
+          bulanLabel: bLabel,
+          kegiatanList: [],
+        });
+      }
+
+      bulanMap.get(bKey)!.kegiatanList.push(agenda);
+    });
+
+    // Urutkan grup bulan ascending (kronologis) dan kegiatan di dalamnya berdasarkan tanggal
+    const sortedBulan = Array.from(bulanMap.values()).sort((a, b) => a.bulanKey.localeCompare(b.bulanKey));
+    sortedBulan.forEach((bg) => {
+      bg.kegiatanList.sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
+    });
+
+    return sortedBulan;
+  }, [initialData.opdSummary]);
+
+  // Data ringkasan pegawai untuk halaman awal PDF
+  const rekapPegawaiData = React.useMemo(() => {
+    return (initialData.pegawaiSummary || []).map((p) => ({
+      nama: p.nama,
+      nip: p.nip,
+      jabatan: p.jabatan || "-",
+      instansi: p.instansi || "-",
+      totalHadir: (p.hadir || 0) + (p.mewakili || 0),
+      totalDiundang: p.totalDiundang || 0,
+      persentaseKehadiran: p.persentaseKehadiran || 0,
+    })).sort((a, b) => b.totalHadir - a.totalHadir || a.nama.localeCompare(b.nama));
+  }, [initialData.pegawaiSummary]);
 
   const handleExportExcelOpd = () => {
     // Sheet 1: Ringkasan Rangking OPD
@@ -648,6 +809,19 @@ export default function RekapKehadiranView({
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
+                        onClick={() => setIsCetakHierarkiOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-900 focus:bg-purple-50 focus:text-purple-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Hierarki PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
                         onClick={handleExportExcelOpd}
                         className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 focus:bg-emerald-50 focus:text-emerald-900 mt-0.5"
                       >
@@ -666,14 +840,19 @@ export default function RekapKehadiranView({
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-              <div className="relative w-full sm:w-80">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                <Input
-                  placeholder="Cari nama Perangkat Daerah..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 text-xs h-9"
-                />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <Input
+                    placeholder="Cari nama Perangkat Daerah..."
+                    value={search}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-9 text-xs h-9"
+                  />
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Menampilkan {filteredOpd.length === 0 ? 0 : (pageOpd - 1) * pageSizeOpd + 1} - {Math.min(pageOpd * pageSizeOpd, filteredOpd.length)} dari {filteredOpd.length} Perangkat Daerah
+                </div>
               </div>
 
               <div className="border border-slate-200/60 rounded-lg overflow-hidden">
@@ -699,7 +878,8 @@ export default function RekapKehadiranView({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredOpd.map((opd, idx) => {
+                      pagedOpd.map((opd, localIdx) => {
+                        const idx = (pageOpd - 1) * pageSizeOpd + localIdx;
                         const isExpanded = expandedOpd === opd.instansi;
                         const persen = opd.persentaseKehadiran;
 
@@ -910,6 +1090,36 @@ export default function RekapKehadiranView({
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination Controls OPD */}
+              {totalPagesOpd > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs text-slate-500">
+                    Halaman <span className="font-semibold text-slate-900">{pageOpd}</span> dari{" "}
+                    <span className="font-semibold text-slate-900">{totalPagesOpd}</span>
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pageOpd <= 1}
+                      onClick={() => setPageOpd((p) => Math.max(1, p - 1))}
+                      className="h-8 px-3 text-xs"
+                    >
+                      Sebelumnya
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pageOpd >= totalPagesOpd}
+                      onClick={() => setPageOpd((p) => Math.min(totalPagesOpd, p + 1))}
+                      className="h-8 px-3 text-xs"
+                    >
+                      Selanjutnya
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -965,6 +1175,19 @@ export default function RekapKehadiranView({
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
+                        onClick={() => setIsCetakHierarkiOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-900 focus:bg-purple-50 focus:text-purple-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Hierarki PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
                         onClick={handleExportExcelPegawai}
                         className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 focus:bg-emerald-50 focus:text-emerald-900 mt-0.5"
                       >
@@ -983,14 +1206,19 @@ export default function RekapKehadiranView({
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-              <div className="relative w-full sm:w-80">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                <Input
-                  placeholder="Cari nama, jabatan, atau OPD..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 text-xs h-9"
-                />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <Input
+                    placeholder="Cari nama, jabatan, atau OPD..."
+                    value={search}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-9 text-xs h-9"
+                  />
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Menampilkan {filteredPegawai.length === 0 ? 0 : (pagePegawai - 1) * pageSizePegawai + 1} - {Math.min(pagePegawai * pageSizePegawai, filteredPegawai.length)} dari {filteredPegawai.length} Pegawai
+                </div>
               </div>
 
               <div className="border border-slate-200/60 rounded-lg overflow-hidden">
@@ -1016,7 +1244,8 @@ export default function RekapKehadiranView({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredPegawai.map((peg, idx) => {
+                      pagedPegawai.map((peg, localIdx) => {
+                        const idx = (pagePegawai - 1) * pageSizePegawai + localIdx;
                         const isExpanded = expandedPegawai === peg.nama;
                         const persen = peg.persentaseKehadiran;
 
@@ -1209,6 +1438,36 @@ export default function RekapKehadiranView({
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Pagination Controls Pegawai */}
+                {totalPagesPegawai > 1 && (
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-xs text-slate-500">
+                      Halaman <span className="font-semibold text-slate-900">{pagePegawai}</span> dari{" "}
+                      <span className="font-semibold text-slate-900">{totalPagesPegawai}</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pagePegawai <= 1}
+                        onClick={() => setPagePegawai((p) => Math.max(1, p - 1))}
+                        className="h-8 px-3 text-xs"
+                      >
+                        Sebelumnya
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pagePegawai >= totalPagesPegawai}
+                        onClick={() => setPagePegawai((p) => Math.min(totalPagesPegawai, p + 1))}
+                        className="h-8 px-3 text-xs"
+                      >
+                        Selanjutnya
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1283,6 +1542,15 @@ export default function RekapKehadiranView({
         }}
       />
 
+      <CetakRekapHierarkiModal
+        isOpen={isCetakHierarkiOpen}
+        onClose={() => setIsCetakHierarkiOpen(false)}
+        tahun={selectedYear}
+        periodeLabel={periodeLabelText}
+        rekapPegawai={rekapPegawaiData}
+        bulanGroups={bulanGroupsData}
+      />
+
       {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
       <MobileBottomNav
         primaryAction={
@@ -1299,6 +1567,29 @@ export default function RekapKehadiranView({
           description: `Ekspor data presensi untuk tab ${activeTab === "opd" ? "Perangkat Daerah (OPD)" : "Pegawai"}`,
           children: (close) => (
             <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  setIsCetakHierarkiOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-purple-600">
+                      Laporan Hierarki PDF
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Rekap awal pegawai &gt; Bulan &gt; Kegiatan &gt; Hadir
+                    </p>
+                  </div>
+                </div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
