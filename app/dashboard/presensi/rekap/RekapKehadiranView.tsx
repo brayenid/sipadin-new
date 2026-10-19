@@ -32,6 +32,7 @@ import {
   Users,
   ExternalLink,
   Ban,
+  Download,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import * as XLSX from "xlsx";
@@ -180,6 +181,7 @@ export default function RekapKehadiranView({
   selectedYear,
   selectedBulan = "ALL",
   selectedKategori = "ALL",
+  selectedKehadiran = "ALL",
   customStartDate = "",
   customEndDate = "",
 }: {
@@ -191,6 +193,7 @@ export default function RekapKehadiranView({
   selectedYear: string;
   selectedBulan?: string;
   selectedKategori?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
+  selectedKehadiran?: "ALL" | "HADIR";
   customStartDate?: string;
   customEndDate?: string;
 }) {
@@ -209,16 +212,25 @@ export default function RekapKehadiranView({
   const [endDateInput, setEndDateInput] = useState(customEndDate);
   const [isCustomRange, setIsCustomRange] = useState(!!(customStartDate && customEndDate));
 
-  const updateFilters = (newParams: { tahun?: string; bulan?: string; kategori?: string; startDate?: string; endDate?: string }) => {
+  const updateFilters = (newParams: {
+    tahun?: string;
+    bulan?: string;
+    kategori?: string;
+    kehadiran?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     const params = new URLSearchParams();
     const yr = newParams.tahun !== undefined ? newParams.tahun : selectedYear;
     const bln = newParams.bulan !== undefined ? newParams.bulan : selectedBulan;
     const kat = newParams.kategori !== undefined ? newParams.kategori : selectedKategori;
+    const khd = newParams.kehadiran !== undefined ? newParams.kehadiran : selectedKehadiran;
     const sDate = newParams.startDate !== undefined ? newParams.startDate : startDateInput;
     const eDate = newParams.endDate !== undefined ? newParams.endDate : endDateInput;
 
     if (yr) params.set("tahun", yr);
     if (kat && kat !== "ALL") params.set("kategori", kat);
+    if (khd && khd !== "ALL") params.set("kehadiran", khd);
     if (sDate && eDate) {
       params.set("startDate", sDate);
       params.set("endDate", eDate);
@@ -228,6 +240,20 @@ export default function RekapKehadiranView({
 
     const hash = typeof window !== "undefined" ? window.location.hash : "";
     router.push(`?${params.toString()}${hash}`);
+  };
+
+  const getExportPdfUrl = (tipe: "hierarki" | "opd" | "pegawai") => {
+    const params = new URLSearchParams();
+    params.set("tipe", tipe);
+    if (selectedYear) params.set("tahun", selectedYear);
+    if (selectedBulan && selectedBulan !== "ALL") params.set("bulan", selectedBulan);
+    if (selectedKategori && selectedKategori !== "ALL") params.set("kategori", selectedKategori);
+    if (selectedKehadiran && selectedKehadiran !== "ALL") params.set("kehadiran", selectedKehadiran);
+    if (customStartDate && customEndDate) {
+      params.set("startDate", customStartDate);
+      params.set("endDate", customEndDate);
+    }
+    return `/api/presensi/export-pdf?${params.toString()}`;
   };
 
   const getPeriodeLabel = () => {
@@ -279,23 +305,31 @@ export default function RekapKehadiranView({
 
   // Filter OPD (memoized)
   const filteredOpd = React.useMemo(() => {
+    let list = initialData.opdSummary;
+    if (selectedKehadiran === "HADIR") {
+      list = list.filter((item) => (item.hadir || 0) + (item.mewakili || 0) > 0);
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return initialData.opdSummary;
-    return initialData.opdSummary.filter((item) =>
+    if (!q) return list;
+    return list.filter((item) =>
       item.instansi.toLowerCase().includes(q)
     );
-  }, [initialData.opdSummary, search]);
+  }, [initialData.opdSummary, search, selectedKehadiran]);
 
   // Filter Pegawai (memoized)
   const filteredPegawai = React.useMemo(() => {
+    let list = initialData.pegawaiSummary || [];
+    if (selectedKehadiran === "HADIR") {
+      list = list.filter((item) => (item.hadir || 0) + (item.mewakili || 0) > 0);
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return initialData.pegawaiSummary || [];
-    return (initialData.pegawaiSummary || []).filter((item) =>
+    if (!q) return list;
+    return list.filter((item) =>
       item.nama.toLowerCase().includes(q) ||
       item.jabatan.toLowerCase().includes(q) ||
       item.instansi.toLowerCase().includes(q)
     );
-  }, [initialData.pegawaiSummary, search]);
+  }, [initialData.pegawaiSummary, search, selectedKehadiran]);
 
   // Reset page when search or tab changes
   const handleSearchChange = (val: string) => {
@@ -702,6 +736,16 @@ export default function RekapKehadiranView({
             <option value="APEL">Khusus Apel Gabungan</option>
           </select>
 
+          {/* Selector Status Kehadiran (Semua vs Hadir) */}
+          <select
+            value={selectedKehadiran}
+            onChange={(e) => updateFilters({ kehadiran: e.target.value })}
+            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9"
+          >
+            <option value="ALL">Semua Data</option>
+            <option value="HADIR">Hadir Saja</option>
+          </select>
+
           {/* Toggle Custom Rentang Tanggal */}
           <Button
             type="button"
@@ -799,31 +843,35 @@ export default function RekapKehadiranView({
                         </div>
                       </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        onClick={() => setIsCetakPdfOpen(true)}
-                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-900 focus:bg-red-50 focus:text-red-900 mt-0.5"
-                      >
-                        <div className="w-7 h-7 rounded-md bg-red-100 text-red-700 flex items-center justify-center shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Ringkasan Rekap PDF</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Laporan tabel & grafik rangking OPD</p>
-                        </div>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onClick={() => setIsCetakHierarkiOpen(true)}
+                      <a
+                        href={getExportPdfUrl("hierarki")}
+                        target="_blank"
+                        rel="noreferrer"
                         className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-900 focus:bg-purple-50 focus:text-purple-900 mt-0.5"
                       >
                         <div className="w-7 h-7 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
+                          <Download className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Laporan Hierarki PDF</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
+                          <p className="font-semibold text-slate-900 leading-snug">Download Laporan Hierarki PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Unduh PDF: Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
                         </div>
-                      </DropdownMenuItem>
+                      </a>
+
+                      <a
+                        href={getExportPdfUrl("opd")}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-900 focus:bg-red-50 focus:text-red-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-red-100 text-red-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Download className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Download Ringkasan OPD PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Unduh PDF: Laporan tabel & grafik rangking OPD</p>
+                        </div>
+                      </a>
 
                       <DropdownMenuItem
                         onClick={handleExportExcelOpd}
@@ -1165,31 +1213,35 @@ export default function RekapKehadiranView({
                         </div>
                       </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        onClick={() => setIsCetakPegPdfOpen(true)}
-                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-900 focus:bg-red-50 focus:text-red-900 mt-0.5"
-                      >
-                        <div className="w-7 h-7 rounded-md bg-red-100 text-red-700 flex items-center justify-center shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Ringkasan Pegawai PDF</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Laporan kepatuhan presensi pegawai</p>
-                        </div>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onClick={() => setIsCetakHierarkiOpen(true)}
+                      <a
+                        href={getExportPdfUrl("hierarki")}
+                        target="_blank"
+                        rel="noreferrer"
                         className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-900 focus:bg-purple-50 focus:text-purple-900 mt-0.5"
                       >
                         <div className="w-7 h-7 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
+                          <Download className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Laporan Hierarki PDF</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
+                          <p className="font-semibold text-slate-900 leading-snug">Download Laporan Hierarki PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Unduh PDF: Rekap pegawai awal + Bulan &gt; Kegiatan &gt; Hadir</p>
                         </div>
-                      </DropdownMenuItem>
+                      </a>
+
+                      <a
+                        href={getExportPdfUrl("pegawai")}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-900 focus:bg-red-50 focus:text-red-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-red-100 text-red-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Download className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Download Ringkasan Pegawai PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Unduh PDF: Laporan kepatuhan presensi pegawai</p>
+                        </div>
+                      </a>
 
                       <DropdownMenuItem
                         onClick={handleExportExcelPegawai}
@@ -1579,55 +1631,49 @@ export default function RekapKehadiranView({
           description: `Ekspor data presensi untuk tab ${activeTab === "opd" ? "Perangkat Daerah (OPD)" : "Pegawai"}`,
           children: (close) => (
             <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  close();
-                  setIsCetakHierarkiOpen(true);
-                }}
+              <a
+                href={getExportPdfUrl("hierarki")}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => close()}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+                    <Download className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900 group-hover:text-purple-600">
-                      Laporan Hierarki PDF
+                      Download Laporan Hierarki PDF
                     </p>
                     <p className="text-[11px] text-slate-500">
                       Rekap awal pegawai &gt; Bulan &gt; Kegiatan &gt; Hadir
                     </p>
                   </div>
                 </div>
-              </button>
+              </a>
 
-              <button
-                type="button"
-                onClick={() => {
-                  close();
-                  if (activeTab === "opd") {
-                    setIsCetakPdfOpen(true);
-                  } else {
-                    setIsCetakPegPdfOpen(true);
-                  }
-                }}
+              <a
+                href={getExportPdfUrl(activeTab === "opd" ? "opd" : "pegawai")}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => close()}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+                    <Download className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900 group-hover:text-rose-600">
-                      Ekspor ke PDF
+                      Download Rekap PDF ({activeTab === "opd" ? "OPD" : "Pegawai"})
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Cetak laporan rekap kehadiran ke dokumen PDF
+                      Unduh langsung file laporan rekapitulasi ke perangkat
                     </p>
                   </div>
                 </div>
-              </button>
+              </a>
 
               <button
                 type="button"
