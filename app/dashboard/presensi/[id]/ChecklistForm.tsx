@@ -2149,8 +2149,8 @@ export default function ChecklistForm({
                 onClick={() => setFilterStatus("ALL")}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                   filterStatus === "ALL"
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-white border border-slate-200 text-slate-700 shadow-2xs"
+                    ? "bg-slate-700 text-white"
+                    : "bg-slate-100 border border-slate-200 text-slate-600"
                 }`}
               >
                 Semua ({totalPeserta})
@@ -2160,8 +2160,8 @@ export default function ChecklistForm({
                 onClick={() => setFilterStatus("TIDAK_HADIR")}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                   filterStatus === "TIDAK_HADIR"
-                    ? "bg-amber-600 text-white shadow-xs"
-                    : "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-amber-50"
+                    ? "bg-amber-600 text-white"
+                    : "bg-slate-100 border border-slate-200 text-slate-600 hover:bg-amber-50"
                 }`}
               >
                 Belum Hadir ({countTidakHadir})
@@ -2171,7 +2171,7 @@ export default function ChecklistForm({
                 onClick={() => setFilterStatus("HADIR")}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                   filterStatus === "HADIR"
-                    ? "bg-emerald-600 text-white shadow-xs"
+                    ? "bg-emerald-600 text-white"
                     : "bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100"
                 }`}
               >
@@ -2182,7 +2182,7 @@ export default function ChecklistForm({
                 onClick={() => setFilterStatus("MEWAKILI")}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                   filterStatus === "MEWAKILI"
-                    ? "bg-blue-600 text-white shadow-xs"
+                    ? "bg-blue-600 text-white"
                     : "bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100"
                 }`}
               >
@@ -2193,7 +2193,7 @@ export default function ChecklistForm({
                 onClick={() => setFilterStatus("IZIN")}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                   filterStatus === "IZIN"
-                    ? "bg-amber-600 text-white shadow-xs"
+                    ? "bg-amber-600 text-white"
                     : "bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100"
                 }`}
               >
@@ -2205,7 +2205,7 @@ export default function ChecklistForm({
                   onClick={() => setFilterStatus("NON_UNDANGAN")}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                     filterStatus === "NON_UNDANGAN"
-                      ? "bg-purple-600 text-white shadow-xs"
+                      ? "bg-purple-600 text-white"
                       : "bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100"
                   }`}
                 >
@@ -2688,14 +2688,14 @@ export default function ChecklistForm({
                     key={p.id}
                     className={`p-3 rounded-xl border transition-all ${
                       isSelected
-                        ? "bg-indigo-50/60 border-indigo-300 shadow-2xs"
+                        ? "bg-indigo-50/60 border-indigo-300"
                         : isHadir
                         ? "bg-emerald-50/40 border-emerald-200/90"
                         : isMewakili
                         ? "bg-blue-50/40 border-blue-200/90"
                         : isIzin
                         ? "bg-amber-50/40 border-amber-200/90"
-                        : "bg-white border-slate-200/90 shadow-2xs"
+                        : "bg-white border-slate-200"
                     }`}
                   >
                     {/* Baris Atas: Checkbox, No, Info Pegawai & Quick Hadir Button */}
@@ -2742,11 +2742,11 @@ export default function ChecklistForm({
                           onClick={() => handleStatusChange(p.id, isHadir ? "TIDAK_HADIR" : "HADIR")}
                           className={`h-8 px-2.5 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer ${
                             isHadir
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                               : isMewakili
-                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                              ? "bg-blue-600 hover:bg-blue-700 text-white"
                               : isIzin
-                              ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                              ? "bg-amber-600 hover:bg-amber-700 text-white"
                               : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
                           }`}
                           title={isHadir ? "Klik untuk membatalkan hadir" : "Tandai Hadir 1 Tap"}
