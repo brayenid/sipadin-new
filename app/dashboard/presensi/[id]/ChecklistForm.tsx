@@ -2766,17 +2766,19 @@ export default function ChecklistForm({
                         </Button>
 
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-7 p-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
-                              title="Pilihan status lainnya"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-7 p-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+                                title="Pilihan status lainnya"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            }
+                          />
                           <DropdownMenuContent align="end" className="w-48 text-xs bg-white shadow-lg border border-slate-200">
                             <DropdownMenuItem
                               onClick={() => handleStatusChange(p.id, "HADIR")}
