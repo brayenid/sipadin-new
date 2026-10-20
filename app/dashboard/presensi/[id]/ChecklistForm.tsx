@@ -56,6 +56,8 @@ import {
   ChevronDown,
   Menu,
   ChevronRight,
+  X,
+  MoreVertical,
 } from "lucide-react";
 import {
   Drawer,
@@ -825,6 +827,13 @@ export default function ChecklistForm({
   const countIzin = pesertaList.filter((p) => p.status === "IZIN").length;
   const countSelfInput = pesertaList.filter((p) => p.isSelfInput).length;
   const countNonUndangan = pesertaList.filter((p) => Boolean(p.isNonUndangan)).length;
+
+  const unsavedCount = React.useMemo(() => {
+    return pesertaList.filter((p) => {
+      const initial = initialPesertaMap.current.get(p.id);
+      return !initial || initial !== serializePeserta(p);
+    }).length;
+  }, [pesertaList]);
 
   const persentaseTotal =
     totalPeserta > 0
@@ -2066,7 +2075,7 @@ export default function ChecklistForm({
                 <CardTitle className="text-base font-bold text-slate-900">
                   Daftar Presensi Pegawai & OPD
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                <CardDescription className="text-xs text-slate-500 mt-0.5 hidden sm:block">
                   Data terisi otomatis saat peserta mengisi form publik online, atau dapat diedit manual oleh admin.
                 </CardDescription>
               </div>
@@ -2098,8 +2107,8 @@ export default function ChecklistForm({
               </div>
             </div>
 
-            {/* Ringkasan Statistik Presensi Singkat */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            {/* Ringkasan Statistik Presensi Singkat (Desktop) */}
+            <div className="hidden md:flex flex-wrap items-center gap-2 pt-1 text-xs">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-medium text-[11.5px] shadow-2xs">
                 Total: <b className="font-bold text-slate-900">{totalPeserta}</b>
               </span>
@@ -2132,11 +2141,83 @@ export default function ChecklistForm({
                 </span>
               )}
             </div>
+
+            {/* Quick Filter Chips (Khusus Mobile: Horizontal Scrollable) */}
+            <div className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 -mx-4 px-4 pb-0.5">
+              <button
+                type="button"
+                onClick={() => setFilterStatus("ALL")}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  filterStatus === "ALL"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-white border border-slate-200 text-slate-700 shadow-2xs"
+                }`}
+              >
+                Semua ({totalPeserta})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus("TIDAK_HADIR")}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  filterStatus === "TIDAK_HADIR"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-amber-50"
+                }`}
+              >
+                Belum Hadir ({countTidakHadir})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus("HADIR")}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  filterStatus === "HADIR"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                }`}
+              >
+                Hadir ({countHadir})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus("MEWAKILI")}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  filterStatus === "MEWAKILI"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100"
+                }`}
+              >
+                Mewakili ({countMewakili})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus("IZIN")}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  filterStatus === "IZIN"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100"
+                }`}
+              >
+                Izin ({countIzin})
+              </button>
+              {countNonUndangan > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus("NON_UNDANGAN")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                    filterStatus === "NON_UNDANGAN"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100"
+                  }`}
+                >
+                  Non-Undangan ({countNonUndangan})
+                </button>
+              )}
+            </div>
           </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-          {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4 pb-36 md:pb-6">
+          {/* Filter Bar (Desktop: Layar >= md) */}
+          <div className="hidden md:flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
             <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
               <div className="relative w-full sm:w-72">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -2182,6 +2263,27 @@ export default function ChecklistForm({
               )}
             </select>
           </div>
+
+          {/* Sesi Picker Khusus Mobile (Jika Agenda Rutin) */}
+          {agenda.isRecurring && sessionDates.length > 0 && (
+            <div className="block md:hidden pt-3">
+              <select
+                value={selectedSessionDate}
+                onChange={(e) => setSelectedSessionDate(e.target.value)}
+                className="text-xs border border-indigo-200 rounded-lg px-2.5 py-1.5 bg-indigo-50/70 text-indigo-950 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 h-9 w-full"
+              >
+                <option value="ALL">Semua Sesi Apel ({sessionDates.length} Sesi)</option>
+                {sessionDates.map((sDate) => {
+                  const isCancelled = (cancelledSessions || []).some((c: any) => c && c.tanggal === sDate);
+                  return (
+                    <option key={sDate} value={sDate}>
+                      Sesi: {formatWita(new Date(sDate), "dd MMM yyyy")}{isCancelled ? " (Ditiadakan)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
 
           {/* Banner Peringatan Jika Sesi yang Dipilih Ditiadakan / Diliburkan */}
           {currentCancelledInfo && (
@@ -2280,8 +2382,8 @@ export default function ChecklistForm({
             </div>
           )}
 
-          {/* Table */}
-          <div className="border border-slate-200/60 rounded-lg overflow-x-auto">
+          {/* Table (Desktop: Layar >= md) */}
+          <div className="hidden md:block border border-slate-200/60 rounded-lg overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/70">
                 <TableRow>
@@ -2535,6 +2637,305 @@ export default function ChecklistForm({
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile Card List (Khusus Layar < md) */}
+          <div className="block md:hidden space-y-2.5 pb-2">
+            {/* Header Mini Seleksi Cepat di Mobile jika ada item */}
+            {displayedPeserta.length > 0 && (
+              <div className="flex items-center justify-between px-1 text-xs text-slate-500">
+                <label className="flex items-center gap-2 cursor-pointer font-medium">
+                  <Checkbox
+                    checked={allFilteredSelected}
+                    onCheckedChange={(checked) => handleToggleSelectAll(Boolean(checked))}
+                    aria-label="Pilih Semua Peserta"
+                    className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                  />
+                  <span>Pilih Semua ({filteredPeserta.length})</span>
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  {displayedPeserta.length} ditampilkan
+                </span>
+              </div>
+            )}
+
+            {displayedPeserta.length === 0 ? (
+              <div className="py-12 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-6 space-y-2">
+                <p className="text-xs font-semibold text-slate-600">
+                  Tidak ada peserta yang cocok dengan &quot;{search}&quot;
+                </p>
+                {search && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearch("")}
+                    className="text-xs h-8 text-indigo-600 border-indigo-200 bg-indigo-50/50"
+                  >
+                    Reset Pencarian
+                  </Button>
+                )}
+              </div>
+            ) : (
+              displayedPeserta.map((p, idx) => {
+                const isSelected = selectedPesertaIds.includes(p.id);
+                const isHadir = p.status === "HADIR";
+                const isMewakili = p.status === "MEWAKILI";
+                const isIzin = p.status === "IZIN";
+
+                return (
+                  <div
+                    key={p.id}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isSelected
+                        ? "bg-indigo-50/60 border-indigo-300 shadow-2xs"
+                        : isHadir
+                        ? "bg-emerald-50/40 border-emerald-200/90"
+                        : isMewakili
+                        ? "bg-blue-50/40 border-blue-200/90"
+                        : isIzin
+                        ? "bg-amber-50/40 border-amber-200/90"
+                        : "bg-white border-slate-200/90 shadow-2xs"
+                    }`}
+                  >
+                    {/* Baris Atas: Checkbox, No, Info Pegawai & Quick Hadir Button */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleToggleSelectOne(p.id, Boolean(checked))}
+                          aria-label={`Pilih ${p.nama}`}
+                          className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-bold text-slate-400">#{idx + 1}</span>
+                            <span className="text-xs font-bold text-slate-900 leading-snug">
+                              {p.nama}
+                            </span>
+                            {Boolean(p.isNonUndangan) && (
+                              <span className="px-1.5 py-0.2 bg-purple-50 text-purple-700 text-[9px] font-bold rounded border border-purple-200">
+                                Non-Undangan
+                              </span>
+                            )}
+                            {p.isSelfInput && (
+                              <span className="px-1.5 py-0.2 bg-indigo-50 text-indigo-700 text-[9px] font-bold rounded border border-indigo-200">
+                                Mandiri
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 leading-tight">
+                            {p.jabatan}
+                          </p>
+                          <p className="text-[11px] font-medium text-indigo-600 mt-0.5 leading-tight flex items-center gap-1">
+                            <Building2 className="w-3 h-3 text-indigo-500 shrink-0" />
+                            <span className="truncate">{p.instansi}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tombol 1-Tap Hadir & Dropdown Opsi */}
+                      <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleStatusChange(p.id, isHadir ? "TIDAK_HADIR" : "HADIR")}
+                          className={`h-8 px-2.5 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer ${
+                            isHadir
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                              : isMewakili
+                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                              : isIzin
+                              ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                              : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                          }`}
+                          title={isHadir ? "Klik untuk membatalkan hadir" : "Tandai Hadir 1 Tap"}
+                        >
+                          {isHadir ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 mr-1 stroke-[3]" />
+                              Hadir
+                            </>
+                          ) : isMewakili ? (
+                            "Mewakili"
+                          ) : isIzin ? (
+                            "Izin"
+                          ) : (
+                            "+ Hadir"
+                          )}
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-7 p-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+                              title="Pilihan status lainnya"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 text-xs bg-white shadow-lg border border-slate-200">
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(p.id, "HADIR")}
+                              className="text-emerald-700 font-semibold cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-2 text-emerald-600" />
+                              Set Status: Hadir
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(p.id, "MEWAKILI")}
+                              className="text-blue-700 font-semibold cursor-pointer"
+                            >
+                              <Users className="w-3.5 h-3.5 mr-2 text-blue-600" />
+                              Set Status: Mewakili
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(p.id, "IZIN")}
+                              className="text-amber-700 font-semibold cursor-pointer"
+                            >
+                              <AlertCircle className="w-3.5 h-3.5 mr-2 text-amber-600" />
+                              Set Status: Izin / Dinas Luar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(p.id, "TIDAK_HADIR")}
+                              className="text-slate-700 font-medium cursor-pointer"
+                            >
+                              <Ban className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                              Set Status: Belum Hadir
+                            </DropdownMenuItem>
+
+                            {(enableCheckOut || agenda.enableCheckOut) && (
+                              <>
+                                <div className="h-px bg-slate-100 my-1" />
+                                {p.waktuPulang ? (
+                                  <DropdownMenuItem
+                                    onClick={() => handleSetPulangManual(p.id, null)}
+                                    className="text-rose-600 text-[11px] cursor-pointer"
+                                  >
+                                    Batalkan Jam Pulang
+                                  </DropdownMenuItem>
+                                ) : p.waktuInput ? (
+                                  <DropdownMenuItem
+                                    onClick={() => handleSetPulangManual(p.id, new Date())}
+                                    className="text-indigo-600 font-semibold text-[11px] cursor-pointer"
+                                  >
+                                    + Set Jam Pulang Sekarang
+                                  </DropdownMenuItem>
+                                ) : null}
+                              </>
+                            )}
+
+                            {(p.fotoUrl || p.latitude || p.waktuInput || p.status !== "TIDAK_HADIR") && (
+                              <>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <DropdownMenuItem
+                                  onClick={() => setClearBuktiTarget(p)}
+                                  className="text-amber-700 text-[11px] cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 mr-2 text-amber-600" />
+                                  Reset Bukti & Absen
+                                </DropdownMenuItem>
+                              </>
+                            )}
+
+                            <div className="h-px bg-slate-100 my-1" />
+                            <DropdownMenuItem
+                              onClick={() => setDeletePesertaTarget({ id: p.id, nama: p.nama })}
+                              className="text-rose-600 text-[11px] cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2 text-rose-500" />
+                              Hapus Peserta Ini
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {/* Form Input Tambahan jika Status Mewakili */}
+                    {isMewakili && (
+                      <div className="mt-2.5 pt-2 border-t border-blue-200/80 space-y-1.5 animate-in fade-in duration-150">
+                        <Input
+                          placeholder="Nama yang mewakili..."
+                          value={p.namaPerwakilan || ""}
+                          onChange={(e) =>
+                            handlePerwakilanChange(p.id, "namaPerwakilan", e.target.value)
+                          }
+                          className="text-xs h-7.5 bg-white"
+                        />
+                        <Input
+                          placeholder="Jabatan perwakilan (mis: Sekretaris)..."
+                          value={p.jabatanPerwakilan || ""}
+                          onChange={(e) =>
+                            handlePerwakilanChange(p.id, "jabatanPerwakilan", e.target.value)
+                          }
+                          className="text-xs h-7.5 bg-white"
+                        />
+                      </div>
+                    )}
+
+                    {/* Form Input Tambahan jika Status Izin atau ada Catatan */}
+                    {(isIzin || (!isMewakili && p.keterangan)) && (
+                      <div className="mt-2 pt-2 border-t border-amber-200/70 animate-in fade-in duration-150">
+                        <Input
+                          placeholder="Catatan / Alasan izin..."
+                          value={p.keterangan || ""}
+                          onChange={(e) =>
+                            handlePerwakilanChange(p.id, "keterangan", e.target.value)
+                          }
+                          className="text-xs h-7.5 bg-white"
+                        />
+                      </div>
+                    )}
+
+                    {/* Metadata Waktu & Bukti Presensi (jika ada) */}
+                    {(p.waktuInput || p.fotoUrl || (p.latitude && p.longitude)) && (
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 flex-wrap gap-1.5">
+                        <div className="flex items-center gap-2 flex-wrap font-mono">
+                          {p.waktuInput && (
+                            <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              Dtg: {formatWita(p.waktuInput, "HH:mm")}
+                            </span>
+                          )}
+                          {p.waktuPulang && (
+                            <span className="flex items-center gap-1 text-indigo-700 font-semibold">
+                              <Clock className="w-3 h-3 text-indigo-500" />
+                              Plg: {formatWita(p.waktuPulang, "HH:mm")}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {p.fotoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFotoPeserta(p)}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-semibold rounded border border-slate-300 transition cursor-pointer"
+                            >
+                              <Camera className="w-3 h-3 text-indigo-600" />
+                              Foto
+                            </button>
+                          )}
+                          {p.latitude && p.longitude && (
+                            <button
+                              type="button"
+                              onClick={() => handleViewPesertaOnMap(p.id)}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-semibold rounded border border-emerald-200 transition cursor-pointer"
+                            >
+                              <MapPin className="w-3 h-3 text-emerald-600" />
+                              GPS
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* Sentinel Auto Load More (Lazy Loading) */}
@@ -3044,8 +3445,32 @@ export default function ChecklistForm({
         }
       />
 
-      {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
+      {/* Mobile Bottom Fixed Action Bar (3-button standard + Top Search Bar in Attendance Tab) */}
       <MobileBottomNav
+        topContent={
+          activeTab === "DAFTAR_HADIR" ? (
+            <div className="relative flex items-center w-full">
+              <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
+              <Input
+                type="search"
+                placeholder="Cari nama, jabatan, atau OPD..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-9 text-xs h-9 bg-slate-100/90 border-slate-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer transition-colors"
+                  aria-label="Bersihkan pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : undefined
+        }
         primaryAction={
           activeTab === "EDIT_AGENDA" ? (
             <Button
@@ -3071,7 +3496,9 @@ export default function ChecklistForm({
               ) : (
                 <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
               )}
-              <span className="truncate">Simpan Kehadiran</span>
+              <span className="truncate">
+                Simpan Kehadiran{unsavedCount > 0 ? ` (${unsavedCount})` : ""}
+              </span>
             </Button>
           ) : (
             <Button

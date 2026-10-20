@@ -35,6 +35,11 @@ export interface MobileBottomNavProps {
   children?: React.ReactNode;
 
   /**
+   * Elemen tambahan di atas baris tombol (misal search input yang menempel).
+   */
+  topContent?: React.ReactNode;
+
+  /**
    * Kelas styling opsional untuk container bar.
    */
   className?: string;
@@ -44,6 +49,7 @@ export default function MobileBottomNav({
   primaryAction,
   secondaryDrawer,
   children,
+  topContent,
   className = "",
 }: MobileBottomNavProps) {
   const { toggle: toggleSidebar } = useSidebar();
@@ -70,10 +76,52 @@ export default function MobileBottomNav({
   return (
     <>
       <div
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 px-3.5 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200/80 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.07)] flex items-center gap-2 ${className}`}
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 px-3.5 py-2.5 bg-white/95 backdrop-blur border-t border-slate-200/80 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.07)] ${topContent ? "flex flex-col gap-2" : "flex items-center gap-2"} ${className}`}
       >
+        {topContent && (
+          <div className="w-full">
+            {topContent}
+          </div>
+        )}
         {children ? (
           children
+        ) : topContent ? (
+          <div className="w-full flex items-center gap-2">
+            {/* 1. KIRI: Aksi Utama (Lebar & Utama) */}
+            {primaryAction && (
+              <div className="flex-1 min-w-0">
+                {primaryAction}
+              </div>
+            )}
+
+            {/* 2. TENGAH: Aksi Tambahan (Drawer Sekunder) */}
+            {secondaryDrawer && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setIsSecondaryOpen(true)}
+                className="h-10 w-10 shrink-0 bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs active:scale-95 transition-transform"
+                title={secondaryDrawer.title}
+                aria-label={secondaryDrawer.title}
+              >
+                {secondaryDrawer.triggerIcon || <MoreHorizontal className="w-4 h-4" />}
+              </Button>
+            )}
+
+            {/* 3. KANAN: Hamburger Menu Navigasi Utama Aplikasi */}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-10 w-10 shrink-0 bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs active:scale-95 transition-transform"
+              title="Menu Navigasi"
+              aria-label="Buka Menu Navigasi"
+            >
+              <Menu className="w-4 h-4" />
+            </Button>
+          </div>
         ) : (
           <>
             {/* 1. KIRI: Aksi Utama (Lebar & Utama) */}
