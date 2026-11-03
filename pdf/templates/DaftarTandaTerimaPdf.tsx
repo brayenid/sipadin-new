@@ -14,6 +14,7 @@ export type TandaTerimaItem = {
   jumlah: number;
   pph: number;
   bersih: number;
+  nomorRekening?: string;
 };
 
 export type DaftarTandaTerimaSpj = {
@@ -117,6 +118,9 @@ export default function DaftarTandaTerimaPdf({
             <View style={[styles.cellNama, styles.headerCell]}>
               <Text>NAMA</Text>
             </View>
+            <View style={[styles.cellRekening, styles.headerCell]}>
+              <Text>NO. REKENING</Text>
+            </View>
             <View style={[styles.cellJabatan, styles.headerCell]}>
               <Text>JABATAN SEBAGAI</Text>
             </View>
@@ -151,6 +155,10 @@ export default function DaftarTandaTerimaPdf({
                 {/* NAMA */}
                 <View style={[styles.cellNama, styles.dataCell]}>
                   <Text>{item.nama}</Text>
+                </View>
+                {/* NO. REKENING */}
+                <View style={[styles.cellRekening, styles.dataCell]}>
+                  <Text>{item.nomorRekening || '-'}</Text>
                 </View>
                 {/* JABATAN SEBAGAI */}
                 <View style={[styles.cellJabatan, styles.dataCell]}>
@@ -329,10 +337,11 @@ const styles = StyleSheet.create({
 
   // COLUMN WIDTHS
   cellNo: { width: '3%', borderRightWidth: 1, borderRightColor: '#000', alignItems: 'center', justifyContent: 'center' },
-  cellNama: { width: '13%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellJabatan: { width: '13%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellKegiatan: { width: '13%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellHarga: { width: '18%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellNama: { width: '11%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellRekening: { width: '9%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellJabatan: { width: '10.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellKegiatan: { width: '10.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellHarga: { width: '16%', borderRightWidth: 1, borderRightColor: '#000' },
   cellJumlah: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
   cellPph: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
   cellBersih: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
@@ -352,8 +361,8 @@ const styles = StyleSheet.create({
   tr: { textAlign: 'right' },
 
   // SUB COLUMNS (Harga)
-  hColRp: { width: '15%' },
-  hColVal: { width: '45%' },
+  hColRp: { width: '14%' },
+  hColVal: { width: '46%' },
   hColX: { width: '10%' },
   hColQty: { width: '10%' },
   hColUnit: { width: '20%' },

@@ -22,6 +22,7 @@ type TandaTerimaRow = {
   kuantitas: number;
   satuan: string;
   persenPph: number;
+  nomorRekening?: string;
 };
 
 export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; pegawaiList: any[] }) {
@@ -63,6 +64,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
           kuantitas: 0,
           satuan: "Jam",
           persenPph: 5,
+          nomorRekening: "",
         };
         hasChanges = true;
       }
@@ -113,13 +115,14 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
 
   const combinedData = narasumberList.map((n: any, idx: number) => {
     const rowId = n.id || `row-${idx}`;
-    const td = tandaTerimaData[rowId] || { hargaSatuan: 0, kuantitas: 0, satuan: "", persenPph: 0 };
+    const td = tandaTerimaData[rowId] || { hargaSatuan: 0, kuantitas: 0, satuan: "", persenPph: 0, nomorRekening: "" };
     const jumlah = td.hargaSatuan * td.kuantitas;
     const pph = (jumlah * td.persenPph) / 100;
     const bersih = jumlah - pph;
     return {
       ...n,
       ...td,
+      nomorRekening: td.nomorRekening || "",
       id: rowId,
       kegiatan: kegiatanLabel,
       jumlah,
@@ -221,18 +224,19 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
               <thead className="bg-slate-50 border-b">
                 <tr>
                   <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 w-8">No</th>
-                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[150px]">Nama</th>
-                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[150px]">Harga Satuan (Rp)</th>
-                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">Kuantitas</th>
-                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[70px] sm:min-w-[100px]">Satuan</th>
-                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">PPh (%)</th>
-                  <th className="text-right px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[120px]">Bersih (Rp)</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[140px]">Nama</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[110px] sm:min-w-[140px]">No. Rekening</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[130px]">Harga Satuan (Rp)</th>
+                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[50px] sm:min-w-[70px]">Kuantitas</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">Satuan</th>
+                  <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[50px] sm:min-w-[70px]">PPh (%)</th>
+                  <th className="text-right px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[90px] sm:min-w-[110px]">Bersih (Rp)</th>
                 </tr>
               </thead>
               <tbody>
                 {narasumberList.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-6 sm:py-8 text-[10px] sm:text-sm text-slate-400">
+                    <td colSpan={8} className="text-center py-6 sm:py-8 text-[10px] sm:text-sm text-slate-400">
                       Belum ada narasumber di Daftar Hadir Narasumber.
                     </td>
                   </tr>
@@ -241,6 +245,15 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                     <tr key={row.id || `row-${idx}`} className="border-b last:border-0">
                       <td className="px-2 sm:px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
                       <td className="px-2 sm:px-3 py-2 font-medium text-[10px] sm:text-sm">{row.nama}</td>
+                      <td className="px-1.5 sm:px-2 py-1.5">
+                        <Input
+                          type="text"
+                          placeholder="No. Rekening / Bank"
+                          value={tandaTerimaData[row.id]?.nomorRekening || ""}
+                          onChange={(e) => updateRow(row.id, "nomorRekening", e.target.value)}
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm px-2"
+                        />
+                      </td>
                       <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="text"
