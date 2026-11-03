@@ -224,13 +224,13 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
               <thead className="bg-slate-50 border-b">
                 <tr>
                   <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 w-8">No</th>
-                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[140px]">Nama</th>
-                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[110px] sm:min-w-[140px]">No. Rekening</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[150px]">Nama</th>
                   <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[100px] sm:min-w-[130px]">Harga Satuan (Rp)</th>
                   <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[50px] sm:min-w-[70px]">Kuantitas</th>
                   <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[60px] sm:min-w-[80px]">Satuan</th>
                   <th className="text-center px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[50px] sm:min-w-[70px]">PPh (%)</th>
                   <th className="text-right px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[90px] sm:min-w-[110px]">Bersih (Rp)</th>
+                  <th className="text-left px-2 sm:px-3 py-2 font-medium text-slate-600 min-w-[120px] sm:min-w-[150px]">No. Rekening</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,15 +245,6 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                     <tr key={row.id || `row-${idx}`} className="border-b last:border-0">
                       <td className="px-2 sm:px-3 py-2 text-slate-500 text-center">{idx + 1}</td>
                       <td className="px-2 sm:px-3 py-2 font-medium text-[10px] sm:text-sm">{row.nama}</td>
-                      <td className="px-1.5 sm:px-2 py-1.5">
-                        <Input
-                          type="text"
-                          placeholder="No. Rekening / Bank"
-                          value={tandaTerimaData[row.id]?.nomorRekening || ""}
-                          onChange={(e) => updateRow(row.id, "nomorRekening", e.target.value)}
-                          className="h-7 sm:h-8 text-[10px] sm:text-sm px-2"
-                        />
-                      </td>
                       <td className="px-1.5 sm:px-2 py-1.5">
                         <Input
                           type="text"
@@ -291,6 +282,15 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
                       </td>
                       <td className="px-2 sm:px-3 py-2 text-right font-semibold text-emerald-600 text-[10px] sm:text-sm">
                         {new Intl.NumberFormat('id-ID').format(row.bersih)}
+                      </td>
+                      <td className="px-1.5 sm:px-2 py-1.5">
+                        <Input
+                          type="text"
+                          placeholder="No. Rekening / Bank"
+                          value={tandaTerimaData[row.id]?.nomorRekening || ""}
+                          onChange={(e) => updateRow(row.id, "nomorRekening", e.target.value)}
+                          className="h-7 sm:h-8 text-[10px] sm:text-sm px-2"
+                        />
                       </td>
                     </tr>
                   ))

@@ -118,9 +118,6 @@ export default function DaftarTandaTerimaPdf({
             <View style={[styles.cellNama, styles.headerCell]}>
               <Text>NAMA</Text>
             </View>
-            <View style={[styles.cellRekening, styles.headerCell]}>
-              <Text>NO. REKENING</Text>
-            </View>
             <View style={[styles.cellJabatan, styles.headerCell]}>
               <Text>JABATAN SEBAGAI</Text>
             </View>
@@ -139,8 +136,11 @@ export default function DaftarTandaTerimaPdf({
             <View style={[styles.cellBersih, styles.headerCell]}>
               <Text>JUMLAH BERSIH{'\n'}DITERIMA</Text>
             </View>
-            <View style={[styles.cellTtd, styles.headerCell, { borderRightWidth: 0 }]}>
+            <View style={[styles.cellTtd, styles.headerCell]}>
               <Text>TANDA TERIMA</Text>
+            </View>
+            <View style={[styles.cellRekening, styles.headerCell, { borderRightWidth: 0 }]}>
+              <Text>NO. REKENING</Text>
             </View>
           </View>
 
@@ -155,10 +155,6 @@ export default function DaftarTandaTerimaPdf({
                 {/* NAMA */}
                 <View style={[styles.cellNama, styles.dataCell]}>
                   <Text>{item.nama}</Text>
-                </View>
-                {/* NO. REKENING */}
-                <View style={[styles.cellRekening, styles.dataCell]}>
-                  <Text>{item.nomorRekening || '-'}</Text>
                 </View>
                 {/* JABATAN SEBAGAI */}
                 <View style={[styles.cellJabatan, styles.dataCell]}>
@@ -198,8 +194,13 @@ export default function DaftarTandaTerimaPdf({
                 </View>
 
                 {/* TANDA TERIMA */}
-                <View style={[styles.cellTtd, { borderRightWidth: 0 }]}>
+                <View style={styles.cellTtd}>
                   <Text> </Text>
+                </View>
+
+                {/* NO. REKENING */}
+                <View style={[styles.cellRekening, styles.dataCell, { borderRightWidth: 0, justifyContent: 'center' }]}>
+                  <Text>{item.nomorRekening || '-'}</Text>
                 </View>
               </View>
             );
@@ -223,7 +224,10 @@ export default function DaftarTandaTerimaPdf({
               <View style={[styles.bColRp, styles.br]}><Text style={styles.p2}>Rp</Text></View>
               <View style={[styles.bColVal, styles.tr]}><Text style={styles.p2}>{fmtRp(totalBersih)}</Text></View>
             </View>
-            <View style={[styles.cellTtd, styles.headerCell, { borderRightWidth: 0, borderBottomWidth: 0 }]}>
+            <View style={[styles.cellTtd, styles.headerCell, { borderBottomWidth: 0 }]}>
+              <Text> </Text>
+            </View>
+            <View style={[styles.cellRekening, styles.headerCell, { borderRightWidth: 0, borderBottomWidth: 0 }]}>
               <Text> </Text>
             </View>
           </View>
@@ -337,17 +341,17 @@ const styles = StyleSheet.create({
 
   // COLUMN WIDTHS
   cellNo: { width: '3%', borderRightWidth: 1, borderRightColor: '#000', alignItems: 'center', justifyContent: 'center' },
-  cellNama: { width: '11%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellRekening: { width: '9%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellJabatan: { width: '10.5%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellKegiatan: { width: '10.5%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellHarga: { width: '16%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellJumlah: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellPph: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellBersih: { width: '10%', borderRightWidth: 1, borderRightColor: '#000' },
-  cellTtd: { width: '10%', borderBottomWidth: 1, borderBottomColor: '#000', position: 'relative' },
+  cellNama: { width: '12.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellJabatan: { width: '11%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellKegiatan: { width: '11%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellHarga: { width: '16.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellJumlah: { width: '9.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellPph: { width: '9%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellBersih: { width: '9.5%', borderRightWidth: 1, borderRightColor: '#000' },
+  cellTtd: { width: '8.5%', borderRightWidth: 1, borderRightColor: '#000', borderBottomWidth: 1, borderBottomColor: '#000', position: 'relative' },
+  cellRekening: { width: '9.5%', borderRightWidth: 1, borderRightColor: '#000' },
   
-  cellTotalLabel: { width: '60%', borderRightWidth: 1, borderRightColor: '#000', fontWeight: 'bold' },
+  cellTotalLabel: { width: '54%', borderRightWidth: 1, borderRightColor: '#000', fontWeight: 'bold' },
 
   // FLEX HELPERS
   flexRow: {
@@ -368,15 +372,15 @@ const styles = StyleSheet.create({
   hColUnit: { width: '20%' },
 
   // SUB COLUMNS (Jumlah & Bersih)
-  jColRp: { width: '30%' },
-  jColVal: { width: '70%' },
-  bColRp: { width: '30%' },
-  bColVal: { width: '70%' },
+  jColRp: { width: '28%' },
+  jColVal: { width: '72%' },
+  bColRp: { width: '28%' },
+  bColVal: { width: '72%' },
 
   // SUB COLUMNS (PPh)
-  pColPct: { width: '25%' },
-  pColRp: { width: '25%' },
-  pColVal: { width: '50%' },
+  pColPct: { width: '26%' },
+  pColRp: { width: '26%' },
+  pColVal: { width: '48%' },
 
   // FOOTER
   footer: {
