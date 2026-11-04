@@ -119,6 +119,7 @@ export default function DaftarHadirTab({ spj }: { spj: any }) {
         title="Pratinjau Daftar Hadir"
         spjId={spj.id}
         docKey="daftarHadirPdf"
+        initialConfig={meta.daftarHadirPdf || meta.daftarHadirPdfConfig}
         fields={[]}
         renderDocument={(config) => {
           const spjData = {

@@ -206,6 +206,14 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
         title="Pratinjau SPD"
         spjId={spj.id}
         docKey="spdPdf"
+        initialConfig={meta.spdPdf || meta.spdPdfConfig}
+        defaultStyles={{
+          marginTop: 28,
+          marginBottom: 32,
+          marginHorizontal: 28,
+          fontSize: 10,
+          lineHeight: 1.25
+        }}
         fields={[
           { key: 'overrideMaksud', label: 'Maksud Perjalanan Dinas', type: 'textarea', placeholder: 'Ketik ulang maksud perjalanan...' },
           { key: 'overrideAlatAngkut', label: 'Alat Angkut', type: 'text', placeholder: 'Contoh: Pesawat Udara / Darat' },
@@ -272,6 +280,7 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
               spj={spjData} 
               roster={rosterData}
               signer={signerData}
+              layout={config.styles}
             />
           );
         }}

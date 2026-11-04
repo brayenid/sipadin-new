@@ -18,6 +18,13 @@ export type VisumPdfProps = {
   spj: VisumSpj
   stageCount: number
   signer: Signer | null
+  layout?: {
+    marginTop?: number;
+    marginBottom?: number;
+    marginHorizontal?: number;
+    fontSize?: number;
+    lineHeight?: number;
+  };
 }
 
 // ===== helpers
@@ -104,19 +111,37 @@ function StageBlock({ no, leftTitle, rightTitle }: { no: number; leftTitle: stri
 }
 
 export default function VisumPdf(props: VisumPdfProps): React.ReactElement<DocumentProps> {
-  const stageCount = safeStageCount(props.stageCount)
+  const { spj, stageCount: rawStageCount, signer, layout } = props
+  const stageCount = safeStageCount(rawStageCount)
 
-  const signerName = props.signer?.nama ?? ''
-  const signerNip = props.signer?.nip ?? ''
+  const signerName = signer?.nama ?? ''
+  const signerNip = signer?.nip ?? ''
 
-  const signerJabatanRaw = (props.signer?.jabatanTampil ?? props.signer?.jabatan ?? '').trim()
+  const signerJabatanRaw = (signer?.jabatanTampil ?? signer?.jabatan ?? '').trim()
   const signerJabatanLabel = signerJabatanRaw ? `${signerJabatanRaw},` : ''
 
   const repeatedStages = Array.from({ length: stageCount }).map((_, i) => 2 + i)
 
+  const baseFontSize = layout?.fontSize ?? styles.page.fontSize;
+  const baseLineHeight = layout?.lineHeight ?? styles.page.lineHeight;
+
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          layout
+            ? {
+                paddingTop: layout.marginTop ?? styles.page.paddingTop,
+                paddingBottom: layout.marginBottom ?? styles.page.paddingBottom,
+                paddingHorizontal: layout.marginHorizontal ?? styles.page.paddingHorizontal,
+                fontSize: baseFontSize,
+                lineHeight: baseLineHeight,
+              }
+            : {},
+        ]}
+      >
         <View style={styles.outerBox}>
           <Line />
 

@@ -288,6 +288,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
         title="Pratinjau Berita Acara Pemeriksaan Barang"
         spjId={spj.id}
         docKey="bapbPdf"
+        initialConfig={meta.bapbPdf || meta.bapbPdfConfig}
         fields={[
           { key: 'bagianOrganisasiOverride', label: 'Teks Bagian Organisasi', type: 'text', placeholder: 'Ketik untuk override default (Bagian Organisasi Sekretariat Daerah Kabupaten Kutai Barat)' }
         ]}

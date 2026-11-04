@@ -120,18 +120,43 @@ export default function KuitansiPdf({
   spj,
   penerima,
   rincian,
-  signers
+  signers,
+  layout
 }: {
   spj: KuitansiSpj;
   penerima: KuitansiPenerima;
   rincian: KuitansiRincianRow[];
   signers: { kpa?: KuitansiSigner | null; bpp?: KuitansiSigner | null };
+  layout?: {
+    marginTop?: number;
+    marginBottom?: number;
+    marginHorizontal?: number;
+    fontSize?: number;
+    lineHeight?: number;
+  };
 }) {
   const total = sum((rincian ?? []).map((x) => x.jumlah));
 
+  const baseFontSize = layout?.fontSize ?? styles.page.fontSize;
+  const baseLineHeight = layout?.lineHeight ?? styles.page.lineHeight;
+
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          layout
+            ? {
+                paddingTop: layout.marginTop ?? styles.page.paddingTop,
+                paddingBottom: layout.marginBottom ?? styles.page.paddingBottom,
+                paddingHorizontal: layout.marginHorizontal ?? styles.page.paddingHorizontal,
+                fontSize: baseFontSize,
+                lineHeight: baseLineHeight,
+              }
+            : {},
+        ]}
+      >
         {/* Kop */}
         <KopSurat 
           instansiLine1="PEMERINTAH KABUPATEN KUTAI BARAT"

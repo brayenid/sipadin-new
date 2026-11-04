@@ -192,6 +192,7 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
         title="Pratinjau Berita Acara Serah Terima Barang"
         spjId={spj.id}
         docKey="bastbPdf"
+        initialConfig={meta.bastbPdf || meta.bastbPdfConfig}
         fields={[
           { key: 'overrideKeterangan', label: 'Teks Keterangan (Pasal 2)', type: 'textarea', placeholder: 'Ketik ulang keterangan di sini untuk override Perihal SPJ...' }
         ]}

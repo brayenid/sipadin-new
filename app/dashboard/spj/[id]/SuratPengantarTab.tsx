@@ -205,6 +205,7 @@ export default function SuratPengantarTab({ spj, pegawaiList }: { spj: any, pega
         title="Pratinjau Surat Pengantar Permintaan Barang"
         spjId={spj.id}
         docKey="suratPengantarPdf"
+        initialConfig={meta.suratPengantarPdf || meta.suratPengantarPdfConfig}
         fields={[
           { key: 'bagianOrganisasiOverride', label: 'Teks Bagian Organisasi', type: 'text', placeholder: 'Ketik untuk override default...' },
           { key: 'keteranganOverride', label: 'Teks Keterangan (Semua Item)', type: 'textarea', placeholder: 'Ketik ulang keterangan di sini untuk override Perihal SPJ...' }

@@ -319,6 +319,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
         title="Pratinjau Daftar Tanda Terima"
         spjId={spj.id}
         docKey="daftarTandaTerimaPdf"
+        initialConfig={meta.daftarTandaTerimaPdf || meta.daftarTandaTerimaPdfConfig}
         fields={[]}
         renderDocument={(config) => {
           const spjData = {

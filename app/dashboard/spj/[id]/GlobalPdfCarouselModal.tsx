@@ -86,7 +86,8 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               tglTelaahan: tel.tanggal ? new Date(tel.tanggal) : undefined
             }}
             roster={rosterData}
-            signer={signer} 
+            signer={signer}
+            config={meta.telaahanStaf || meta.telaahanStafConfig}
           />
         )
       });
@@ -95,7 +96,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
     // --- SURAT PENGANTAR (MAKAN MINUM) ---
     if (spj.jenisSpj === 'MAKAN_MINUM') {
       const sp = meta.suratPengantar || {};
-      const config = meta.suratPengantarPdfConfig || { content: {}, styles: {} };
+      const config = meta.suratPengantarPdf || meta.suratPengantarPdfConfig || { content: {}, styles: {} };
       const penandatanganId = sp.penandatanganId || meta.bapb?.pptkId || meta.bastb?.pptkId;
       const pengesahPegawai = penandatanganId ? pegawaiList.find((p) => p.id === penandatanganId) : null;
       docs.push({
@@ -134,7 +135,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
     // --- BAPB (MAKAN MINUM) ---
     if (spj.jenisSpj === 'MAKAN_MINUM') {
       const bapbMeta = meta.bapb || {};
-      const config = meta.bapbPdfConfig || { content: {}, styles: {} };
+      const config = meta.bapbPdf || meta.bapbPdfConfig || { content: {}, styles: {} };
       const kpaId = bapbMeta.kpaId || meta.dopd?.kpaId;
       const pptkId = bapbMeta.pptkId || meta.suratPengantar?.penandatanganId;
       const kpa = kpaId ? pegawaiList.find(p => p.id === kpaId) : null;
@@ -169,7 +170,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
     // --- BASTB (MAKAN MINUM) ---
     if (spj.jenisSpj === 'MAKAN_MINUM') {
       const bastbMeta = meta.bastb || {};
-      const config = meta.bastbPdfConfig || { content: {}, styles: {} };
+      const config = meta.bastbPdf || meta.bastbPdfConfig || { content: {}, styles: {} };
       const pptkId = bastbMeta.pptkId || meta.bapb?.pptkId || meta.suratPengantar?.penandatanganId;
       const pptk = pptkId ? pegawaiList.find((p) => p.id === pptkId) : null;
       docs.push({
@@ -221,7 +222,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
     // --- DAFTAR HADIR (MAKAN MINUM) ---
     if (spj.jenisSpj === 'MAKAN_MINUM') {
       const dhMeta = meta.daftarHadir || {};
-      const config = meta.daftarHadirPdfConfig || { content: {}, styles: {} };
+      const config = meta.daftarHadirPdf || meta.daftarHadirPdfConfig || { content: {}, styles: {} };
       const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const hariLabel = spj.tanggalPelaksanaan 
         ? hariArr[new Date(spj.tanggalPelaksanaan).getDay()]
@@ -359,7 +360,8 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           signerJabatan: stSigner?.jabatan || "-",
           signerPangkatGolongan: (stSigner?.pangkat || "") + (stSigner?.golongan ? " (" + stSigner.golongan + ")" : "")
         };
-        return <SuratTugasPdf spj={spjData} suratTugas={suratTugasData} roster={rosterData} />;
+        const stLayout = meta.suratTugasPdf?.styles || meta.suratTugasPdfConfig?.styles;
+        return <SuratTugasPdf spj={spjData} suratTugas={suratTugasData} roster={rosterData} layout={stLayout} />;
       }
     });
 
@@ -397,7 +399,8 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             instansi: null,
             jabatanTampil: spdSigner?.jabatan || "-",
           };
-          return <SpdPdf spj={spdSpj} roster={rosterData} signer={signerData} />;
+          const spdLayout = meta.spdPdf?.styles || meta.spdPdfConfig?.styles;
+          return <SpdPdf spj={spdSpj} roster={rosterData} signer={signerData} layout={spdLayout} />;
         }
       });
     }
@@ -424,7 +427,8 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               jabatanTampil: stSigner.jabatanTampil
             };
           }
-          return <VisumPdf spj={visSpj} stageCount={stageCount} signer={signer} />;
+          const visLayout = meta.visumPdf?.styles || meta.visumPdfConfig?.styles;
+          return <VisumPdf spj={visSpj} stageCount={stageCount} signer={signer} layout={visLayout} />;
         }
       });
     }
@@ -474,7 +478,8 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           kotaTandaTangan: "Sendawar",
           tanggalKuitansiLabel: null
         };
-        return <KuitansiPdf spj={kuitansiSpj} penerima={penerima} rincian={rincian} signers={{ kpa: kpa ? { nama: kpa.nama, nip: kpa.nip } : null, bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null }} />;
+        const kuitansiLayout = meta.kuitansiPdf?.styles || meta.kuitansiPdfConfig?.styles;
+        return <KuitansiPdf spj={kuitansiSpj} penerima={penerima} rincian={rincian} signers={{ kpa: kpa ? { nama: kpa.nama, nip: kpa.nip } : null, bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null }} layout={kuitansiLayout} />;
       }
     });
 

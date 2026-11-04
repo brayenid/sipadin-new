@@ -89,6 +89,14 @@ export default function VisumTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
         title="Pratinjau Visum"
         spjId={spj.id}
         docKey="visumPdf"
+        initialConfig={meta.visumPdf || meta.visumPdfConfig}
+        defaultStyles={{
+          marginTop: 28,
+          marginBottom: 28,
+          marginHorizontal: 28,
+          fontSize: 9.5,
+          lineHeight: 1.25
+        }}
         fields={[]}
         renderDocument={(config) => {
           const spjData = {
@@ -110,6 +118,7 @@ export default function VisumTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
               spj={spjData} 
               stageCount={Number(form.stageCount) || 3}
               signer={signerData}
+              layout={config.styles}
             />
           );
         }}

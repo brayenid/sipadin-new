@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,13 +30,22 @@ export type PdfConfig = {
   content?: Record<string, any>;
 };
 
+const DEFAULT_STYLES = {
+  marginTop: 28,
+  marginBottom: 32,
+  marginHorizontal: 40,
+  fontSize: 11,
+  lineHeight: 1.35,
+};
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   spjId: string;
-  docKey: string; // e.g., 'telaahanStaf'
+  docKey: string; // e.g., 'suratTugasPdf'
   initialConfig?: PdfConfig;
+  defaultStyles?: PdfConfig['styles'];
   renderDocument: (config: PdfConfig) => React.ReactElement<any>;
   fields: {
     key: string;
@@ -52,46 +62,85 @@ export default function PdfPreviewModal({
   spjId,
   docKey,
   initialConfig,
+  defaultStyles,
   renderDocument,
   fields
 }: Props) {
-  // Gunakan state config internal
-  const [config, setConfig] = useState<PdfConfig>(initialConfig || { styles: {}, content: {} });
+  const router = useRouter();
+  const effectiveDefaults = useMemo(() => ({
+    ...DEFAULT_STYLES,
+    ...(defaultStyles || {})
+  }), [defaultStyles]);
+
+  const buildConfig = (init?: PdfConfig): PdfConfig => ({
+    styles: {
+      ...effectiveDefaults,
+      ...(init?.styles || {})
+    },
+    content: {
+      ...(init?.content || {})
+    }
+  });
+
+  // Raw styles state allows empty strings while user is editing/typing
+  const [styleInputs, setStyleInputs] = useState<Record<string, string | number>>(() => ({
+    ...effectiveDefaults,
+    ...(initialConfig?.styles || {})
+  }));
+  const [contentInputs, setContentInputs] = useState<Record<string, any>>(() => initialConfig?.content || {});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Sync state if initialConfig changes
+  // Sync state whenever modal is opened or initialConfig changes
   useEffect(() => {
-    if (initialConfig) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setConfig(initialConfig);
+    if (isOpen) {
+      setStyleInputs({
+        ...effectiveDefaults,
+        ...(initialConfig?.styles || {})
+      });
+      setContentInputs(initialConfig?.content || {});
     }
-  }, [initialConfig]);
+  }, [isOpen, initialConfig, effectiveDefaults]);
 
   const handleStyleChange = (key: string, value: string) => {
-    setConfig(prev => ({
+    setStyleInputs(prev => ({
       ...prev,
-      styles: {
-        ...prev.styles,
-        [key]: value === "" ? undefined : parseFloat(value)
-      }
+      [key]: value === "" ? "" : value
     }));
   };
 
   const handleContentChange = (key: string, value: string) => {
-    setConfig(prev => ({
+    setContentInputs(prev => ({
       ...prev,
-      content: {
-        ...prev.content,
-        [key]: value
-      }
+      [key]: value
     }));
   };
+
+  // Resolved config passed to renderDocument and saved to DB
+  const resolvedConfig: PdfConfig = useMemo(() => {
+    const parseNum = (val: any, fallback: number) => {
+      if (val === "" || val === undefined || val === null) return fallback;
+      const n = typeof val === "number" ? val : parseFloat(val);
+      return isNaN(n) ? fallback : n;
+    };
+
+    return {
+      styles: {
+        marginTop: parseNum(styleInputs.marginTop, effectiveDefaults.marginTop),
+        marginBottom: parseNum(styleInputs.marginBottom, effectiveDefaults.marginBottom),
+        marginHorizontal: parseNum(styleInputs.marginHorizontal, effectiveDefaults.marginHorizontal),
+        fontSize: parseNum(styleInputs.fontSize, effectiveDefaults.fontSize),
+        lineHeight: parseNum(styleInputs.lineHeight, effectiveDefaults.lineHeight),
+      },
+      content: contentInputs
+    };
+  }, [styleInputs, contentInputs, effectiveDefaults]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateSpjMetaDokumen(spjId, { [docKey]: config });
+      await updateSpjMetaDokumen(spjId, { [docKey]: resolvedConfig });
       toast.success("Konfigurasi layout berhasil disimpan!");
+      router.refresh();
     } catch (err: any) {
       toast.error("Gagal menyimpan konfigurasi: " + err.message);
     } finally {
@@ -130,23 +179,23 @@ export default function PdfPreviewModal({
               <TabsContent value="layout" className="p-4 m-0 space-y-4">
                 <div className="space-y-2">
                   <Label>Margin Atas (pt)</Label>
-                  <Input type="number" value={config.styles?.marginTop ?? 28} onChange={e => handleStyleChange('marginTop', e.target.value)} />
+                  <Input type="number" value={styleInputs.marginTop ?? ""} onChange={e => handleStyleChange('marginTop', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Margin Bawah (pt)</Label>
-                  <Input type="number" value={config.styles?.marginBottom ?? 32} onChange={e => handleStyleChange('marginBottom', e.target.value)} />
+                  <Input type="number" value={styleInputs.marginBottom ?? ""} onChange={e => handleStyleChange('marginBottom', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Margin Kiri & Kanan (pt)</Label>
-                  <Input type="number" value={config.styles?.marginHorizontal ?? 40} onChange={e => handleStyleChange('marginHorizontal', e.target.value)} />
+                  <Input type="number" value={styleInputs.marginHorizontal ?? ""} onChange={e => handleStyleChange('marginHorizontal', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Ukuran Font Base (pt)</Label>
-                  <Input type="number" value={config.styles?.fontSize ?? 11} onChange={e => handleStyleChange('fontSize', e.target.value)} />
+                  <Input type="number" value={styleInputs.fontSize ?? ""} onChange={e => handleStyleChange('fontSize', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Tinggi Baris (Line Height)</Label>
-                  <Input type="number" step="0.1" value={config.styles?.lineHeight ?? 1} onChange={e => handleStyleChange('lineHeight', e.target.value)} />
+                  <Input type="number" step="0.05" value={styleInputs.lineHeight ?? ""} onChange={e => handleStyleChange('lineHeight', e.target.value)} />
                 </div>
               </TabsContent>
 
@@ -160,14 +209,14 @@ export default function PdfPreviewModal({
                     {field.type === 'textarea' ? (
                       <Textarea 
                         placeholder={field.placeholder} 
-                        value={config.content?.[field.key] || ''}
+                        value={contentInputs[field.key] || ''}
                         onChange={e => handleContentChange(field.key, e.target.value)}
                         className="min-h-[100px]"
                       />
                     ) : (
                       <Input 
                         placeholder={field.placeholder} 
-                        value={config.content?.[field.key] || ''}
+                        value={contentInputs[field.key] || ''}
                         onChange={e => handleContentChange(field.key, e.target.value)}
                       />
                     )}
@@ -181,12 +230,12 @@ export default function PdfPreviewModal({
           <div className="flex-1 h-full bg-slate-500 flex flex-col relative min-h-0">
             {isOpen && (
               <PDFViewer
-                key={JSON.stringify(config)}
+                key={JSON.stringify(resolvedConfig)}
                 width="100%"
                 height="100%"
                 className="border-none w-full h-full flex-1"
               >
-                {renderDocument(config)}
+                {renderDocument(resolvedConfig)}
               </PDFViewer>
             )}
           </div>

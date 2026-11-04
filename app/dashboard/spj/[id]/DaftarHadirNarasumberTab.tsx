@@ -279,6 +279,7 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
         title="Pratinjau Daftar Hadir Narasumber"
         spjId={spj.id}
         docKey="daftarHadirNarasumberPdf"
+        initialConfig={meta.daftarHadirNarasumberPdf || meta.daftarHadirNarasumberPdfConfig}
         fields={[]}
         renderDocument={(config) => {
           const spjData = {

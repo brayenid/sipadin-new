@@ -748,7 +748,7 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
         title={`Preview DOPD (${versi === "PANJAR" ? "Pengajuan" : "Riil"})`}
         spjId={spj.id}
         docKey="dopd"
-        initialConfig={spj.metaDokumen?.dopdConfig}
+        initialConfig={spj.metaDokumen?.dopd || spj.metaDokumen?.dopdConfig}
         fields={[
           { key: 'kotaTandaTangan', label: 'Kota Tanda Tangan', type: 'text' },
           { key: 'kpaNamaOverride', label: 'Override Nama KPA', type: 'text', placeholder: 'Menimpa data otomatis' },

@@ -83,6 +83,13 @@ export type SpdPdfProps = {
   spj: Spj
   roster: RosterItem[]
   signer: Signer | null
+  layout?: {
+    marginTop?: number;
+    marginBottom?: number;
+    marginHorizontal?: number;
+    fontSize?: number;
+    lineHeight?: number;
+  };
 }
 
 const BW = 0.7
@@ -177,18 +184,35 @@ function Cell({ children, style, lastCol, lastRow }: any) {
 }
 
 export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentProps> {
-  const rosterSorted = sortRoster(props.roster)
+  const { spj, roster, signer, layout } = props
+  const rosterSorted = sortRoster(roster)
   const kepala = rosterSorted.find((r) => r.role === 'KEPALA_JALAN') ?? rosterSorted[0] ?? null
   const pengikut = rosterSorted.filter((r) => r.role === 'PENGIKUT')
-  const signer = props.signer
   const signerJabatan = signer?.jabatanTampil?.trim() || signer?.jabatan || ''
   
-  const lamaPerjalanan = props.spj.lamaPerjalanan || 1;
-  const lamaText = props.spj.overrideLamaText || terbilangId(lamaPerjalanan) + ' hari';
+  const lamaPerjalanan = spj.lamaPerjalanan || 1;
+  const lamaText = spj.overrideLamaText || terbilangId(lamaPerjalanan) + ' hari';
+
+  const baseFontSize = layout?.fontSize ?? styles.page.fontSize;
+  const baseLineHeight = layout?.lineHeight ?? styles.page.lineHeight;
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          layout
+            ? {
+                paddingTop: layout.marginTop ?? styles.page.paddingTop,
+                paddingBottom: layout.marginBottom ?? styles.page.paddingBottom,
+                paddingHorizontal: layout.marginHorizontal ?? styles.page.paddingHorizontal,
+                fontSize: baseFontSize,
+                lineHeight: baseLineHeight,
+              }
+            : {},
+        ]}
+      >
         <KopSurat 
           instansiLine1="PEMERINTAH KABUPATEN KUTAI BARAT"
           instansiLine2="SEKRETARIAT DAERAH"

@@ -72,6 +72,13 @@ export type SuratTugasPdfProps = {
   spj: Spj
   suratTugas: SuratTugas
   roster: Roster[]
+  layout?: {
+    marginTop?: number;
+    marginBottom?: number;
+    marginHorizontal?: number;
+    fontSize?: number;
+    lineHeight?: number;
+  };
 }
 
 const styles = StyleSheet.create({
@@ -194,14 +201,31 @@ const styles = StyleSheet.create({
 })
 
 export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactElement<DocumentProps> {
-  const { spj, suratTugas, roster } = props
+  const { spj, suratTugas, roster, layout } = props
 
   const lamaPerjalanan = spj.lamaPerjalanan || 1;
   const lamaText = spj.overrideLamaText || `${terbilangId(lamaPerjalanan)} hari, tanggal ${fmtDateId(spj.tglBerangkat)} s.d. tanggal ${fmtDateId(spj.tglKembali)}`;
 
+  const baseFontSize = layout?.fontSize ?? styles.page.fontSize;
+  const baseLineHeight = layout?.lineHeight ?? styles.page.lineHeight;
+
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          layout
+            ? {
+                paddingTop: layout.marginTop ?? styles.page.paddingTop,
+                paddingBottom: layout.marginBottom ?? styles.page.paddingBottom,
+                paddingHorizontal: layout.marginHorizontal ?? styles.page.paddingHorizontal,
+                fontSize: baseFontSize,
+                lineHeight: baseLineHeight,
+              }
+            : {},
+        ]}
+      >
         <KopSurat 
           instansiLine1="PEMERINTAH KABUPATEN KUTAI BARAT"
           instansiLine2="SEKRETARIAT DAERAH"

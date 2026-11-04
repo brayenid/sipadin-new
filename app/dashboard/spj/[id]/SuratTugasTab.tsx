@@ -208,6 +208,14 @@ export default function SuratTugasTab({ spj, pegawaiList }: { spj: any, pegawaiL
         title="Pratinjau Surat Tugas"
         spjId={spj.id}
         docKey="suratTugasPdf"
+        initialConfig={meta.suratTugasPdf || meta.suratTugasPdfConfig}
+        defaultStyles={{
+          marginTop: 30,
+          marginBottom: 30,
+          marginHorizontal: 42,
+          fontSize: 11,
+          lineHeight: 1.35
+        }}
         fields={[
           { key: 'overrideUntuk', label: 'Teks "Untuk" / Maksud Perjalanan', type: 'textarea', placeholder: 'Ketik ulang maksud tugas di sini...' },
           { key: 'overrideTujuan', label: 'Teks "Tujuan"', type: 'text', placeholder: 'Contoh: Samarinda' },
@@ -258,6 +266,7 @@ export default function SuratTugasTab({ spj, pegawaiList }: { spj: any, pegawaiL
               spj={spjData} 
               suratTugas={suratTugasData} 
               roster={rosterData} 
+              layout={config.styles}
             />
           );
         }}

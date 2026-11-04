@@ -150,6 +150,14 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
         title="Pratinjau Kuitansi"
         spjId={spj.id}
         docKey="kuitansiPdf"
+        initialConfig={meta.kuitansiPdf || meta.kuitansiPdfConfig}
+        defaultStyles={{
+          marginTop: 34,
+          marginBottom: 36,
+          marginHorizontal: 40,
+          fontSize: 10,
+          lineHeight: 1.35
+        }}
         fields={[]}
         renderDocument={(config) => {
           const isMamin = spj.jenisSpj === 'MAKAN_MINUM';
@@ -290,6 +298,7 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
                 kpa: kpa ? { nama: kpa.nama, nip: kpa.nip } : null,
                 bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null
               }}
+              layout={config.styles}
             />
           );
         }}
