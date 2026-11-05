@@ -2495,6 +2495,7 @@ export async function getRekapKehadiranOpd(params?: {
           nip: true,
           jabatan: true,
           instansi: true,
+          eselon: true,
           status: true,
           keterangan: true,
           namaPerwakilan: true,
@@ -2607,6 +2608,7 @@ export async function getRekapKehadiranOpd(params?: {
       nip: string | null;
       jabatan: string;
       instansi: string;
+      eselon?: string | null;
       totalDiundang: number;
       hadir: number;
       hadirValid: number;
@@ -2782,6 +2784,7 @@ export async function getRekapKehadiranOpd(params?: {
                 nip: t.nip,
                 jabatan: t.jabatan,
                 instansi: t.instansi,
+                eselon: t.eselon ?? null,
                 totalDiundang: 0,
                 hadir: 0,
                 hadirValid: 0,
@@ -3053,6 +3056,7 @@ export async function getRekapKehadiranOpd(params?: {
           nip: p.nip,
           jabatan: p.jabatan,
           instansi: p.instansi,
+          eselon: p.eselon ?? null,
           totalDiundang: 0,
           hadir: 0,
           hadirValid: 0,

@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Ban,
   Download,
+  ImageIcon,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import * as XLSX from "xlsx";
@@ -47,6 +48,7 @@ import CetakRekapModal from "./CetakRekapModal";
 import CetakRekapPegawaiModal from "./CetakRekapPegawaiModal";
 import CetakRekapLengkapModal from "./CetakRekapLengkapModal";
 import CetakRekapHierarkiModal from "./CetakRekapHierarkiModal";
+import CetakRekapGrafisModal from "./CetakRekapGrafisModal";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 type HistoryItem = {
@@ -142,6 +144,7 @@ type PegawaiSummaryItem = {
   nip: string | null;
   jabatan: string;
   instansi: string;
+  eselon?: string | null;
   totalDiundang: number;
   hadir: number;
   hadirValid?: number;
@@ -206,6 +209,7 @@ export default function RekapKehadiranView({
   const [isCetakPegPdfOpen, setIsCetakPegPdfOpen] = useState(false);
   const [isCetakLengkapOpen, setIsCetakLengkapOpen] = useState(false);
   const [isCetakHierarkiOpen, setIsCetakHierarkiOpen] = useState(false);
+  const [isCetakGrafisOpen, setIsCetakGrafisOpen] = useState(false);
 
   // Filter state untuk rentang tanggal opsional
   const [startDateInput, setStartDateInput] = useState(customStartDate);
@@ -351,20 +355,47 @@ export default function RekapKehadiranView({
     return filteredOpd.slice(start, start + pageSizeOpd);
   }, [filteredOpd, pageOpd, pageSizeOpd]);
 
-  const totalOpd = initialData.opdSummary.length;
-  const totalPegawaiDiundangMacro = initialData.opdSummary.reduce(
-    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + h.totalDiundang, 0) : c.totalDiundang),
-    0
-  );
-  const totalHadirMacro = initialData.opdSummary.reduce(
-    (acc, c) => acc + (c.history && c.history.length > 0 ? c.history.reduce((hAcc, h) => hAcc + (h.hadir + h.mewakili), 0) : (c.hadir + c.mewakili)),
-    0
-  );
-  const avgKehadiran = totalPegawaiDiundangMacro > 0
-    ? Math.round((totalHadirMacro / totalPegawaiDiundangMacro) * 100)
-    : (totalOpd > 0 ? Math.round(initialData.opdSummary.reduce((acc, curr) => acc + curr.persentaseKehadiran, 0) / totalOpd) : 0);
+  const { totalOpd, totalPegawaiDiundangMacro, totalHadirMacro, avgKehadiran, topAttendance } =
+    React.useMemo(() => {
+      const opds = initialData.opdSummary;
+      const totalOpd = opds.length;
+      let totalDiundang = 0;
+      let totalHadir = 0;
+      let topCount = 0;
+      let sumPct = 0;
 
-  const topAttendance = initialData.opdSummary.filter((d) => d.persentaseKehadiran >= 80).length;
+      for (let i = 0; i < opds.length; i++) {
+        const c = opds[i];
+        if ((c.persentaseKehadiran || 0) >= 80) topCount++;
+        sumPct += c.persentaseKehadiran || 0;
+
+        const hist = c.history;
+        if (hist && hist.length > 0) {
+          for (let j = 0; j < hist.length; j++) {
+            totalDiundang += hist[j].totalDiundang || 0;
+            totalHadir += (hist[j].hadir || 0) + (hist[j].mewakili || 0);
+          }
+        } else {
+          totalDiundang += c.totalDiundang || 0;
+          totalHadir += (c.hadir || 0) + (c.mewakili || 0);
+        }
+      }
+
+      const avgKehadiran =
+        totalDiundang > 0
+          ? Math.round((totalHadir / totalDiundang) * 100)
+          : totalOpd > 0
+            ? Math.round(sumPct / totalOpd)
+            : 0;
+
+      return {
+        totalOpd,
+        totalPegawaiDiundangMacro: totalDiundang,
+        totalHadirMacro: totalHadir,
+        avgKehadiran,
+        topAttendance: topCount,
+      };
+    }, [initialData.opdSummary]);
 
   // Data hierarki untuk Laporan Rekap PDF (Bulan > Kegiatan > Pegawai Hadir)
   // Dihitung HANYA jika modal cetak dibuka (on-demand) agar rendering halaman rekap awal instan
@@ -843,6 +874,19 @@ export default function RekapKehadiranView({
                         </div>
                       </DropdownMenuItem>
 
+                      <DropdownMenuItem
+                        onClick={() => setIsCetakGrafisOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-900 focus:bg-sky-50 focus:text-sky-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <ImageIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PNG)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis visual: Eselon, Top 5, &amp; KPI ringkas</p>
+                        </div>
+                      </DropdownMenuItem>
+
                       <a
                         href={getExportPdfUrl("hierarki")}
                         target="_blank"
@@ -1210,6 +1254,19 @@ export default function RekapKehadiranView({
                         <div className="flex-1">
                           <p className="font-semibold text-slate-900 leading-snug">Laporan Mode Lengkap</p>
                           <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Booklet kompilasi seluruh kegiatan & presensi</p>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => setIsCetakGrafisOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-900 focus:bg-sky-50 focus:text-sky-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <ImageIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PNG)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis visual: Eselon, Top 5, &amp; KPI ringkas</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1615,6 +1672,28 @@ export default function RekapKehadiranView({
         />
       )}
 
+      {isCetakGrafisOpen && (
+        <CetakRekapGrafisModal
+          isOpen={isCetakGrafisOpen}
+          onClose={() => setIsCetakGrafisOpen(false)}
+          periodeLabel={periodeLabelText}
+          kategoriLabel={
+            selectedKategori === "RAPAT"
+              ? "Rapat Dinas"
+              : selectedKategori === "APEL"
+              ? "Apel Bersama"
+              : selectedKategori === "RUTIN"
+              ? "Kegiatan Rutin"
+              : "Semua Kategori"
+          }
+          data={{
+            totalAgenda: initialData.totalAgenda,
+            opdSummary: initialData.opdSummary,
+            pegawaiSummary: initialData.pegawaiSummary,
+          }}
+        />
+      )}
+
       {/* Mobile Bottom Fixed Action Bar (3-button standard) */}
       <MobileBottomNav
         primaryAction={
@@ -1631,6 +1710,29 @@ export default function RekapKehadiranView({
           description: `Ekspor data presensi untuk tab ${activeTab === "opd" ? "Perangkat Daerah (OPD)" : "Pegawai"}`,
           children: (close) => (
             <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  setIsCetakGrafisOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-sky-600">
+                      Laporan Grafis (PNG)
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Infografis visual: Eselon, Top 5 pegawai, &amp; KPI kehadiran
+                    </p>
+                  </div>
+                </div>
+              </button>
+
               <a
                 href={getExportPdfUrl("hierarki")}
                 target="_blank"
