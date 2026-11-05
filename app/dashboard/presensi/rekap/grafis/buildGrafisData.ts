@@ -2,23 +2,36 @@
  * Bentuk minimal data rekap yang dibutuhkan laporan grafis.
  * Dibuat struktural agar kompatibel dengan tipe di RekapKehadiranView.
  */
+export type GrafisOpdHistoryInput = {
+  tanggal: Date | string;
+  totalDiundang: number;
+  hadir: number;
+  hadirValid?: number;
+  hadirLuarRadius?: number;
+  hadirNonUndangan?: number;
+  mewakili: number;
+  izin?: number;
+  tidakHadir?: number;
+  isCancelledSession?: boolean;
+  pesertaList?: {
+    status: string;
+    isInsideRadius?: boolean | null;
+    isNonUndangan?: boolean;
+  }[];
+};
+
 export type GrafisOpdInput = {
   instansi: string;
   totalDiundang: number;
   hadir: number;
   hadirValid?: number;
   hadirLuarRadius?: number;
+  hadirNonUndangan?: number;
   mewakili: number;
   tidakHadir: number;
   izin: number;
   persentaseKehadiran: number;
-  history: {
-    tanggal: Date | string;
-    totalDiundang: number;
-    hadir: number;
-    mewakili: number;
-    isCancelledSession?: boolean;
-  }[];
+  history: GrafisOpdHistoryInput[];
 };
 
 export type GrafisPegawaiInput = {
@@ -27,8 +40,22 @@ export type GrafisPegawaiInput = {
   eselon?: string | null;
   totalDiundang: number;
   hadir: number;
+  hadirValid?: number;
+  hadirLuarRadius?: number;
+  hadirNonUndangan?: number;
   mewakili: number;
   persentaseKehadiran: number;
+  history?: {
+    status: string;
+    isInsideRadius?: boolean | null;
+    isNonUndangan?: boolean;
+    isCancelledSession?: boolean;
+  }[];
+};
+
+export type BuildGrafisOptions = {
+  /** Jika true (default), mengecualikan kehadiran non-undangan dari seluruh kalkulasi grafis */
+  onlyInvited?: boolean;
 };
 
 export type GrafisInput = {
@@ -159,9 +186,187 @@ function bulanLabelFromKey(key: string): string {
   return `${BULAN_SINGKAT[idx] ?? m} ${y.slice(2)}`;
 }
 
-export function buildGrafisData(input: GrafisInput): GrafisData {
-  const opds = input.opdSummary || [];
-  const pegawais = input.pegawaiSummary || [];
+export function buildGrafisData(
+  input: GrafisInput,
+  options?: BuildGrafisOptions
+): GrafisData {
+  const onlyInvited = options?.onlyInvited ?? true;
+  const rawOpds = input.opdSummary || [];
+  const rawPegawais = input.pegawaiSummary || [];
+
+  // Normalisasi data OPD berdasarkan filter onlyInvited
+  const opds: GrafisOpdInput[] = [];
+  for (let i = 0; i < rawOpds.length; i++) {
+    const o = rawOpds[i];
+    if (!onlyInvited) {
+      opds.push(o);
+      continue;
+    }
+
+    const hist = o.history || [];
+    if (hist.length > 0) {
+      let totalDiundang = 0;
+      let hadir = 0;
+      let hadirValid = 0;
+      let hadirLuarRadius = 0;
+      let mewakili = 0;
+      let izin = 0;
+      let tidakHadir = 0;
+      const filteredHistory: GrafisOpdHistoryInput[] = [];
+
+      for (let j = 0; j < hist.length; j++) {
+        const h = hist[j];
+        if (h.isCancelledSession) {
+          filteredHistory.push(h);
+          continue;
+        }
+
+        if (h.pesertaList && h.pesertaList.length > 0) {
+          let hDiundang = 0;
+          let hHadir = 0;
+          let hValid = 0;
+          let hLuar = 0;
+          let hMewakili = 0;
+          let hIzin = 0;
+          let hTidakHadir = 0;
+
+          for (let k = 0; k < h.pesertaList.length; k++) {
+            const p = h.pesertaList[k];
+            if (p.isNonUndangan) continue;
+            hDiundang += 1;
+            if (p.status === "HADIR") {
+              hHadir += 1;
+              if (p.isInsideRadius === true) hValid += 1;
+              else if (p.isInsideRadius === false) hLuar += 1;
+            } else if (p.status === "MEWAKILI") {
+              hMewakili += 1;
+            } else if (p.status === "IZIN") {
+              hIzin += 1;
+            } else {
+              hTidakHadir += 1;
+            }
+          }
+
+          if (hDiundang > 0) {
+            totalDiundang += hDiundang;
+            hadir += hHadir;
+            hadirValid += hValid;
+            hadirLuarRadius += hLuar;
+            mewakili += hMewakili;
+            izin += hIzin;
+            tidakHadir += hTidakHadir;
+            filteredHistory.push({
+              ...h,
+              totalDiundang: hDiundang,
+              hadir: hHadir,
+              hadirValid: hValid,
+              hadirLuarRadius: hLuar,
+              mewakili: hMewakili,
+              izin: hIzin,
+              tidakHadir: hTidakHadir,
+            });
+          }
+        } else {
+          const nonUnd = h.hadirNonUndangan || 0;
+          const hDiundang = h.totalDiundang || 0;
+          if (hDiundang <= 0) continue;
+          const hHadir = Math.max(0, (h.hadir || 0) - nonUnd);
+          const hMewakili = h.mewakili || 0;
+          totalDiundang += hDiundang;
+          hadir += hHadir;
+          mewakili += hMewakili;
+          izin += h.izin || 0;
+          tidakHadir += h.tidakHadir || 0;
+          filteredHistory.push({
+            ...h,
+            totalDiundang: hDiundang,
+            hadir: hHadir,
+            mewakili: hMewakili,
+          });
+        }
+      }
+
+      if (totalDiundang > 0) {
+        // Jika pesertaList tidak ada di history, estimasi hadirValid & hadirLuarRadius proporsional/dikurangi nonUndangan
+        if (!hist.some((h) => h.pesertaList && h.pesertaList.length > 0)) {
+          const nonUndTotal = o.hadirNonUndangan || 0;
+          hadirValid = Math.max(0, (o.hadirValid || 0) - nonUndTotal);
+          hadirLuarRadius = o.hadirLuarRadius || 0;
+        }
+        opds.push({
+          ...o,
+          totalDiundang,
+          hadir,
+          hadirValid,
+          hadirLuarRadius,
+          mewakili,
+          izin,
+          tidakHadir,
+          persentaseKehadiran: Math.min(100, pct(hadir + mewakili, totalDiundang)),
+          history: filteredHistory,
+        });
+      }
+    } else {
+      const nonUnd = o.hadirNonUndangan || 0;
+      const totalDiundang = o.totalDiundang || 0;
+      if (totalDiundang <= 0) continue;
+      const hadir = Math.max(0, (o.hadir || 0) - nonUnd);
+      const mewakili = o.mewakili || 0;
+      opds.push({
+        ...o,
+        totalDiundang,
+        hadir,
+        hadirValid: Math.max(0, (o.hadirValid || 0) - nonUnd),
+        mewakili,
+        persentaseKehadiran: Math.min(100, pct(hadir + mewakili, totalDiundang)),
+      });
+    }
+  }
+
+  // Normalisasi data Pegawai berdasarkan filter onlyInvited
+  const pegawais: GrafisPegawaiInput[] = [];
+  for (let i = 0; i < rawPegawais.length; i++) {
+    const p = rawPegawais[i];
+    if (!onlyInvited) {
+      pegawais.push(p);
+      continue;
+    }
+
+    if (p.history && p.history.length > 0) {
+      let diundang = 0;
+      let hadir = 0;
+      let mewakili = 0;
+      for (let j = 0; j < p.history.length; j++) {
+        const h = p.history[j];
+        if (h.isCancelledSession || h.isNonUndangan) continue;
+        diundang += 1;
+        if (h.status === "HADIR") hadir += 1;
+        else if (h.status === "MEWAKILI") mewakili += 1;
+      }
+      if (diundang > 0) {
+        pegawais.push({
+          ...p,
+          totalDiundang: diundang,
+          hadir,
+          mewakili,
+          persentaseKehadiran: pct(hadir + mewakili, diundang),
+        });
+      }
+    } else {
+      const nonUnd = p.hadirNonUndangan || 0;
+      const diundang = Math.max(0, (p.totalDiundang || 0) - nonUnd);
+      if (diundang <= 0) continue;
+      const hadir = Math.max(0, (p.hadir || 0) - nonUnd);
+      const mewakili = p.mewakili || 0;
+      pegawais.push({
+        ...p,
+        totalDiundang: diundang,
+        hadir,
+        mewakili,
+        persentaseKehadiran: pct(hadir + mewakili, diundang),
+      });
+    }
+  }
 
   // --- Status & KPI ---
   const status: StatusTotals = { hadir: 0, mewakili: 0, izin: 0, tidakHadir: 0 };

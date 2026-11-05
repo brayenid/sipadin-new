@@ -69,6 +69,7 @@ export type LaporanRekapGrafisPdfProps = {
   periodeLabel: string;
   kategoriLabel: string;
   tanggalCetak: string;
+  onlyInvited?: boolean;
 };
 
 function PageHeader({
@@ -101,12 +102,31 @@ function PageHeader({
   );
 }
 
-function PageFooter({ pageNum }: { pageNum: number }) {
+function CardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <View style={styles.cardHeader}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.cardSub}>{subtitle}</Text> : null}
+    </View>
+  );
+}
+
+function PageFooter({
+  pageNum,
+  onlyInvited = true,
+}: {
+  pageNum: number;
+  onlyInvited?: boolean;
+}) {
+  const baseInfo =
+    "Sumber: Data Presensi SIPADIN (Sipadin oleh Bagian Organisasi Kutai Barat). Kehadiran = hadir fisik + perwakilan terhadap undangan kegiatan resmi.";
+  const filterNote = onlyInvited
+    ? " • Catatan: Hanya menghitung peserta sesuai daftar undangan (tidak termasuk non-undangan)."
+    : "";
+
   return (
     <View style={styles.footer}>
-      <Text style={styles.footerText}>
-        Sumber: data presensi SIPADIN. Kehadiran = hadir fisik + perwakilan terhadap undangan kegiatan resmi.
-      </Text>
+      <Text style={styles.footerText}>{`${baseInfo}${filterNote}`}</Text>
       <Text style={styles.footerPage}>{`Halaman ${pageNum} dari 2`}</Text>
     </View>
   );
@@ -117,6 +137,7 @@ export default function LaporanRekapGrafisPdf({
   periodeLabel,
   kategoriLabel,
   tanggalCetak,
+  onlyInvited = true,
 }: LaporanRekapGrafisPdfProps) {
   const { kpi, status, eselon, topPegawai, topOpd, bottomOpd, heatmap } = data;
 
@@ -165,8 +186,12 @@ export default function LaporanRekapGrafisPdf({
         <View style={styles.kpiRow}>
           {kpiItems.map((k) => (
             <View key={k.label} style={styles.kpiCard}>
-              <Text style={styles.kpiLabel}>{k.label.toUpperCase()}</Text>
-              <Text style={[styles.kpiValue, { color: k.tone || C.ink }]}>{k.value}</Text>
+              <View style={styles.kpiHeader}>
+                <Text style={styles.kpiLabel}>{k.label.toUpperCase()}</Text>
+              </View>
+              <View style={styles.kpiBody}>
+                <Text style={[styles.kpiValue, { color: k.tone || C.ink }]}>{k.value}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -175,129 +200,138 @@ export default function LaporanRekapGrafisPdf({
         <View style={styles.triRow}>
           {/* Kolom 1: Donut Komposisi Partisipasi */}
           <View style={[styles.card, { width: "26%" }]}>
-            <Text style={styles.cardTitle}>Komposisi Partisipasi</Text>
-            <Text style={styles.cardSub}>Rasio Hadir, Mewakili, &amp; Izin</Text>
+            <CardHeader
+              title="Komposisi Partisipasi"
+              subtitle="Rasio Hadir, Mewakili, & Izin"
+            />
+            <View style={styles.cardBody}>
+              {statusTotal === 0 ? (
+                <View style={styles.emptyCenter}>
+                  <Text style={styles.emptyText}>Belum ada data</Text>
+                </View>
+              ) : (
+                <View style={styles.donutContainer}>
+                  <View style={styles.donutChartWrap}>
+                    <Svg width={84} height={84} viewBox="0 0 84 84">
+                      <Circle cx="42" cy="42" r="36" fill={C.line} />
+                      {donutSegments.length === 1 ? (
+                        <Circle cx="42" cy="42" r="36" fill={donutSegments[0].color} />
+                      ) : (
+                        donutSegments.map((seg) => (
+                          <Path
+                            key={seg.label}
+                            d={createSectorPath(42, 42, 36, seg.start, seg.end)}
+                            fill={seg.color}
+                          />
+                        ))
+                      )}
+                      <Circle cx="42" cy="42" r="22" fill="#ffffff" />
+                    </Svg>
+                    <View style={styles.donutCenterLabel}>
+                      <Text style={styles.donutTotalNum}>{statusTotal}</Text>
+                      <Text style={styles.donutTotalSub}>partisipasi</Text>
+                    </View>
+                  </View>
 
-            {statusTotal === 0 ? (
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyText}>Belum ada data</Text>
-              </View>
-            ) : (
-              <View style={styles.donutContainer}>
-                <View style={styles.donutChartWrap}>
-                  <Svg width={84} height={84} viewBox="0 0 84 84">
-                    <Circle cx="42" cy="42" r="36" fill={C.line} />
-                    {donutSegments.length === 1 ? (
-                      <Circle cx="42" cy="42" r="36" fill={donutSegments[0].color} />
-                    ) : (
-                      donutSegments.map((seg) => (
-                        <Path
-                          key={seg.label}
-                          d={createSectorPath(42, 42, 36, seg.start, seg.end)}
-                          fill={seg.color}
-                        />
-                      ))
-                    )}
-                    <Circle cx="42" cy="42" r="22" fill="#ffffff" />
-                  </Svg>
-                  <View style={styles.donutCenterLabel}>
-                    <Text style={styles.donutTotalNum}>{statusTotal}</Text>
-                    <Text style={styles.donutTotalSub}>partisipasi</Text>
+                  <View style={styles.donutLegend}>
+                    {statusItems.map((s) => {
+                      const p = statusTotal > 0 ? Math.round((s.value / statusTotal) * 100) : 0;
+                      return (
+                        <View key={s.label} style={styles.donutLegendItem}>
+                          <View style={[styles.legendDot, { backgroundColor: s.color }]} />
+                          <View>
+                            <Text style={styles.legendLabel}>{s.label}</Text>
+                            <Text style={styles.legendSub}>{`${s.value} catatan (${p}%)`}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
-
-                <View style={styles.donutLegend}>
-                  {statusItems.map((s) => {
-                    const p = statusTotal > 0 ? Math.round((s.value / statusTotal) * 100) : 0;
-                    return (
-                      <View key={s.label} style={styles.donutLegendItem}>
-                        <View style={[styles.legendDot, { backgroundColor: s.color }]} />
-                        <View>
-                          <Text style={styles.legendLabel}>{s.label}</Text>
-                          <Text style={styles.legendSub}>{`${s.value} catatan (${p}%)`}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
+              )}
+            </View>
           </View>
 
           {/* Kolom 2: Kehadiran per Eselon */}
           <View style={[styles.card, { width: "33%" }]}>
-            <Text style={styles.cardTitle}>Kehadiran per Eselon</Text>
-            <Text style={styles.cardSub}>Persentase kehadiran fisik &amp; perwakilan</Text>
-
-            {eselon.length === 0 ? (
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyText}>Data eselon belum tersedia</Text>
-              </View>
-            ) : (
-              <View style={styles.listBody}>
-                {eselon.map((e) => (
-                  <View key={e.label} style={styles.eselonRow}>
-                    <Text style={styles.eselonLabel}>{e.label}</Text>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          {
-                            width: `${Math.min(100, Math.max(e.persentase > 0 ? 2 : 0, e.persentase))}%`,
-                            backgroundColor: barColor(e.persentase),
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.eselonPct}>{`${e.persentase}%`}</Text>
-                    <Text style={styles.eselonMeta}>{`${e.jumlahPegawai} org • ${e.hadirTotal}/${e.diundangTotal}`}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* Kolom 3: Top Pegawai Terajin (Hingga 8 Pegawai) */}
-          <View style={[styles.card, { width: "41%" }]}>
-            <Text style={styles.cardTitle}>{`Top ${topPegawai.length || 8} Pegawai Terajin`}</Text>
-            <Text style={styles.cardSub}>Kehadiran tertinggi (min. 3 undangan)</Text>
-
-            {topPegawai.length === 0 ? (
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyText}>Belum ada data pegawai</Text>
-              </View>
-            ) : (
-              <View style={styles.listBodyCompact}>
-                {topPegawai.map((p, i) => {
-                  const rankBg =
-                    i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#d97706" : C.brand;
-                  return (
-                    <View key={`${p.nama}-${i}`} style={styles.pegawaiRow}>
-                      <View style={[styles.rankBadge, { backgroundColor: rankBg }]}>
-                        <Text style={styles.rankBadgeText}>{i + 1}</Text>
-                      </View>
-                      <View style={styles.pegawaiInfo}>
-                        <Text style={styles.pegawaiName}>{trunc(p.nama, 28)}</Text>
-                        <Text style={styles.pegawaiInstansi}>{trunc(p.instansi, 34)}</Text>
-                      </View>
-                      <View style={styles.pegawaiBarTrack}>
+            <CardHeader
+              title="Kehadiran per Eselon"
+              subtitle="Persentase kehadiran fisik & perwakilan"
+            />
+            <View style={styles.cardBody}>
+              {eselon.length === 0 ? (
+                <View style={styles.emptyCenter}>
+                  <Text style={styles.emptyText}>Data eselon belum tersedia</Text>
+                </View>
+              ) : (
+                <View style={styles.listBody}>
+                  {eselon.map((e) => (
+                    <View key={e.label} style={styles.eselonRow}>
+                      <Text style={styles.eselonLabel}>{e.label}</Text>
+                      <View style={styles.barTrack}>
                         <View
                           style={[
                             styles.barFill,
                             {
-                              width: `${Math.min(100, Math.max(p.persentase > 0 ? 3 : 0, p.persentase))}%`,
-                              backgroundColor: barColor(p.persentase),
+                              width: `${Math.min(100, Math.max(e.persentase > 0 ? 2 : 0, e.persentase))}%`,
+                              backgroundColor: barColor(e.persentase),
                             },
                           ]}
                         />
                       </View>
-                      <Text style={styles.pegawaiPct}>{`${p.persentase}%`}</Text>
-                      <Text style={styles.pegawaiRatio}>{`${p.hadir}/${p.diundang}`}</Text>
+                      <Text style={styles.eselonPct}>{`${e.persentase}%`}</Text>
+                      <Text style={styles.eselonMeta}>{`${e.jumlahPegawai} org • ${e.hadirTotal}/${e.diundangTotal}`}</Text>
                     </View>
-                  );
-                })}
-              </View>
-            )}
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Kolom 3: Top Pegawai Terajin (Hingga 8 Pegawai) */}
+          <View style={[styles.card, { width: "41%" }]}>
+            <CardHeader
+              title={`Top ${topPegawai.length || 8} Pegawai Terajin`}
+              subtitle="Kehadiran tertinggi (min. 3 undangan)"
+            />
+            <View style={styles.cardBody}>
+              {topPegawai.length === 0 ? (
+                <View style={styles.emptyCenter}>
+                  <Text style={styles.emptyText}>Belum ada data pegawai</Text>
+                </View>
+              ) : (
+                <View style={styles.listBodyCompact}>
+                  {topPegawai.map((p, i) => {
+                    const rankBg =
+                      i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#d97706" : C.brand;
+                    return (
+                      <View key={`${p.nama}-${i}`} style={styles.pegawaiRow}>
+                        <View style={[styles.rankBadge, { backgroundColor: rankBg }]}>
+                          <Text style={styles.rankBadgeText}>{i + 1}</Text>
+                        </View>
+                        <View style={styles.pegawaiInfo}>
+                          <Text style={styles.pegawaiName}>{trunc(p.nama, 28)}</Text>
+                          <Text style={styles.pegawaiInstansi}>{trunc(p.instansi, 34)}</Text>
+                        </View>
+                        <View style={styles.pegawaiBarTrack}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              {
+                                width: `${Math.min(100, Math.max(p.persentase > 0 ? 3 : 0, p.persentase))}%`,
+                                backgroundColor: barColor(p.persentase),
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.pegawaiPct}>{`${p.persentase}%`}</Text>
+                        <Text style={styles.pegawaiRatio}>{`${p.hadir}/${p.diundang}`}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -316,40 +350,40 @@ export default function LaporanRekapGrafisPdf({
             },
           ].map((col) => (
             <View key={col.title} style={[styles.card, { flex: 1 }]}>
-              <Text style={styles.cardTitle}>{col.title}</Text>
-              <Text style={styles.cardSub}>{col.subtitle}</Text>
-
-              {col.rows.length === 0 ? (
-                <View style={styles.emptyCenter}>
-                  <Text style={styles.emptyText}>Tidak ada data</Text>
-                </View>
-              ) : (
-                <View style={styles.opdListBody}>
-                  {col.rows.map((r, i) => (
-                    <View key={`${r.instansi}-${i}`} style={styles.opdRankItem}>
-                      <Text style={styles.opdRankNum}>{`${i + 1}.`}</Text>
-                      <Text style={styles.opdRankName}>{trunc(r.instansi, 48)}</Text>
-                      <View style={styles.opdBarTrack}>
-                        <View
-                          style={[
-                            styles.barFill,
-                            {
-                              width: `${Math.min(100, Math.max(r.persentase > 0 ? 2 : 0, r.persentase))}%`,
-                              backgroundColor: barColor(r.persentase),
-                            },
-                          ]}
-                        />
+              <CardHeader title={col.title} subtitle={col.subtitle} />
+              <View style={styles.cardBody}>
+                {col.rows.length === 0 ? (
+                  <View style={styles.emptyCenter}>
+                    <Text style={styles.emptyText}>Tidak ada data</Text>
+                  </View>
+                ) : (
+                  <View style={styles.opdListBody}>
+                    {col.rows.map((r, i) => (
+                      <View key={`${r.instansi}-${i}`} style={styles.opdRankItem}>
+                        <Text style={styles.opdRankNum}>{`${i + 1}.`}</Text>
+                        <Text style={styles.opdRankName}>{trunc(r.instansi, 48)}</Text>
+                        <View style={styles.opdBarTrack}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              {
+                                width: `${Math.min(100, Math.max(r.persentase > 0 ? 2 : 0, r.persentase))}%`,
+                                backgroundColor: barColor(r.persentase),
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.opdRankPct}>{`${r.persentase}%`}</Text>
                       </View>
-                      <Text style={styles.opdRankPct}>{`${r.persentase}%`}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
+                    ))}
+                  </View>
+                )}
+              </View>
             </View>
           ))}
         </View>
 
-        <PageFooter pageNum={1} />
+        <PageFooter pageNum={1} onlyInvited={onlyInvited} />
       </Page>
 
       {/* ==================== LEMBAR 2 ==================== */}
@@ -362,90 +396,90 @@ export default function LaporanRekapGrafisPdf({
         />
 
         {/* Full-Page Card: Peta Kehadiran OPD x Bulan */}
-        <View style={[styles.card, { flex: 1, justifyContent: "space-between" }]}>
-          <View>
-            <View style={styles.hmHeaderTop}>
-              <View>
-                <Text style={styles.cardTitle}>Peta Kehadiran OPD × Bulan</Text>
-                <Text style={styles.cardSub}>
-                  {heatmap.isTruncated
-                    ? `Persentase kehadiran per bulan (menampilkan ${hmRows.length} OPD teratas dari total ${heatmap.totalOpdCount || hmRows.length} OPD)`
-                    : `Persentase kehadiran per bulan seluruh ${hmRows.length} OPD (diurutkan dari kehadiran tertinggi)`}
-                </Text>
-              </View>
-            </View>
+        <View style={[styles.card, { flex: 1 }]}>
+          <CardHeader
+            title="Peta Kehadiran OPD × Bulan"
+            subtitle={
+              heatmap.isTruncated
+                ? `Persentase kehadiran per bulan (menampilkan ${hmRows.length} OPD teratas dari total ${heatmap.totalOpdCount || hmRows.length} OPD)`
+                : `Persentase kehadiran per bulan seluruh ${hmRows.length} OPD (diurutkan dari kehadiran tertinggi)`
+            }
+          />
 
-            {hmMonths.length === 0 || hmRows.length === 0 ? (
-              <View style={[styles.emptyCenter, { height: 360 }]}>
-                <Text style={styles.emptyText}>Belum ada data bulanan pada periode ini</Text>
-              </View>
-            ) : (
-              <View style={styles.hmTable}>
-                {/* Header Bulan */}
-                <View style={styles.hmTableHeader}>
-                  <Text style={styles.hmColNoHeader}>#</Text>
-                  <Text style={styles.hmColOpdHeader}>Perangkat Daerah (OPD)</Text>
-                  <View style={styles.hmCellsWrap}>
-                    {hmMonths.map((b) => (
-                      <View key={b} style={styles.hmMonthHeaderCell}>
-                        <Text style={styles.hmMonthHeaderText}>{b}</Text>
-                      </View>
-                    ))}
-                  </View>
+          <View style={[styles.cardBody, { justifyContent: "space-between" }]}>
+            <View>
+              {hmMonths.length === 0 || hmRows.length === 0 ? (
+                <View style={[styles.emptyCenter, { height: 360 }]}>
+                  <Text style={styles.emptyText}>Belum ada data bulanan pada periode ini</Text>
                 </View>
-
-                {/* Baris OPD */}
-                {hmRows.map((row, ri) => (
-                  <View
-                    key={`${row.instansi}-${ri}`}
-                    style={[
-                      styles.hmRow,
-                      ri % 2 === 1 ? { backgroundColor: "#f8fafc" } : {},
-                    ]}
-                  >
-                    <Text style={styles.hmColNo}>{`${ri + 1}.`}</Text>
-                    <Text style={styles.hmColOpd}>{trunc(row.instansi, 46)}</Text>
+              ) : (
+                <View style={styles.hmTable}>
+                  {/* Header Bulan */}
+                  <View style={styles.hmTableHeader}>
+                    <Text style={styles.hmColNoHeader}>#</Text>
+                    <Text style={styles.hmColOpdHeader}>Perangkat Daerah (OPD)</Text>
                     <View style={styles.hmCellsWrap}>
-                      {row.cells.map((cell, ci) => {
-                        const h = heat(cell);
-                        return (
-                          <View
-                            key={ci}
-                            style={[styles.hmCell, { backgroundColor: h.fill }]}
-                          >
-                            <Text style={[styles.hmCellText, { color: h.text }]}>
-                              {cell === null ? "–" : `${cell}%`}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                      {hmMonths.map((b) => (
+                        <View key={b} style={styles.hmMonthHeaderCell}>
+                          <Text style={styles.hmMonthHeaderText}>{b}</Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
-                ))}
-              </View>
-            )}
-          </View>
 
-          {/* Legenda Warna Inline di Bawah */}
-          <View style={styles.hmLegendRow}>
-            {[
-              { l: "≥90%", p: 95 },
-              { l: "80–89%", p: 85 },
-              { l: "60–79%", p: 70 },
-              { l: "40–59%", p: 50 },
-              { l: "20–39%", p: 30 },
-              { l: "<20%", p: 10 },
-              { l: "Tanpa agenda", p: null as number | null },
-            ].map((it) => (
-              <View key={it.l} style={styles.hmLegendItem}>
-                <View style={[styles.hmLegendBox, { backgroundColor: heat(it.p).fill }]} />
-                <Text style={styles.hmLegendLabel}>{it.l}</Text>
-              </View>
-            ))}
+                  {/* Baris OPD */}
+                  {hmRows.map((row, ri) => (
+                    <View
+                      key={`${row.instansi}-${ri}`}
+                      style={[
+                        styles.hmRow,
+                        ri % 2 === 1 ? { backgroundColor: "#f8fafc" } : {},
+                      ]}
+                    >
+                      <Text style={styles.hmColNo}>{`${ri + 1}.`}</Text>
+                      <Text style={styles.hmColOpd}>{trunc(row.instansi, 46)}</Text>
+                      <View style={styles.hmCellsWrap}>
+                        {row.cells.map((cell, ci) => {
+                          const h = heat(cell);
+                          return (
+                            <View
+                              key={ci}
+                              style={[styles.hmCell, { backgroundColor: h.fill }]}
+                            >
+                              <Text style={[styles.hmCellText, { color: h.text }]}>
+                                {cell === null ? "–" : `${cell}%`}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Legenda Warna Inline di Bawah */}
+            <View style={styles.hmLegendRow}>
+              {[
+                { l: "≥90%", p: 95 },
+                { l: "80–89%", p: 85 },
+                { l: "60–79%", p: 70 },
+                { l: "40–59%", p: 50 },
+                { l: "20–39%", p: 30 },
+                { l: "<20%", p: 10 },
+                { l: "Tanpa agenda", p: null as number | null },
+              ].map((it) => (
+                <View key={it.l} style={styles.hmLegendItem}>
+                  <View style={[styles.hmLegendBox, { backgroundColor: heat(it.p).fill }]} />
+                  <Text style={styles.hmLegendLabel}>{it.l}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
-        <PageFooter pageNum={2} />
+        <PageFooter pageNum={2} onlyInvited={onlyInvited} />
       </Page>
     </Document>
   );
@@ -514,43 +548,60 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
-    paddingVertical: 4.5,
-    paddingHorizontal: 7,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 0.6,
     borderColor: C.line,
     backgroundColor: C.card,
   },
+  kpiHeader: {
+    backgroundColor: "#f1f5f9",
+    borderBottomWidth: 0.6,
+    borderBottomColor: C.line,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+  },
   kpiLabel: {
-    fontSize: 5.8,
+    fontSize: 6,
     fontWeight: "bold",
-    color: C.muted,
+    color: "#000000",
+  },
+  kpiBody: {
+    paddingVertical: 4,
+    paddingHorizontal: 7,
   },
   kpiValue: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "bold",
-    marginTop: 1.5,
   },
 
   // Generic Card
   card: {
-    borderRadius: 5,
+    borderRadius: 0,
     borderWidth: 0.6,
     borderColor: C.line,
     backgroundColor: C.card,
-    paddingVertical: 6,
+  },
+  cardHeader: {
+    backgroundColor: "#f1f5f9",
+    borderBottomWidth: 0.6,
+    borderBottomColor: C.line,
+    paddingVertical: 4,
     paddingHorizontal: 8,
   },
   cardTitle: {
     fontSize: 8,
     fontWeight: "bold",
-    color: C.ink,
+    color: "#000000",
   },
   cardSub: {
-    fontSize: 6.2,
+    fontSize: 6,
     color: C.muted,
     marginTop: 1,
-    marginBottom: 4,
+  },
+  cardBody: {
+    flex: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
   },
   emptyCenter: {
     flex: 1,
