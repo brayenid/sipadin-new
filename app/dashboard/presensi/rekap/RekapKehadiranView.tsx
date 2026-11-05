@@ -882,8 +882,8 @@ export default function RekapKehadiranView({
                           <ImageIcon className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PNG)</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis visual: Eselon, Top 5, &amp; KPI ringkas</p>
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PDF)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1265,8 +1265,8 @@ export default function RekapKehadiranView({
                           <ImageIcon className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PNG)</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis visual: Eselon, Top 5, &amp; KPI ringkas</p>
+                          <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PDF)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1724,10 +1724,10 @@ export default function RekapKehadiranView({
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900 group-hover:text-sky-600">
-                      Laporan Grafis (PNG)
+                      Laporan Grafis (PDF)
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Infografis visual: Eselon, Top 5 pegawai, &amp; KPI kehadiran
+                      Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD
                     </p>
                   </div>
                 </div>

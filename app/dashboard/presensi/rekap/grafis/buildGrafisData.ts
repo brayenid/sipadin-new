@@ -1,5 +1,3 @@
-import { formatWita } from "@/lib/date-utils";
-
 /**
  * Bentuk minimal data rekap yang dibutuhkan laporan grafis.
  * Dibuat struktural agar kompatibel dengan tipe di RekapKehadiranView.
@@ -73,6 +71,14 @@ export type HeatmapRow = {
   cells: (number | null)[];
 };
 
+export type MonthlyTrend = {
+  bulanKey: string;
+  bulanLabel: string;
+  persentase: number;
+  hadir: number;
+  diundang: number;
+};
+
 export type GrafisData = {
   kpi: {
     totalAgenda: number;
@@ -93,13 +99,21 @@ export type GrafisData = {
     isTruncated?: boolean;
     totalOpdCount?: number;
   };
+  monthlyTrends: MonthlyTrend[];
+  unitKosongList: string[];
 };
 
-/** Minimal undangan agar pegawai layak masuk Top 5 (menghindari 1/1 = 100%). */
+/** Minimal undangan agar pegawai layak masuk Top Pegawai (menghindari 1/1 = 100%). */
 export const MIN_UNDANGAN_TOP_PEGAWAI = 3;
 
-/** Maksimal baris OPD pada heatmap infografis agar pas di rasio kertas A4 Landscape (297x210) */
-export const MAX_HEATMAP_OPD_ROWS = 18;
+/** Maksimal baris Top Pegawai pada Lembar 1 */
+export const MAX_TOP_PEGAWAI = 8;
+
+/** Maksimal baris Peringkat OPD per kolom pada Lembar 1 */
+export const MAX_OPD_RANK = 15;
+
+/** Maksimal baris OPD pada heatmap infografis Lembar 2 (1 halaman penuh A4 Landscape) */
+export const MAX_HEATMAP_OPD_ROWS = 32;
 
 const ESELON_ORDER = ["Eselon I", "Eselon II", "Eselon III", "Eselon IV", "Non-Eselon"];
 
@@ -239,16 +253,25 @@ export function buildGrafisData(input: GrafisInput): GrafisData {
   };
 
   const eligible = pegawais
-    .filter((p) => (p.totalDiundang || 0) >= MIN_UNDANGAN_TOP_PEGAWAI)
+    .filter((p) => (p.totalDiundang || 0) >= MIN_UNDANGAN_TOP_PEGAWAI && p.persentaseKehadiran > 0)
     .sort(sortPegawaiFast);
 
-  let topSource = eligible.slice(0, 5);
-  if (topSource.length < 5) {
+  let topSource = eligible.slice(0, MAX_TOP_PEGAWAI);
+  if (topSource.length < MAX_TOP_PEGAWAI) {
     const picked = new Set(topSource);
     const rest = pegawais
+      .filter((p) => !picked.has(p) && ((p.hadir || 0) + (p.mewakili || 0) > 0))
+      .sort(sortPegawaiFast);
+    topSource = [...topSource, ...rest].slice(0, MAX_TOP_PEGAWAI);
+  }
+
+  // Jika tetap kurang dari MAX_TOP_PEGAWAI, lengkapi dengan pegawai terundang lainnya
+  if (topSource.length < MAX_TOP_PEGAWAI) {
+    const picked = new Set(topSource);
+    const restAll = pegawais
       .filter((p) => !picked.has(p) && (p.totalDiundang || 0) > 0)
       .sort(sortPegawaiFast);
-    topSource = [...topSource, ...rest].slice(0, 5);
+    topSource = [...topSource, ...restAll].slice(0, MAX_TOP_PEGAWAI);
   }
 
   const topPegawai: TopPegawai[] = topSource.map((p) => ({
@@ -266,21 +289,27 @@ export function buildGrafisData(input: GrafisInput): GrafisData {
     return a.instansi < b.instansi ? -1 : a.instansi > b.instansi ? 1 : 0;
   });
 
-  const topN = Math.min(10, opdSorted.length);
+  const topN = Math.min(MAX_OPD_RANK, opdSorted.length);
   const topOpd: OpdRank[] = opdSorted
     .slice(0, topN)
     .map((o) => ({ instansi: o.instansi, persentase: o.persentaseKehadiran }));
 
-  const bottomN = Math.min(10, Math.max(0, opdSorted.length - topN));
+  // Kolom Perlu Perhatian (Terendah): urutkan dari kehadiran terendah ke atas
+  const bottomN = opdSorted.length > MAX_OPD_RANK
+    ? Math.min(MAX_OPD_RANK, opdSorted.length - topN)
+    : opdSorted.length;
   const bottomOpd: OpdRank[] = opdSorted
     .slice(opdSorted.length - bottomN)
     .reverse()
     .map((o) => ({ instansi: o.instansi, persentase: o.persentaseKehadiran }));
 
-  // --- Heatmap OPD x Bulan (dibatasi maksimal 25 baris agar tidak lag) ---
+  // --- Heatmap OPD x Bulan (dibatasi maksimal 30 baris untuk Lembar 2) ---
   const isTruncated = opdSorted.length > MAX_HEATMAP_OPD_ROWS;
   const targetHeatmapOpds = isTruncated ? opdSorted.slice(0, MAX_HEATMAP_OPD_ROWS) : opdSorted;
   const sortedMonths = Array.from(monthKeys).sort();
+
+  // Akumulasi tren kehadiran agregat per bulan (seluruh OPD)
+  const monthlyAgg = new Map<string, { hadir: number; diundang: number }>();
 
   const heatmapRows: HeatmapRow[] = targetHeatmapOpds.map((o) => {
     const m = new Map<string, { hadir: number; diundang: number }>();
@@ -292,8 +321,10 @@ export function buildGrafisData(input: GrafisInput): GrafisData {
         const key = getFastYearMonthKey(h.tanggal);
         if (!key) continue;
         const cur = m.get(key) || { hadir: 0, diundang: 0 };
-        cur.hadir += (h.hadir || 0) + (h.mewakili || 0);
-        cur.diundang += h.totalDiundang || 0;
+        const hCount = (h.hadir || 0) + (h.mewakili || 0);
+        const dCount = h.totalDiundang || 0;
+        cur.hadir += hCount;
+        cur.diundang += dCount;
         m.set(key, cur);
       }
     }
@@ -305,6 +336,38 @@ export function buildGrafisData(input: GrafisInput): GrafisData {
       }),
     };
   });
+
+  // Hitung tren seluruh OPD per bulan
+  for (let i = 0; i < opds.length; i++) {
+    const hist = opds[i].history;
+    if (hist && hist.length > 0) {
+      for (let j = 0; j < hist.length; j++) {
+        const h = hist[j];
+        if (h.isCancelledSession) continue;
+        const key = getFastYearMonthKey(h.tanggal);
+        if (!key) continue;
+        const cur = monthlyAgg.get(key) || { hadir: 0, diundang: 0 };
+        cur.hadir += (h.hadir || 0) + (h.mewakili || 0);
+        cur.diundang += h.totalDiundang || 0;
+        monthlyAgg.set(key, cur);
+      }
+    }
+  }
+
+  const monthlyTrends: MonthlyTrend[] = sortedMonths.map((k) => {
+    const agg = monthlyAgg.get(k) || { hadir: 0, diundang: 0 };
+    return {
+      bulanKey: k,
+      bulanLabel: bulanLabelFromKey(k),
+      persentase: pct(agg.hadir, agg.diundang),
+      hadir: agg.hadir,
+      diundang: agg.diundang,
+    };
+  });
+
+  const unitKosongList: string[] = opds
+    .filter((o) => (o.hadir || 0) + (o.mewakili || 0) === 0)
+    .map((o) => o.instansi);
 
   return {
     kpi: {
@@ -326,5 +389,7 @@ export function buildGrafisData(input: GrafisInput): GrafisData {
       isTruncated,
       totalOpdCount: opds.length,
     },
+    monthlyTrends,
+    unitKosongList,
   };
 }
