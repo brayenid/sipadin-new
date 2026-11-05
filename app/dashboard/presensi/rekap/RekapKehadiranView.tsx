@@ -1727,7 +1727,7 @@ export default function RekapKehadiranView({
                       Laporan Grafis (PDF)
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD
+                      Infografis 3 lembar A4: KPI, Eselon, Peta OPD, &amp; Top 30 Kegiatan
                     </p>
                   </div>
                 </div>

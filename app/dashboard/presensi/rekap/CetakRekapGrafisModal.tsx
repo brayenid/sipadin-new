@@ -66,10 +66,10 @@ export default function CetakRekapGrafisModal({
         <DialogHeader className="pb-3 border-b shrink-0 flex flex-row items-center justify-between gap-4">
           <div>
             <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
-              Laporan Grafis Rekapitulasi Kehadiran (PDF A4 — 2 Lembar)
+              Laporan Grafis Rekapitulasi Kehadiran (PDF A4 — 3 Lembar)
             </DialogTitle>
             <p className="text-xs text-slate-500 mt-0.5">
-              Lembar 1: KPI, Komposisi Partisipasi, Kehadiran per Eselon, Top Pegawai, &amp; Peringkat OPD • Lembar 2: Peta Kehadiran OPD × Bulan
+              Lembar 1: Ringkasan Eksekutif &amp; Peringkat • Lembar 2: Peta Kehadiran OPD × Bulan • Lembar 3: 30 Besar Kegiatan Ter-ramai Dihadiri
             </p>
           </div>
 

@@ -3,6 +3,8 @@
  * Dibuat struktural agar kompatibel dengan tipe di RekapKehadiranView.
  */
 export type GrafisOpdHistoryInput = {
+  agendaId?: string;
+  namaKegiatan?: string;
   tanggal: Date | string;
   totalDiundang: number;
   hadir: number;
@@ -106,6 +108,18 @@ export type MonthlyTrend = {
   diundang: number;
 };
 
+export type TopKegiatan = {
+  namaKegiatan: string;
+  tanggal: string;
+  totalHadir: number;
+  totalDiundang: number;
+  hadirValid: number;
+  hadirLuarRadius: number;
+  mewakili: number;
+  persentase: number;
+  jumlahOpdHadir: number;
+};
+
 export type GrafisData = {
   kpi: {
     totalAgenda: number;
@@ -128,7 +142,11 @@ export type GrafisData = {
   };
   monthlyTrends: MonthlyTrend[];
   unitKosongList: string[];
+  topKegiatan: TopKegiatan[];
 };
+
+/** Maksimal baris kegiatan ter-ramai pada Lembar 3 */
+export const MAX_TOP_KEGIATAN = 30;
 
 /** Minimal undangan agar pegawai layak masuk Top Pegawai (menghindari 1/1 = 100%). */
 export const MIN_UNDANGAN_TOP_PEGAWAI = 3;
@@ -574,6 +592,94 @@ export function buildGrafisData(
     .filter((o) => (o.hadir || 0) + (o.mewakili || 0) === 0)
     .map((o) => o.instansi);
 
+  // --- 30 Besar Kegiatan Ter-ramai Dihadiri (Lembar 3) ---
+  const kegiatanMap = new Map<
+    string,
+    {
+      namaKegiatan: string;
+      tanggal: string;
+      totalHadir: number;
+      totalDiundang: number;
+      hadirValid: number;
+      hadirLuarRadius: number;
+      mewakili: number;
+      opdSet: Set<string>;
+    }
+  >();
+
+  for (let i = 0; i < opds.length; i++) {
+    const o = opds[i];
+    const hist = o.history;
+    if (!hist || hist.length === 0) continue;
+
+    for (let j = 0; j < hist.length; j++) {
+      const h = hist[j];
+      if (h.isCancelledSession) continue;
+
+      const nama = (h.namaKegiatan || "Agenda Tanpa Nama").trim();
+      const tglStr = h.tanggal
+        ? typeof h.tanggal === "string"
+          ? h.tanggal.slice(0, 10)
+          : h.tanggal.toISOString().slice(0, 10)
+        : "";
+      const kegKey = h.agendaId ? `${h.agendaId}_${tglStr}` : `${nama}_${tglStr}`;
+
+      let cur = kegiatanMap.get(kegKey);
+      if (!cur) {
+        cur = {
+          namaKegiatan: nama,
+          tanggal: tglStr,
+          totalHadir: 0,
+          totalDiundang: 0,
+          hadirValid: 0,
+          hadirLuarRadius: 0,
+          mewakili: 0,
+          opdSet: new Set<string>(),
+        };
+        kegiatanMap.set(kegKey, cur);
+      }
+
+      const hCount = h.hadir || 0;
+      const mCount = h.mewakili || 0;
+      const dCount = h.totalDiundang || 0;
+
+      cur.totalHadir += hCount + mCount;
+      cur.totalDiundang += dCount;
+      cur.hadirValid += h.hadirValid || 0;
+      cur.hadirLuarRadius += h.hadirLuarRadius || 0;
+      cur.mewakili += mCount;
+
+      if (hCount + mCount > 0) {
+        cur.opdSet.add(o.instansi);
+      }
+    }
+  }
+
+  const topKegiatan: TopKegiatan[] = Array.from(kegiatanMap.values())
+    .sort((a, b) => {
+      // Urutkan berdasarkan total kehadiran terbanyak
+      const dHadir = b.totalHadir - a.totalHadir;
+      if (dHadir !== 0) return dHadir;
+      // Lalu persentase kehadiran tertinggi
+      const pctA = pct(a.totalHadir, a.totalDiundang);
+      const pctB = pct(b.totalHadir, b.totalDiundang);
+      const dPct = pctB - pctA;
+      if (dPct !== 0) return dPct;
+      return a.namaKegiatan.localeCompare(b.namaKegiatan);
+    })
+    .slice(0, MAX_TOP_KEGIATAN)
+    .map((k) => ({
+      namaKegiatan: k.namaKegiatan,
+      tanggal: k.tanggal,
+      totalHadir: k.totalHadir,
+      totalDiundang: k.totalDiundang,
+      hadirValid: k.hadirValid,
+      hadirLuarRadius: k.hadirLuarRadius,
+      mewakili: k.mewakili,
+      persentase: pct(k.totalHadir, k.totalDiundang),
+      jumlahOpdHadir: k.opdSet.size,
+    }));
+
   return {
     kpi: {
       totalAgenda: input.totalAgenda || 0,
@@ -596,5 +702,6 @@ export function buildGrafisData(
     },
     monthlyTrends,
     unitKosongList,
+    topKegiatan,
   };
 }

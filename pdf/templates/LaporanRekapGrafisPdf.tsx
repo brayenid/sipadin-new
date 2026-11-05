@@ -77,11 +77,13 @@ function PageHeader({
   kategoriLabel,
   tanggalCetak,
   pageNum,
+  totalPages = 3,
 }: {
   periodeLabel: string;
   kategoriLabel: string;
   tanggalCetak: string;
   pageNum: number;
+  totalPages?: number;
 }) {
   return (
     <View style={styles.header}>
@@ -96,7 +98,7 @@ function PageHeader({
       </View>
       <View style={styles.headerRight}>
         <Text style={styles.headerBrand}>SIPADIN • Presensi Digital</Text>
-        <Text style={styles.headerMeta}>{`Dicetak: ${tanggalCetak}   |   Lembar ${pageNum} / 2`}</Text>
+        <Text style={styles.headerMeta}>{`Dicetak: ${tanggalCetak}   |   Lembar ${pageNum} / ${totalPages}`}</Text>
       </View>
     </View>
   );
@@ -113,9 +115,11 @@ function CardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
 
 function PageFooter({
   pageNum,
+  totalPages = 3,
   onlyInvited = true,
 }: {
   pageNum: number;
+  totalPages?: number;
   onlyInvited?: boolean;
 }) {
   const baseInfo =
@@ -127,7 +131,7 @@ function PageFooter({
   return (
     <View style={styles.footer}>
       <Text style={styles.footerText}>{`${baseInfo}${filterNote}`}</Text>
-      <Text style={styles.footerPage}>{`Halaman ${pageNum} dari 2`}</Text>
+      <Text style={styles.footerPage}>{`Halaman ${pageNum} dari ${totalPages}`}</Text>
     </View>
   );
 }
@@ -139,7 +143,7 @@ export default function LaporanRekapGrafisPdf({
   tanggalCetak,
   onlyInvited = true,
 }: LaporanRekapGrafisPdfProps) {
-  const { kpi, status, eselon, topPegawai, topOpd, bottomOpd, heatmap } = data;
+  const { kpi, status, eselon, topPegawai, topOpd, bottomOpd, heatmap, topKegiatan = [] } = data;
 
   const kpiItems: { label: string; value: string; tone?: string }[] = [
     { label: "Total Kegiatan", value: String(kpi.totalAgenda) },
@@ -383,7 +387,7 @@ export default function LaporanRekapGrafisPdf({
           ))}
         </View>
 
-        <PageFooter pageNum={1} onlyInvited={onlyInvited} />
+        <PageFooter pageNum={1} totalPages={3} onlyInvited={onlyInvited} />
       </Page>
 
       {/* ==================== LEMBAR 2 ==================== */}
@@ -393,6 +397,7 @@ export default function LaporanRekapGrafisPdf({
           kategoriLabel={kategoriLabel}
           tanggalCetak={tanggalCetak}
           pageNum={2}
+          totalPages={3}
         />
 
         {/* Full-Page Card: Peta Kehadiran OPD x Bulan */}
@@ -479,7 +484,104 @@ export default function LaporanRekapGrafisPdf({
           </View>
         </View>
 
-        <PageFooter pageNum={2} onlyInvited={onlyInvited} />
+        <PageFooter pageNum={2} totalPages={3} onlyInvited={onlyInvited} />
+      </Page>
+
+      {/* ==================== LEMBAR 3 ==================== */}
+      <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
+        <PageHeader
+          periodeLabel={periodeLabel}
+          kategoriLabel={kategoriLabel}
+          tanggalCetak={tanggalCetak}
+          pageNum={3}
+          totalPages={3}
+        />
+
+        {/* Full-Page Card: 30 Besar Kegiatan Ter-ramai Dihadiri */}
+        <View style={[styles.card, { flex: 1 }]}>
+          <CardHeader
+            title="30 Besar Kegiatan Ter-ramai Dihadiri"
+            subtitle={`Peringkat agenda dinas dengan jumlah kehadiran aparatur terbanyak (menampilkan ${topKegiatan.length} kegiatan)`}
+          />
+
+          <View style={styles.cardBody}>
+            {topKegiatan.length === 0 ? (
+              <View style={[styles.emptyCenter, { height: 380 }]}>
+                <Text style={styles.emptyText}>Belum ada data kegiatan pada periode ini</Text>
+              </View>
+            ) : (
+              <View style={styles.kegTable}>
+                {/* Table Header */}
+                <View style={styles.kegTableHeader}>
+                  <Text style={styles.kegColNo}>#</Text>
+                  <Text style={styles.kegColNama}>Nama Agenda / Kegiatan</Text>
+                  <Text style={styles.kegColTgl}>Tanggal</Text>
+                  <Text style={styles.kegColOpd}>OPD Terlibat</Text>
+                  <Text style={styles.kegColValid}>Valid Lokasi</Text>
+                  <Text style={styles.kegColLuar}>Luar Radius</Text>
+                  <Text style={styles.kegColMewakili}>Mewakili</Text>
+                  <Text style={styles.kegColBar}>Grafik Kehadiran</Text>
+                  <Text style={styles.kegColTotal}>Total Hadir</Text>
+                  <Text style={styles.kegColPct}>%</Text>
+                </View>
+
+                {/* Table Rows (Maks. 30 Kegiatan) */}
+                {topKegiatan.map((k, ki) => {
+                  const maxHadirSample = topKegiatan[0]?.totalHadir || 1;
+                  const barWidthPct = Math.min(
+                    100,
+                    Math.max(4, Math.round((k.totalHadir / Math.max(1, maxHadirSample)) * 100))
+                  );
+
+                  return (
+                    <View
+                      key={`${k.namaKegiatan}-${k.tanggal}-${ki}`}
+                      style={[
+                        styles.kegTableRow,
+                        ki % 2 === 1 ? { backgroundColor: "#f8fafc" } : {},
+                      ]}
+                    >
+                      <Text style={styles.kegColNoVal}>{`${ki + 1}.`}</Text>
+                      <Text style={styles.kegColNamaVal}>{trunc(k.namaKegiatan, 48)}</Text>
+                      <Text style={styles.kegColTglVal}>{k.tanggal || "–"}</Text>
+                      <Text style={styles.kegColOpdVal}>{`${k.jumlahOpdHadir} OPD`}</Text>
+                      <Text style={[styles.kegColValidVal, { color: k.hadirValid > 0 ? C.hadir : C.muted }]}>
+                        {k.hadirValid}
+                      </Text>
+                      <Text style={[styles.kegColLuarVal, { color: k.hadirLuarRadius > 0 ? C.izin : C.muted }]}>
+                        {k.hadirLuarRadius}
+                      </Text>
+                      <Text style={[styles.kegColMewakiliVal, { color: k.mewakili > 0 ? C.mewakili : C.muted }]}>
+                        {k.mewakili}
+                      </Text>
+                      <View style={styles.kegColBarWrap}>
+                        <View style={styles.kegBarTrack}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              {
+                                width: `${barWidthPct}%`,
+                                backgroundColor: barColor(k.persentase),
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      <Text style={styles.kegColTotalVal}>
+                        {k.totalDiundang > 0 ? `${k.totalHadir}/${k.totalDiundang}` : String(k.totalHadir)}
+                      </Text>
+                      <Text style={[styles.kegColPctVal, { color: barColor(k.persentase) }]}>
+                        {`${k.persentase}%`}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </View>
+
+        <PageFooter pageNum={3} totalPages={3} onlyInvited={onlyInvited} />
       </Page>
     </Document>
   );
@@ -918,6 +1020,155 @@ const styles = StyleSheet.create({
   hmLegendLabel: {
     fontSize: 6.2,
     color: C.muted,
+  },
+
+  // Page 3: Top 30 Kegiatan
+  kegTable: {
+    marginTop: 2,
+  },
+  kegTableHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 3.5,
+    borderBottomWidth: 0.6,
+    borderBottomColor: C.line,
+    marginBottom: 2,
+  },
+  kegColNo: {
+    width: 18,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+  },
+  kegColNama: {
+    flex: 1,
+    fontSize: 6.5,
+    fontWeight: "bold",
+    color: C.muted,
+  },
+  kegColTgl: {
+    width: 62,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+  },
+  kegColOpd: {
+    width: 58,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+  },
+  kegColValid: {
+    width: 50,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    textAlign: "right",
+  },
+  kegColLuar: {
+    width: 52,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    textAlign: "right",
+  },
+  kegColMewakili: {
+    width: 48,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    textAlign: "right",
+  },
+  kegColBar: {
+    width: 90,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    paddingLeft: 8,
+  },
+  kegColTotal: {
+    width: 56,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    textAlign: "right",
+  },
+  kegColPct: {
+    width: 32,
+    fontSize: 6.3,
+    fontWeight: "bold",
+    color: C.muted,
+    textAlign: "right",
+  },
+
+  kegTableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 1.6,
+    borderRadius: 2,
+  },
+  kegColNoVal: {
+    width: 18,
+    fontSize: 6.1,
+    color: C.subtle,
+  },
+  kegColNamaVal: {
+    flex: 1,
+    fontSize: 6.4,
+    color: C.ink,
+    paddingRight: 6,
+  },
+  kegColTglVal: {
+    width: 62,
+    fontSize: 6,
+    color: C.muted,
+  },
+  kegColOpdVal: {
+    width: 58,
+    fontSize: 6,
+    color: C.ink,
+  },
+  kegColValidVal: {
+    width: 50,
+    fontSize: 6.2,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+  kegColLuarVal: {
+    width: 52,
+    fontSize: 6.2,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+  kegColMewakiliVal: {
+    width: 48,
+    fontSize: 6.2,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+  kegColBarWrap: {
+    width: 90,
+    paddingLeft: 8,
+  },
+  kegBarTrack: {
+    width: 78,
+    height: 5.5,
+    borderRadius: 1.5,
+    backgroundColor: C.line,
+    overflow: "hidden",
+  },
+  kegColTotalVal: {
+    width: 56,
+    fontSize: 6.2,
+    fontWeight: "bold",
+    color: C.ink,
+    textAlign: "right",
+  },
+  kegColPctVal: {
+    width: 32,
+    fontSize: 6.2,
+    fontWeight: "bold",
+    textAlign: "right",
   },
 
   // Footer
