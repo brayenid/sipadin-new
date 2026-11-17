@@ -50,8 +50,14 @@ export default function QrCodeModal({
     }
   }, [publicUrl, isOpen]);
 
-  const getSalamWaktu = () => {
-    const hour = new Date().getHours();
+  const getSalamAcara = () => {
+    let hour = new Date().getHours();
+    if (waktu) {
+      const match = waktu.match(/(\d{1,2})[:.](\d{2})/);
+      if (match) {
+        hour = parseInt(match[1], 10);
+      }
+    }
     if (hour >= 4 && hour < 11) return "Selamat Pagi";
     if (hour >= 11 && hour < 15) return "Selamat Siang";
     if (hour >= 15 && hour < 18) return "Selamat Sore";
@@ -61,14 +67,17 @@ export default function QrCodeModal({
   const handleCopyLink = () => {
     if (!publicUrl) return;
 
-    const salam = getSalamWaktu();
+    const salam = getSalamAcara();
     let textToCopy = `${salam} Bapak/Ibu 🙏\n\nDengan hormat, kami sampaikan link Website Presensi Kehadiran untuk kegiatan:\n📌 *${namaKegiatan}*`;
 
-    if (tempat) {
-      textToCopy += `\n📍 Tempat: ${tempat}`;
+    if (tanggal) {
+      textToCopy += `\n📅 Hari, Tanggal: ${tanggal}`;
     }
     if (waktu) {
-      textToCopy += `\n⏰ Waktu Pelaksanaan / Presensi: ${waktu}`;
+      textToCopy += `\n⏰ Waktu Pelaksanaan: ${waktu}`;
+    }
+    if (tempat) {
+      textToCopy += `\n📍 Tempat: ${tempat}`;
     }
 
     textToCopy += `\n\n${publicUrl}\n\nAtas perhatian dan partisipasinya kami ucapkan terima kasih 🙏`;

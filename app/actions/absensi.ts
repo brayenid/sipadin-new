@@ -622,7 +622,7 @@ export async function createAgendaAbsensi(payload: {
   const parsedTanggal = parseWitaInput(payload.tanggal) || new Date();
   const hariComputed = payload.hari || formatWita(parsedTanggal, "EEEE");
 
-  // Format waktu buka & tutup absen otomatis (H-1 jam dan H+4 jam) jika tidak diisi manual
+  // Format waktu buka & tutup absen otomatis (0 jam / jam saat itu juga dan H+4 jam) jika tidak diisi manual
   const tanggalStr = payload.tanggal.split("T")[0];
   let waktuBuka: Date | null = null;
   let waktuTutup: Date | null = null;
@@ -3468,6 +3468,57 @@ export async function getRekapKegiatanLengkap(params?: {
       isInsideRadius: p.isInsideRadius,
     })),
   }));
+}
+
+/**
+ * Mengambil preferensi / sesi filter terakhir pengguna dari database
+ */
+export async function getRekapFilterPreference() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { filterPreferences: true },
+    });
+    return (user?.filterPreferences as Record<string, any>) || null;
+  } catch (err) {
+    console.error("Gagal mengambil filterPreferences user:", err);
+    return null;
+  }
+}
+
+/**
+ * Menyimpan preferensi / sesi filter terakhir pengguna ke database
+ */
+export async function saveRekapFilterPreference(prefs: {
+  rekapUnit?: string;
+  rekapUnits?: string[];
+  onlyInvited?: boolean;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { filterPreferences: true },
+    });
+
+    const existing = (user?.filterPreferences as Record<string, any>) || {};
+    const updated = { ...existing, ...prefs };
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { filterPreferences: updated },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("Gagal menyimpan filterPreferences user:", err);
+    return { success: false };
+  }
 }
 
 

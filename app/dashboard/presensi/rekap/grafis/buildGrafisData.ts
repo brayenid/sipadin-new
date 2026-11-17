@@ -58,6 +58,10 @@ export type GrafisPegawaiInput = {
 export type BuildGrafisOptions = {
   /** Jika true (default), mengecualikan kehadiran non-undangan dari seluruh kalkulasi grafis */
   onlyInvited?: boolean;
+  /** Filter berdasarkan nama unit / instansi tertentu. Jika 'ALL' atau kosong, mencakup seluruh unit */
+  unitFilter?: string | null;
+  /** Filter berdasarkan satu atau beberapa unit / OPD yang dicentang (multi-select) */
+  selectedUnits?: string[] | null;
 };
 
 export type GrafisInput = {
@@ -209,8 +213,19 @@ export function buildGrafisData(
   options?: BuildGrafisOptions
 ): GrafisData {
   const onlyInvited = options?.onlyInvited ?? true;
-  const rawOpds = input.opdSummary || [];
-  const rawPegawais = input.pegawaiSummary || [];
+  const selectedUnitsSet =
+    options?.selectedUnits && options.selectedUnits.length > 0
+      ? new Set(options.selectedUnits.map((u) => u.trim().toLowerCase()))
+      : options?.unitFilter && options.unitFilter !== "ALL"
+      ? new Set([options.unitFilter.trim().toLowerCase()])
+      : null;
+
+  const rawOpds = (input.opdSummary || []).filter((o) =>
+    !selectedUnitsSet ? true : selectedUnitsSet.has((o.instansi || "").trim().toLowerCase())
+  );
+  const rawPegawais = (input.pegawaiSummary || []).filter((p) =>
+    !selectedUnitsSet ? true : selectedUnitsSet.has((p.instansi || "").trim().toLowerCase())
+  );
 
   // Normalisasi data OPD berdasarkan filter onlyInvited
   const opds: GrafisOpdInput[] = [];

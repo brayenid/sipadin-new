@@ -70,17 +70,20 @@ export type LaporanRekapGrafisPdfProps = {
   kategoriLabel: string;
   tanggalCetak: string;
   onlyInvited?: boolean;
+  unitLabel?: string;
 };
 
 function PageHeader({
   periodeLabel,
   kategoriLabel,
+  unitLabel,
   tanggalCetak,
   pageNum,
-  totalPages = 3,
+  totalPages = 2,
 }: {
   periodeLabel: string;
   kategoriLabel: string;
+  unitLabel?: string;
   tanggalCetak: string;
   pageNum: number;
   totalPages?: number;
@@ -92,7 +95,7 @@ function PageHeader({
         <View>
           <Text style={styles.headerTitle}>LAPORAN GRAFIS REKAPITULASI KEHADIRAN</Text>
           <Text style={styles.headerSub}>
-            {`Periode: ${periodeLabel}   |   Kategori Agenda: ${kategoriLabel}`}
+            {`Periode: ${periodeLabel}   |   Kategori: ${kategoriLabel}${unitLabel && unitLabel !== "ALL" ? `   |   Unit: ${unitLabel}` : ""}`}
           </Text>
         </View>
       </View>
@@ -115,7 +118,7 @@ function CardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
 
 function PageFooter({
   pageNum,
-  totalPages = 3,
+  totalPages = 2,
   onlyInvited = true,
 }: {
   pageNum: number;
@@ -142,8 +145,9 @@ export default function LaporanRekapGrafisPdf({
   kategoriLabel,
   tanggalCetak,
   onlyInvited = true,
+  unitLabel,
 }: LaporanRekapGrafisPdfProps) {
-  const { kpi, status, eselon, topPegawai, topOpd, bottomOpd, heatmap, topKegiatan = [] } = data;
+  const { kpi, status, eselon, topPegawai, topOpd, bottomOpd, topKegiatan = [] } = data;
 
   const kpiItems: { label: string; value: string; tone?: string }[] = [
     { label: "Total Kegiatan", value: String(kpi.totalAgenda) },
@@ -172,8 +176,6 @@ export default function LaporanRekapGrafisPdf({
     return { ...s, start, end };
   });
 
-  const hmRows = heatmap.rows;
-  const hmMonths = heatmap.bulanLabels;
 
   return (
     <Document title={`Laporan Grafis Presensi - ${periodeLabel}`}>
@@ -182,6 +184,7 @@ export default function LaporanRekapGrafisPdf({
         <PageHeader
           periodeLabel={periodeLabel}
           kategoriLabel={kategoriLabel}
+          unitLabel={unitLabel}
           tanggalCetak={tanggalCetak}
           pageNum={1}
         />
@@ -387,7 +390,7 @@ export default function LaporanRekapGrafisPdf({
           ))}
         </View>
 
-        <PageFooter pageNum={1} totalPages={3} onlyInvited={onlyInvited} />
+        <PageFooter pageNum={1} totalPages={2} onlyInvited={onlyInvited} />
       </Page>
 
       {/* ==================== LEMBAR 2 ==================== */}
@@ -395,106 +398,10 @@ export default function LaporanRekapGrafisPdf({
         <PageHeader
           periodeLabel={periodeLabel}
           kategoriLabel={kategoriLabel}
+          unitLabel={unitLabel}
           tanggalCetak={tanggalCetak}
           pageNum={2}
-          totalPages={3}
-        />
-
-        {/* Full-Page Card: Peta Kehadiran OPD x Bulan */}
-        <View style={[styles.card, { flex: 1 }]}>
-          <CardHeader
-            title="Peta Kehadiran OPD × Bulan"
-            subtitle={
-              heatmap.isTruncated
-                ? `Persentase kehadiran per bulan (menampilkan ${hmRows.length} OPD teratas dari total ${heatmap.totalOpdCount || hmRows.length} OPD)`
-                : `Persentase kehadiran per bulan seluruh ${hmRows.length} OPD (diurutkan dari kehadiran tertinggi)`
-            }
-          />
-
-          <View style={[styles.cardBody, { justifyContent: "space-between" }]}>
-            <View>
-              {hmMonths.length === 0 || hmRows.length === 0 ? (
-                <View style={[styles.emptyCenter, { height: 360 }]}>
-                  <Text style={styles.emptyText}>Belum ada data bulanan pada periode ini</Text>
-                </View>
-              ) : (
-                <View style={styles.hmTable}>
-                  {/* Header Bulan */}
-                  <View style={styles.hmTableHeader}>
-                    <Text style={styles.hmColNoHeader}>#</Text>
-                    <Text style={styles.hmColOpdHeader}>Perangkat Daerah (OPD)</Text>
-                    <View style={styles.hmCellsWrap}>
-                      {hmMonths.map((b) => (
-                        <View key={b} style={styles.hmMonthHeaderCell}>
-                          <Text style={styles.hmMonthHeaderText}>{b}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Baris OPD */}
-                  {hmRows.map((row, ri) => (
-                    <View
-                      key={`${row.instansi}-${ri}`}
-                      style={[
-                        styles.hmRow,
-                        ri % 2 === 1 ? { backgroundColor: "#f8fafc" } : {},
-                      ]}
-                    >
-                      <Text style={styles.hmColNo}>{`${ri + 1}.`}</Text>
-                      <Text style={styles.hmColOpd}>{trunc(row.instansi, 46)}</Text>
-                      <View style={styles.hmCellsWrap}>
-                        {row.cells.map((cell, ci) => {
-                          const h = heat(cell);
-                          return (
-                            <View
-                              key={ci}
-                              style={[styles.hmCell, { backgroundColor: h.fill }]}
-                            >
-                              <Text style={[styles.hmCellText, { color: h.text }]}>
-                                {cell === null ? "–" : `${cell}%`}
-                              </Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Legenda Warna Inline di Bawah */}
-            <View style={styles.hmLegendRow}>
-              {[
-                { l: "≥90%", p: 95 },
-                { l: "80–89%", p: 85 },
-                { l: "60–79%", p: 70 },
-                { l: "40–59%", p: 50 },
-                { l: "20–39%", p: 30 },
-                { l: "<20%", p: 10 },
-                { l: "Tanpa agenda", p: null as number | null },
-              ].map((it) => (
-                <View key={it.l} style={styles.hmLegendItem}>
-                  <View style={[styles.hmLegendBox, { backgroundColor: heat(it.p).fill }]} />
-                  <Text style={styles.hmLegendLabel}>{it.l}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <PageFooter pageNum={2} totalPages={3} onlyInvited={onlyInvited} />
-      </Page>
-
-      {/* ==================== LEMBAR 3 ==================== */}
-      <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
-        <PageHeader
-          periodeLabel={periodeLabel}
-          kategoriLabel={kategoriLabel}
-          tanggalCetak={tanggalCetak}
-          pageNum={3}
-          totalPages={3}
+          totalPages={2}
         />
 
         {/* Full-Page Card: 30 Besar Kegiatan Ter-ramai Dihadiri */}
@@ -581,7 +488,7 @@ export default function LaporanRekapGrafisPdf({
           </View>
         </View>
 
-        <PageFooter pageNum={3} totalPages={3} onlyInvited={onlyInvited} />
+        <PageFooter pageNum={2} totalPages={2} onlyInvited={onlyInvited} />
       </Page>
     </Document>
   );

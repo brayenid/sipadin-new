@@ -360,7 +360,11 @@ export default function ChecklistForm({
     setPicNama(agenda.picNama || "");
     setPicNip(agenda.picNip || "");
     setPicJabatan(agenda.picJabatan || "");
-    setJamBuka(agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30");
+    setJamBuka(
+      agenda.waktuBukaAbsen
+        ? formatWita(agenda.waktuBukaAbsen, "HH:mm")
+        : parts.jamMulai || "09:00"
+    );
     setJamTutup(agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00");
     setIsRecurring(agenda.isRecurring || false);
     setRecurringDays(agenda.recurringDays || ["SENIN"]);
@@ -457,7 +461,9 @@ export default function ChecklistForm({
   }, []);
 
   const [jamBuka, setJamBuka] = useState<string>(
-    agenda.waktuBukaAbsen ? formatWita(agenda.waktuBukaAbsen, "HH:mm") : "07:30"
+    agenda.waktuBukaAbsen
+      ? formatWita(agenda.waktuBukaAbsen, "HH:mm")
+      : initialWaktuParts.jamMulai || "09:00"
   );
   const [jamTutup, setJamTutup] = useState<string>(
     agenda.waktuTutupAbsen ? formatWita(agenda.waktuTutupAbsen, "HH:mm") : "14:00"
@@ -682,8 +688,15 @@ export default function ChecklistForm({
     }
   };
 
-  const getSalamWaktu = () => {
-    const hour = new Date().getHours();
+  const getSalamAcara = () => {
+    let hour = new Date().getHours();
+    const waktuToParse = jamMulai || waktu;
+    if (waktuToParse) {
+      const match = waktuToParse.match(/(\d{1,2})[:.](\d{2})/);
+      if (match) {
+        hour = parseInt(match[1], 10);
+      }
+    }
     if (hour >= 4 && hour < 11) return "Selamat Pagi";
     if (hour >= 11 && hour < 15) return "Selamat Siang";
     if (hour >= 15 && hour < 18) return "Selamat Sore";
@@ -693,14 +706,23 @@ export default function ChecklistForm({
   const handleCopyPublicLink = () => {
     if (!publicAbsenUrl) return;
 
-    const salam = getSalamWaktu();
+    const salam = getSalamAcara();
     let textToCopy = `${salam} Bapak/Ibu 🙏\n\nDengan hormat, kami sampaikan link Website Presensi Kehadiran untuk kegiatan:\n📌 *${namaKegiatan}*`;
 
-    if (tempat) {
-      textToCopy += `\n📍 Tempat: ${tempat}`;
+    const formattedTanggal = tanggal
+      ? formatWita(tanggal, "EEEE, dd MMMM yyyy")
+      : agenda.tanggal
+      ? formatWita(agenda.tanggal, "EEEE, dd MMMM yyyy")
+      : "";
+
+    if (formattedTanggal) {
+      textToCopy += `\n📅 Hari, Tanggal: ${formattedTanggal}`;
     }
     if (waktu) {
       textToCopy += `\n⏰ Waktu Pelaksanaan: ${waktu}`;
+    }
+    if (tempat) {
+      textToCopy += `\n📍 Tempat: ${tempat}`;
     }
     if (jamBuka && jamTutup) {
       textToCopy += `\n⏳ Rentang Presensi: ${jamBuka} s/d ${jamTutup} WITA`;
@@ -3070,14 +3092,16 @@ export default function ChecklistForm({
         onClose={() => setIsQrOpen(false)}
         agendaId={agenda.id}
         publicToken={agenda.publicToken}
-        namaKegiatan={agenda.namaKegiatan}
-        tanggal={agenda.tanggal ? formatWita(agenda.tanggal, "EEEE, dd MMMM yyyy") : ""}
-        waktu={
-          agenda.waktuBukaAbsen && agenda.waktuTutupAbsen
-            ? `${formatWita(agenda.waktuBukaAbsen, "HH:mm")} - ${formatWita(agenda.waktuTutupAbsen, "HH:mm")} WITA`
-            : agenda.waktu || ""
+        namaKegiatan={namaKegiatan || agenda.namaKegiatan}
+        tanggal={
+          tanggal
+            ? formatWita(tanggal, "EEEE, dd MMMM yyyy")
+            : agenda.tanggal
+            ? formatWita(agenda.tanggal, "EEEE, dd MMMM yyyy")
+            : ""
         }
-        tempat={agenda.tempat || ""}
+        waktu={waktu || agenda.waktu || ""}
+        tempat={tempat || agenda.tempat || ""}
       />
 
       <FotoPreviewModal

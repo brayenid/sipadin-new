@@ -50,6 +50,11 @@ import CetakRekapLengkapModal from "./CetakRekapLengkapModal";
 import CetakRekapHierarkiModal from "./CetakRekapHierarkiModal";
 import CetakRekapGrafisModal from "./CetakRekapGrafisModal";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  getRekapFilterPreference,
+  saveRekapFilterPreference,
+} from "@/app/actions/absensi";
 
 type HistoryItem = {
   agendaId: string;
@@ -210,6 +215,84 @@ export default function RekapKehadiranView({
   const [isCetakLengkapOpen, setIsCetakLengkapOpen] = useState(false);
   const [isCetakHierarkiOpen, setIsCetakHierarkiOpen] = useState(false);
   const [isCetakGrafisOpen, setIsCetakGrafisOpen] = useState(false);
+  const [selectedUnitsPegawai, setSelectedUnitsPegawai] = useState<string[]>([]);
+  const [unitSearchPegawai, setUnitSearchPegawai] = useState<string>("");
+
+  // Opsi seluruh Unit Kerja / OPD
+  const unitOptionsPegawai = React.useMemo(() => {
+    const set = new Set<string>();
+    (initialData.pegawaiSummary || []).forEach((p) => {
+      if (p.instansi?.trim()) set.add(p.instansi.trim());
+    });
+    (initialData.opdSummary || []).forEach((o) => {
+      if (o.instansi?.trim()) set.add(o.instansi.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
+  }, [initialData.pegawaiSummary, initialData.opdSummary]);
+
+  // Load preferensi unit terakhir dari localStorage & DB
+  React.useEffect(() => {
+    try {
+      const localUnitsStr = localStorage.getItem("sipadin_rekap_selected_units");
+      if (localUnitsStr) {
+        const parsed = JSON.parse(localUnitsStr);
+        if (Array.isArray(parsed)) setSelectedUnitsPegawai(parsed);
+      }
+    } catch {}
+
+    getRekapFilterPreference()
+      .then((prefs) => {
+        if (!prefs) return;
+        if (Array.isArray(prefs.rekapUnits)) {
+          setSelectedUnitsPegawai(prefs.rekapUnits);
+        } else if (prefs.rekapUnit && prefs.rekapUnit !== "ALL") {
+          setSelectedUnitsPegawai([prefs.rekapUnit]);
+        }
+      })
+      .catch((e) => console.error("Error loading filter preference:", e));
+  }, []);
+
+  const handleToggleUnitPegawai = (unit: string) => {
+    let next: string[];
+    if (selectedUnitsPegawai.includes(unit)) {
+      next = selectedUnitsPegawai.filter((u) => u !== unit);
+    } else {
+      next = [...selectedUnitsPegawai, unit];
+    }
+    setSelectedUnitsPegawai(next);
+    setPagePegawai(1);
+    try {
+      localStorage.setItem("sipadin_rekap_selected_units", JSON.stringify(next));
+    } catch {}
+    saveRekapFilterPreference({ rekapUnits: next }).catch(console.error);
+  };
+
+  const handleResetUnitsPegawai = () => {
+    setSelectedUnitsPegawai([]);
+    setPagePegawai(1);
+    try {
+      localStorage.setItem("sipadin_rekap_selected_units", JSON.stringify([]));
+    } catch {}
+    saveRekapFilterPreference({ rekapUnits: [] }).catch(console.error);
+  };
+
+  const handleToggleAllUnitsPegawai = () => {
+    setSelectedUnitsPegawai([]);
+    setPagePegawai(1);
+    try {
+      localStorage.setItem("sipadin_rekap_selected_units", JSON.stringify([]));
+    } catch {}
+    saveRekapFilterPreference({ rekapUnits: [] }).catch(console.error);
+  };
+
+  const filteredUnitOptionsPegawai = React.useMemo(() => {
+    const q = unitSearchPegawai.trim().toLowerCase();
+    if (!q) return unitOptionsPegawai;
+    return unitOptionsPegawai.filter((u) => u.toLowerCase().includes(q));
+  }, [unitOptionsPegawai, unitSearchPegawai]);
+
+  const isAllUnitsSelectedPegawai =
+    selectedUnitsPegawai.length === 0 || selectedUnitsPegawai.length === unitOptionsPegawai.length;
 
   // Filter state untuk rentang tanggal opsional
   const [startDateInput, setStartDateInput] = useState(customStartDate);
@@ -326,6 +409,10 @@ export default function RekapKehadiranView({
     if (selectedKehadiran === "HADIR") {
       list = list.filter((item) => (item.hadir || 0) + (item.mewakili || 0) > 0);
     }
+    if (selectedUnitsPegawai.length > 0) {
+      const set = new Set(selectedUnitsPegawai.map((u) => u.trim().toLowerCase()));
+      list = list.filter((item) => set.has((item.instansi || "").trim().toLowerCase()));
+    }
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter((item) =>
@@ -333,7 +420,7 @@ export default function RekapKehadiranView({
       item.jabatan.toLowerCase().includes(q) ||
       item.instansi.toLowerCase().includes(q)
     );
-  }, [initialData.pegawaiSummary, search, selectedKehadiran]);
+  }, [initialData.pegawaiSummary, search, selectedKehadiran, selectedUnitsPegawai]);
 
   // Reset page when search or tab changes
   const handleSearchChange = (val: string) => {
@@ -883,7 +970,7 @@ export default function RekapKehadiranView({
                         </div>
                         <div className="flex-1">
                           <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PDF)</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; 30 Kegiatan Ter-ramai</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1266,7 +1353,7 @@ export default function RekapKehadiranView({
                         </div>
                         <div className="flex-1">
                           <p className="font-semibold text-slate-900 leading-snug">Laporan Grafis (PDF)</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; Peta OPD</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Infografis 2 lembar A4: KPI, Eselon, Top Pegawai &amp; 30 Kegiatan Ter-ramai</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1320,14 +1407,121 @@ export default function RekapKehadiranView({
 
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative w-full sm:w-80">
-                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                  <Input
-                    placeholder="Cari nama, jabatan, atau OPD..."
-                    value={search}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="pl-9 text-xs h-9"
-                  />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <Input
+                      placeholder="Cari nama, jabatan, atau OPD..."
+                      value={search}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="pl-9 text-xs h-9"
+                    />
+                  </div>
+
+                  {/* Popover Filter Cekbox Unit / OPD */}
+                  <Popover>
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`h-9 px-3 text-xs font-semibold gap-1.5 border transition-colors cursor-pointer justify-between sm:justify-start ${
+                            selectedUnitsPegawai.length > 0
+                              ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100/70"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                          title="Saring pegawai berdasarkan unit kerja / OPD tertentu"
+                        >
+                          <span className="flex items-center gap-1.5 truncate">
+                            <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="max-w-[200px] sm:max-w-[260px] truncate">
+                              {selectedUnitsPegawai.length === 0
+                                ? "Semua Unit / OPD"
+                                : selectedUnitsPegawai.length === 1
+                                ? selectedUnitsPegawai[0]
+                                : `${selectedUnitsPegawai.length} Unit Dipilih`}
+                            </span>
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0 ml-1" />
+                        </Button>
+                      }
+                    />
+                    <PopoverContent align="start" className="w-80 p-3 bg-white shadow-xl rounded-xl border-slate-200">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <span className="text-xs font-bold text-slate-800">Filter Unit / OPD</span>
+                          {selectedUnitsPegawai.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleResetUnitsPegawai}
+                              className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                            >
+                              Reset Semua
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Pencarian Unit */}
+                        {unitOptionsPegawai.length > 4 && (
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                            <Input
+                              placeholder="Cari unit..."
+                              value={unitSearchPegawai}
+                              onChange={(e) => setUnitSearchPegawai(e.target.value)}
+                              className="h-7 pl-8 text-xs bg-slate-50"
+                            />
+                          </div>
+                        )}
+
+                        {/* Cekbox Pilih Semua */}
+                        <div className="flex items-center justify-between pt-1 pb-1 border-b border-slate-100">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+                            <input
+                              type="checkbox"
+                              checked={isAllUnitsSelectedPegawai}
+                              onChange={handleToggleAllUnitsPegawai}
+                              className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <span>Pilih Semua Unit</span>
+                          </label>
+                          <span className="text-[10px] text-slate-400">
+                            {selectedUnitsPegawai.length === 0 ? unitOptionsPegawai.length : selectedUnitsPegawai.length} / {unitOptionsPegawai.length}
+                          </span>
+                        </div>
+
+                        {/* Daftar Cekbox Setiap Unit */}
+                        <div className="max-h-56 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
+                          {filteredUnitOptionsPegawai.map((unit) => {
+                            const isChecked = selectedUnitsPegawai.includes(unit);
+                            return (
+                              <label
+                                key={unit}
+                                className={`flex items-start gap-2 p-1.5 rounded-lg text-xs cursor-pointer select-none transition-colors ${
+                                  isChecked
+                                    ? "bg-indigo-50/70 hover:bg-indigo-50 font-semibold text-indigo-950"
+                                    : "hover:bg-slate-50 text-slate-600"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleToggleUnitPegawai(unit)}
+                                  className="h-3.5 w-3.5 mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                />
+                                <span className="leading-tight break-words">{unit}</span>
+                              </label>
+                            );
+                          })}
+                          {filteredUnitOptionsPegawai.length === 0 && (
+                            <div className="py-4 text-center text-xs text-slate-400">
+                              Unit tidak ditemukan
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="text-xs text-slate-500 font-medium">
                   Menampilkan {filteredPegawai.length === 0 ? 0 : (pagePegawai - 1) * pageSizePegawai + 1} - {Math.min(pagePegawai * pageSizePegawai, filteredPegawai.length)} dari {filteredPegawai.length} Pegawai
@@ -1691,6 +1885,7 @@ export default function RekapKehadiranView({
             opdSummary: initialData.opdSummary,
             pegawaiSummary: initialData.pegawaiSummary,
           }}
+          initialUnits={selectedUnitsPegawai}
         />
       )}
 
@@ -1727,7 +1922,7 @@ export default function RekapKehadiranView({
                       Laporan Grafis (PDF)
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Infografis 3 lembar A4: KPI, Eselon, Peta OPD, &amp; Top 30 Kegiatan
+                      Infografis 2 lembar A4: KPI, Eselon, &amp; Top 30 Kegiatan
                     </p>
                   </div>
                 </div>

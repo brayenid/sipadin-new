@@ -69,7 +69,7 @@ export default function ModalBuatAgenda({
     waktu: "09:00 WITA",
     tempat: "",
     deskripsi: "",
-    jamBuka: "08:00",
+    jamBuka: "09:00",
     jamTutup: "13:00",
     enableCheckOut: false,
     requireLocation: true,

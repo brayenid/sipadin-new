@@ -67,7 +67,7 @@ export function combineDateAndTimeWita(dateString: string, timeString: string): 
 }
 
 /**
- * Menghitung jam buka presensi (H-1 jam) dan jam tutup presensi (H+4 jam)
+ * Menghitung jam buka presensi (0 jam / jam saat itu juga) dan jam tutup presensi (H+4 jam)
  * berdasarkan jam mulai kegiatan (format HH:mm, e.g. "09:00").
  */
 export function calculatePresensiWindow(
@@ -84,8 +84,8 @@ export function calculatePresensiWindow(
     minutes = parseInt(match[2], 10);
   }
 
-  // H-1 jam
-  const bukaHours = Math.max(0, hours - 1);
+  // Jam buka presensi default: 0 jam (jam saat itu juga / tepat pada jam mulai kegiatan)
+  const bukaHours = hours;
   const jamBuka = `${String(bukaHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 
   // H+4 jam dari jam mulai
