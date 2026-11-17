@@ -579,10 +579,17 @@ export default function AgendaCalendarView({
         >
           {weeks.map((weekDays, wIdx) => {
             const spanSegments = getWeekSpanSegments(weekDays);
+            // Batasi maksimal 2 bar horizontal per minggu agar tidak menumpuk dan tidak menggeser grid
+            const visibleSegments = spanSegments.filter((seg) => seg.lane < 2);
+            const hiddenSegments = spanSegments.filter((seg) => seg.lane >= 2);
+            const maxLane =
+              visibleSegments.length > 0
+                ? Math.max(...visibleSegments.map((s) => s.lane)) + 1
+                : 0;
 
             return (
               <div key={wIdx} className="relative flex flex-col min-h-0 select-none">
-                {/* Layer 1: Background 7 Kolom Hari (Klik untuk tambah agenda) */}
+                {/* Layer 1: Background 7 Kolom Hari (Klik untuk pilih tanggal & lihat di panel samping) */}
                 <div className="absolute inset-0 grid grid-cols-7 divide-x divide-slate-200/80">
                   {weekDays.map((day) => {
                     const dateKey = format(day, "yyyy-MM-dd");
@@ -617,8 +624,8 @@ export default function AgendaCalendarView({
                   })}
                 </div>
 
-                {/* Layer 2: Baris Nomor Tanggal & Label Libur Nasional */}
-                <div className="relative z-10 grid grid-cols-7 pointer-events-none">
+                {/* Layer 2: Baris Nomor Tanggal & Label Libur Nasional (Tinggi Terkunci 22px) */}
+                <div className="relative z-10 grid grid-cols-7 pointer-events-none h-[22px] min-h-[22px] shrink-0">
                   {weekDays.map((day) => {
                     const dateKey = format(day, "yyyy-MM-dd");
                     const holiday = holidayMap.get(dateKey);
@@ -626,102 +633,80 @@ export default function AgendaCalendarView({
                     const isDayToday = isToday(day);
                     const isSunday = day.getDay() === 0;
                     const isSaturday = day.getDay() === 6;
-                    const dayAgendas = getAgendasForDay(day);
 
                     return (
                       <div
                         key={dateKey}
-                        className="px-1.5 pt-1 pb-0.5 flex flex-col min-w-0"
+                        className="px-1.5 pt-0.5 flex items-center justify-between min-w-0"
                       >
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1 min-w-0">
-                            <span
-                              className={`inline-flex items-center justify-center text-[11px] md:text-xs rounded-full w-5 h-5 md:w-6 md:h-6 shrink-0 transition-all ${
-                                isDayToday
-                                  ? "bg-primary text-white font-bold shadow-xs"
-                                  : !isCurrentMonth
-                                  ? "text-slate-300 font-normal"
-                                  : holiday && !holiday.isCutiBersama
-                                  ? "text-rose-600 font-bold bg-rose-100/70"
-                                  : isSunday
-                                  ? "text-rose-600 font-bold"
-                                  : isSaturday
-                                  ? "text-amber-600 font-semibold"
-                                  : "text-slate-700 font-semibold"
-                              }`}
-                            >
-                              {format(day, "d")}
-                            </span>
-
-                            {/* Label Hari Libur Nasional di Samping Nomor Tanggal */}
-                            {holiday && (
-                              <span
-                                title={holiday.name}
-                                className={`hidden md:inline-block text-[9.5px] leading-tight font-semibold truncate px-1 py-0.2 rounded ${
-                                  holiday.isCutiBersama
-                                    ? "text-amber-700 bg-amber-100/70"
-                                    : "text-rose-700 bg-rose-100/70"
-                                }`}
-                              >
-                                {holiday.name}
-                              </span>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenAddModal(day);
-                            }}
-                            title="Tambah agenda pada tanggal ini"
-                            className="pointer-events-auto opacity-0 hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-primary transition-opacity hidden md:inline-flex p-0.5 rounded hover:bg-slate-200/60"
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span
+                            className={`inline-flex items-center justify-center text-[10px] sm:text-[11px] rounded-full w-5 h-5 shrink-0 transition-all ${
+                              isDayToday
+                                ? "bg-primary text-white font-bold shadow-xs"
+                                : !isCurrentMonth
+                                ? "text-slate-300 font-normal"
+                                : holiday && !holiday.isCutiBersama
+                                ? "text-rose-600 font-bold bg-rose-100/70"
+                                : isSunday
+                                ? "text-rose-600 font-bold"
+                                : isSaturday
+                                ? "text-amber-600 font-semibold"
+                                : "text-slate-700 font-semibold"
+                            }`}
                           >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </div>
+                            {format(day, "d")}
+                          </span>
 
-                        {/* Mobile Dots Indicator */}
-                        <div className="flex md:hidden items-center justify-center gap-0.5 mt-1">
+                          {/* Label Hari Libur Nasional di Samping Nomor Tanggal */}
                           {holiday && (
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                holiday.isCutiBersama ? "bg-amber-500" : "bg-rose-600"
-                              }`}
                               title={holiday.name}
-                            />
-                          )}
-                          {dayAgendas.slice(0, 3).map((a) => {
-                            const config =
-                              KATEGORI_CONFIG[a.kategori] || KATEGORI_CONFIG.LAINNYA;
-                            return (
-                              <span
-                                key={a.id}
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  a.sourceType === "SPJ_PERJADIN"
-                                    ? "bg-indigo-600"
-                                    : config.dot
-                                }`}
-                              />
-                            );
-                          })}
-                          {dayAgendas.length > 3 && (
-                            <span className="text-[8px] font-bold text-slate-400">
-                              +{dayAgendas.length - 3}
+                              className={`hidden md:inline-block text-[8.5px] leading-tight font-semibold truncate px-1 py-0.2 rounded ${
+                                holiday.isCutiBersama
+                                  ? "text-amber-700 bg-amber-100/70"
+                                  : "text-rose-700 bg-rose-100/70"
+                              }`}
+                            >
+                              {holiday.name}
                             </span>
                           )}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddModal(day);
+                          }}
+                          title="Tambah agenda pada tanggal ini"
+                          className="pointer-events-auto opacity-0 hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-primary transition-opacity hidden md:inline-flex p-0.5 rounded hover:bg-slate-200/60"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Layer 3 (Desktop): Multi-Day & SPJ Perjadin Horizontal Range Bars */}
-                {spanSegments.length > 0 && (
-                  <div className="hidden md:grid grid-cols-7 gap-y-0.5 px-1 py-0.5 relative z-10">
-                    {spanSegments.map((seg) => {
-                      const { agenda, startCol, span, continuesLeft, continuesRight, totalDays } =
-                        seg;
+                {/* Layer 3 (Desktop): Multi-Day & SPJ Perjadin Horizontal Range Bars (Maksimal 2 Baris Presisi) */}
+                {visibleSegments.length > 0 && (
+                  <div
+                    className="hidden md:grid grid-cols-7 gap-y-0.5 px-1 py-0.5 relative z-10"
+                    style={{
+                      gridTemplateRows: `repeat(${maxLane}, 18px)`,
+                    }}
+                  >
+                    {visibleSegments.map((seg) => {
+                      const {
+                        agenda,
+                        startCol,
+                        span,
+                        continuesLeft,
+                        continuesRight,
+                        totalDays,
+                        lane,
+                      } = seg;
                       const isSpj = agenda.sourceType === "SPJ_PERJADIN";
                       const config =
                         KATEGORI_CONFIG[agenda.kategori] || KATEGORI_CONFIG.LAINNYA;
@@ -740,6 +725,7 @@ export default function AgendaCalendarView({
                           key={`${agenda.id}-w${wIdx}`}
                           style={{
                             gridColumn: `${startCol} / span ${span}`,
+                            gridRow: `${lane + 1}`,
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -747,8 +733,8 @@ export default function AgendaCalendarView({
                             setIsDetailOpen(true);
                           }}
                           title={`${agenda.judul} (${startDayStr} - ${endDayStr}) • Klik untuk rincian`}
-                          className={`group/bar relative flex items-center justify-between gap-1 px-1.5 py-[2px] text-[9.5px] font-semibold border shadow-2xs cursor-pointer transition-all hover:shadow-sm hover:brightness-[0.98] mx-0.5 ${
-                            continuesLeft ? "rounded-l-none border-l-0 ml-0" : "rounded-l-md border-l-[3px]"
+                          className={`group/bar relative flex items-center justify-between gap-1 px-1.5 h-[18px] text-[8.5px] sm:text-[9px] font-medium border shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:brightness-[0.98] mx-0.5 ${
+                            continuesLeft ? "rounded-l-none border-l-0 ml-0" : "rounded-l-md border-l-[2.5px]"
                           } ${
                             continuesRight ? "rounded-r-none border-r-0 mr-0" : "rounded-r-md"
                           } ${
@@ -757,15 +743,15 @@ export default function AgendaCalendarView({
                               : `${config.barBg}`
                           }`}
                         >
-                          {/* Bagian Kiri: Ikon + Badge SPJ + Nama Tujuan/Personel */}
+                          {/* Bagian Kiri: Ikon + Badge SPJ + Judul Ringkas */}
                           <div className="flex items-center gap-1 min-w-0 shrink">
                             {continuesLeft && (
-                              <span className="text-[8px] text-indigo-500 font-bold shrink-0">
+                              <span className="text-[7.5px] text-indigo-500 font-bold shrink-0">
                                 ◀
                               </span>
                             )}
                             {isSpj ? (
-                              <span className="inline-flex items-center gap-0.5 px-1 py-[1px] rounded bg-indigo-600 text-white text-[7.5px] font-bold uppercase tracking-wider shrink-0">
+                              <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded bg-indigo-600 text-white text-[7px] font-bold uppercase tracking-wider shrink-0">
                                 <Plane className="w-2 h-2" />
                                 SPJ
                               </span>
@@ -777,11 +763,11 @@ export default function AgendaCalendarView({
                             <span className="truncate">{agenda.judul}</span>
                           </div>
 
-                          {/* Garis Rentang Horizontal Ramping (Visual Range Line dari Tanggal Mulai ke Tanggal Selesai) */}
+                          {/* Garis Rentang Horizontal Ramping */}
                           {span >= 2 && (
-                            <div className="flex-1 flex items-center min-w-[16px] mx-1 opacity-70">
+                            <div className="flex-1 flex items-center min-w-[10px] mx-1 opacity-50">
                               <span
-                                className={`w-1 h-1 rounded-full shrink-0 ${
+                                className={`w-0.5 h-0.5 rounded-full shrink-0 ${
                                   isSpj ? "bg-indigo-600" : config.barLine
                                 }`}
                               />
@@ -793,36 +779,26 @@ export default function AgendaCalendarView({
                                 }`}
                               />
                               <span
-                                className={`w-1 h-1 rounded-full shrink-0 ${
+                                className={`w-0.5 h-0.5 rounded-full shrink-0 ${
                                   isSpj ? "bg-indigo-600" : config.barLine
                                 }`}
                               />
                             </div>
                           )}
 
-                          {/* Bagian Kanan: Info Durasi Hari & Pintasan ke SPJ */}
+                          {/* Bagian Kanan: Info Durasi Hari */}
                           <div className="flex items-center gap-1 shrink-0">
                             <span
-                              className={`text-[8.5px] font-mono px-1 py-0 rounded ${
+                              className={`text-[8px] font-mono px-1 py-0 rounded ${
                                 isSpj
-                                  ? "bg-indigo-100/90 text-indigo-800"
-                                  : "bg-black/5 text-slate-700"
+                                  ? "bg-indigo-100/90 text-indigo-800 font-semibold"
+                                  : "bg-black/5 text-slate-700 font-semibold"
                               }`}
                             >
                               {totalDays > 1 ? `${totalDays} hr` : startDayStr}
                             </span>
-                            {isSpj && agenda.spjId && (
-                              <Link
-                                href={`/dashboard/spj/${agenda.spjId}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title="Langsung buka halaman Detail SPJ"
-                                className="p-0.5 rounded bg-white/80 hover:bg-indigo-600 text-indigo-700 hover:text-white transition-colors border border-indigo-200/80"
-                              >
-                                <ExternalLink className="w-2.5 h-2.5" />
-                              </Link>
-                            )}
                             {continuesRight && (
-                              <span className="text-[8px] text-indigo-500 font-bold">▶</span>
+                              <span className="text-[7.5px] text-indigo-500 font-bold">▶</span>
                             )}
                           </div>
                         </div>
@@ -831,24 +807,31 @@ export default function AgendaCalendarView({
                   </div>
                 )}
 
-                {/* Layer 4 (Desktop): Single-Day Agendas per Kolom Hari */}
+                {/* Layer 4 (Desktop): Single-Day Agendas per Kolom Hari (Kapasitas Dibatasi 2 Item Total) */}
                 <div className="hidden md:grid grid-cols-7 flex-1 min-h-0 relative z-10 pointer-events-none">
                   {weekDays.map((day) => {
                     const singleAgendas = getSingleDayAgendasForDay(day);
                     const colIdx = weekDays.findIndex((d) => isSameDay(d, day)) + 1;
-                    const hasRangeBar = spanSegments.some(
+
+                    const visibleBarsInCol = visibleSegments.filter(
                       (seg) => colIdx >= seg.startCol && colIdx <= seg.endCol
-                    );
-                    const maxVisible = hasRangeBar ? 1 : 2;
-                    const visibleAgendas = singleAgendas.slice(0, maxVisible);
-                    const hiddenCount = singleAgendas.length - maxVisible;
+                    ).length;
+
+                    const hiddenBarsInCol = hiddenSegments.filter(
+                      (seg) => colIdx >= seg.startCol && colIdx <= seg.endCol
+                    ).length;
+
+                    const singleSlotAvailable = Math.max(0, 2 - visibleBarsInCol);
+                    const visibleSingleAgendas = singleAgendas.slice(0, singleSlotAvailable);
+                    const hiddenSingleCount = singleAgendas.length - visibleSingleAgendas.length;
+                    const totalHiddenInCol = hiddenSingleCount + hiddenBarsInCol;
 
                     return (
                       <div
                         key={day.toISOString()}
                         className="px-1 pb-1 flex flex-col gap-0.5 overflow-hidden"
                       >
-                        {visibleAgendas.map((agenda) => {
+                        {visibleSingleAgendas.map((agenda) => {
                           const config =
                             KATEGORI_CONFIG[agenda.kategori] || KATEGORI_CONFIG.LAINNYA;
                           return (
@@ -860,8 +843,8 @@ export default function AgendaCalendarView({
                                 setIsDetailOpen(true);
                                 setSelectedDate(day);
                               }}
-                              className={`pointer-events-auto text-[9px] sm:text-[9.5px] px-1 py-[1.5px] rounded-sm border ${config.bg} ${config.text} ${config.border} truncate font-medium flex items-center justify-between gap-1 hover:brightness-[0.98] transition-all cursor-pointer flex-shrink-0 leading-tight`}
-                              title={agenda.judul}
+                              className={`pointer-events-auto text-[8.5px] sm:text-[9px] px-1 py-[1.5px] rounded-sm border ${config.bg} ${config.text} ${config.border} truncate font-medium flex items-center justify-between gap-1 hover:brightness-[0.98] transition-all cursor-pointer flex-shrink-0 leading-tight`}
+                              title={`${agenda.judul}${agenda.waktuMulai ? ` (${agenda.waktuMulai})` : ""}`}
                             >
                               <span className="truncate flex items-center gap-1 min-w-0">
                                 <span
@@ -870,7 +853,7 @@ export default function AgendaCalendarView({
                                 <span className="truncate">{agenda.judul}</span>
                               </span>
                               {agenda.waktuMulai && (
-                                <span className="text-[8px] font-mono opacity-70 shrink-0 ml-0.5">
+                                <span className="text-[7.5px] font-mono opacity-70 shrink-0 ml-0.5">
                                   {agenda.waktuMulai}
                                 </span>
                               )}
@@ -878,16 +861,16 @@ export default function AgendaCalendarView({
                           );
                         })}
 
-                        {hiddenCount > 0 && (
+                        {totalHiddenInCol > 0 && (
                           <div
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedDate(day);
                             }}
-                            className="pointer-events-auto text-[8.5px] font-bold text-slate-500 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 px-1 py-0.5 rounded text-center cursor-pointer transition-colors leading-none"
-                            title={`Klik untuk lihat ${hiddenCount} agenda lainnya di panel samping`}
+                            className="pointer-events-auto text-[8px] font-bold text-slate-500 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 px-1 py-0.5 rounded text-center cursor-pointer transition-colors leading-none"
+                            title={`Klik untuk lihat ${totalHiddenInCol} kegiatan lainnya pada tanggal ini di panel samping`}
                           >
-                            +{hiddenCount} lagi
+                            +{totalHiddenInCol} lagi
                           </div>
                         )}
                       </div>
