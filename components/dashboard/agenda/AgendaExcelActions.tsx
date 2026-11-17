@@ -13,12 +13,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { importAgendasFromExcel } from "@/app/actions/agenda";
+import { cn } from "@/lib/utils";
 
 interface AgendaExcelActionsProps {
   onImportSuccess?: () => void;
+  className?: string;
 }
 
-export function AgendaExcelActions({ onImportSuccess }: AgendaExcelActionsProps) {
+export function AgendaExcelActions({ onImportSuccess, className }: AgendaExcelActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -270,10 +272,13 @@ export function AgendaExcelActions({ onImportSuccess }: AgendaExcelActionsProps)
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="h-8.5 text-xs font-medium rounded-lg shadow-none bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 gap-1.5"
+        className={cn(
+          "h-7 sm:h-7 text-[11px] sm:text-[11px] font-medium rounded-md shadow-none bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 gap-1",
+          className
+        )}
       >
-        <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-        <span>Import Excel</span>
+        <FileSpreadsheet className="h-3 w-3 text-emerald-600 shrink-0" />
+        <span className="truncate">Import Excel</span>
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
