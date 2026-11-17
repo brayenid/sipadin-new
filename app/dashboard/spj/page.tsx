@@ -356,7 +356,16 @@ export default async function SpjListPage({
                               <Eye className="w-4 h-4" />
                             </Button>
                           </Link>
-                          <SpjDuplicateButton spjId={spj.id} />
+                          <SpjDuplicateButton
+                            spj={{
+                              id: spj.id,
+                              perihal: spj.perihal,
+                              kodeRekeningId: spj.kodeRekeningId,
+                              totalPengeluaran: spj.totalPengeluaran,
+                              jenisSpj: spj.jenisSpj,
+                              kodeRekening: spj.kodeRekening,
+                            }}
+                          />
                           <SpjDeleteButton spjId={spj.id} />
                         </div>
                       </TableCell>

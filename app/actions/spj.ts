@@ -321,7 +321,144 @@ export async function permanentDeleteSpj(spjId: string) {
   return true;
 }
 
-export async function duplicateSpjTransaction(spjId: string) {
+export type DuplicateSpjOptions = {
+  perihal?: string;
+  kodeRekeningId?: string;
+};
+
+export async function getSpjDuplicateContext(spjId: string) {
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, error: "Sesi anda telah berakhir. Silakan login kembali." };
+    }
+
+    const spj = await prisma.spj.findFirst({
+      where: {
+        id: spjId,
+        ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id })
+      },
+      include: {
+        kodeRekening: {
+          include: {
+            subKegiatan: {
+              include: {
+                kegiatan: {
+                  include: {
+                    tahunAnggaran: true
+                  }
+                }
+              }
+            }
+          }
+        },
+      }
+    });
+
+    if (!spj) {
+      return { success: false, error: "SPJ tidak ditemukan atau Anda tidak memiliki akses." };
+    }
+
+    // Ambil seluruh tahun anggaran dan subKegiatan yang bisa diakses user
+    const tahunAnggarans = await prisma.tahunAnggaran.findMany({
+      include: {
+        kegiatan: {
+          include: {
+            subKegiatan: {
+              where: session.user.role === "SUPER_ADMIN" ? undefined : {
+                users: { some: { id: session.user.id } }
+              },
+              include: {
+                rekening: {
+                  orderBy: { kodeRekening: "asc" }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: { tahun: "desc" }
+    });
+
+    type RekOption = {
+      id: string;
+      kodeRekening: string;
+      judulRekening: string;
+      sisaSaldo: number;
+      subKegiatanJudul: string;
+      subKegiatanKode: string;
+      tahun: string;
+    };
+
+    const rekeningMap = new Map<string, RekOption>();
+
+    tahunAnggarans.forEach((ta) => {
+      ta.kegiatan.forEach((k) => {
+        k.subKegiatan.forEach((sk) => {
+          sk.rekening.forEach((rek) => {
+            rekeningMap.set(rek.id, {
+              id: rek.id,
+              kodeRekening: rek.kodeRekening,
+              judulRekening: rek.judulRekening,
+              sisaSaldo: Number(rek.sisaSaldo),
+              subKegiatanJudul: sk.judulSub,
+              subKegiatanKode: sk.kodeSub,
+              tahun: ta.tahun,
+            });
+          });
+        });
+      });
+    });
+
+    // Pastikan rekening aktif SPJ ini ada di options
+    if (spj.kodeRekening && !rekeningMap.has(spj.kodeRekening.id)) {
+      rekeningMap.set(spj.kodeRekening.id, {
+        id: spj.kodeRekening.id,
+        kodeRekening: spj.kodeRekening.kodeRekening,
+        judulRekening: spj.kodeRekening.judulRekening,
+        sisaSaldo: Number(spj.kodeRekening.sisaSaldo),
+        subKegiatanJudul: spj.kodeRekening.subKegiatan?.judulSub || "-",
+        subKegiatanKode: spj.kodeRekening.subKegiatan?.kodeSub || "-",
+        tahun: spj.kodeRekening.subKegiatan?.kegiatan?.tahunAnggaran?.tahun || "-",
+      });
+    }
+
+    const rekeningOptions = Array.from(rekeningMap.values());
+    const currentYear = new Date().getFullYear().toString();
+    rekeningOptions.sort((a, b) => {
+      if (a.tahun === currentYear && b.tahun !== currentYear) return -1;
+      if (b.tahun === currentYear && a.tahun !== currentYear) return 1;
+      return a.kodeRekening.localeCompare(b.kodeRekening, "id");
+    });
+
+    return {
+      success: true,
+      data: {
+        id: spj.id,
+        perihal: spj.perihal || "",
+        jenisSpj: spj.jenisSpj,
+        kodeRekeningId: spj.kodeRekeningId,
+        totalPengeluaran: Number(spj.totalPengeluaran),
+        currentRekening: spj.kodeRekening ? {
+          id: spj.kodeRekening.id,
+          kodeRekening: spj.kodeRekening.kodeRekening,
+          judulRekening: spj.kodeRekening.judulRekening,
+          sisaSaldo: Number(spj.kodeRekening.sisaSaldo),
+          subKegiatanJudul: spj.kodeRekening.subKegiatan?.judulSub || "-",
+          tahun: spj.kodeRekening.subKegiatan?.kegiatan?.tahunAnggaran?.tahun || "-",
+        } : null,
+        rekeningOptions,
+      }
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal memuat konteks duplikasi SPJ." };
+  }
+}
+
+export async function duplicateSpjTransaction(
+  spjId: string,
+  options?: DuplicateSpjOptions
+) {
   try {
     const session = await auth();
     if (!session) {
@@ -344,8 +481,11 @@ export async function duplicateSpjTransaction(spjId: string) {
         throw new Error("SPJ tidak ditemukan atau Anda tidak memiliki akses.");
       }
 
-      // 2. Validasi Saldo
-      const rek = await tx.kodeRekening.findUnique({ where: { id: spj.kodeRekeningId } });
+      // Tentukan target mata anggaran (kode rekening)
+      const targetKodeRekeningId = options?.kodeRekeningId?.trim() || spj.kodeRekeningId;
+
+      // 2. Validasi Saldo pada target kode rekening
+      const rek = await tx.kodeRekening.findUnique({ where: { id: targetKodeRekeningId } });
       if (!rek) {
         throw new Error("Kode Rekening tidak ditemukan.");
       }
@@ -356,10 +496,10 @@ export async function duplicateSpjTransaction(spjId: string) {
         throw new Error(`Saldo tidak mencukupi untuk menduplikasi SPJ ini! Sisa saldo: Rp ${sisaFmt}, dibutuhkan: Rp ${butuhFmt}`);
       }
 
-      // 3. Kurangi Saldo
+      // 3. Kurangi Saldo pada target kode rekening
       if (spj.totalPengeluaran > BigInt(0)) {
         await tx.kodeRekening.update({
-          where: { id: spj.kodeRekeningId },
+          where: { id: targetKodeRekeningId },
           data: {
             sisaSaldo: {
               decrement: spj.totalPengeluaran
@@ -368,12 +508,16 @@ export async function duplicateSpjTransaction(spjId: string) {
         });
       }
 
-      // 4. Buat SPJ Baru
+      // 4. Buat SPJ Baru: gunakan perihal baru jika diberikan (tanpa embel-embel (Salinan))
+      const resolvedPerihal = options?.perihal !== undefined
+        ? options.perihal.trim()
+        : (spj.perihal || "");
+
       const newSpj = await tx.spj.create({
         data: {
           jenisSpj: spj.jenisSpj,
-          perihal: spj.perihal ? `${spj.perihal} (Salinan)` : "(Salinan)",
-          kodeRekeningId: spj.kodeRekeningId,
+          perihal: resolvedPerihal,
+          kodeRekeningId: targetKodeRekeningId,
           teamId: spj.teamId,
           createdById: session.user.id,
           totalPengeluaran: spj.totalPengeluaran,

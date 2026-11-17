@@ -1,92 +1,57 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Loader2, Copy } from "lucide-react";
-import { duplicateSpjTransaction } from "@/app/actions/spj";
+import { Copy } from "lucide-react";
+import SpjDuplicateModal, { type SpjDuplicateTarget } from "./SpjDuplicateModal";
 
-export default function SpjDuplicateButton({ spjId }: { spjId: string }) {
-  const router = useRouter();
+export default function SpjDuplicateButton({
+  spj,
+  spjId,
+  variant = "ghost",
+  size = "icon",
+  className = "h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50",
+  title = "Duplikat SPJ",
+  children,
+  onSuccess,
+}: {
+  spj?: SpjDuplicateTarget | string;
+  spjId?: string;
+  variant?: "ghost" | "outline" | "default" | "secondary";
+  size?: "icon" | "sm" | "default" | "lg";
+  className?: string;
+  title?: string;
+  children?: React.ReactNode;
+  onSuccess?: (newSpjId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleDuplicate = async () => {
-    setLoading(true);
-    try {
-      const res = await duplicateSpjTransaction(spjId);
-      if (!res.success) {
-        toast.error(res.error || "Gagal menduplikasi SPJ.");
-        setLoading(false);
-        return;
-      }
-
-      setOpen(false);
-      
-      // Delay sedikit agar animasi modal menutup (Radix UI) 
-      // bisa membersihkan pointer-events dari body sebelum routing
-      setTimeout(() => {
-        router.push(`/dashboard/spj/${res.newSpjId}`);
-      }, 300);
-      
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menduplikasi SPJ.");
-      setLoading(false);
-    }
-  };
+  // Normalisasi target SPJ agar mendukung passing object spj atau string spjId
+  const target: SpjDuplicateTarget =
+    typeof spj === "object" && spj !== null
+      ? spj
+      : { id: (typeof spj === "string" ? spj : spjId) || "" };
 
   return (
     <>
       <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+        variant={variant}
+        size={size}
+        className={className}
         onClick={() => setOpen(true)}
-        title="Duplikat SPJ"
+        title={title}
       >
-        <Copy className="w-4 h-4" />
+        {children || <Copy className="w-4 h-4" />}
       </Button>
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Duplikat SPJ ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini akan menyalin seluruh data SPJ ke entri baru.{" "}
-              <strong>Saldo pagu anggaran akan otomatis terpotong</strong> sebesar total pengeluaran SPJ ini.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                handleDuplicate();
-              }}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Copy className="w-4 h-4 mr-2" />
-              )}
-              Ya, Duplikat
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {open && (
+        <SpjDuplicateModal
+          isOpen={open}
+          onClose={() => setOpen(false)}
+          spj={target}
+          onSuccess={onSuccess}
+        />
+      )}
     </>
   );
 }

@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2, FileText, AlertTriangle, FolderPlus, ExternalLink } from 'lucide-react'
+import { Pencil, Loader2, Save, CheckCircle2, AlertCircle, Trash2, FileText, AlertTriangle, FolderPlus, ExternalLink, Copy } from 'lucide-react'
 import { updateSpjMasterData, deleteSpjTransaction } from '@/app/actions/spj'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { Combobox } from '@/components/ui/combobox'
+import SpjDuplicateButton from '../SpjDuplicateButton'
 import DopdTab from './DopdTab'
 import PersonelTab from './PersonelTab'
 import TelaahanTab from './TelaahanTab'
@@ -348,6 +349,14 @@ export default function SpjDetailTabs({
                     </div>
                   </DialogContent>
                 </Dialog>
+                <SpjDuplicateButton
+                  spj={spj}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50"
+                >
+                  <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5" /> Duplikat
+                </SpjDuplicateButton>
                 <Dialog open={openEdit} onOpenChange={setOpenEdit}>
                   <DialogTrigger
                     render={
