@@ -26,7 +26,8 @@ export default auth((req) => {
     pathname.startsWith("/api/presensi");
   const isPublicPage =
     pathname.startsWith("/p/absensi") ||
-    pathname.startsWith("/p/presensi");
+    pathname.startsWith("/p/presensi") ||
+    pathname.startsWith("/p/rekap");
 
   if (isApiAuth || isPublicApi || isPublicPage) return NextResponse.next();
 
@@ -45,6 +46,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/fonnte|api/ai|api/wa|api/absensi|api/presensi|p/absensi|p/presensi|_next/static|_next/image|favicon.ico|uploads|manifest\\..*|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/fonnte|api/ai|api/wa|api/absensi|api/presensi|p/absensi|p/presensi|p/rekap|_next/static|_next/image|favicon.ico|uploads|manifest\\..*|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

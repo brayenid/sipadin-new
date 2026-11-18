@@ -98,7 +98,7 @@ export default function BagikanRekapLiveModal({
       });
 
       if (res.success && res.token) {
-        const fullUrl = `${window.location.origin}/p/rekap/${res.token}`;
+        const fullUrl = `${window.location.origin}/p/rekap?token=${encodeURIComponent(res.token)}`;
         setCreatedUrl(fullUrl);
         toast.success("Tautan live monitor pimpinan berhasil dibuat!");
         fetchTokens();
@@ -270,7 +270,7 @@ export default function BagikanRekapLiveModal({
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {tokens.map((t) => {
-                  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/p/rekap/${t.token}`;
+                  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/p/rekap?token=${encodeURIComponent(t.token)}`;
                   return (
                     <div
                       key={t.id}

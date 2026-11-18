@@ -2588,6 +2588,9 @@ export async function processAgendasToRekap(
     jabatanPerwakilan?: string | null;
     waktuInput?: Date | string | null;
     lokasiText?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    distanceMeters?: number | null;
     isInsideRadius?: boolean | null;
     isNonUndangan: boolean;
   };
@@ -2600,6 +2603,9 @@ export async function processAgendasToRekap(
     waktu?: string | null;
     tempat?: string | null;
     kategori?: string | null;
+    targetLatitude?: number | null;
+    targetLongitude?: number | null;
+    radiusMeter?: number | null;
     isRecurring: boolean;
     isCancelledSession?: boolean;
     cancelReason?: string | null;
@@ -2746,15 +2752,19 @@ export async function processAgendasToRekap(
     const mapPesertaForKegiatan = (list: typeof processedPeserta): KegiatanPesertaItem[] =>
       list.map((p) => {
         let isInside: boolean | null = null;
+        let distMeters: number | null = null;
         if (
-          p.status === "HADIR" &&
           typeof p.latitude === "number" &&
           typeof p.longitude === "number" &&
           typeof centerLat === "number" &&
           typeof centerLng === "number"
         ) {
-          const dist = calculateDistanceMeters(centerLat, centerLng, p.latitude, p.longitude);
-          isInside = dist <= radiusMeters;
+          distMeters = Math.round(
+            calculateDistanceMeters(centerLat, centerLng, p.latitude, p.longitude)
+          );
+          if (p.status === "HADIR") {
+            isInside = distMeters <= radiusMeters;
+          }
         }
         return {
           id: p.id,
@@ -2769,6 +2779,9 @@ export async function processAgendasToRekap(
           jabatanPerwakilan: p.jabatanPerwakilan,
           waktuInput: p.waktuInput,
           lokasiText: p.lokasiText,
+          latitude: p.latitude ?? null,
+          longitude: p.longitude ?? null,
+          distanceMeters: distMeters,
           isInsideRadius: isInside,
           isNonUndangan: Boolean(p.isNonUndangan),
         };
@@ -2785,6 +2798,9 @@ export async function processAgendasToRekap(
         waktu: ag.waktu ?? null,
         tempat: ag.tempat ?? null,
         kategori: ag.kategori,
+        targetLatitude: centerLat,
+        targetLongitude: centerLng,
+        radiusMeter: radiusMeters,
         isRecurring: false,
         isCancelledSession: false,
         peserta: mapPesertaForKegiatan(processedPeserta),
@@ -2989,6 +3005,9 @@ export async function processAgendasToRekap(
           waktu: ag.waktu ?? null,
           tempat: ag.tempat ?? null,
           kategori: ag.kategori,
+          targetLatitude: centerLat,
+          targetLongitude: centerLng,
+          radiusMeter: radiusMeters,
           isRecurring: true,
           isCancelledSession: false,
           peserta: mapPesertaForKegiatan(sessionPeserta),

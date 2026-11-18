@@ -1,11 +1,22 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   buildGrafisData,
   type GrafisInput,
 } from "@/app/dashboard/presensi/rekap/grafis/buildGrafisData";
 import { getPublicRekapMonitorData } from "@/app/actions/absensi";
+import type { MonitorGpsPoint, MonitorGpsVenue } from "./MonitorGpsMap";
+
+const MonitorGpsMap = dynamic(() => import("./MonitorGpsMap"), {
+  ssr: false,
+  loading: () => (
+    <section className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs p-6 text-center text-xs font-semibold text-slate-500 dark:text-zinc-400">
+      Memuat peta sebaran titik GPS...
+    </section>
+  ),
+});
 import {
   RotateCcw,
   Maximize2,
@@ -22,6 +33,7 @@ import {
   ChevronUp,
   MapPin,
   Clock,
+  SlidersHorizontal,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 
@@ -38,6 +50,9 @@ export interface KegiatanPesertaItem {
   jabatanPerwakilan?: string | null;
   waktuInput?: Date | string | null;
   lokasiText?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceMeters?: number | null;
   isInsideRadius?: boolean | null;
   isNonUndangan: boolean;
 }
@@ -50,6 +65,9 @@ export interface KegiatanSessionItem {
   waktu?: string | null;
   tempat?: string | null;
   kategori?: string | null;
+  targetLatitude?: number | null;
+  targetLongitude?: number | null;
+  radiusMeter?: number | null;
   isRecurring: boolean;
   isCancelledSession?: boolean;
   cancelReason?: string | null;
@@ -77,6 +95,8 @@ interface PublicRekapMonitorClientProps {
 
 type ThemeMode = "light" | "dark" | "system";
 type SortDir = "asc" | "desc";
+type OpdShortcut = "NONE" | "TERAJIN" | "KRITIS" | "NOL";
+type PegawaiShortcut = "NONE" | "TERAJIN" | "JARANG" | "TIDAK_PERNAH";
 
 type OpdSortKey =
   | "instansi"
@@ -162,7 +182,7 @@ export default function PublicRekapMonitorClient({
 }: PublicRekapMonitorClientProps) {
   const [rekapData, setRekapData] = useState<MonitorRekapData>(initialRekapData);
   const [config, setConfig] = useState(initialConfig);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Default Auto-Refresh: OFF (false)
@@ -225,10 +245,27 @@ export default function PublicRekapMonitorClient({
     dir: "asc",
   });
 
+  // Shortcut Filter States
+  const [opdShortcut, setOpdShortcut] = useState<OpdShortcut>("NONE");
+  const [pegawaiShortcut, setPegawaiShortcut] = useState<PegawaiShortcut>("NONE");
+  const [openFilterMenu, setOpenFilterMenu] = useState<"opd" | "pegawai" | "kegiatan" | null>(null);
+
   const [opdSearch, setOpdSearch] = useState("");
   const [pegawaiSearch, setPegawaiSearch] = useState("");
   const [kegiatanSearch, setKegiatanSearch] = useState("");
   const [expandedKegiatanIds, setExpandedKegiatanIds] = useState<Record<string, boolean>>({});
+
+  // Tutup dropdown filter saat klik di luar
+  useEffect(() => {
+    if (!openFilterMenu) return;
+    const handleOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("[data-filter-dropdown]")) return;
+      setOpenFilterMenu(null);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [openFilterMenu]);
 
   const persistPreferences = useCallback(
     (patch: Record<string, any>) => {
@@ -243,6 +280,7 @@ export default function PublicRekapMonitorClient({
 
   // Load Theme & Filter State dari localStorage saat mount
   useEffect(() => {
+    setLastRefreshed(new Date());
     try {
       const savedTheme = localStorage.getItem(THEME_KEY) as ThemeMode | null;
       if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "system") {
@@ -255,6 +293,8 @@ export default function PublicRekapMonitorClient({
         if (parsed.opdFilters) setOpdFilters(parsed.opdFilters);
         if (parsed.pegawaiFilters) setPegawaiFilters(parsed.pegawaiFilters);
         if (parsed.kegiatanFilters) setKegiatanFilters(parsed.kegiatanFilters);
+        if (parsed.opdShortcut) setOpdShortcut(parsed.opdShortcut);
+        if (parsed.pegawaiShortcut) setPegawaiShortcut(parsed.pegawaiShortcut);
         if (parsed.opdSort) setOpdSort(parsed.opdSort);
         if (parsed.pegawaiSort) setPegawaiSort(parsed.pegawaiSort);
         if (parsed.kegiatanSort) setKegiatanSort(parsed.kegiatanSort);
@@ -359,6 +399,22 @@ export default function PublicRekapMonitorClient({
     });
   };
 
+  const toggleOpdShortcut = (val: Exclude<OpdShortcut, "NONE">) => {
+    setOpdShortcut((prev) => {
+      const next: OpdShortcut = prev === val ? "NONE" : val;
+      persistPreferences({ opdShortcut: next });
+      return next;
+    });
+  };
+
+  const togglePegawaiShortcut = (val: Exclude<PegawaiShortcut, "NONE">) => {
+    setPegawaiShortcut((prev) => {
+      const next: PegawaiShortcut = prev === val ? "NONE" : val;
+      persistPreferences({ pegawaiShortcut: next });
+      return next;
+    });
+  };
+
   const resetAllFilters = () => {
     const defaultOpd = {
       kritisOnly: false,
@@ -383,6 +439,8 @@ export default function PublicRekapMonitorClient({
     setOpdFilters(defaultOpd);
     setPegawaiFilters(defaultPeg);
     setKegiatanFilters(defaultKeg);
+    setOpdShortcut("NONE");
+    setPegawaiShortcut("NONE");
     setPesertaStatusFilter("ALL");
     setOpdSearch("");
     setPegawaiSearch("");
@@ -391,6 +449,8 @@ export default function PublicRekapMonitorClient({
       opdFilters: defaultOpd,
       pegawaiFilters: defaultPeg,
       kegiatanFilters: defaultKeg,
+      opdShortcut: "NONE",
+      pegawaiShortcut: "NONE",
     });
   };
 
@@ -439,8 +499,8 @@ export default function PublicRekapMonitorClient({
     }
   };
 
-  // Daftar 10 OPD & Pejabat Terajin
-  const topDiligentData = useMemo(() => {
+  // Hitung metrik KPI OPD Kritis & Nol Hadir
+  const opdAlertCounts = useMemo(() => {
     const unitSet =
       config.selectedUnits && config.selectedUnits.length > 0
         ? new Set(config.selectedUnits)
@@ -448,23 +508,6 @@ export default function PublicRekapMonitorClient({
 
     const opds = (rekapData.opdSummary || []).filter(
       (o) => o.totalDiundang > 0 && (!unitSet || unitSet.has(o.instansi))
-    );
-    const pegawais = (rekapData.pegawaiSummary || []).filter(
-      (p) => p.totalDiundang >= 1 && (!unitSet || unitSet.has(p.instansi))
-    );
-
-    const opdTerajin = [...opds].sort(
-      (a, b) =>
-        b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
-        b.persentaseKehadiran - a.persentaseKehadiran ||
-        a.tidakHadir - b.tidakHadir
-    );
-
-    const pegawaiTerajin = [...pegawais].sort(
-      (a, b) =>
-        b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
-        b.persentaseKehadiran - a.persentaseKehadiran ||
-        (a.tidakHadir || 0) - (b.tidakHadir || 0)
     );
 
     const opdKritisCount = opds.filter(
@@ -474,8 +517,6 @@ export default function PublicRekapMonitorClient({
     const opdZeroCount = opds.filter((o) => o.hadir + o.mewakili === 0).length;
 
     return {
-      opdTerajin,
-      pegawaiTerajin,
       opdKritisCount,
       opdZeroCount,
     };
@@ -534,7 +575,29 @@ export default function PublicRekapMonitorClient({
       list = list.filter((o) => o.tidakHadir > 0);
     }
 
+    if (opdShortcut === "TERAJIN") {
+      list = list.filter((o) => o.hadir + o.mewakili > 0);
+    } else if (opdShortcut === "KRITIS") {
+      list = list.filter((o) => o.totalDiundang > 0 && o.persentaseKehadiran < 60);
+    } else if (opdShortcut === "NOL") {
+      list = list.filter((o) => o.totalDiundang > 0 && o.hadir + o.mewakili === 0);
+    }
+
     list.sort((a, b) => {
+      if (opdShortcut === "TERAJIN") {
+        return (
+          b.persentaseKehadiran - a.persentaseKehadiran ||
+          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
+          a.tidakHadir - b.tidakHadir
+        );
+      }
+      if (opdShortcut === "KRITIS") {
+        return a.persentaseKehadiran - b.persentaseKehadiran || b.tidakHadir - a.tidakHadir;
+      }
+      if (opdShortcut === "NOL") {
+        return b.tidakHadir - a.tidakHadir || a.instansi.localeCompare(b.instansi, "id");
+      }
+
       const m = opdSort.dir === "asc" ? 1 : -1;
       switch (opdSort.key) {
         case "instansi":
@@ -557,7 +620,7 @@ export default function PublicRekapMonitorClient({
       }
     });
     return list;
-  }, [rekapData.opdSummary, config.selectedUnits, opdSearch, opdFilters, opdSort]);
+  }, [rekapData.opdSummary, config.selectedUnits, opdSearch, opdFilters, opdShortcut, opdSort]);
 
   // Filter Tabel Pegawai & Jabatan
   const filteredPegawaiList = useMemo(() => {
@@ -596,10 +659,41 @@ export default function PublicRekapMonitorClient({
       list = list.filter((p) => (p.hadirLuarRadius || 0) > 0);
     }
 
+    if (pegawaiShortcut === "TERAJIN") {
+      list = list.filter((p) => p.hadir + p.mewakili > 0);
+    } else if (pegawaiShortcut === "JARANG") {
+      list = list.filter(
+        (p) => p.totalDiundang > 0 && p.hadir + p.mewakili > 0 && p.persentaseKehadiran < 60
+      );
+    } else if (pegawaiShortcut === "TIDAK_PERNAH") {
+      list = list.filter((p) => p.totalDiundang > 0 && p.hadir + p.mewakili === 0);
+    }
+
     list.sort((a, b) => {
-      const m = pegawaiSort.dir === "asc" ? 1 : -1;
       const aHadir = a.hadir + a.mewakili;
       const bHadir = b.hadir + b.mewakili;
+
+      if (pegawaiShortcut === "TERAJIN") {
+        return (
+          b.persentaseKehadiran - a.persentaseKehadiran ||
+          bHadir - aHadir ||
+          (a.tidakHadir || 0) - (b.tidakHadir || 0)
+        );
+      }
+      if (pegawaiShortcut === "JARANG") {
+        return (
+          a.persentaseKehadiran - b.persentaseKehadiran ||
+          (b.tidakHadir || 0) - (a.tidakHadir || 0)
+        );
+      }
+      if (pegawaiShortcut === "TIDAK_PERNAH") {
+        return (
+          (b.tidakHadir || 0) - (a.tidakHadir || 0) ||
+          b.totalDiundang - a.totalDiundang
+        );
+      }
+
+      const m = pegawaiSort.dir === "asc" ? 1 : -1;
       switch (pegawaiSort.key) {
         case "nama":
           return m * a.nama.localeCompare(b.nama, "id");
@@ -624,7 +718,14 @@ export default function PublicRekapMonitorClient({
       }
     });
     return list;
-  }, [rekapData.pegawaiSummary, config.selectedUnits, pegawaiSearch, pegawaiFilters, pegawaiSort]);
+  }, [
+    rekapData.pegawaiSummary,
+    config.selectedUnits,
+    pegawaiSearch,
+    pegawaiFilters,
+    pegawaiShortcut,
+    pegawaiSort,
+  ]);
 
   // Pengolahan & Filter Daftar Kegiatan Beserta Undangan dan Kehadiran Lengkap
   const filteredKegiatanList = useMemo(() => {
@@ -806,23 +907,96 @@ export default function PublicRekapMonitorClient({
     setExpandedKegiatanIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Ekstrak titik GPS presensi & titik venue untuk peta Leaflet
+  const gpsMapData = useMemo(() => {
+    const unitSet =
+      config.selectedUnits && config.selectedUnits.length > 0
+        ? new Set(config.selectedUnits)
+        : null;
+
+    const points: MonitorGpsPoint[] = [];
+    const venues: MonitorGpsVenue[] = [];
+
+    for (const keg of rekapData.kegiatanList || []) {
+      if (typeof keg.targetLatitude === "number" && typeof keg.targetLongitude === "number") {
+        venues.push({
+          kegiatanId: keg.id,
+          namaKegiatan: keg.namaKegiatan,
+          tanggal: keg.tanggal,
+          tempat: keg.tempat,
+          latitude: keg.targetLatitude,
+          longitude: keg.targetLongitude,
+          radiusMeter: keg.radiusMeter || 50,
+        });
+      }
+
+      for (const p of keg.peserta || []) {
+        if (unitSet && !unitSet.has(p.instansi)) continue;
+        if (config.onlyInvited && p.isNonUndangan) continue;
+        if (typeof p.latitude !== "number" || typeof p.longitude !== "number") continue;
+
+        points.push({
+          id: `${keg.id}_${p.id}`,
+          kegiatanId: keg.id,
+          namaKegiatan: keg.namaKegiatan,
+          tanggal: keg.tanggal,
+          tempat: keg.tempat,
+          nama: p.nama,
+          jabatan: p.jabatan,
+          instansi: p.instansi,
+          eselon: p.eselon,
+          status: p.status,
+          waktuInput: p.waktuInput,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          distanceMeters: p.distanceMeters,
+          isInsideRadius: p.isInsideRadius,
+        });
+      }
+    }
+
+    // Urutkan agar titik di luar radius muncul paling atas di daftar peta
+    points.sort((a, b) => {
+      const aOut = a.isInsideRadius === false ? 0 : 1;
+      const bOut = b.isInsideRadius === false ? 0 : 1;
+      if (aOut !== bOut) return aOut - bOut;
+      const ta = a.waktuInput ? new Date(a.waktuInput).getTime() : 0;
+      const tb = b.waktuInput ? new Date(b.waktuInput).getTime() : 0;
+      return tb - ta;
+    });
+
+    return { points, venues };
+  }, [rekapData.kegiatanList, config.selectedUnits, config.onlyInvited]);
+
   const totalPartisipasi = grafis.status.hadir + grafis.status.mewakili;
   const totalPresensiMasuk = totalPartisipasi + grafis.status.izin + grafis.status.tidakHadir;
 
+  const opdActiveFilterCount =
+    Number(opdFilters.kritisOnly) +
+    Number(opdFilters.waspadaOnly) +
+    Number(opdFilters.tertibOnly) +
+    Number(opdFilters.zeroOnly) +
+    Number(opdFilters.hasAlpaOnly);
+
+  const pegawaiActiveFilterCount =
+    Number(pegawaiFilters.alpaOnly) +
+    Number(pegawaiFilters.luarTitikOnly) +
+    Number(!pegawaiFilters.eselon2) +
+    Number(!pegawaiFilters.eselon3) +
+    Number(!pegawaiFilters.nonEselon);
+
+  const kegiatanActiveFilterCount =
+    Number(kegiatanFilters.adaAlpa) +
+    Number(kegiatanFilters.lowAttendance) +
+    Number(kegiatanFilters.adaLuarTitik) +
+    Number(kegiatanFilters.expandAll);
+
   const isAnyFilterActive =
-    opdFilters.kritisOnly ||
-    opdFilters.waspadaOnly ||
-    opdFilters.tertibOnly ||
-    opdFilters.zeroOnly ||
-    opdFilters.hasAlpaOnly ||
-    pegawaiFilters.alpaOnly ||
-    pegawaiFilters.luarTitikOnly ||
-    !pegawaiFilters.eselon2 ||
-    !pegawaiFilters.eselon3 ||
-    !pegawaiFilters.nonEselon ||
-    kegiatanFilters.adaAlpa ||
-    kegiatanFilters.lowAttendance ||
-    kegiatanFilters.adaLuarTitik ||
+    opdActiveFilterCount > 0 ||
+    pegawaiActiveFilterCount > 0 ||
+    kegiatanActiveFilterCount > 0 ||
+    opdShortcut !== "NONE" ||
+    pegawaiShortcut !== "NONE" ||
     pesertaStatusFilter !== "ALL" ||
     Boolean(opdSearch) ||
     Boolean(pegawaiSearch) ||
@@ -830,7 +1004,7 @@ export default function PublicRekapMonitorClient({
 
   return (
     <div className={resolvedDark ? "dark" : ""}>
-      <div className="min-h-screen w-full bg-slate-100 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
+      <div className="min-h-screen w-full bg-slate-200/70 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
         {/* 1. TOP COMMAND BAR */}
         <header className="sticky top-0 z-30 shrink-0 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
@@ -864,9 +1038,14 @@ export default function PublicRekapMonitorClient({
               </button>
             )}
 
-            <span className="hidden lg:inline-block text-xs font-semibold tabular-nums text-slate-600 dark:text-zinc-400 mr-1.5">
-              {formatWita(lastRefreshed, "HH:mm:ss")} WITA
-            </span>
+            {lastRefreshed && (
+              <span
+                suppressHydrationWarning
+                className="hidden lg:inline-block text-xs font-semibold tabular-nums text-slate-600 dark:text-zinc-400 mr-1.5"
+              >
+                {formatWita(lastRefreshed, "HH:mm:ss")} WITA
+              </span>
+            )}
 
             {/* Auto Refresh Toggle */}
             <button
@@ -970,8 +1149,9 @@ export default function PublicRekapMonitorClient({
           </div>
         </header>
 
+        <div className="p-2.5 sm:p-4 space-y-3 sm:space-y-4">
         {/* 2. METRIC LEDGER STRIP (KONTRAS TINGGI, ANGKA SAN-SERIF TABULAR JELAS) */}
-        <section className="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-zinc-800">
+        <section className="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-zinc-800">
           <div className="px-4 py-3 flex flex-col justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400">
               Capaian Kehadiran
@@ -1034,10 +1214,10 @@ export default function PublicRekapMonitorClient({
             </span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-2xl font-extrabold tabular-nums text-rose-700 dark:text-rose-400">
-                {topDiligentData.opdKritisCount}
+                {opdAlertCounts.opdKritisCount}
               </span>
               <span className="text-xs font-semibold tabular-nums text-slate-600 dark:text-zinc-400">
-                Nol Hadir: {topDiligentData.opdZeroCount}
+                Nol Hadir: {opdAlertCounts.opdZeroCount}
               </span>
             </div>
           </div>
@@ -1057,83 +1237,10 @@ export default function PublicRekapMonitorClient({
           </div>
         </section>
 
-        {/* 3. STRIP ANALITIK RINGKAS: PERHATIAN PIMPINAN, ESELON, & TREN 12 BULAN */}
-        <section className="shrink-0 grid grid-cols-1 lg:grid-cols-12 bg-slate-50 dark:bg-zinc-900/70 border-b border-slate-300 dark:border-zinc-800 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-zinc-800">
-          {/* Kolom 1: Sorotan OPD & Pejabat Terajin Lengkap (5 Col) */}
-          <div className="lg:col-span-5 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
-                  OPD Terajin ({topDiligentData.opdTerajin.length})
-                </span>
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                  Hadir / Capaian
-                </span>
-              </div>
-              {topDiligentData.opdTerajin.length === 0 ? (
-                <p className="text-xs font-medium text-slate-600 dark:text-zinc-400 py-1.5">
-                  Belum ada data kehadiran OPD.
-                </p>
-              ) : (
-                <div className="max-h-[190px] overflow-y-auto pr-1 space-y-1">
-                  {topDiligentData.opdTerajin.map((o, idx) => (
-                    <div
-                      key={o.instansi}
-                      className="flex items-center justify-between text-xs gap-2"
-                    >
-                      <span
-                        className="truncate text-slate-900 dark:text-zinc-100 font-semibold"
-                        title={o.instansi}
-                      >
-                        {idx + 1}. {o.instansi}
-                      </span>
-                      <span className="text-xs shrink-0 tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
-                        {o.hadir + o.mewakili} Hadir · {o.persentaseKehadiran}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
-                  Pejabat / Individu Terajin ({topDiligentData.pegawaiTerajin.length})
-                </span>
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                  Hadir / Capaian
-                </span>
-              </div>
-              {topDiligentData.pegawaiTerajin.length === 0 ? (
-                <p className="text-xs font-medium text-slate-600 dark:text-zinc-400 py-1.5">
-                  Belum ada data kehadiran individu.
-                </p>
-              ) : (
-                <div className="max-h-[190px] overflow-y-auto pr-1 space-y-1">
-                  {topDiligentData.pegawaiTerajin.map((p, idx) => (
-                    <div
-                      key={`${p.nama}_${idx}`}
-                      className="flex items-center justify-between text-xs gap-2"
-                    >
-                      <span
-                        className="truncate text-slate-900 dark:text-zinc-100 font-semibold"
-                        title={`${p.nama} - ${p.jabatan || p.instansi}`}
-                      >
-                        {idx + 1}. {p.nama}
-                      </span>
-                      <span className="text-xs shrink-0 tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
-                        {p.hadir + p.mewakili} Hadir · {p.persentaseKehadiran}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Kolom 2: Kepatuhan per Jenjang Eselon (3 Col) */}
-          <div className="lg:col-span-3 px-4 py-3 flex flex-col justify-between">
+        {/* 3. STRIP ANALITIK RINGKAS: ESELON & TREN 12 BULAN */}
+        <section className="shrink-0 grid grid-cols-1 lg:grid-cols-12 bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-zinc-800">
+          {/* Kolom 1: Kepatuhan per Jenjang Eselon (5 Col) */}
+          <div className="lg:col-span-5 px-4 py-3 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
                 Rasio per Jenjang Eselon
@@ -1162,8 +1269,8 @@ export default function PublicRekapMonitorClient({
             </div>
           </div>
 
-          {/* Kolom 3: Matriks Tren 12 Bulan Penuh (4 Col) */}
-          <div className="lg:col-span-4 px-4 py-3 flex flex-col justify-between">
+          {/* Kolom 2: Matriks Tren 12 Bulan Penuh (7 Col) */}
+          <div className="lg:col-span-7 px-4 py-3 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
                 Tren Capaian Bulanan (%)
@@ -1210,11 +1317,11 @@ export default function PublicRekapMonitorClient({
         </section>
 
         {/* 4. DUAL-PANE WORKSPACE: TABEL OPD (KIRI) & TABEL JABATAN/INDIVIDU (KANAN) */}
-        <main className="grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x divide-slate-300 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800">
+        <main className="grid grid-cols-1 xl:grid-cols-12 gap-3 sm:gap-4">
           {/* PANE KIRI: TABEL PERANGKAT DAERAH (OPD) */}
-          <section className="xl:col-span-6 flex flex-col min-w-0">
+          <section className="xl:col-span-6 flex flex-col min-w-0 bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs">
             {/* Toolbar Filter OPD */}
-            <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
+            <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 rounded-t-lg border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
@@ -1245,62 +1352,110 @@ export default function PublicRekapMonitorClient({
                 </div>
               </div>
 
-              {/* Checkbox Filter Bar OPD (Persisted in localStorage) */}
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-zinc-300">
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={opdFilters.kritisOnly}
-                    onChange={(e) => updateOpdFilter("kritisOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Kritis (&lt; 60%)</span>
-                </label>
+              {/* Dropdown Filter + Shortcut OPD */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                <div className="relative" data-filter-dropdown>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenFilterMenu((prev) => (prev === "opd" ? null : "opd"))
+                    }
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border transition-colors ${
+                      opdActiveFilterCount > 0 || openFilterMenu === "opd"
+                        ? "bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-slate-900 dark:border-zinc-100"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Filter</span>
+                    {opdActiveFilterCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white/20 dark:bg-zinc-900/20">
+                        {opdActiveFilterCount}
+                      </span>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={opdFilters.waspadaOnly}
-                    onChange={(e) => updateOpdFilter("waspadaOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Waspada (60–79%)</span>
-                </label>
+                  {openFilterMenu === "opd" && (
+                    <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={opdFilters.kritisOnly}
+                          onChange={(e) => updateOpdFilter("kritisOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Kritis (&lt; 60%)</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={opdFilters.waspadaOnly}
+                          onChange={(e) => updateOpdFilter("waspadaOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Waspada (60-79%)</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={opdFilters.tertibOnly}
+                          onChange={(e) => updateOpdFilter("tertibOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Tertib (≥ 80%)</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={opdFilters.hasAlpaOnly}
+                          onChange={(e) => updateOpdFilter("hasAlpaOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Ada Alpa</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={opdFilters.zeroOnly}
+                          onChange={(e) => updateOpdFilter("zeroOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>0% Hadir</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={opdFilters.tertibOnly}
-                    onChange={(e) => updateOpdFilter("tertibOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Tertib (≥ 80%)</span>
-                </label>
+                <span className="text-slate-300 dark:text-zinc-700">|</span>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={opdFilters.hasAlpaOnly}
-                    onChange={(e) => updateOpdFilter("hasAlpaOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Ada Alpa</span>
-                </label>
-
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={opdFilters.zeroOnly}
-                    onChange={(e) => updateOpdFilter("zeroOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>0% Hadir</span>
-                </label>
+                {(
+                  [
+                    { id: "TERAJIN", label: "OPD Terajin" },
+                    { id: "KRITIS", label: "Kritis (< 60%)" },
+                    { id: "NOL", label: "0% Hadir" },
+                  ] as const
+                ).map((sc) => (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => toggleOpdShortcut(sc.id)}
+                    className={`px-2.5 py-1 rounded border text-xs font-bold transition-colors ${
+                      opdShortcut === sc.id
+                        ? sc.id === "TERAJIN"
+                          ? "bg-emerald-700 text-white border-emerald-700"
+                          : "bg-rose-700 text-white border-rose-700"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {sc.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Tabel Data OPD */}
-            <div className="overflow-auto max-h-[460px]">
+            <div className="overflow-auto max-h-[460px] rounded-b-lg">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 sticky top-0 z-10 border-b border-slate-300 dark:border-zinc-800">
                   <tr>
@@ -1462,9 +1617,9 @@ export default function PublicRekapMonitorClient({
           </section>
 
           {/* PANE KANAN: TABEL JABATAN & PEGAWAI (INDIVIDU) */}
-          <section className="xl:col-span-6 flex flex-col min-w-0">
+          <section className="xl:col-span-6 flex flex-col min-w-0 bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs">
             {/* Toolbar Filter Pegawai */}
-            <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
+            <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 rounded-t-lg border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
@@ -1495,62 +1650,117 @@ export default function PublicRekapMonitorClient({
                 </div>
               </div>
 
-              {/* Checkbox Filter Bar Pegawai (Persisted in localStorage) */}
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-zinc-300">
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={pegawaiFilters.alpaOnly}
-                    onChange={(e) => updatePegawaiFilter("alpaOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Ada Alpa</span>
-                </label>
+              {/* Dropdown Filter + Shortcut Pegawai */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                <div className="relative" data-filter-dropdown>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenFilterMenu((prev) => (prev === "pegawai" ? null : "pegawai"))
+                    }
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border transition-colors ${
+                      pegawaiActiveFilterCount > 0 || openFilterMenu === "pegawai"
+                        ? "bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-slate-900 dark:border-zinc-100"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Filter</span>
+                    {pegawaiActiveFilterCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white/20 dark:bg-zinc-900/20">
+                        {pegawaiActiveFilterCount}
+                      </span>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={pegawaiFilters.luarTitikOnly}
-                    onChange={(e) => updatePegawaiFilter("luarTitikOnly", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Luar Titik Lokasi</span>
-                </label>
+                  {openFilterMenu === "pegawai" && (
+                    <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pegawaiFilters.alpaOnly}
+                          onChange={(e) => updatePegawaiFilter("alpaOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Ada Alpa</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pegawaiFilters.luarTitikOnly}
+                          onChange={(e) => updatePegawaiFilter("luarTitikOnly", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Luar Titik Lokasi</span>
+                      </label>
+                      <div className="border-t border-slate-200 dark:border-zinc-800 my-1 pt-1">
+                        <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                          Jenjang Eselon
+                        </span>
+                      </div>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pegawaiFilters.eselon2}
+                          onChange={(e) => updatePegawaiFilter("eselon2", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Eselon II</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pegawaiFilters.eselon3}
+                          onChange={(e) => updatePegawaiFilter("eselon3", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Eselon III</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pegawaiFilters.nonEselon}
+                          onChange={(e) => updatePegawaiFilter("nonEselon", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Staf / Non-Eselon</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={pegawaiFilters.eselon2}
-                    onChange={(e) => updatePegawaiFilter("eselon2", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Eselon II</span>
-                </label>
+                <span className="text-slate-300 dark:text-zinc-700">|</span>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={pegawaiFilters.eselon3}
-                    onChange={(e) => updatePegawaiFilter("eselon3", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Eselon III</span>
-                </label>
-
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={pegawaiFilters.nonEselon}
-                    onChange={(e) => updatePegawaiFilter("nonEselon", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Staf / Non-Eselon</span>
-                </label>
+                {(
+                  [
+                    { id: "TERAJIN", label: "Pegawai Terajin" },
+                    { id: "JARANG", label: "Jarang Absen" },
+                    { id: "TIDAK_PERNAH", label: "Tidak Pernah Hadir" },
+                  ] as const
+                ).map((sc) => (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => togglePegawaiShortcut(sc.id)}
+                    className={`px-2.5 py-1 rounded border text-xs font-bold transition-colors ${
+                      pegawaiShortcut === sc.id
+                        ? sc.id === "TERAJIN"
+                          ? "bg-emerald-700 text-white border-emerald-700"
+                          : sc.id === "JARANG"
+                          ? "bg-amber-600 text-white border-amber-600"
+                          : "bg-rose-700 text-white border-rose-700"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {sc.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Tabel Data Pegawai */}
-            <div className="overflow-auto max-h-[460px]">
+            <div className="overflow-auto max-h-[460px] rounded-b-lg">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 sticky top-0 z-10 border-b border-slate-300 dark:border-zinc-800">
                   <tr>
@@ -1732,10 +1942,17 @@ export default function PublicRekapMonitorClient({
           </section>
         </main>
 
-        {/* 5. DAFTAR KEGIATAN, UNDANGAN & KEHADIRAN LENGKAP */}
-        <section className="bg-white dark:bg-zinc-900">
+        {/* 5. PETA SEBARAN TITIK GPS PRESENSI (LEAFLET) */}
+        <MonitorGpsMap
+          points={gpsMapData.points}
+          venues={gpsMapData.venues}
+          isDark={resolvedDark}
+        />
+
+        {/* 6. DAFTAR KEGIATAN, UNDANGAN & KEHADIRAN LENGKAP */}
+        <section className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-300 dark:border-zinc-800 shadow-2xs">
           {/* Toolbar Filter Kegiatan */}
-          <div className="p-3 sm:px-5 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
+          <div className="p-3 sm:px-5 bg-slate-50 dark:bg-zinc-900 rounded-t-lg border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
@@ -1766,52 +1983,77 @@ export default function PublicRekapMonitorClient({
               </div>
             </div>
 
-            {/* Checkbox Filter Bar Kegiatan (Persisted in localStorage) */}
+            {/* Dropdown Filter Kegiatan + Shortcut Status Peserta */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-zinc-300">
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={kegiatanFilters.adaAlpa}
-                    onChange={(e) => updateKegiatanFilter("adaAlpa", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Ada Alpa</span>
-                </label>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                <div className="relative" data-filter-dropdown>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenFilterMenu((prev) => (prev === "kegiatan" ? null : "kegiatan"))
+                    }
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border transition-colors ${
+                      kegiatanActiveFilterCount > 0 || openFilterMenu === "kegiatan"
+                        ? "bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-slate-900 dark:border-zinc-100"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Filter</span>
+                    {kegiatanActiveFilterCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white/20 dark:bg-zinc-900/20">
+                        {kegiatanActiveFilterCount}
+                      </span>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={kegiatanFilters.lowAttendance}
-                    onChange={(e) => updateKegiatanFilter("lowAttendance", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Capaian &lt; 80%</span>
-                </label>
+                  {openFilterMenu === "kegiatan" && (
+                    <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={kegiatanFilters.adaAlpa}
+                          onChange={(e) => updateKegiatanFilter("adaAlpa", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Ada Alpa</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={kegiatanFilters.lowAttendance}
+                          onChange={(e) => updateKegiatanFilter("lowAttendance", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Capaian &lt; 80%</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={kegiatanFilters.adaLuarTitik}
+                          onChange={(e) => updateKegiatanFilter("adaLuarTitik", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Ada Luar Titik</span>
+                      </label>
+                      <div className="border-t border-slate-200 dark:border-zinc-800 my-1 pt-1" />
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={kegiatanFilters.expandAll}
+                          onChange={(e) => updateKegiatanFilter("expandAll", e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                        />
+                        <span>Buka Semua Rincian</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={kegiatanFilters.adaLuarTitik}
-                    onChange={(e) => updateKegiatanFilter("adaLuarTitik", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Ada Luar Titik</span>
-                </label>
+                <span className="text-slate-300 dark:text-zinc-700">|</span>
 
-                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={kegiatanFilters.expandAll}
-                    onChange={(e) => updateKegiatanFilter("expandAll", e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
-                  />
-                  <span>Buka Semua Rincian</span>
-                </label>
-              </div>
-
-              {/* Filter Status Peserta (Global untuk rincian undangan) */}
-              <div className="flex flex-wrap items-center gap-1 text-[11px] font-bold">
+                {/* Shortcut Status Peserta */}
                 {(
                   [
                     { id: "ALL", label: "Semua Status" },
@@ -1825,7 +2067,7 @@ export default function PublicRekapMonitorClient({
                     key={st.id}
                     type="button"
                     onClick={() => setPesertaStatusFilter(st.id)}
-                    className={`px-2 py-1 rounded border transition-colors ${
+                    className={`px-2 py-1 rounded border text-[11px] font-bold transition-colors ${
                       pesertaStatusFilter === st.id
                         ? "bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-slate-900 dark:border-zinc-100"
                         : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
@@ -1839,7 +2081,7 @@ export default function PublicRekapMonitorClient({
           </div>
 
           {/* Tabel Daftar Kegiatan */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-b-lg">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 border-b border-slate-300 dark:border-zinc-800">
                 <tr>
@@ -2247,6 +2489,7 @@ export default function PublicRekapMonitorClient({
             </table>
           </div>
         </section>
+        </div>
       </div>
     </div>
   );
