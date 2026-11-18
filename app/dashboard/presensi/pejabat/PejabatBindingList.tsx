@@ -64,8 +64,11 @@ export default function PejabatBindingList({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Local state for items
+  // Local state for items and loaded baseline items (for dirty checking across pagination)
   const [internalList, setInternalList] = useState<Pegawai[]>(
+    initialItems.map((p) => ({ ...p }))
+  );
+  const [allLoadedOriginals, setAllLoadedOriginals] = useState<Pegawai[]>(
     initialItems.map((p) => ({ ...p }))
   );
   const [page, setPage] = useState(pagination.page || 1);
@@ -77,6 +80,7 @@ export default function PejabatBindingList({
   // Sync internalList when initialItems updates from server
   useEffect(() => {
     setInternalList(initialItems.map((p) => ({ ...p })));
+    setAllLoadedOriginals(initialItems.map((p) => ({ ...p })));
     setPage(pagination.page || 1);
     setHasMore(pagination.totalPages > pagination.page);
   }, [initialItems, pagination]);
@@ -127,6 +131,11 @@ export default function PejabatBindingList({
       });
 
       if (res.items && res.items.length > 0) {
+        setAllLoadedOriginals((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const fresh = res.items.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...fresh.map((p) => ({ ...p }))];
+        });
         setInternalList((prev) => {
           const existingIds = new Set(prev.map((i) => i.id));
           const fresh = res.items.filter((i) => !existingIds.has(i.id));
@@ -165,7 +174,7 @@ export default function PejabatBindingList({
   // Deteksi perubahan lokal
   const getDirtyItems = () => {
     return internalList.filter((item) => {
-      const original = initialItems.find((p) => p.id === item.id);
+      const original = allLoadedOriginals.find((p) => p.id === item.id) || initialItems.find((p) => p.id === item.id);
       if (!original) return false;
       return (
         original.wajibAbsenOpd !== item.wajibAbsenOpd ||
@@ -411,7 +420,7 @@ export default function PejabatBindingList({
                   </TableRow>
                 ) : (
                   internalList.map((item, idx) => {
-                    const original = initialItems.find((p) => p.id === item.id);
+                    const original = allLoadedOriginals.find((p) => p.id === item.id) || initialItems.find((p) => p.id === item.id);
                     const isDirty =
                       original &&
                       (original.wajibAbsenOpd !== item.wajibAbsenOpd ||

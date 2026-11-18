@@ -74,6 +74,9 @@ export default function PegawaiInternalList({
   const [isPending, startTransition] = useTransition();
 
   const [bulkData, setBulkData] = useState<Pegawai[]>(initialData.map((p) => ({ ...p })));
+  const [allLoadedOriginals, setAllLoadedOriginals] = useState<Pegawai[]>(
+    initialData.map((p) => ({ ...p }))
+  );
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -99,6 +102,7 @@ export default function PegawaiInternalList({
   // Sync state when initialData changes from URL search / router
   useEffect(() => {
     setBulkData(initialData.map((p) => ({ ...p })));
+    setAllLoadedOriginals(initialData.map((p) => ({ ...p })));
     setPage(pagination?.page || 1);
     setHasMore((pagination?.totalPages || 1) > (pagination?.page || 1));
   }, [initialData, pagination]);
@@ -120,6 +124,11 @@ export default function PegawaiInternalList({
       });
 
       if (res.items && res.items.length > 0) {
+        setAllLoadedOriginals((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const fresh = res.items.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...fresh.map((p) => ({ ...p }))];
+        });
         setBulkData((prev) => {
           const existingIds = new Set(prev.map((i) => i.id));
           const fresh = res.items.filter((i) => !existingIds.has(i.id));
@@ -268,7 +277,7 @@ export default function PegawaiInternalList({
   // --- Computed Dirty States ---
   const getDirtyItems = () => {
     return bulkData.filter((row) => {
-      const original = initialData.find((p) => p.id === row.id);
+      const original = allLoadedOriginals.find((p) => p.id === row.id) || initialData.find((p) => p.id === row.id);
       if (!original) return false;
       return original.timInternal !== row.timInternal;
     });
@@ -616,7 +625,7 @@ export default function PegawaiInternalList({
                   </TableRow>
                 ) : (
                   displayedData.map((row, idx) => {
-                    const original = initialData.find((p) => p.id === row.id);
+                    const original = allLoadedOriginals.find((p) => p.id === row.id) || initialData.find((p) => p.id === row.id);
                     const isDirty = original && original.timInternal !== row.timInternal;
 
                     return (
