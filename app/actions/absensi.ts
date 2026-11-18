@@ -8,6 +8,7 @@ import { generateSlug } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { StatusAgendaAbsensi, StatusKehadiran, StatusSesiAgenda } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import { calculateDistanceMeters } from "@/lib/geo-utils";
 
 // ==========================================
@@ -2518,6 +2519,58 @@ export async function getRekapKehadiranOpd(params?: {
     },
   });
 
+  return processAgendasToRekap(agendas, params);
+}
+
+type AgendaRekapRawItem = Awaited<ReturnType<typeof prisma.agendaAbsensi.findMany<{
+  select: {
+    id: true;
+    namaKegiatan: true;
+    tanggal: true;
+    isRecurring: true;
+    kategori: true;
+    targetLatitude: true;
+    targetLongitude: true;
+    radiusMeter: true;
+    cancelledSessions: true;
+    recurringWeeks: true;
+    peserta: {
+      select: {
+        id: true;
+        agendaId: true;
+        pegawaiId: true;
+        nama: true;
+        nip: true;
+        jabatan: true;
+        instansi: true;
+        eselon: true;
+        status: true;
+        keterangan: true;
+        namaPerwakilan: true;
+        jabatanPerwakilan: true;
+        fotoUrl: true;
+        fotoPulangUrl: true;
+        lokasiText: true;
+        lokasiPulangText: true;
+        latitude: true;
+        longitude: true;
+        latitudePulang: true;
+        longitudePulang: true;
+        isSelfInput: true;
+        isNonUndangan: true;
+        waktuInput: true;
+        waktuPulang: true;
+        tanggalSesi: true;
+      };
+    };
+  };
+}>>>[number];
+
+// Ekstrak kalkulasi rekap dari array agendas mentah
+export async function processAgendasToRekap(
+  agendas: AgendaRekapRawItem[],
+  params?: { startDate?: string; endDate?: string }
+) {
   const totalAgenda = agendas.length;
 
   type OpdPesertaItem = {
@@ -2633,19 +2686,19 @@ export async function getRekapKehadiranOpd(params?: {
 
     if (!hasVenue) {
       const pWithGps = ag.peserta.filter(
-        (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
+        (p: any) => typeof p.latitude === "number" && typeof p.longitude === "number"
       );
       if (pWithGps.length >= 4) {
-        const sumLat = pWithGps.reduce((acc, cur) => acc + cur.latitude!, 0);
-        const sumLng = pWithGps.reduce((acc, cur) => acc + cur.longitude!, 0);
+        const sumLat = pWithGps.reduce((acc: number, cur: any) => acc + cur.latitude!, 0);
+        const sumLng = pWithGps.reduce((acc: number, cur: any) => acc + cur.longitude!, 0);
         centerLat = sumLat / pWithGps.length;
         centerLng = sumLng / pWithGps.length;
-        const distances = pWithGps.map((p) =>
+        const distances = pWithGps.map((p: any) =>
           calculateDistanceMeters(centerLat!, centerLng!, p.latitude!, p.longitude!)
         );
-        const meanDist = distances.reduce((a, b) => a + b, 0) / pWithGps.length;
+        const meanDist = distances.reduce((a: number, b: number) => a + b, 0) / pWithGps.length;
         const variance =
-          distances.reduce((acc, d) => acc + Math.pow(d - meanDist, 2), 0) / pWithGps.length;
+          distances.reduce((acc: number, d: number) => acc + Math.pow(d - meanDist, 2), 0) / pWithGps.length;
         const stdDev = Math.sqrt(variance);
         radiusMeters = Math.max(50, Math.min(500, Math.round(meanDist + 2 * stdDev)));
       } else if (pWithGps.length > 0) {
@@ -3520,5 +3573,183 @@ export async function saveRekapFilterPreference(prefs: {
     return { success: false };
   }
 }
+
+// ==========================================
+// 8. LIVE INFOGRAFIS MONITOR PIMPINAN (TOKEN VIEW)
+// ==========================================
+
+export async function createRekapSharedToken(payload: {
+  title?: string;
+  startDate: string;
+  endDate: string;
+  kategoriAgenda?: "ALL" | "RAPAT" | "APEL" | "RUTIN";
+  selectedUnits?: string[];
+  onlyInvited?: boolean;
+}) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.teamId) throw new Error("Unauthorized");
+
+  const tokenString = crypto.randomBytes(12).toString("hex");
+
+  const record = await prisma.rekapSharedToken.create({
+    data: {
+      token: tokenString,
+      teamId: session.user.teamId,
+      createdById: session.user.id,
+      title: payload.title?.trim() || null,
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      kategoriAgenda: payload.kategoriAgenda || "ALL",
+      selectedUnits: payload.selectedUnits || [],
+      onlyInvited: payload.onlyInvited !== false,
+      isActive: true,
+    },
+  });
+
+  return {
+    success: true,
+    token: record.token,
+    id: record.id,
+  };
+}
+
+export async function getRekapSharedTokens() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.teamId) throw new Error("Unauthorized");
+
+  return prisma.rekapSharedToken.findMany({
+    where: { teamId: session.user.teamId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+}
+
+export async function toggleRekapSharedTokenActive(tokenId: string, isActive: boolean) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.teamId) throw new Error("Unauthorized");
+
+  return prisma.rekapSharedToken.update({
+    where: { id: tokenId, teamId: session.user.teamId },
+    data: { isActive },
+  });
+}
+
+export async function deleteRekapSharedToken(tokenId: string) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.teamId) throw new Error("Unauthorized");
+
+  return prisma.rekapSharedToken.delete({
+    where: { id: tokenId, teamId: session.user.teamId },
+  });
+}
+
+export async function getPublicRekapMonitorData(token: string) {
+  if (!token) throw new Error("Token tidak valid");
+
+  const shared = await prisma.rekapSharedToken.findUnique({
+    where: { token },
+    include: { team: { select: { id: true, name: true } } },
+  });
+
+  if (!shared || !shared.isActive) {
+    throw new Error("Tautan monitor tidak ditemukan atau telah dinonaktifkan.");
+  }
+
+  if (shared.expiresAt && new Date(shared.expiresAt) < new Date()) {
+    throw new Error("Tautan monitor telah kedaluwarsa.");
+  }
+
+  const whereAgenda: any = {
+    teamId: shared.teamId,
+    isDeleted: false,
+    status: { not: StatusAgendaAbsensi.DIBATALKAN },
+  };
+
+  if (shared.kategoriAgenda && shared.kategoriAgenda !== "ALL") {
+    if (shared.kategoriAgenda === "RUTIN") {
+      whereAgenda.isRecurring = true;
+    } else if (shared.kategoriAgenda === "RAPAT") {
+      whereAgenda.isRecurring = false;
+    } else if (shared.kategoriAgenda === "APEL") {
+      whereAgenda.kategori = "APEL";
+    }
+  }
+
+  if (shared.startDate || shared.endDate) {
+    whereAgenda.tanggal = {};
+    if (shared.startDate) {
+      whereAgenda.tanggal.gte = parseWitaInput(shared.startDate);
+    }
+    if (shared.endDate) {
+      whereAgenda.tanggal.lte = parseWitaInput(shared.endDate);
+    }
+  }
+
+  const agendas = await prisma.agendaAbsensi.findMany({
+    where: whereAgenda,
+    orderBy: { tanggal: "desc" },
+    select: {
+      id: true,
+      namaKegiatan: true,
+      tanggal: true,
+      isRecurring: true,
+      kategori: true,
+      targetLatitude: true,
+      targetLongitude: true,
+      radiusMeter: true,
+      cancelledSessions: true,
+      recurringWeeks: true,
+      peserta: {
+        select: {
+          id: true,
+          agendaId: true,
+          pegawaiId: true,
+          nama: true,
+          nip: true,
+          jabatan: true,
+          instansi: true,
+          eselon: true,
+          status: true,
+          keterangan: true,
+          namaPerwakilan: true,
+          jabatanPerwakilan: true,
+          fotoUrl: true,
+          fotoPulangUrl: true,
+          lokasiText: true,
+          lokasiPulangText: true,
+          latitude: true,
+          longitude: true,
+          latitudePulang: true,
+          longitudePulang: true,
+          isSelfInput: true,
+          isNonUndangan: true,
+          waktuInput: true,
+          waktuPulang: true,
+          tanggalSesi: true,
+        },
+      },
+    },
+  });
+
+  const rekapData = await processAgendasToRekap(agendas, {
+    startDate: shared.startDate,
+    endDate: shared.endDate,
+  });
+
+  return {
+    config: {
+      title: shared.title,
+      teamName: shared.team.name,
+      startDate: shared.startDate,
+      endDate: shared.endDate,
+      kategoriAgenda: shared.kategoriAgenda,
+      selectedUnits: shared.selectedUnits || [],
+      onlyInvited: shared.onlyInvited,
+      createdAt: shared.createdAt,
+    },
+    rekapData,
+  };
+}
+
 
 

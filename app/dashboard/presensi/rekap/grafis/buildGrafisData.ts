@@ -38,6 +38,8 @@ export type GrafisOpdInput = {
 
 export type GrafisPegawaiInput = {
   nama: string;
+  nip?: string | null;
+  jabatan?: string;
   instansi: string;
   eselon?: string | null;
   totalDiundang: number;
@@ -46,6 +48,8 @@ export type GrafisPegawaiInput = {
   hadirLuarRadius?: number;
   hadirNonUndangan?: number;
   mewakili: number;
+  tidakHadir?: number;
+  izin?: number;
   persentaseKehadiran: number;
   history?: {
     status: string;

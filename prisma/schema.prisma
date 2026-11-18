@@ -69,6 +69,7 @@ model Team {
   naskahDinas NaskahDinas[]
   agendaAbsensi AgendaAbsensi[]
   agendaTim   AgendaTim[]
+  rekapSharedTokens RekapSharedToken[]
 }
 
 model User {
@@ -589,5 +590,26 @@ model AgendaTim {
   updatedAt      DateTime       @updatedAt
 
   @@index([teamId, tanggalMulai])
+}
+
+model RekapSharedToken {
+  id             String    @id @default(uuid())
+  token          String    @unique
+  teamId         String
+  team           Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById    String
+  title          String?   // Label khusus, misal: "Rekap Triwulan I 2026 - Pimpinan"
+  startDate      String    // YYYY-MM-DD
+  endDate        String    // YYYY-MM-DD
+  kategoriAgenda String    @default("ALL") // "ALL" | "RAPAT" | "APEL" | "RUTIN"
+  selectedUnits  String[]  @default([])
+  onlyInvited    Boolean   @default(true)
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([token])
+  @@index([teamId])
 }
 

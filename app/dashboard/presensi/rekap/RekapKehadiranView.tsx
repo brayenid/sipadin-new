@@ -49,6 +49,7 @@ import CetakRekapPegawaiModal from "./CetakRekapPegawaiModal";
 import CetakRekapLengkapModal from "./CetakRekapLengkapModal";
 import CetakRekapHierarkiModal from "./CetakRekapHierarkiModal";
 import CetakRekapGrafisModal from "./CetakRekapGrafisModal";
+import BagikanRekapLiveModal from "./BagikanRekapLiveModal";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -215,6 +216,7 @@ export default function RekapKehadiranView({
   const [isCetakLengkapOpen, setIsCetakLengkapOpen] = useState(false);
   const [isCetakHierarkiOpen, setIsCetakHierarkiOpen] = useState(false);
   const [isCetakGrafisOpen, setIsCetakGrafisOpen] = useState(false);
+  const [isBagikanLiveOpen, setIsBagikanLiveOpen] = useState(false);
   const [selectedUnitsPegawai, setSelectedUnitsPegawai] = useState<string[]>([]);
   const [unitSearchPegawai, setUnitSearchPegawai] = useState<string>("");
 
@@ -962,6 +964,22 @@ export default function RekapKehadiranView({
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
+                        onClick={() => setIsBagikanLiveOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 focus:bg-indigo-50 focus:text-indigo-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug flex items-center gap-1.5">
+                            Live Monitor Pimpinan
+                            <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.2 rounded-full">BARU</span>
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Buka infografis live tanpa shell SIPADIN via token view</p>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
                         onClick={() => setIsCetakGrafisOpen(true)}
                         className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-900 focus:bg-sky-50 focus:text-sky-900 mt-0.5"
                       >
@@ -1341,6 +1359,22 @@ export default function RekapKehadiranView({
                         <div className="flex-1">
                           <p className="font-semibold text-slate-900 leading-snug">Laporan Mode Lengkap</p>
                           <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Booklet kompilasi seluruh kegiatan & presensi</p>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => setIsBagikanLiveOpen(true)}
+                        className="flex items-start gap-2.5 p-2 text-xs font-medium cursor-pointer rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 focus:bg-indigo-50 focus:text-indigo-900 mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 leading-snug flex items-center gap-1.5">
+                            Live Monitor Pimpinan
+                            <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.2 rounded-full">BARU</span>
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Buka infografis live tanpa shell SIPADIN via token view</p>
                         </div>
                       </DropdownMenuItem>
 
@@ -1886,6 +1920,38 @@ export default function RekapKehadiranView({
             pegawaiSummary: initialData.pegawaiSummary,
           }}
           initialUnits={selectedUnitsPegawai}
+        />
+      )}
+
+      {isBagikanLiveOpen && (
+        <BagikanRekapLiveModal
+          isOpen={isBagikanLiveOpen}
+          onClose={() => setIsBagikanLiveOpen(false)}
+          periodeLabel={periodeLabelText}
+          kategoriLabel={
+            selectedKategori === "RAPAT"
+              ? "Rapat Dinas"
+              : selectedKategori === "APEL"
+              ? "Apel Bersama"
+              : selectedKategori === "RUTIN"
+              ? "Kegiatan Rutin"
+              : "Semua Kategori"
+          }
+          startDate={
+            customStartDate ||
+            (selectedBulan !== "ALL"
+              ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-01`
+              : `${selectedYear}-01-01`)
+          }
+          endDate={
+            customEndDate ||
+            (selectedBulan !== "ALL"
+              ? `${selectedYear}-${parseInt(selectedBulan, 10) < 10 ? `0${selectedBulan}` : selectedBulan}-${new Date(parseInt(selectedYear, 10), parseInt(selectedBulan, 10), 0).getDate()}`
+              : `${selectedYear}-12-31`)
+          }
+          kategoriAgenda={selectedKategori}
+          selectedUnits={selectedUnitsPegawai}
+          onlyInvited={true}
         />
       )}
 
