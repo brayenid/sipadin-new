@@ -71,9 +71,9 @@ export const KATEGORI_BUKTI_OPTIONS = [
 ];
 
 const FILTER_OPTIONS: { id: ScanFilterMode; label: string }[] = [
-  { id: "AUTO", label: "Dokumen Jernih" },
-  { id: "BW", label: "Hitam-Putih" },
-  { id: "GRAY", label: "Grayscale" },
+  { id: "AUTO", label: "Jernih" },
+  { id: "BW", label: "B&W" },
+  { id: "GRAY", label: "Abu" },
   { id: "ORIGINAL", label: "Asli" },
 ];
 
@@ -478,312 +478,297 @@ export default function SpjScannerModal({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && !isProcessing && onClose()}>
-      <DialogContent className="max-w-3xl w-[95vw] p-0 gap-0 overflow-hidden bg-white rounded-xl border border-slate-200 shadow-2xl">
-        {/* Hidden file inputs */}
-        <input
-          ref={galleryInputRef}
-          type="file"
-          accept="image/*,application/pdf"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFilesSelected(e.target.files, false)}
-        />
-        <input
-          ref={nativeCameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => handleFilesSelected(e.target.files, true)}
-        />
+    <>
+      {/* Hidden file inputs (selalu tersedia di semua view) */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFilesSelected(e.target.files, false)}
+      />
+      <input
+        ref={nativeCameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleFilesSelected(e.target.files, true)}
+      />
 
-        <DialogHeader className="px-4 py-3.5 sm:px-5 bg-slate-50 border-b border-slate-200">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <DialogTitle className="text-sm sm:text-base font-bold text-slate-900">
-                {view === "CAMERA"
-                  ? "Pindai Dokumen (Kamera)"
-                  : view === "CROP"
-                  ? "Luruskan Sudut & Filter Scan"
-                  : "Scan & Kompilasi PDF Bukti Dukung"}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                {view === "CROP"
-                  ? "Geser 4 titik biru ke sudut dokumen, lalu pilih mode warna scan."
-                  : "Pindai beberapa halaman nota/kuitansi atau pilih foto & PDF untuk dikompilasi ke 1 PDF di Cloudflare R2."}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {/* VIEW 1: LIVE CAMERA VIEWFINDER */}
-        {view === "CAMERA" && (
-          <div className="bg-slate-950 text-white flex flex-col">
-            <div className="relative w-full h-[55vh] min-h-[300px] max-h-[480px] flex items-center justify-center overflow-hidden bg-black">
-              {cameraError ? (
-                <div className="p-6 text-center space-y-3 max-w-sm">
-                  <p className="text-xs text-slate-300 leading-relaxed">{cameraError}</p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => nativeCameraInputRef.current?.click()}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
-                    >
-                      <Camera className="w-3.5 h-3.5 mr-1.5" />
-                      Kamera Sistem HP
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => galleryInputRef.current?.click()}
-                      className="text-slate-900 bg-white text-xs"
-                    >
-                      <Upload className="w-3.5 h-3.5 mr-1.5" />
-                      Pilih Foto / PDF
-                    </Button>
-                  </div>
+      {/* VIEW 1: FULL-SCREEN EDGE-TO-EDGE CAMERA (SEPERTI GOOGLE DRIVE) */}
+      {view === "CAMERA" && (
+        <div className="fixed inset-0 z-[100] h-[100dvh] w-screen bg-black text-white flex flex-col">
+          <div className="relative flex-1 w-full h-full overflow-hidden bg-black flex items-center justify-center">
+            {cameraError ? (
+              <div className="p-6 text-center space-y-4 max-w-sm">
+                <p className="text-xs text-slate-300 leading-relaxed">{cameraError}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => nativeCameraInputRef.current?.click()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
+                  >
+                    Kamera HP
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="text-slate-900 bg-white text-xs"
+                  >
+                    Pilih Foto / PDF
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  <video
-                    ref={videoRef}
-                    playsInline
-                    muted
-                    autoPlay
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Panduan bingkai dokumen ringan */}
-                  <div className="pointer-events-none absolute inset-6 sm:inset-10 border-2 border-dashed border-sky-400/80 rounded-lg" />
-                  {!cameraReady && (
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center gap-2 text-xs text-slate-200">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Menyiapkan kamera...
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  autoPlay
+                  className="w-full h-full object-cover"
+                />
+                {!cameraReady && (
+                  <div className="absolute inset-0 bg-black/75 flex items-center justify-center gap-2 text-xs text-slate-200">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Menyiapkan kamera...
+                  </div>
+                )}
+              </>
+            )}
 
-            <div className="p-3.5 bg-slate-900 flex items-center justify-between gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setView("LIST")}
-                className="text-slate-200 hover:text-white hover:bg-slate-800 text-xs"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Kembali ({totalPageCount} hal.)
-              </Button>
+            {/* Tombol Tutup Minimal di Kiri Atas */}
+            <button
+              type="button"
+              onClick={() => setView("LIST")}
+              className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-xs text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+              title="Kembali"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
+            {/* Counter halaman jika sudah ada halaman sebelumnya */}
+            {totalPageCount > 0 && (
               <button
                 type="button"
-                disabled={!cameraReady || isProcessing}
-                onClick={handleCaptureFromCamera}
-                className="w-14 h-14 rounded-full bg-white border-4 border-slate-400 active:scale-95 transition-transform disabled:opacity-40 flex items-center justify-center shadow-lg"
-                title="Jepret Dokumen"
+                onClick={() => setView("LIST")}
+                className="absolute top-4 right-4 h-9 px-3 rounded-full bg-black/55 backdrop-blur-xs text-white text-xs font-bold tabular-nums"
               >
-                <span className="w-10 h-10 rounded-full bg-primary block" />
+                {totalPageCount} hal.
               </button>
+            )}
 
+            {/* Hanya Tombol Ambil Gambar di Bawah */}
+            {!cameraError && (
+              <div className="absolute bottom-7 inset-x-0 flex items-center justify-center">
+                <button
+                  type="button"
+                  disabled={!cameraReady || isProcessing}
+                  onClick={handleCaptureFromCamera}
+                  className="w-[72px] h-[72px] rounded-full bg-white/95 border-4 border-white/60 active:scale-95 transition-transform disabled:opacity-40 flex items-center justify-center shadow-xl"
+                  title="Ambil Gambar"
+                >
+                  <span className="w-14 h-14 rounded-full bg-white border-2 border-slate-900/15 block" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: FULL-SCREEN SEDERHANA LURUSKAN SUDUT & FILTER */}
+      {view === "CROP" && editingPage && (
+        <div className="fixed inset-0 z-[100] h-[100dvh] w-screen bg-slate-950 text-white flex flex-col">
+          {/* Top Bar Ringkas */}
+          <div className="shrink-0 h-12 px-3 bg-slate-950 border-b border-slate-800/80 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={() => {
+                setEditingPageId(null);
+                setView("LIST");
+              }}
+              className="w-9 h-9 rounded-full hover:bg-slate-800 text-slate-200 flex items-center justify-center"
+              title="Batal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setDraftRotation(((draftRotation + 90) % 360) as 0 | 90 | 180 | 270)
+                }
+                className="h-8 px-2.5 rounded-md text-xs font-semibold text-slate-200 hover:bg-slate-800 inline-flex items-center gap-1"
+                title="Putar 90 derajat"
+              >
+                <RotateCw className="w-4 h-4" />
+                <span>Putar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftCorners(DEFAULT_CORNERS)}
+                className="h-8 px-2.5 rounded-md text-xs font-semibold text-slate-200 hover:bg-slate-800 inline-flex items-center gap-1"
+                title="Reset sudut"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLivePreview((prev) => !prev)}
+                className={`h-8 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 transition-colors ${
+                  showLivePreview
+                    ? "bg-primary text-primary-foreground"
+                    : "text-slate-200 hover:bg-slate-800"
+                }`}
+              >
+                {showLivePreview ? <Crop className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{showLivePreview ? "Sudut" : "Lihat"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Area Gambar Penuh */}
+          <div className="flex-1 min-h-0 flex items-center justify-center p-4 overflow-hidden">
+            {showLivePreview ? (
+              <div className="w-full h-full flex items-center justify-center">
+                {isRenderingPreview || !livePreviewUrl ? (
+                  <div className="text-xs text-slate-300 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Memproses...
+                  </div>
+                ) : (
+                  <img
+                    src={livePreviewUrl}
+                    alt="Pratinjau"
+                    className="max-h-full max-w-full object-contain rounded bg-white shadow-xl"
+                  />
+                )}
+              </div>
+            ) : (
+              <div
+                ref={cropStageRef}
+                className="relative inline-flex max-h-full max-w-full select-none touch-none"
+                onPointerMove={(e) => {
+                  if (!draggingCorner) return;
+                  e.preventDefault();
+                  updateCornerFromPointer(e.clientX, e.clientY, draggingCorner);
+                }}
+                onPointerUp={() => setDraggingCorner(null)}
+                onPointerCancel={() => setDraggingCorner(null)}
+              >
+                <img
+                  src={editingPage.originalDataUrl}
+                  alt="Atur sudut dokumen"
+                  draggable={false}
+                  className="max-h-[calc(100dvh-190px)] max-w-full object-contain block pointer-events-none"
+                />
+
+                {/* Garis Poligon 4 Sudut */}
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                >
+                  <polygon
+                    points={`${draftCorners.tl.x * 100},${draftCorners.tl.y * 100} ${draftCorners.tr.x * 100},${draftCorners.tr.y * 100} ${draftCorners.br.x * 100},${draftCorners.br.y * 100} ${draftCorners.bl.x * 100},${draftCorners.bl.y * 100}`}
+                    fill="rgba(59, 130, 246, 0.14)"
+                    stroke="#3b82f6"
+                    strokeWidth="0.9"
+                  />
+                </svg>
+
+                {/* 4 Draggable Corner Handles */}
+                {(["tl", "tr", "br", "bl"] as CornerKey[]).map((key) => {
+                  const pt = draftCorners[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        setDraggingCorner(key);
+                      }}
+                      style={{
+                        left: `${pt.x * 100}%`,
+                        top: `${pt.y * 100}%`,
+                      }}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary/90 border-2 border-white shadow-lg cursor-move flex items-center justify-center touch-none active:scale-110"
+                      title="Geser sudut"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Kontrol Bawah Sederhana: 1 Baris Filter + 1 Baris Tombol */}
+          <div className="shrink-0 bg-slate-900 border-t border-slate-800 px-3 pt-2.5 pb-4 space-y-2.5 max-w-xl w-full mx-auto">
+            <div className="grid grid-cols-4 gap-1.5">
+              {FILTER_OPTIONS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setDraftFilter(f.id)}
+                  className={`h-8 rounded-md text-xs font-semibold border transition-colors ${
+                    draftFilter === f.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-800"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => nativeCameraInputRef.current?.click()}
-                className="text-slate-300 hover:text-white hover:bg-slate-800 text-xs"
+                variant="outline"
+                disabled={isProcessing}
+                onClick={() => handleSaveCropEdit("CAMERA")}
+                className="h-10 bg-slate-800 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold"
               >
-                Kamera HP
+                + Scan Lagi
+              </Button>
+              <Button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => handleSaveCropEdit("LIST")}
+                className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Selesai"}
               </Button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* VIEW 2: 4-CORNER PERSPECTIVE CROP & FILTER EDITOR */}
-        {view === "CROP" && editingPage && (
-          <div className="flex flex-col max-h-[80vh]">
-            <div className="p-3 sm:p-4 bg-slate-900 flex items-center justify-center overflow-auto">
-              {showLivePreview ? (
-                <div className="relative max-h-[46vh] flex items-center justify-center">
-                  {isRenderingPreview || !livePreviewUrl ? (
-                    <div className="py-16 px-8 text-xs text-slate-300 flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Memproses pelurusan & filter...
-                    </div>
-                  ) : (
-                    <img
-                      src={livePreviewUrl}
-                      alt="Pratinjau hasil scan"
-                      className="max-h-[46vh] max-w-full object-contain rounded shadow-lg bg-white"
-                    />
-                  )}
-                </div>
-              ) : (
-                <div
-                  ref={cropStageRef}
-                  className="relative inline-block select-none touch-none max-h-[46vh]"
-                  onPointerMove={(e) => {
-                    if (!draggingCorner) return;
-                    e.preventDefault();
-                    updateCornerFromPointer(e.clientX, e.clientY, draggingCorner);
-                  }}
-                  onPointerUp={() => setDraggingCorner(null)}
-                  onPointerCancel={() => setDraggingCorner(null)}
-                >
-                  <img
-                    src={editingPage.originalDataUrl}
-                    alt="Atur sudut dokumen"
-                    draggable={false}
-                    className="max-h-[46vh] max-w-full object-contain block pointer-events-none rounded"
-                  />
+      {/* VIEW 3: DIALOG DAFTAR HALAMAN & KOMPILASI PDF */}
+      <Dialog
+        open={isOpen && view === "LIST"}
+        onOpenChange={(open) => !open && !isProcessing && onClose()}
+      >
+        <DialogContent className="max-w-3xl w-[95vw] p-0 gap-0 overflow-hidden bg-white rounded-xl border border-slate-200 shadow-2xl">
+          <DialogHeader className="px-4 py-3.5 sm:px-5 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="text-sm sm:text-base font-bold text-slate-900">
+              Scan &amp; Kompilasi PDF Bukti Dukung
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-0.5">
+              Pindai halaman atau pilih foto/PDF untuk dikompilasi ke 1 PDF di Cloudflare R2.
+            </DialogDescription>
+          </DialogHeader>
 
-                  {/* Garis Poligon 4 Sudut */}
-                  <svg
-                    className="absolute inset-0 w-full h-full pointer-events-none"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                  >
-                    <polygon
-                      points={`${draftCorners.tl.x * 100},${draftCorners.tl.y * 100} ${draftCorners.tr.x * 100},${draftCorners.tr.y * 100} ${draftCorners.br.x * 100},${draftCorners.br.y * 100} ${draftCorners.bl.x * 100},${draftCorners.bl.y * 100}`}
-                      fill="rgba(37, 99, 235, 0.14)"
-                      stroke="#2563eb"
-                      strokeWidth="0.9"
-                    />
-                  </svg>
-
-                  {/* 4 Draggable Corner Handles */}
-                  {(["tl", "tr", "br", "bl"] as CornerKey[]).map((key) => {
-                    const pt = draftCorners[key];
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onPointerDown={(e) => {
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          setDraggingCorner(key);
-                        }}
-                        style={{
-                          left: `${pt.x * 100}%`,
-                          top: `${pt.y * 100}%`,
-                        }}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-blue-600/90 border-2 border-white shadow-md cursor-move flex items-center justify-center touch-none active:scale-110"
-                        title="Geser sudut dokumen"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-white" />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Kontrol Filter & Aksi Crop */}
-            <div className="p-3.5 sm:p-4 bg-white border-t border-slate-200 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {FILTER_OPTIONS.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setDraftFilter(f.id)}
-                      className={`px-2.5 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
-                        draftFilter === f.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setDraftRotation(((draftRotation + 90) % 360) as 0 | 90 | 180 | 270)
-                    }
-                    className="h-8 text-xs"
-                  >
-                    <RotateCw className="w-3.5 h-3.5 mr-1" />
-                    Putar ({draftRotation}°)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setDraftCorners(DEFAULT_CORNERS)}
-                    className="h-8 text-xs"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                    Reset
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={showLivePreview ? "default" : "outline"}
-                    onClick={() => setShowLivePreview((prev) => !prev)}
-                    className="h-8 text-xs"
-                  >
-                    <Eye className="w-3.5 h-3.5 mr-1" />
-                    {showLivePreview ? "Edit Sudut" : "Pratinjau"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={isProcessing}
-                  onClick={() => {
-                    setEditingPageId(null);
-                    setView("LIST");
-                  }}
-                  className="text-xs text-slate-600"
-                >
-                  Batal
-                </Button>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isProcessing}
-                    onClick={() => handleSaveCropEdit("CAMERA")}
-                    className="text-xs border-primary/40 text-primary hover:bg-primary/5"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Simpan &amp; Scan Lagi
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isProcessing}
-                    onClick={() => handleSaveCropEdit("LIST")}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    ) : (
-                      <Check className="w-3.5 h-3.5 mr-1.5" />
-                    )}
-                    Terapkan Halaman
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* VIEW 3: DAFTAR HALAMAN & FORM KOMPILASI PDF */}
-        {view === "LIST" && (
           <div className="p-4 sm:p-5 space-y-4 max-h-[82vh] overflow-y-auto">
             {pages.length === 0 ? (
               <div className="border border-dashed border-slate-300 rounded-lg p-6 text-center bg-slate-50/60 space-y-3">
@@ -1006,8 +991,8 @@ export default function SpjScannerModal({
               </>
             )}
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
