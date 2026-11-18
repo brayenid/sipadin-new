@@ -349,7 +349,8 @@ export async function deleteSpjBuktiDukung(buktiId: string) {
     throw new Error("Bukti dukung tidak ditemukan.");
   }
 
-  await deleteFromR2OrLocal(record.fileUrl, record.fileKey);
+  // Hapus fisik objek di Cloudflare R2 secara ketat sebelum menghapus metadata di database
+  await deleteFromR2OrLocal(record.fileUrl, record.fileKey, { strict: true });
 
   await prisma.spjBuktiDukung.delete({
     where: { id: record.id },

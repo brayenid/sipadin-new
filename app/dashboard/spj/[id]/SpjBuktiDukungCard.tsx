@@ -100,15 +100,6 @@ export default function SpjBuktiDukungCard({
               {buktiList.length} PDF
             </Badge>
           </div>
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={onOpenScanner}
-            className="h-8 sm:h-9 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shrink-0"
-          >
-            Scan / Unggah PDF
-          </Button>
         </CardHeader>
 
         <CardContent className="p-3 sm:p-5 space-y-4">
@@ -128,8 +119,9 @@ export default function SpjBuktiDukungCard({
               </Button>
             </div>
           ) : (
-            <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden">
-              {buktiList.map((item) => (
+            <div className="space-y-3">
+              <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                {buktiList.map((item) => (
                 <div
                   key={item.id}
                   className="p-3 bg-white hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
@@ -215,6 +207,17 @@ export default function SpjBuktiDukungCard({
                   </div>
                 </div>
               ))}
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={onOpenScanner}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-8 px-4"
+                >
+                  Scan / Unggah PDF Lagi
+                </Button>
+              </div>
             </div>
           )}
 

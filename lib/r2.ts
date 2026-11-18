@@ -183,9 +183,11 @@ export async function uploadToR2({
  */
 export async function deleteFromR2OrLocal(
   fileUrl: string | null | undefined,
-  explicitKey?: string | null
+  explicitKey?: string | null,
+  options?: { strict?: boolean }
 ): Promise<boolean> {
   if (!fileUrl && !explicitKey) return false;
+  const strict = Boolean(options?.strict);
 
   try {
     // 1. Kasus Local file: /uploads/...
@@ -196,36 +198,58 @@ export async function deleteFromR2OrLocal(
         fs.unlinkSync(fullPath);
         return true;
       }
-      return false;
+      return true; // File lokal sudah tidak ada di disk
     }
 
-    // 2. Kasus Cloudflare R2 / S3
-    if (s3Client) {
-      let key = explicitKey || "";
-      if (!key && fileUrl) {
-        if (publicUrl && fileUrl.startsWith(publicUrl)) {
-          key = fileUrl.replace(`${publicUrl}/`, "");
-        } else if (fileUrl.includes(".r2.cloudflarestorage.com/")) {
-          const parts = fileUrl.split(".r2.cloudflarestorage.com/");
-          if (parts.length > 1) {
-            key = parts[1];
-          }
+    // 2. Resolusi key R2
+    let key = explicitKey ? explicitKey.trim() : "";
+    if (!key && fileUrl) {
+      if (publicUrl && fileUrl.startsWith(publicUrl)) {
+        key = fileUrl.slice(publicUrl.length);
+      } else if (fileUrl.includes(".r2.cloudflarestorage.com/")) {
+        const parts = fileUrl.split(".r2.cloudflarestorage.com/");
+        if (parts.length > 1) {
+          key = parts[1];
+        }
+      } else if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+        const parsed = new URL(fileUrl);
+        const pathNoSlash = parsed.pathname.replace(/^\/+/, "");
+        if (pathNoSlash.startsWith("spj/") || pathNoSlash.startsWith("absensi/")) {
+          key = pathNoSlash;
         }
       }
-
-      if (key) {
-        await s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: bucketName,
-            Key: key,
-          })
-        );
-        return true;
-      }
     }
-  } catch (err) {
-    console.error("[Delete File Error]:", err);
-  }
 
-  return false;
+    if (key) {
+      key = decodeURIComponent(key).replace(/^\/+/, "");
+    }
+
+    // 3. Hapus objek di Cloudflare R2
+    if (key) {
+      if (!s3Client) {
+        const msg = "Kredensial Cloudflare R2 belum dikonfigurasi untuk menghapus berkas.";
+        console.error("[R2 Delete Error]:", msg);
+        if (strict) throw new Error(msg);
+        return false;
+      }
+
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        })
+      );
+      return true;
+    }
+
+    return false;
+  } catch (err: any) {
+    console.error("[Delete File Error]:", err);
+    if (strict) {
+      throw new Error(
+        `Gagal menghapus berkas dari Cloudflare R2: ${err?.message || "Unknown error"}`
+      );
+    }
+    return false;
+  }
 }
