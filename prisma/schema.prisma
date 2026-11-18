@@ -255,6 +255,28 @@ model Spj {
   roster             SpjRosterItem[]
   perjadinDetail     SpjPerjadinDetail?
   maminDetail        SpjMaminDetail?
+  buktiDukung        SpjBuktiDukung[]
+}
+
+model SpjBuktiDukung {
+  id            String   @id @default(uuid())
+  spjId         String
+  spj           Spj      @relation(fields: [spjId], references: [id], onDelete: Cascade)
+  teamId        String
+  createdById   String
+
+  judul         String
+  kategori      String   @default("BUNDEL_SPJ")
+  fileUrl       String
+  fileKey       String?
+  mimeType      String   @default("application/pdf")
+  fileSize      Int      @default(0)
+  jumlahHalaman Int      @default(1)
+
+  createdAt     DateTime @default(now())
+
+  @@index([spjId])
+  @@index([teamId])
 }
 
 enum VersiDopd {

@@ -21,24 +21,68 @@ const s3Client =
       })
     : null;
 
-export async function uploadToR2({
+export function slugifyPathSegment(value: string, fallback = "umum"): string {
+  const cleaned = (value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return cleaned || fallback;
+}
+
+/**
+ * Membangun struktur direktori R2 yang rapi dan mudah diaudit untuk dokumen SPJ:
+ * spj/{tahun}/{teamSlug}/{jenisSpj}/{bulan}-{spjShortId}
+ */
+export function buildSpjR2Folder({
+  tahun,
+  teamName,
+  jenisSpj,
+  tanggalSpj,
+  spjId,
+}: {
+  tahun?: number | string | null;
+  teamName?: string | null;
+  jenisSpj?: string | null;
+  tanggalSpj?: Date | string | null;
+  spjId: string;
+}): string {
+  const dateObj = tanggalSpj ? new Date(tanggalSpj) : new Date();
+  const safeYear =
+    tahun && String(tahun).trim()
+      ? String(tahun).replace(/[^0-9]/g, "")
+      : String(dateObj.getFullYear());
+  const safeMonth = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const teamSlug = slugifyPathSegment(teamName || "", "tim");
+  const jenisSlug = slugifyPathSegment(jenisSpj || "", "umum");
+  const shortId = (spjId || "spj").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+
+  return `spj/${safeYear}/${teamSlug}/${jenisSlug}/${safeMonth}-${shortId}`;
+}
+
+export async function uploadToR2WithKey({
   buffer,
   fileName,
   contentType = "image/jpeg",
   folder = "absensi",
+  maxSizeBytes = 5 * 1024 * 1024,
 }: {
   buffer: Buffer;
   fileName: string;
   contentType?: string;
   folder?: string;
-}): Promise<string> {
-  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // Maksimal 5MB
-  if (buffer.length > MAX_FILE_SIZE_BYTES) {
-    throw new Error("Ukuran berkas melebihi batas maksimal 5MB");
+  maxSizeBytes?: number;
+}): Promise<{ url: string; key: string | null }> {
+  if (buffer.length > maxSizeBytes) {
+    const limitMb = Math.round((maxSizeBytes / (1024 * 1024)) * 10) / 10;
+    throw new Error(`Ukuran berkas melebihi batas maksimal ${limitMb}MB`);
   }
 
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9_.-]/g, "_");
-  const key = `${folder}/${Date.now()}_${sanitizedFileName}`;
+  const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
+  const key = `${cleanFolder}/${Date.now()}_${sanitizedFileName}`;
   const isProd = process.env.NODE_ENV === "production";
 
   // Mode Produksi: Wajib menggunakan Cloudflare R2 (Tidak boleh fallback ke lokal server)
@@ -58,13 +102,15 @@ export async function uploadToR2({
         })
       );
 
-      if (publicUrl) {
-        return `${publicUrl}/${key}`;
-      }
-      return `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
+      const url = publicUrl
+        ? `${publicUrl}/${key}`
+        : `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
+      return { url, key };
     } catch (error: any) {
       console.error("[R2 Upload Error in Production]:", error);
-      throw new Error(`Gagal mengunggah foto ke Cloudflare R2: ${error.message || "Unknown error"}`);
+      throw new Error(
+        `Gagal mengunggah berkas ke Cloudflare R2: ${error.message || "Unknown error"}`
+      );
     }
   }
 
@@ -80,42 +126,70 @@ export async function uploadToR2({
         })
       );
 
-      if (publicUrl) {
-        return `${publicUrl}/${key}`;
-      }
-      return `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
+      const url = publicUrl
+        ? `${publicUrl}/${key}`
+        : `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
+      return { url, key };
     } catch (error) {
-      console.warn("[R2 Upload Warning (Dev Mode)]: Gagal upload ke R2, beralih ke penyimpanan lokal...", error);
+      console.warn(
+        "[R2 Upload Warning (Dev Mode)]: Gagal upload ke R2, beralih ke penyimpanan lokal...",
+        error
+      );
     }
   }
 
   // Fallback lokal hanya untuk mode Development offline
   try {
-    const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
+    const uploadDir = path.join(process.cwd(), "public", "uploads", ...cleanFolder.split("/"));
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    const localFilePath = path.join(uploadDir, `${Date.now()}_${sanitizedFileName}`);
+    const localFileName = `${Date.now()}_${sanitizedFileName}`;
+    const localFilePath = path.join(uploadDir, localFileName);
     fs.writeFileSync(localFilePath, buffer);
-    const localFileName = path.basename(localFilePath);
-    return `/uploads/${folder}/${localFileName}`;
+    return { url: `/uploads/${cleanFolder}/${localFileName}`, key: null };
   } catch (localErr) {
     console.error("[Local Storage Fallback Error]:", localErr);
-    // Jika write disk dev gagal, fallback data URI
     const base64 = buffer.toString("base64");
-    return `data:${contentType};base64,${base64}`;
+    return { url: `data:${contentType};base64,${base64}`, key: null };
   }
 }
 
+export async function uploadToR2({
+  buffer,
+  fileName,
+  contentType = "image/jpeg",
+  folder = "absensi",
+  maxSizeBytes = 5 * 1024 * 1024,
+}: {
+  buffer: Buffer;
+  fileName: string;
+  contentType?: string;
+  folder?: string;
+  maxSizeBytes?: number;
+}): Promise<string> {
+  const { url } = await uploadToR2WithKey({
+    buffer,
+    fileName,
+    contentType,
+    folder,
+    maxSizeBytes,
+  });
+  return url;
+}
+
 /**
- * Menghapus file foto baik dari Cloudflare R2 / S3 maupun dari direktori lokal server
+ * Menghapus file baik dari Cloudflare R2 / S3 (berdasarkan key atau URL) maupun dari direktori lokal server
  */
-export async function deleteFromR2OrLocal(fileUrl: string | null | undefined): Promise<boolean> {
-  if (!fileUrl) return false;
+export async function deleteFromR2OrLocal(
+  fileUrl: string | null | undefined,
+  explicitKey?: string | null
+): Promise<boolean> {
+  if (!fileUrl && !explicitKey) return false;
 
   try {
-    // 1. Kasus Local file: /uploads/absensi/...
-    if (fileUrl.startsWith("/uploads/")) {
+    // 1. Kasus Local file: /uploads/...
+    if (fileUrl && fileUrl.startsWith("/uploads/")) {
       const relativePath = fileUrl.replace(/^\//, "");
       const fullPath = path.join(process.cwd(), "public", relativePath);
       if (fs.existsSync(fullPath)) {
@@ -127,17 +201,16 @@ export async function deleteFromR2OrLocal(fileUrl: string | null | undefined): P
 
     // 2. Kasus Cloudflare R2 / S3
     if (s3Client) {
-      let key = "";
-      if (publicUrl && fileUrl.startsWith(publicUrl)) {
-        key = fileUrl.replace(`${publicUrl}/`, "");
-      } else if (fileUrl.includes(".r2.cloudflarestorage.com/")) {
-        const parts = fileUrl.split(".r2.cloudflarestorage.com/");
-        if (parts.length > 1) {
-          key = parts[1];
+      let key = explicitKey || "";
+      if (!key && fileUrl) {
+        if (publicUrl && fileUrl.startsWith(publicUrl)) {
+          key = fileUrl.replace(`${publicUrl}/`, "");
+        } else if (fileUrl.includes(".r2.cloudflarestorage.com/")) {
+          const parts = fileUrl.split(".r2.cloudflarestorage.com/");
+          if (parts.length > 1) {
+            key = parts[1];
+          }
         }
-      } else if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
-        const parsed = new URL(fileUrl);
-        key = parsed.pathname.replace(/^\//, "");
       }
 
       if (key) {

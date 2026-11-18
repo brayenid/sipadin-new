@@ -83,7 +83,11 @@ export default async function SpjListPage({
         kodeRekening: true,
         perjadinDetail: true,
         maminDetail: { include: { vendor: true } },
-        roster: true
+        roster: true,
+        buktiDukung: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, fileUrl: true, judul: true, jumlahHalaman: true }
+        }
       },
       orderBy: [
         { tanggalSpj: 'desc' },
@@ -328,7 +332,33 @@ export default async function SpjListPage({
                       </TableCell>
                       <TableCell className="text-center">
                         {(() => {
+                          const r2Files = spj.buktiDukung || [];
                           const driveLink = spj.driveUrl || (spj.metaDokumen as any)?.driveUrl || null;
+                          if (r2Files.length === 1) {
+                            return (
+                              <a
+                                href={r2Files[0].fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-md transition-colors"
+                                title={r2Files[0].judul}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                PDF ({r2Files[0].jumlahHalaman} hal.)
+                              </a>
+                            );
+                          }
+                          if (r2Files.length > 1) {
+                            return (
+                              <Link
+                                href={`/dashboard/spj/${spj.id}`}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-md transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                {r2Files.length} PDF (R2)
+                              </Link>
+                            );
+                          }
                           return driveLink ? (
                             <a
                               href={driveLink}
@@ -337,11 +367,11 @@ export default async function SpjListPage({
                               className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/80 px-2.5 py-1 rounded-md transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
-                              Buka Drive
+                              Link URL
                             </a>
                           ) : (
                             <span className="text-xs text-slate-400 italic">
-                              Belum ada link
+                              Belum diunggah
                             </span>
                           );
                         })()}

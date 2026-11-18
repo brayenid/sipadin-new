@@ -17,6 +17,11 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const cachedPrisma =
+  globalForPrisma.prisma && "spjBuktiDukung" in globalForPrisma.prisma
+    ? globalForPrisma.prisma
+    : undefined;
+
+export const prisma = cachedPrisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

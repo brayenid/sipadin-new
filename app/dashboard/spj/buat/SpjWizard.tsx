@@ -316,7 +316,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Tautan Bukti Fisik (Google Drive)</Label>
+                <Label>Tautan URL Eksternal / Drive (Opsional)</Label>
                 <a
                   href="https://drive.google.com/drive/u/3/folders/10N-NmZSzQ8QYYWqwlmgfoqb5EP471snp"
                   target="_blank"
@@ -327,7 +327,7 @@ export default function SpjWizard({ pegawais, vendors, tahunAnggarans, teams = [
                   Folder Google Drive
                 </a>
               </div>
-              <Input placeholder="https://drive.google.com/drive/folders/..." value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} />
+              <Input placeholder="Opsional (Scan & upload PDF ke R2 tersedia setelah SPJ disimpan)" value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} />
             </div>
 
             <div className="space-y-2 md:col-span-2">

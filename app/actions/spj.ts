@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { deleteFromR2OrLocal } from "@/lib/r2";
 import { revalidatePath } from "next/cache";
 import { parseWitaInput } from "@/lib/date-utils";
 
@@ -312,6 +313,16 @@ export async function permanentDeleteSpj(spjId: string) {
   const session = await auth();
   if (!session || session.user.role !== 'SUPER_ADMIN') throw new Error("Unauthorized");
 
+  // Bersihkan seluruh berkas bukti dukung di Cloudflare R2 sebelum menghapus SPJ
+  const buktiList = await prisma.spjBuktiDukung.findMany({
+    where: { spjId, teamId: session.user.teamId },
+    select: { fileUrl: true, fileKey: true },
+  });
+
+  await Promise.allSettled(
+    buktiList.map((b) => deleteFromR2OrLocal(b.fileUrl, b.fileKey))
+  );
+
   await prisma.spj.delete({
     where: { id: spjId, teamId: session.user.teamId }
   });
@@ -319,6 +330,35 @@ export async function permanentDeleteSpj(spjId: string) {
   revalidatePath("/dashboard/recycle-bin");
   revalidatePath("/dashboard/spj");
   return true;
+}
+
+export async function deleteSpjBuktiDukung(buktiId: string) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.teamId) {
+    throw new Error("Unauthorized");
+  }
+
+  const record = await prisma.spjBuktiDukung.findFirst({
+    where: {
+      id: buktiId,
+      teamId: session.user.teamId,
+    },
+  });
+
+  if (!record) {
+    throw new Error("Bukti dukung tidak ditemukan.");
+  }
+
+  await deleteFromR2OrLocal(record.fileUrl, record.fileKey);
+
+  await prisma.spjBuktiDukung.delete({
+    where: { id: record.id },
+  });
+
+  revalidatePath("/dashboard/spj");
+  revalidatePath(`/dashboard/spj/${record.spjId}`);
+
+  return { success: true };
 }
 
 export type DuplicateSpjOptions = {

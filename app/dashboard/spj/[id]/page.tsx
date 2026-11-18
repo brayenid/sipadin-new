@@ -52,6 +52,9 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
       },
       pengeluaranDetails: {
         where: { spjRosterItemId: null } // Load pengeluaran umum yang tidak nempel di personel
+      },
+      buktiDukung: {
+        orderBy: { createdAt: "desc" }
       }
     }
   });
