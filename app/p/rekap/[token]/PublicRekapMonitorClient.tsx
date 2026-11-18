@@ -209,11 +209,11 @@ export default function PublicRekapMonitorClient({
 
   // Sort States untuk setiap tabel data
   const [opdSort, setOpdSort] = useState<{ key: OpdSortKey; dir: SortDir }>({
-    key: "persentaseKehadiran",
-    dir: "asc",
+    key: "hadir",
+    dir: "desc",
   });
   const [pegawaiSort, setPegawaiSort] = useState<{ key: PegawaiSortKey; dir: SortDir }>({
-    key: "tidakHadir",
+    key: "hadirTotal",
     dir: "desc",
   });
   const [kegiatanSort, setKegiatanSort] = useState<{ key: KegiatanSortKey; dir: SortDir }>({
@@ -439,34 +439,51 @@ export default function PublicRekapMonitorClient({
     }
   };
 
-  // Perhitungan Prioritas Evaluasi (Tanpa Syarat Minimal 2 Undangan agar Tetap Muncul pada 1 Kegiatan)
-  const attentionData = useMemo(() => {
-    const opds = rekapData.opdSummary || [];
-    const pegawais = rekapData.pegawaiSummary || [];
+  // Daftar 10 OPD & Pejabat Terajin
+  const topDiligentData = useMemo(() => {
+    const unitSet =
+      config.selectedUnits && config.selectedUnits.length > 0
+        ? new Set(config.selectedUnits)
+        : null;
 
-    const opdKritis = opds
-      .filter((o) => o.totalDiundang > 0 && (o.persentaseKehadiran < 60 || o.tidakHadir >= 1))
-      .sort((a, b) => a.persentaseKehadiran - b.persentaseKehadiran || b.tidakHadir - a.tidakHadir);
+    const opds = (rekapData.opdSummary || []).filter(
+      (o) => o.totalDiundang > 0 && (!unitSet || unitSet.has(o.instansi))
+    );
+    const pegawais = (rekapData.pegawaiSummary || []).filter(
+      (p) => p.totalDiundang >= 1 && (!unitSet || unitSet.has(p.instansi))
+    );
 
-    const opdZero = opds.filter((o) => o.totalDiundang > 0 && o.hadir + o.mewakili === 0);
-
-    const pegawaiAlpaTinggi = pegawais
-      .filter(
-        (p) =>
-          p.totalDiundang >= 1 && ((p.tidakHadir || 0) >= 1 || p.persentaseKehadiran < 60)
-      )
+    const opdTerajin = [...opds]
       .sort(
         (a, b) =>
-          (b.tidakHadir || 0) - (a.tidakHadir || 0) ||
-          a.persentaseKehadiran - b.persentaseKehadiran
-      );
+          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
+          b.persentaseKehadiran - a.persentaseKehadiran ||
+          a.tidakHadir - b.tidakHadir
+      )
+      .slice(0, 10);
+
+    const pegawaiTerajin = [...pegawais]
+      .sort(
+        (a, b) =>
+          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
+          b.persentaseKehadiran - a.persentaseKehadiran ||
+          (a.tidakHadir || 0) - (b.tidakHadir || 0)
+      )
+      .slice(0, 10);
+
+    const opdKritisCount = opds.filter(
+      (o) => o.persentaseKehadiran < 60 || o.tidakHadir >= 1
+    ).length;
+
+    const opdZeroCount = opds.filter((o) => o.hadir + o.mewakili === 0).length;
 
     return {
-      opdKritis,
-      opdZero,
-      pegawaiAlpaTinggi,
+      opdTerajin,
+      pegawaiTerajin,
+      opdKritisCount,
+      opdZeroCount,
     };
-  }, [rekapData]);
+  }, [rekapData, config.selectedUnits]);
 
   // Matriks 12 Bulan Utuh (Jan - Des)
   const fullYearMonths = useMemo(() => {
@@ -998,10 +1015,10 @@ export default function PublicRekapMonitorClient({
             </span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-2xl font-extrabold tabular-nums text-rose-700 dark:text-rose-400">
-                {attentionData.opdKritis.length}
+                {topDiligentData.opdKritisCount}
               </span>
               <span className="text-xs font-semibold tabular-nums text-slate-600 dark:text-zinc-400">
-                Nol Hadir: {attentionData.opdZero.length}
+                Nol Hadir: {topDiligentData.opdZeroCount}
               </span>
             </div>
           </div>
@@ -1023,24 +1040,24 @@ export default function PublicRekapMonitorClient({
 
         {/* 3. STRIP ANALITIK RINGKAS: PERHATIAN PIMPINAN, ESELON, & TREN 12 BULAN */}
         <section className="shrink-0 grid grid-cols-1 lg:grid-cols-12 bg-slate-50 dark:bg-zinc-900/70 border-b border-slate-300 dark:border-zinc-800 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-zinc-800">
-          {/* Kolom 1: Sorotan Evaluasi OPD & Pejabat (5 Col) */}
+          {/* Kolom 1: Sorotan 10 OPD & Pejabat Terajin (5 Col) */}
           <div className="lg:col-span-5 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-400">
-                  Perhatian OPD Terendah
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                  10 OPD Terajin
                 </span>
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                  Alpa / Capaian
+                  Hadir / Capaian
                 </span>
               </div>
-              {attentionData.opdKritis.length === 0 ? (
+              {topDiligentData.opdTerajin.length === 0 ? (
                 <p className="text-xs font-medium text-slate-600 dark:text-zinc-400 py-1.5">
-                  Seluruh OPD memenuhi target kehadiran.
+                  Belum ada data kehadiran OPD.
                 </p>
               ) : (
-                <div className="space-y-1.5">
-                  {attentionData.opdKritis.slice(0, 3).map((o, idx) => (
+                <div className="space-y-1">
+                  {topDiligentData.opdTerajin.map((o, idx) => (
                     <div
                       key={o.instansi}
                       className="flex items-center justify-between text-xs gap-2"
@@ -1051,8 +1068,8 @@ export default function PublicRekapMonitorClient({
                       >
                         {idx + 1}. {o.instansi}
                       </span>
-                      <span className="text-xs shrink-0 tabular-nums text-rose-700 dark:text-rose-400 font-bold">
-                        {o.tidakHadir} Alpa · {o.persentaseKehadiran}%
+                      <span className="text-xs shrink-0 tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
+                        {o.hadir + o.mewakili} Hadir · {o.persentaseKehadiran}%
                       </span>
                     </div>
                   ))}
@@ -1062,20 +1079,20 @@ export default function PublicRekapMonitorClient({
 
             <div>
               <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-400">
-                  Perhatian Jabatan / Individu
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                  10 Pejabat / Individu Terajin
                 </span>
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                  Alpa / Capaian
+                  Hadir / Capaian
                 </span>
               </div>
-              {attentionData.pegawaiAlpaTinggi.length === 0 ? (
+              {topDiligentData.pegawaiTerajin.length === 0 ? (
                 <p className="text-xs font-medium text-slate-600 dark:text-zinc-400 py-1.5">
-                  Tidak ada catatan ketidakhadiran pejabat.
+                  Belum ada data kehadiran individu.
                 </p>
               ) : (
-                <div className="space-y-1.5">
-                  {attentionData.pegawaiAlpaTinggi.slice(0, 3).map((p, idx) => (
+                <div className="space-y-1">
+                  {topDiligentData.pegawaiTerajin.map((p, idx) => (
                     <div
                       key={`${p.nama}_${idx}`}
                       className="flex items-center justify-between text-xs gap-2"
@@ -1086,8 +1103,8 @@ export default function PublicRekapMonitorClient({
                       >
                         {idx + 1}. {p.nama}
                       </span>
-                      <span className="text-xs shrink-0 tabular-nums text-rose-700 dark:text-rose-400 font-bold">
-                        {p.tidakHadir || 0} Alpa · {p.persentaseKehadiran}%
+                      <span className="text-xs shrink-0 tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
+                        {p.hadir + p.mewakili} Hadir · {p.persentaseKehadiran}%
                       </span>
                     </div>
                   ))}
