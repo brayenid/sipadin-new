@@ -453,23 +453,19 @@ export default function PublicRekapMonitorClient({
       (p) => p.totalDiundang >= 1 && (!unitSet || unitSet.has(p.instansi))
     );
 
-    const opdTerajin = [...opds]
-      .sort(
-        (a, b) =>
-          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
-          b.persentaseKehadiran - a.persentaseKehadiran ||
-          a.tidakHadir - b.tidakHadir
-      )
-      .slice(0, 10);
+    const opdTerajin = [...opds].sort(
+      (a, b) =>
+        b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
+        b.persentaseKehadiran - a.persentaseKehadiran ||
+        a.tidakHadir - b.tidakHadir
+    );
 
-    const pegawaiTerajin = [...pegawais]
-      .sort(
-        (a, b) =>
-          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
-          b.persentaseKehadiran - a.persentaseKehadiran ||
-          (a.tidakHadir || 0) - (b.tidakHadir || 0)
-      )
-      .slice(0, 10);
+    const pegawaiTerajin = [...pegawais].sort(
+      (a, b) =>
+        b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
+        b.persentaseKehadiran - a.persentaseKehadiran ||
+        (a.tidakHadir || 0) - (b.tidakHadir || 0)
+    );
 
     const opdKritisCount = opds.filter(
       (o) => o.persentaseKehadiran < 60 || o.tidakHadir >= 1
@@ -836,33 +832,35 @@ export default function PublicRekapMonitorClient({
     <div className={resolvedDark ? "dark" : ""}>
       <div className="min-h-screen w-full bg-slate-100 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
         {/* 1. TOP COMMAND BAR */}
-        <header className="sticky top-0 z-30 shrink-0 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <header className="sticky top-0 z-30 shrink-0 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             <span
-              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+              className={`hidden sm:block w-2.5 h-2.5 rounded-full shrink-0 ${
                 autoRefresh ? "bg-emerald-600" : "bg-slate-400 dark:bg-zinc-600"
               }`}
             />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <h1 className="text-sm sm:text-base font-bold text-slate-950 dark:text-zinc-50 tracking-tight truncate">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-2.5 gap-y-0.5">
+                <h1 className="text-xs sm:text-base font-bold text-slate-950 dark:text-zinc-50 tracking-tight truncate">
                   {config.title || "Rekapitulasi Kehadiran Perangkat Daerah"}
                 </h1>
-                <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-300 dark:border-zinc-700">
+                <span className="w-fit text-[11px] sm:text-xs font-semibold tabular-nums text-slate-600 dark:text-zinc-300 sm:bg-slate-100 sm:dark:bg-zinc-800 sm:px-2 sm:py-0.5 sm:rounded sm:border sm:border-slate-300 sm:dark:border-zinc-700">
                   {config.startDate} s/d {config.endDate}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {isAnyFilterActive && (
               <button
                 onClick={resetAllFilters}
-                className="h-8 px-2.5 rounded text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-100 transition-colors flex items-center gap-1"
+                className="h-7 sm:h-8 px-2 sm:px-2.5 rounded text-[11px] sm:text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-100 transition-colors flex items-center gap-1"
+                title="Reset semua filter"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Reset Filter</span>
+                <span className="hidden sm:inline">Reset Filter</span>
+                <span className="sm:hidden">Reset</span>
               </button>
             )}
 
@@ -873,7 +871,7 @@ export default function PublicRekapMonitorClient({
             {/* Auto Refresh Toggle */}
             <button
               onClick={toggleAutoRefresh}
-              className={`h-8 px-3 rounded text-xs font-bold border transition-colors flex items-center gap-1.5 ${
+              className={`h-7 sm:h-8 px-2 sm:px-3 rounded text-[11px] sm:text-xs font-bold border transition-colors flex items-center gap-1.5 ${
                 autoRefresh
                   ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                   : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800"
@@ -885,20 +883,41 @@ export default function PublicRekapMonitorClient({
                   autoRefresh ? "bg-emerald-600" : "bg-slate-400 dark:bg-zinc-600"
                 }`}
               />
-              <span>Auto Update</span>
+              <span className="hidden sm:inline">Auto Update</span>
+              <span className="sm:hidden">Auto</span>
             </button>
 
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="h-8 w-8 rounded flex items-center justify-center bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700 transition-colors"
+              className="h-7 w-7 sm:h-8 sm:w-8 rounded flex items-center justify-center bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700 transition-colors"
               title="Muat ulang data"
             >
-              <RotateCcw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RotateCcw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`} />
             </button>
 
-            {/* Theme Switcher Segmented (Terang / Gelap / Sistem) */}
-            <div className="flex items-center p-0.5 rounded bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700">
+            {/* Mobile Single Cycle Theme Button */}
+            <button
+              type="button"
+              onClick={() =>
+                handleSetTheme(
+                  themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light"
+                )
+              }
+              className="sm:hidden h-7 w-7 rounded flex items-center justify-center bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700"
+              title={`Tema: ${themeMode === "light" ? "Terang" : themeMode === "dark" ? "Gelap" : "Sistem"}`}
+            >
+              {themeMode === "light" ? (
+                <Sun className="w-3.5 h-3.5" />
+              ) : themeMode === "dark" ? (
+                <Moon className="w-3.5 h-3.5" />
+              ) : (
+                <Monitor className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            {/* Desktop Theme Switcher Segmented (Terang / Gelap / Sistem) */}
+            <div className="hidden sm:flex items-center p-0.5 rounded bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700">
               <button
                 onClick={() => handleSetTheme("light")}
                 className={`h-7 px-2 rounded-xs text-xs font-bold flex items-center gap-1 transition-colors ${
@@ -909,7 +928,7 @@ export default function PublicRekapMonitorClient({
                 title="Mode Terang"
               >
                 <Sun className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Terang</span>
+                <span>Terang</span>
               </button>
               <button
                 onClick={() => handleSetTheme("dark")}
@@ -921,7 +940,7 @@ export default function PublicRekapMonitorClient({
                 title="Mode Gelap"
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Gelap</span>
+                <span>Gelap</span>
               </button>
               <button
                 onClick={() => handleSetTheme("system")}
@@ -933,7 +952,7 @@ export default function PublicRekapMonitorClient({
                 title="Ikuti Sistem"
               >
                 <Monitor className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sistem</span>
+                <span>Sistem</span>
               </button>
             </div>
 
@@ -1040,12 +1059,12 @@ export default function PublicRekapMonitorClient({
 
         {/* 3. STRIP ANALITIK RINGKAS: PERHATIAN PIMPINAN, ESELON, & TREN 12 BULAN */}
         <section className="shrink-0 grid grid-cols-1 lg:grid-cols-12 bg-slate-50 dark:bg-zinc-900/70 border-b border-slate-300 dark:border-zinc-800 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-zinc-800">
-          {/* Kolom 1: Sorotan 10 OPD & Pejabat Terajin (5 Col) */}
+          {/* Kolom 1: Sorotan OPD & Pejabat Terajin Lengkap (5 Col) */}
           <div className="lg:col-span-5 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
-                  10 OPD Terajin
+                  OPD Terajin ({topDiligentData.opdTerajin.length})
                 </span>
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
                   Hadir / Capaian
@@ -1056,7 +1075,7 @@ export default function PublicRekapMonitorClient({
                   Belum ada data kehadiran OPD.
                 </p>
               ) : (
-                <div className="space-y-1">
+                <div className="max-h-[190px] overflow-y-auto pr-1 space-y-1">
                   {topDiligentData.opdTerajin.map((o, idx) => (
                     <div
                       key={o.instansi}
@@ -1080,7 +1099,7 @@ export default function PublicRekapMonitorClient({
             <div>
               <div className="flex items-center justify-between mb-1.5 border-b border-slate-200 dark:border-zinc-800 pb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
-                  10 Pejabat / Individu Terajin
+                  Pejabat / Individu Terajin ({topDiligentData.pegawaiTerajin.length})
                 </span>
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
                   Hadir / Capaian
@@ -1091,7 +1110,7 @@ export default function PublicRekapMonitorClient({
                   Belum ada data kehadiran individu.
                 </p>
               ) : (
-                <div className="space-y-1">
+                <div className="max-h-[190px] overflow-y-auto pr-1 space-y-1">
                   {topDiligentData.pegawaiTerajin.map((p, idx) => (
                     <div
                       key={`${p.nama}_${idx}`}
