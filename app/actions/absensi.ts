@@ -2480,6 +2480,8 @@ export async function getRekapKehadiranOpd(params?: {
       id: true,
       namaKegiatan: true,
       tanggal: true,
+      waktu: true,
+      tempat: true,
       isRecurring: true,
       kategori: true,
       targetLatitude: true,
@@ -2568,10 +2570,43 @@ type AgendaRekapRawItem = Awaited<ReturnType<typeof prisma.agendaAbsensi.findMan
 
 // Ekstrak kalkulasi rekap dari array agendas mentah
 export async function processAgendasToRekap(
-  agendas: AgendaRekapRawItem[],
+  agendas: (AgendaRekapRawItem & { waktu?: string | null; tempat?: string | null })[],
   params?: { startDate?: string; endDate?: string }
 ) {
   const totalAgenda = agendas.length;
+
+  type KegiatanPesertaItem = {
+    id: string;
+    nama: string;
+    nip?: string | null;
+    jabatan: string;
+    instansi: string;
+    eselon?: string | null;
+    status: StatusKehadiran;
+    keterangan?: string | null;
+    namaPerwakilan?: string | null;
+    jabatanPerwakilan?: string | null;
+    waktuInput?: Date | string | null;
+    lokasiText?: string | null;
+    isInsideRadius?: boolean | null;
+    isNonUndangan: boolean;
+  };
+
+  type KegiatanSessionItem = {
+    id: string;
+    agendaId: string;
+    namaKegiatan: string;
+    tanggal: Date | string;
+    waktu?: string | null;
+    tempat?: string | null;
+    kategori?: string | null;
+    isRecurring: boolean;
+    isCancelledSession?: boolean;
+    cancelReason?: string | null;
+    peserta: KegiatanPesertaItem[];
+  };
+
+  const kegiatanList: KegiatanSessionItem[] = [];
 
   type OpdPesertaItem = {
     id: string;
@@ -2708,9 +2743,52 @@ export async function processAgendasToRekap(
       }
     }
 
+    const mapPesertaForKegiatan = (list: typeof processedPeserta): KegiatanPesertaItem[] =>
+      list.map((p) => {
+        let isInside: boolean | null = null;
+        if (
+          p.status === "HADIR" &&
+          typeof p.latitude === "number" &&
+          typeof p.longitude === "number" &&
+          typeof centerLat === "number" &&
+          typeof centerLng === "number"
+        ) {
+          const dist = calculateDistanceMeters(centerLat, centerLng, p.latitude, p.longitude);
+          isInside = dist <= radiusMeters;
+        }
+        return {
+          id: p.id,
+          nama: p.nama,
+          nip: p.nip,
+          jabatan: p.jabatan,
+          instansi: p.instansi,
+          eselon: p.eselon ?? null,
+          status: p.status,
+          keterangan: p.keterangan,
+          namaPerwakilan: p.namaPerwakilan,
+          jabatanPerwakilan: p.jabatanPerwakilan,
+          waktuInput: p.waktuInput,
+          lokasiText: p.lokasiText,
+          isInsideRadius: isInside,
+          isNonUndangan: Boolean(p.isNonUndangan),
+        };
+      });
+
     let processedPeserta: typeof ag.peserta = [];
     if (!ag.isRecurring) {
       processedPeserta = ag.peserta;
+      kegiatanList.push({
+        id: `${ag.id}_${formatWita(ag.tanggal, "yyyy-MM-dd")}`,
+        agendaId: ag.id,
+        namaKegiatan: ag.namaKegiatan,
+        tanggal: ag.tanggal,
+        waktu: ag.waktu ?? null,
+        tempat: ag.tempat ?? null,
+        kategori: ag.kategori,
+        isRecurring: false,
+        isCancelledSession: false,
+        peserta: mapPesertaForKegiatan(processedPeserta),
+      });
     } else {
       // Agenda Rutin: Evaluasi seluruh template OPD/Pegawai yang diundang pada setiap sesi tanggal aktif
       const cancelledList = (ag.cancelledSessions as any[]) || [];
@@ -2865,6 +2943,7 @@ export async function processAgendasToRekap(
         }
 
         // Evaluasi setiap template undangan pada sesi tanggal aktif ini
+        const sessionPeserta: typeof ag.peserta = [];
         for (const [key, templateP] of templateMap.entries()) {
           const matched = ag.peserta.find((p) => {
             const pKey = p.pegawaiId || `${p.instansi}_${p.jabatan}_${p.nama}`;
@@ -2873,10 +2952,10 @@ export async function processAgendasToRekap(
           });
 
           if (matched) {
-            processedPeserta.push(matched);
+            sessionPeserta.push(matched);
           } else {
             // Belum/tidak hadir pada sesi tanggal ini -> hitung sebagai TIDAK_HADIR pada sesi ini
-            processedPeserta.push({
+            sessionPeserta.push({
               ...templateP,
               id: `${templateP.id}_${sessDateStr}`,
               tanggalSesi: sessDate,
@@ -2899,7 +2978,21 @@ export async function processAgendasToRekap(
           const pDateStr = formatWita(p.tanggalSesi || p.waktuInput || ag.tanggal, "yyyy-MM-dd");
           return isNon && pDateStr === sessDateStr;
         });
-        processedPeserta.push(...nonUndanganList);
+        sessionPeserta.push(...nonUndanganList);
+        processedPeserta.push(...sessionPeserta);
+
+        kegiatanList.push({
+          id: `${ag.id}_${sessDateStr}`,
+          agendaId: ag.id,
+          namaKegiatan: ag.namaKegiatan,
+          tanggal: sessDate,
+          waktu: ag.waktu ?? null,
+          tempat: ag.tempat ?? null,
+          kategori: ag.kategori,
+          isRecurring: true,
+          isCancelledSession: false,
+          peserta: mapPesertaForKegiatan(sessionPeserta),
+        });
       }
     }
 
@@ -3391,11 +3484,13 @@ export async function processAgendasToRekap(
   // Sort by persentaseKehadiran desc
   opdSummary.sort((a, b) => b.persentaseKehadiran - a.persentaseKehadiran);
   pegawaiSummary.sort((a, b) => b.persentaseKehadiran - a.persentaseKehadiran);
+  kegiatanList.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   return {
     totalAgenda,
     opdSummary,
     pegawaiSummary,
+    kegiatanList,
   };
 }
 
@@ -3692,6 +3787,8 @@ export async function getPublicRekapMonitorData(token: string) {
       id: true,
       namaKegiatan: true,
       tanggal: true,
+      waktu: true,
+      tempat: true,
       isRecurring: true,
       kategori: true,
       targetLatitude: true,

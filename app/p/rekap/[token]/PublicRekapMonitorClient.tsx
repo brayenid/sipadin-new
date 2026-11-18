@@ -15,8 +15,50 @@ import {
   Moon,
   Monitor,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
+
+export interface KegiatanPesertaItem {
+  id: string;
+  nama: string;
+  nip?: string | null;
+  jabatan: string;
+  instansi: string;
+  eselon?: string | null;
+  status: string;
+  keterangan?: string | null;
+  namaPerwakilan?: string | null;
+  jabatanPerwakilan?: string | null;
+  waktuInput?: Date | string | null;
+  lokasiText?: string | null;
+  isInsideRadius?: boolean | null;
+  isNonUndangan: boolean;
+}
+
+export interface KegiatanSessionItem {
+  id: string;
+  agendaId: string;
+  namaKegiatan: string;
+  tanggal: Date | string;
+  waktu?: string | null;
+  tempat?: string | null;
+  kategori?: string | null;
+  isRecurring: boolean;
+  isCancelledSession?: boolean;
+  cancelReason?: string | null;
+  peserta: KegiatanPesertaItem[];
+}
+
+export type MonitorRekapData = GrafisInput & {
+  kegiatanList?: KegiatanSessionItem[];
+};
 
 interface PublicRekapMonitorClientProps {
   token: string;
@@ -30,10 +72,83 @@ interface PublicRekapMonitorClientProps {
     onlyInvited: boolean;
     createdAt: Date | string;
   };
-  initialRekapData: GrafisInput;
+  initialRekapData: MonitorRekapData;
 }
 
 type ThemeMode = "light" | "dark" | "system";
+type SortDir = "asc" | "desc";
+
+type OpdSortKey =
+  | "instansi"
+  | "totalDiundang"
+  | "hadir"
+  | "mewakili"
+  | "izin"
+  | "tidakHadir"
+  | "hadirLuarRadius"
+  | "persentaseKehadiran";
+
+type PegawaiSortKey =
+  | "nama"
+  | "instansi"
+  | "eselon"
+  | "totalDiundang"
+  | "hadirTotal"
+  | "tidakHadir"
+  | "hadirLuarRadius"
+  | "persentaseKehadiran";
+
+type KegiatanSortKey =
+  | "tanggal"
+  | "namaKegiatan"
+  | "diundang"
+  | "hadir"
+  | "mewakili"
+  | "izin"
+  | "tidakHadir"
+  | "luarTitik"
+  | "persentase";
+
+type PesertaSortKey = "nama" | "instansi" | "eselon" | "status" | "waktuInput";
+
+function SortHeaderButton({
+  label,
+  active,
+  dir,
+  align = "left",
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  align?: "left" | "center" | "right";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider hover:text-slate-950 dark:hover:text-white transition-colors select-none ${
+        align === "right"
+          ? "justify-end w-full"
+          : align === "center"
+          ? "justify-center w-full"
+          : "justify-start"
+      } ${active ? "text-slate-950 dark:text-white" : "text-slate-700 dark:text-zinc-300"}`}
+    >
+      <span>{label}</span>
+      {active ? (
+        dir === "asc" ? (
+          <ArrowUp className="w-3 h-3 shrink-0" />
+        ) : (
+          <ArrowDown className="w-3 h-3 shrink-0" />
+        )
+      ) : (
+        <ArrowUpDown className="w-3 h-3 shrink-0 opacity-45" />
+      )}
+    </button>
+  );
+}
 
 const ALL_MONTH_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -45,7 +160,7 @@ export default function PublicRekapMonitorClient({
   initialConfig,
   initialRekapData,
 }: PublicRekapMonitorClientProps) {
-  const [rekapData, setRekapData] = useState<GrafisInput>(initialRekapData);
+  const [rekapData, setRekapData] = useState<MonitorRekapData>(initialRekapData);
   const [config, setConfig] = useState(initialConfig);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -79,8 +194,52 @@ export default function PublicRekapMonitorClient({
     nonEselon: true,
   });
 
+  // Filter Checkbox Daftar Kegiatan
+  const [kegiatanFilters, setKegiatanFilters] = useState({
+    adaAlpa: false,
+    lowAttendance: false,
+    adaLuarTitik: false,
+    expandAll: false,
+  });
+
+  // Filter Status Peserta di dalam rincian kegiatan
+  const [pesertaStatusFilter, setPesertaStatusFilter] = useState<
+    "ALL" | "HADIR" | "MEWAKILI" | "IZIN" | "TIDAK_HADIR"
+  >("ALL");
+
+  // Sort States untuk setiap tabel data
+  const [opdSort, setOpdSort] = useState<{ key: OpdSortKey; dir: SortDir }>({
+    key: "persentaseKehadiran",
+    dir: "asc",
+  });
+  const [pegawaiSort, setPegawaiSort] = useState<{ key: PegawaiSortKey; dir: SortDir }>({
+    key: "tidakHadir",
+    dir: "desc",
+  });
+  const [kegiatanSort, setKegiatanSort] = useState<{ key: KegiatanSortKey; dir: SortDir }>({
+    key: "tanggal",
+    dir: "desc",
+  });
+  const [pesertaSort, setPesertaSort] = useState<{ key: PesertaSortKey; dir: SortDir }>({
+    key: "status",
+    dir: "asc",
+  });
+
   const [opdSearch, setOpdSearch] = useState("");
   const [pegawaiSearch, setPegawaiSearch] = useState("");
+  const [kegiatanSearch, setKegiatanSearch] = useState("");
+  const [expandedKegiatanIds, setExpandedKegiatanIds] = useState<Record<string, boolean>>({});
+
+  const persistPreferences = useCallback(
+    (patch: Record<string, any>) => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const prev = raw ? JSON.parse(raw) : {};
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, ...patch }));
+      } catch {}
+    },
+    [STORAGE_KEY]
+  );
 
   // Load Theme & Filter State dari localStorage saat mount
   useEffect(() => {
@@ -95,6 +254,11 @@ export default function PublicRekapMonitorClient({
         const parsed = JSON.parse(saved);
         if (parsed.opdFilters) setOpdFilters(parsed.opdFilters);
         if (parsed.pegawaiFilters) setPegawaiFilters(parsed.pegawaiFilters);
+        if (parsed.kegiatanFilters) setKegiatanFilters(parsed.kegiatanFilters);
+        if (parsed.opdSort) setOpdSort(parsed.opdSort);
+        if (parsed.pegawaiSort) setPegawaiSort(parsed.pegawaiSort);
+        if (parsed.kegiatanSort) setKegiatanSort(parsed.kegiatanSort);
+        if (parsed.pesertaSort) setPesertaSort(parsed.pesertaSort);
         if (typeof parsed.autoRefresh === "boolean") setAutoRefresh(parsed.autoRefresh);
       }
     } catch {}
@@ -122,12 +286,7 @@ export default function PublicRekapMonitorClient({
   const toggleAutoRefresh = () => {
     setAutoRefresh((prev) => {
       const next = !prev;
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ opdFilters, pegawaiFilters, autoRefresh: next })
-        );
-      } catch {}
+      persistPreferences({ autoRefresh: next });
       return next;
     });
   };
@@ -135,12 +294,7 @@ export default function PublicRekapMonitorClient({
   const updateOpdFilter = (key: keyof typeof opdFilters, val: boolean) => {
     setOpdFilters((prev) => {
       const next = { ...prev, [key]: val };
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ opdFilters: next, pegawaiFilters, autoRefresh })
-        );
-      } catch {}
+      persistPreferences({ opdFilters: next });
       return next;
     });
   };
@@ -148,12 +302,59 @@ export default function PublicRekapMonitorClient({
   const updatePegawaiFilter = (key: keyof typeof pegawaiFilters, val: boolean) => {
     setPegawaiFilters((prev) => {
       const next = { ...prev, [key]: val };
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ opdFilters, pegawaiFilters: next, autoRefresh })
-        );
-      } catch {}
+      persistPreferences({ pegawaiFilters: next });
+      return next;
+    });
+  };
+
+  const updateKegiatanFilter = (key: keyof typeof kegiatanFilters, val: boolean) => {
+    setKegiatanFilters((prev) => {
+      const next = { ...prev, [key]: val };
+      persistPreferences({ kegiatanFilters: next });
+      return next;
+    });
+  };
+
+  const handleToggleOpdSort = (key: OpdSortKey) => {
+    setOpdSort((prev) => {
+      const next: { key: OpdSortKey; dir: SortDir } =
+        prev.key === key
+          ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+          : { key, dir: key === "instansi" ? "asc" : "desc" };
+      persistPreferences({ opdSort: next });
+      return next;
+    });
+  };
+
+  const handleTogglePegawaiSort = (key: PegawaiSortKey) => {
+    setPegawaiSort((prev) => {
+      const next: { key: PegawaiSortKey; dir: SortDir } =
+        prev.key === key
+          ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+          : { key, dir: key === "nama" || key === "instansi" || key === "eselon" ? "asc" : "desc" };
+      persistPreferences({ pegawaiSort: next });
+      return next;
+    });
+  };
+
+  const handleToggleKegiatanSort = (key: KegiatanSortKey) => {
+    setKegiatanSort((prev) => {
+      const next: { key: KegiatanSortKey; dir: SortDir } =
+        prev.key === key
+          ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+          : { key, dir: key === "namaKegiatan" ? "asc" : "desc" };
+      persistPreferences({ kegiatanSort: next });
+      return next;
+    });
+  };
+
+  const handleTogglePesertaSort = (key: PesertaSortKey) => {
+    setPesertaSort((prev) => {
+      const next: { key: PesertaSortKey; dir: SortDir } =
+        prev.key === key
+          ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+          : { key, dir: key === "waktuInput" ? "desc" : "asc" };
+      persistPreferences({ pesertaSort: next });
       return next;
     });
   };
@@ -173,16 +374,24 @@ export default function PublicRekapMonitorClient({
       eselon3: true,
       nonEselon: true,
     };
+    const defaultKeg = {
+      adaAlpa: false,
+      lowAttendance: false,
+      adaLuarTitik: false,
+      expandAll: false,
+    };
     setOpdFilters(defaultOpd);
     setPegawaiFilters(defaultPeg);
+    setKegiatanFilters(defaultKeg);
+    setPesertaStatusFilter("ALL");
     setOpdSearch("");
     setPegawaiSearch("");
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ opdFilters: defaultOpd, pegawaiFilters: defaultPeg, autoRefresh })
-      );
-    } catch {}
+    setKegiatanSearch("");
+    persistPreferences({
+      opdFilters: defaultOpd,
+      pegawaiFilters: defaultPeg,
+      kegiatanFilters: defaultKeg,
+    });
   };
 
   const grafis = useMemo(() => {
@@ -312,11 +521,30 @@ export default function PublicRekapMonitorClient({
       list = list.filter((o) => o.tidakHadir > 0);
     }
 
-    list.sort(
-      (a, b) => a.persentaseKehadiran - b.persentaseKehadiran || b.tidakHadir - a.tidakHadir
-    );
+    list.sort((a, b) => {
+      const m = opdSort.dir === "asc" ? 1 : -1;
+      switch (opdSort.key) {
+        case "instansi":
+          return m * a.instansi.localeCompare(b.instansi, "id");
+        case "totalDiundang":
+          return m * (a.totalDiundang - b.totalDiundang);
+        case "hadir":
+          return m * (a.hadir - b.hadir);
+        case "mewakili":
+          return m * (a.mewakili - b.mewakili);
+        case "izin":
+          return m * (a.izin - b.izin);
+        case "tidakHadir":
+          return m * (a.tidakHadir - b.tidakHadir);
+        case "hadirLuarRadius":
+          return m * ((a.hadirLuarRadius || 0) - (b.hadirLuarRadius || 0));
+        case "persentaseKehadiran":
+        default:
+          return m * (a.persentaseKehadiran - b.persentaseKehadiran) || b.tidakHadir - a.tidakHadir;
+      }
+    });
     return list;
-  }, [rekapData.opdSummary, config.selectedUnits, opdSearch, opdFilters]);
+  }, [rekapData.opdSummary, config.selectedUnits, opdSearch, opdFilters, opdSort]);
 
   // Filter Tabel Pegawai & Jabatan
   const filteredPegawaiList = useMemo(() => {
@@ -355,13 +583,215 @@ export default function PublicRekapMonitorClient({
       list = list.filter((p) => (p.hadirLuarRadius || 0) > 0);
     }
 
-    list.sort(
-      (a, b) =>
-        (b.tidakHadir || 0) - (a.tidakHadir || 0) ||
-        a.persentaseKehadiran - b.persentaseKehadiran
-    );
+    list.sort((a, b) => {
+      const m = pegawaiSort.dir === "asc" ? 1 : -1;
+      const aHadir = a.hadir + a.mewakili;
+      const bHadir = b.hadir + b.mewakili;
+      switch (pegawaiSort.key) {
+        case "nama":
+          return m * a.nama.localeCompare(b.nama, "id");
+        case "instansi":
+          return m * a.instansi.localeCompare(b.instansi, "id");
+        case "eselon":
+          return m * (a.eselon || "ZZZ").localeCompare(b.eselon || "ZZZ", "id");
+        case "totalDiundang":
+          return m * (a.totalDiundang - b.totalDiundang);
+        case "hadirTotal":
+          return m * (aHadir - bHadir);
+        case "hadirLuarRadius":
+          return m * ((a.hadirLuarRadius || 0) - (b.hadirLuarRadius || 0));
+        case "persentaseKehadiran":
+          return m * (a.persentaseKehadiran - b.persentaseKehadiran);
+        case "tidakHadir":
+        default:
+          return (
+            m * ((a.tidakHadir || 0) - (b.tidakHadir || 0)) ||
+            a.persentaseKehadiran - b.persentaseKehadiran
+          );
+      }
+    });
     return list;
-  }, [rekapData.pegawaiSummary, config.selectedUnits, pegawaiSearch, pegawaiFilters]);
+  }, [rekapData.pegawaiSummary, config.selectedUnits, pegawaiSearch, pegawaiFilters, pegawaiSort]);
+
+  // Pengolahan & Filter Daftar Kegiatan Beserta Undangan dan Kehadiran Lengkap
+  const filteredKegiatanList = useMemo(() => {
+    const rawList = rekapData.kegiatanList || [];
+    const unitSet =
+      config.selectedUnits && config.selectedUnits.length > 0
+        ? new Set(config.selectedUnits)
+        : null;
+
+    let enriched = rawList
+      .map((keg) => {
+        let peserta = keg.peserta || [];
+        if (unitSet) {
+          peserta = peserta.filter((p) => unitSet.has(p.instansi));
+        }
+        if (config.onlyInvited) {
+          peserta = peserta.filter((p) => !p.isNonUndangan);
+        }
+
+        const diundangList = peserta.filter((p) => !p.isNonUndangan);
+        const totalDiundang = diundangList.length > 0 ? diundangList.length : peserta.length;
+        let hadir = 0;
+        let mewakili = 0;
+        let izin = 0;
+        let tidakHadir = 0;
+        let luarTitik = 0;
+
+        for (const p of peserta) {
+          if (p.status === "HADIR") {
+            hadir += 1;
+            if (p.isInsideRadius === false) luarTitik += 1;
+          } else if (p.status === "MEWAKILI") {
+            mewakili += 1;
+          } else if (p.status === "IZIN") {
+            izin += 1;
+          } else {
+            tidakHadir += 1;
+          }
+        }
+
+        const persentase =
+          totalDiundang > 0 ? Math.round(((hadir + mewakili) / totalDiundang) * 100) : 0;
+
+        return {
+          ...keg,
+          peserta,
+          totalDiundang,
+          hadir,
+          mewakili,
+          izin,
+          tidakHadir,
+          luarTitik,
+          persentase,
+        };
+      })
+      .filter((keg) => !unitSet || keg.peserta.length > 0);
+
+    if (kegiatanSearch.trim()) {
+      const q = kegiatanSearch.toLowerCase();
+      enriched = enriched.filter(
+        (k) =>
+          k.namaKegiatan.toLowerCase().includes(q) ||
+          (k.tempat && k.tempat.toLowerCase().includes(q)) ||
+          k.peserta.some(
+            (p) =>
+              p.nama.toLowerCase().includes(q) ||
+              p.instansi.toLowerCase().includes(q) ||
+              p.jabatan.toLowerCase().includes(q)
+          )
+      );
+    }
+
+    if (kegiatanFilters.adaAlpa) {
+      enriched = enriched.filter((k) => k.tidakHadir > 0);
+    }
+    if (kegiatanFilters.lowAttendance) {
+      enriched = enriched.filter((k) => k.totalDiundang > 0 && k.persentase < 80);
+    }
+    if (kegiatanFilters.adaLuarTitik) {
+      enriched = enriched.filter((k) => k.luarTitik > 0);
+    }
+
+    enriched.sort((a, b) => {
+      const m = kegiatanSort.dir === "asc" ? 1 : -1;
+      switch (kegiatanSort.key) {
+        case "namaKegiatan":
+          return m * a.namaKegiatan.localeCompare(b.namaKegiatan, "id");
+        case "diundang":
+          return m * (a.totalDiundang - b.totalDiundang);
+        case "hadir":
+          return m * (a.hadir - b.hadir);
+        case "mewakili":
+          return m * (a.mewakili - b.mewakili);
+        case "izin":
+          return m * (a.izin - b.izin);
+        case "tidakHadir":
+          return m * (a.tidakHadir - b.tidakHadir);
+        case "luarTitik":
+          return m * (a.luarTitik - b.luarTitik);
+        case "persentase":
+          return m * (a.persentase - b.persentase);
+        case "tanggal":
+        default:
+          return m * (new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
+      }
+    });
+
+    return enriched;
+  }, [
+    rekapData.kegiatanList,
+    config.selectedUnits,
+    config.onlyInvited,
+    kegiatanSearch,
+    kegiatanFilters,
+    kegiatanSort,
+  ]);
+
+  const sortPesertaList = useCallback(
+    (list: KegiatanPesertaItem[]) => {
+      const statusRank: Record<string, number> = {
+        TIDAK_HADIR: 0,
+        IZIN: 1,
+        MEWAKILI: 2,
+        HADIR: 3,
+      };
+      let filtered =
+        pesertaStatusFilter === "ALL"
+          ? [...list]
+          : list.filter((p) => p.status === pesertaStatusFilter);
+
+      if (kegiatanSearch.trim()) {
+        const q = kegiatanSearch.toLowerCase();
+        // Jika query cocok nama/OPD peserta, prioritaskan tampilkan yang relevan atau tampilkan semua jika query hanya cocok nama kegiatan
+        const anyParticipantMatch = filtered.some(
+          (p) =>
+            p.nama.toLowerCase().includes(q) ||
+            p.instansi.toLowerCase().includes(q) ||
+            p.jabatan.toLowerCase().includes(q)
+        );
+        if (anyParticipantMatch) {
+          filtered = filtered.filter(
+            (p) =>
+              p.nama.toLowerCase().includes(q) ||
+              p.instansi.toLowerCase().includes(q) ||
+              p.jabatan.toLowerCase().includes(q)
+          );
+        }
+      }
+
+      filtered.sort((a, b) => {
+        const m = pesertaSort.dir === "asc" ? 1 : -1;
+        switch (pesertaSort.key) {
+          case "nama":
+            return m * a.nama.localeCompare(b.nama, "id");
+          case "instansi":
+            return m * a.instansi.localeCompare(b.instansi, "id");
+          case "eselon":
+            return m * (a.eselon || "ZZZ").localeCompare(b.eselon || "ZZZ", "id");
+          case "waktuInput": {
+            const ta = a.waktuInput ? new Date(a.waktuInput).getTime() : 0;
+            const tb = b.waktuInput ? new Date(b.waktuInput).getTime() : 0;
+            return m * (ta - tb);
+          }
+          case "status":
+          default:
+            return (
+              m * ((statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9)) ||
+              a.instansi.localeCompare(b.instansi, "id") ||
+              a.nama.localeCompare(b.nama, "id")
+            );
+        }
+      });
+      return filtered;
+    },
+    [pesertaSort, pesertaStatusFilter, kegiatanSearch]
+  );
+
+  const toggleKegiatanExpand = (id: string) => {
+    setExpandedKegiatanIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const totalPartisipasi = grafis.status.hadir + grafis.status.mewakili;
   const totalPresensiMasuk = totalPartisipasi + grafis.status.izin + grafis.status.tidakHadir;
@@ -377,14 +807,19 @@ export default function PublicRekapMonitorClient({
     !pegawaiFilters.eselon2 ||
     !pegawaiFilters.eselon3 ||
     !pegawaiFilters.nonEselon ||
+    kegiatanFilters.adaAlpa ||
+    kegiatanFilters.lowAttendance ||
+    kegiatanFilters.adaLuarTitik ||
+    pesertaStatusFilter !== "ALL" ||
     Boolean(opdSearch) ||
-    Boolean(pegawaiSearch);
+    Boolean(pegawaiSearch) ||
+    Boolean(kegiatanSearch);
 
   return (
     <div className={resolvedDark ? "dark" : ""}>
-      <div className="min-h-screen xl:h-screen xl:w-screen xl:overflow-hidden bg-slate-100 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
+      <div className="min-h-screen w-full bg-slate-100 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
         {/* 1. TOP COMMAND BAR */}
-        <header className="shrink-0 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        <header className="sticky top-0 z-30 shrink-0 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <span
               className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -396,10 +831,6 @@ export default function PublicRekapMonitorClient({
                 <h1 className="text-sm sm:text-base font-bold text-slate-950 dark:text-zinc-50 tracking-tight truncate">
                   {config.title || "Rekapitulasi Kehadiran Perangkat Daerah"}
                 </h1>
-                <span className="hidden md:inline-block text-slate-300 dark:text-zinc-700">|</span>
-                <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300 truncate">
-                  {config.teamName}
-                </span>
                 <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-300 dark:border-zinc-700">
                   {config.startDate} s/d {config.endDate}
                 </span>
@@ -743,9 +1174,9 @@ export default function PublicRekapMonitorClient({
         </section>
 
         {/* 4. DUAL-PANE WORKSPACE: TABEL OPD (KIRI) & TABEL JABATAN/INDIVIDU (KANAN) */}
-        <main className="flex-1 xl:min-h-0 grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x divide-slate-300 dark:divide-zinc-800 bg-white dark:bg-zinc-900 xl:overflow-hidden">
+        <main className="grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x divide-slate-300 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800">
           {/* PANE KIRI: TABEL PERANGKAT DAERAH (OPD) */}
-          <section className="xl:col-span-6 flex flex-col xl:min-h-0 xl:overflow-hidden">
+          <section className="xl:col-span-6 flex flex-col min-w-0">
             {/* Toolbar Filter OPD */}
             <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -833,19 +1264,82 @@ export default function PublicRekapMonitorClient({
             </div>
 
             {/* Tabel Data OPD */}
-            <div className="flex-1 xl:min-h-0 overflow-x-auto xl:overflow-y-auto max-h-[480px] xl:max-h-none">
+            <div className="overflow-auto max-h-[460px]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 sticky top-0 z-10 border-b border-slate-300 dark:border-zinc-800">
                   <tr>
                     <th className="py-2.5 px-2.5 text-center w-9">No</th>
-                    <th className="py-2.5 px-3">Perangkat Daerah (OPD)</th>
-                    <th className="py-2.5 px-2 text-right w-14">Undang</th>
-                    <th className="py-2.5 px-2 text-right w-14">Hadir</th>
-                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-14">Wakil</th>
-                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-14">Izin</th>
-                    <th className="py-2.5 px-2 text-right w-14">Alpa</th>
-                    <th className="hidden md:table-cell py-2.5 px-2 text-right w-16">Luar Titik</th>
-                    <th className="py-2.5 px-3 text-right w-20">Capaian</th>
+                    <th className="py-2.5 px-3">
+                      <SortHeaderButton
+                        label="Perangkat Daerah (OPD)"
+                        active={opdSort.key === "instansi"}
+                        dir={opdSort.dir}
+                        onClick={() => handleToggleOpdSort("instansi")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-16">
+                      <SortHeaderButton
+                        label="Undang"
+                        active={opdSort.key === "totalDiundang"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("totalDiundang")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-16">
+                      <SortHeaderButton
+                        label="Hadir"
+                        active={opdSort.key === "hadir"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("hadir")}
+                      />
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-16">
+                      <SortHeaderButton
+                        label="Wakil"
+                        active={opdSort.key === "mewakili"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("mewakili")}
+                      />
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-14">
+                      <SortHeaderButton
+                        label="Izin"
+                        active={opdSort.key === "izin"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("izin")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-14">
+                      <SortHeaderButton
+                        label="Alpa"
+                        active={opdSort.key === "tidakHadir"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("tidakHadir")}
+                      />
+                    </th>
+                    <th className="hidden md:table-cell py-2.5 px-2 text-right w-20">
+                      <SortHeaderButton
+                        label="Luar Titik"
+                        active={opdSort.key === "hadirLuarRadius"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("hadirLuarRadius")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-3 text-right w-20">
+                      <SortHeaderButton
+                        label="Capaian"
+                        active={opdSort.key === "persentaseKehadiran"}
+                        dir={opdSort.dir}
+                        align="right"
+                        onClick={() => handleToggleOpdSort("persentaseKehadiran")}
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-zinc-800 text-xs tabular-nums">
@@ -932,7 +1426,7 @@ export default function PublicRekapMonitorClient({
           </section>
 
           {/* PANE KANAN: TABEL JABATAN & PEGAWAI (INDIVIDU) */}
-          <section className="xl:col-span-6 flex flex-col xl:min-h-0 xl:overflow-hidden">
+          <section className="xl:col-span-6 flex flex-col min-w-0">
             {/* Toolbar Filter Pegawai */}
             <div className="shrink-0 p-3 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1020,19 +1514,81 @@ export default function PublicRekapMonitorClient({
             </div>
 
             {/* Tabel Data Pegawai */}
-            <div className="flex-1 xl:min-h-0 overflow-x-auto xl:overflow-y-auto max-h-[520px] xl:max-h-none">
+            <div className="overflow-auto max-h-[460px]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 sticky top-0 z-10 border-b border-slate-300 dark:border-zinc-800">
                   <tr>
                     <th className="py-2.5 px-2.5 text-center w-9">No</th>
-                    <th className="py-2.5 px-3">Nama &amp; Jabatan</th>
-                    <th className="hidden md:table-cell py-2.5 px-2">OPD</th>
-                    <th className="py-2.5 px-1.5 text-center w-14">Eselon</th>
-                    <th className="py-2.5 px-2 text-right w-14">Undang</th>
-                    <th className="py-2.5 px-2 text-right w-14">Hadir</th>
-                    <th className="py-2.5 px-2 text-right w-14">Alpa</th>
-                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-16">Luar Titik</th>
-                    <th className="py-2.5 px-3 text-right w-20">Capaian</th>
+                    <th className="py-2.5 px-3">
+                      <SortHeaderButton
+                        label="Nama & Jabatan"
+                        active={pegawaiSort.key === "nama"}
+                        dir={pegawaiSort.dir}
+                        onClick={() => handleTogglePegawaiSort("nama")}
+                      />
+                    </th>
+                    <th className="hidden md:table-cell py-2.5 px-2">
+                      <SortHeaderButton
+                        label="OPD"
+                        active={pegawaiSort.key === "instansi"}
+                        dir={pegawaiSort.dir}
+                        onClick={() => handleTogglePegawaiSort("instansi")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-1.5 text-center w-16">
+                      <SortHeaderButton
+                        label="Eselon"
+                        active={pegawaiSort.key === "eselon"}
+                        dir={pegawaiSort.dir}
+                        align="center"
+                        onClick={() => handleTogglePegawaiSort("eselon")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-16">
+                      <SortHeaderButton
+                        label="Undang"
+                        active={pegawaiSort.key === "totalDiundang"}
+                        dir={pegawaiSort.dir}
+                        align="right"
+                        onClick={() => handleTogglePegawaiSort("totalDiundang")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-16">
+                      <SortHeaderButton
+                        label="Hadir"
+                        active={pegawaiSort.key === "hadirTotal"}
+                        dir={pegawaiSort.dir}
+                        align="right"
+                        onClick={() => handleTogglePegawaiSort("hadirTotal")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-2 text-right w-14">
+                      <SortHeaderButton
+                        label="Alpa"
+                        active={pegawaiSort.key === "tidakHadir"}
+                        dir={pegawaiSort.dir}
+                        align="right"
+                        onClick={() => handleTogglePegawaiSort("tidakHadir")}
+                      />
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2 text-right w-20">
+                      <SortHeaderButton
+                        label="Luar Titik"
+                        active={pegawaiSort.key === "hadirLuarRadius"}
+                        dir={pegawaiSort.dir}
+                        align="right"
+                        onClick={() => handleTogglePegawaiSort("hadirLuarRadius")}
+                      />
+                    </th>
+                    <th className="py-2.5 px-3 text-right w-20">
+                      <SortHeaderButton
+                        label="Capaian"
+                        active={pegawaiSort.key === "persentaseKehadiran"}
+                        dir={pegawaiSort.dir}
+                        align="right"
+                        onClick={() => handleTogglePegawaiSort("persentaseKehadiran")}
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-zinc-800 text-xs tabular-nums">
@@ -1139,6 +1695,522 @@ export default function PublicRekapMonitorClient({
             </div>
           </section>
         </main>
+
+        {/* 5. DAFTAR KEGIATAN, UNDANGAN & KEHADIRAN LENGKAP */}
+        <section className="bg-white dark:bg-zinc-900">
+          {/* Toolbar Filter Kegiatan */}
+          <div className="p-3 sm:px-5 bg-slate-50 dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
+                  Daftar Kegiatan, Undangan &amp; Kehadiran Lengkap
+                </h2>
+                <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-zinc-200 bg-slate-200 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                  {filteredKegiatanList.length}
+                </span>
+              </div>
+
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari kegiatan, tempat, atau nama peserta..."
+                  value={kegiatanSearch}
+                  onChange={(e) => setKegiatanSearch(e.target.value)}
+                  className="w-full h-8 pl-8 pr-7 text-xs font-medium bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 rounded text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-500 focus:outline-none focus:border-slate-500 dark:focus:border-zinc-500"
+                />
+                {kegiatanSearch && (
+                  <button
+                    onClick={() => setKegiatanSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Checkbox Filter Bar Kegiatan (Persisted in localStorage) */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={kegiatanFilters.adaAlpa}
+                    onChange={(e) => updateKegiatanFilter("adaAlpa", e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                  />
+                  <span>Ada Alpa</span>
+                </label>
+
+                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={kegiatanFilters.lowAttendance}
+                    onChange={(e) => updateKegiatanFilter("lowAttendance", e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                  />
+                  <span>Capaian &lt; 80%</span>
+                </label>
+
+                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={kegiatanFilters.adaLuarTitik}
+                    onChange={(e) => updateKegiatanFilter("adaLuarTitik", e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                  />
+                  <span>Ada Luar Titik</span>
+                </label>
+
+                <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-zinc-800/90 border border-slate-300 dark:border-zinc-700 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={kegiatanFilters.expandAll}
+                    onChange={(e) => updateKegiatanFilter("expandAll", e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-400 accent-slate-900 dark:accent-zinc-200"
+                  />
+                  <span>Buka Semua Rincian</span>
+                </label>
+              </div>
+
+              {/* Filter Status Peserta (Global untuk rincian undangan) */}
+              <div className="flex flex-wrap items-center gap-1 text-[11px] font-bold">
+                {(
+                  [
+                    { id: "ALL", label: "Semua Status" },
+                    { id: "HADIR", label: "Hadir" },
+                    { id: "MEWAKILI", label: "Mewakili" },
+                    { id: "IZIN", label: "Izin" },
+                    { id: "TIDAK_HADIR", label: "Alpa" },
+                  ] as const
+                ).map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setPesertaStatusFilter(st.id)}
+                    className={`px-2 py-1 rounded border transition-colors ${
+                      pesertaStatusFilter === st.id
+                        ? "bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-slate-900 dark:border-zinc-100"
+                        : "bg-white dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabel Daftar Kegiatan */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-100 dark:bg-zinc-950 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 border-b border-slate-300 dark:border-zinc-800">
+                <tr>
+                  <th className="py-2.5 px-3 text-center w-10">No</th>
+                  <th className="py-2.5 px-3 w-36">
+                    <SortHeaderButton
+                      label="Tanggal"
+                      active={kegiatanSort.key === "tanggal"}
+                      dir={kegiatanSort.dir}
+                      onClick={() => handleToggleKegiatanSort("tanggal")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-3">
+                    <SortHeaderButton
+                      label="Nama Kegiatan & Lokasi"
+                      active={kegiatanSort.key === "namaKegiatan"}
+                      dir={kegiatanSort.dir}
+                      onClick={() => handleToggleKegiatanSort("namaKegiatan")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-2 text-right w-20">
+                    <SortHeaderButton
+                      label="Diundang"
+                      active={kegiatanSort.key === "diundang"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("diundang")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-2 text-right w-16">
+                    <SortHeaderButton
+                      label="Hadir"
+                      active={kegiatanSort.key === "hadir"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("hadir")}
+                    />
+                  </th>
+                  <th className="hidden sm:table-cell py-2.5 px-2 text-right w-16">
+                    <SortHeaderButton
+                      label="Wakil"
+                      active={kegiatanSort.key === "mewakili"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("mewakili")}
+                    />
+                  </th>
+                  <th className="hidden sm:table-cell py-2.5 px-2 text-right w-14">
+                    <SortHeaderButton
+                      label="Izin"
+                      active={kegiatanSort.key === "izin"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("izin")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-2 text-right w-16">
+                    <SortHeaderButton
+                      label="Alpa"
+                      active={kegiatanSort.key === "tidakHadir"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("tidakHadir")}
+                    />
+                  </th>
+                  <th className="hidden md:table-cell py-2.5 px-2 text-right w-20">
+                    <SortHeaderButton
+                      label="Luar Titik"
+                      active={kegiatanSort.key === "luarTitik"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("luarTitik")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-3 text-right w-20">
+                    <SortHeaderButton
+                      label="Capaian"
+                      active={kegiatanSort.key === "persentase"}
+                      dir={kegiatanSort.dir}
+                      align="right"
+                      onClick={() => handleToggleKegiatanSort("persentase")}
+                    />
+                  </th>
+                  <th className="py-2.5 px-3 text-center w-12">Detail</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-zinc-800 text-xs tabular-nums">
+                {filteredKegiatanList.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={11}
+                      className="py-12 text-center text-slate-600 dark:text-zinc-400 font-medium text-xs"
+                    >
+                      Tidak ada kegiatan yang sesuai dengan filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredKegiatanList.map((keg, idx) => {
+                    const isExpanded =
+                      kegiatanFilters.expandAll || Boolean(expandedKegiatanIds[keg.id]);
+                    const sortedPeserta = isExpanded ? sortPesertaList(keg.peserta) : [];
+                    return (
+                      <React.Fragment key={keg.id}>
+                        <tr
+                          onClick={() => toggleKegiatanExpand(keg.id)}
+                          className={`cursor-pointer transition-colors hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 ${
+                            isExpanded ? "bg-slate-50 dark:bg-zinc-800/40" : ""
+                          }`}
+                        >
+                          <td className="py-2.5 px-3 text-center font-semibold text-slate-500 dark:text-zinc-400">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="font-bold text-slate-900 dark:text-zinc-100 block">
+                              {formatWita(keg.tanggal, "dd MMM yyyy")}
+                            </span>
+                            {keg.waktu && (
+                              <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 block mt-0.5">
+                                {keg.waktu}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-slate-900 dark:text-zinc-100 block leading-snug">
+                              {keg.namaKegiatan}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-slate-600 dark:text-zinc-400">
+                              {keg.tempat && (
+                                <span className="inline-flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  <span>{keg.tempat}</span>
+                                </span>
+                              )}
+                              {keg.kategori && (
+                                <span className="font-semibold text-slate-500 dark:text-zinc-400">
+                                  • {keg.kategori}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-semibold text-slate-700 dark:text-zinc-300">
+                            {keg.totalDiundang}
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-bold text-emerald-700 dark:text-emerald-400">
+                            {keg.hadir}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-2 text-right font-semibold text-amber-700 dark:text-amber-400">
+                            {keg.mewakili}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-2 text-right font-semibold text-slate-700 dark:text-zinc-300">
+                            {keg.izin}
+                          </td>
+                          <td
+                            className={`py-2.5 px-2 text-right font-extrabold ${
+                              keg.tidakHadir > 0
+                                ? "text-rose-700 dark:text-rose-400"
+                                : "text-slate-400 dark:text-zinc-600 font-normal"
+                            }`}
+                          >
+                            {keg.tidakHadir}
+                          </td>
+                          <td className="hidden md:table-cell py-2.5 px-2 text-right">
+                            {keg.luarTitik > 0 ? (
+                              <span className="text-amber-700 dark:text-amber-400 font-bold">
+                                {keg.luarTitik}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 dark:text-zinc-600">-</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-extrabold">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded border text-xs ${
+                                keg.persentase >= 80
+                                  ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                                  : keg.persentase >= 60
+                                  ? "bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                  : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800"
+                              }`}
+                            >
+                              {keg.persentase}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleKegiatanExpand(keg.id);
+                              }}
+                              className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                              title={isExpanded ? "Tutup rincian" : "Lihat rincian undangan & kehadiran"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* SUB-TABEL UNDANGAN & KEHADIRAN LENGKAP */}
+                        {isExpanded && (
+                          <tr className="bg-slate-50/80 dark:bg-zinc-950/60">
+                            <td colSpan={11} className="p-3 sm:px-6 sm:py-4">
+                              <div className="border border-slate-300 dark:border-zinc-800 rounded bg-white dark:bg-zinc-900 overflow-hidden">
+                                <div className="px-3 py-2 bg-slate-100 dark:bg-zinc-950 border-b border-slate-300 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+                                  <span>
+                                    Daftar Undangan &amp; Kehadiran ({sortedPeserta.length} dari{" "}
+                                    {keg.peserta.length} Peserta)
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-3 tabular-nums">
+                                    <span className="text-emerald-700 dark:text-emerald-400">
+                                      Hadir: {keg.hadir}
+                                    </span>
+                                    <span className="text-amber-700 dark:text-amber-400">
+                                      Wakil: {keg.mewakili}
+                                    </span>
+                                    <span className="text-slate-700 dark:text-zinc-300">
+                                      Izin: {keg.izin}
+                                    </span>
+                                    <span className="text-rose-700 dark:text-rose-400">
+                                      Alpa: {keg.tidakHadir}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead className="bg-slate-50 dark:bg-zinc-900 text-[11px] uppercase font-bold tracking-wider text-slate-700 dark:text-zinc-300 sticky top-0 z-10 border-b border-slate-200 dark:border-zinc-800">
+                                      <tr>
+                                        <th className="py-2 px-2.5 text-center w-9">No</th>
+                                        <th className="py-2 px-3">
+                                          <SortHeaderButton
+                                            label="Nama & Jabatan"
+                                            active={pesertaSort.key === "nama"}
+                                            dir={pesertaSort.dir}
+                                            onClick={() => handleTogglePesertaSort("nama")}
+                                          />
+                                        </th>
+                                        <th className="hidden md:table-cell py-2 px-2.5">
+                                          <SortHeaderButton
+                                            label="Perangkat Daerah (OPD)"
+                                            active={pesertaSort.key === "instansi"}
+                                            dir={pesertaSort.dir}
+                                            onClick={() => handleTogglePesertaSort("instansi")}
+                                          />
+                                        </th>
+                                        <th className="py-2 px-2 text-center w-16">
+                                          <SortHeaderButton
+                                            label="Eselon"
+                                            active={pesertaSort.key === "eselon"}
+                                            dir={pesertaSort.dir}
+                                            align="center"
+                                            onClick={() => handleTogglePesertaSort("eselon")}
+                                          />
+                                        </th>
+                                        <th className="py-2 px-2.5 text-center w-28">
+                                          <SortHeaderButton
+                                            label="Status"
+                                            active={pesertaSort.key === "status"}
+                                            dir={pesertaSort.dir}
+                                            align="center"
+                                            onClick={() => handleTogglePesertaSort("status")}
+                                          />
+                                        </th>
+                                        <th className="hidden sm:table-cell py-2 px-3 text-right w-40">
+                                          <SortHeaderButton
+                                            label="Waktu & Lokasi"
+                                            active={pesertaSort.key === "waktuInput"}
+                                            dir={pesertaSort.dir}
+                                            align="right"
+                                            onClick={() => handleTogglePesertaSort("waktuInput")}
+                                          />
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-zinc-800 text-xs tabular-nums">
+                                      {sortedPeserta.length === 0 ? (
+                                        <tr>
+                                          <td
+                                            colSpan={6}
+                                            className="py-6 text-center text-slate-500 dark:text-zinc-400"
+                                          >
+                                            Tidak ada peserta dengan status yang dipilih.
+                                          </td>
+                                        </tr>
+                                      ) : (
+                                        sortedPeserta.map((ps, pIdx) => {
+                                          const stLabel =
+                                            ps.status === "HADIR"
+                                              ? "Hadir"
+                                              : ps.status === "MEWAKILI"
+                                              ? "Mewakili"
+                                              : ps.status === "IZIN"
+                                              ? "Izin"
+                                              : "Alpa";
+                                          const stClass =
+                                            ps.status === "HADIR"
+                                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                                              : ps.status === "MEWAKILI"
+                                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                              : ps.status === "IZIN"
+                                              ? "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700"
+                                              : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800";
+
+                                          return (
+                                            <tr
+                                              key={`${ps.id}_${pIdx}`}
+                                              className="hover:bg-slate-50 dark:hover:bg-zinc-800/40"
+                                            >
+                                              <td className="py-2 px-2.5 text-center font-semibold text-slate-500 dark:text-zinc-400">
+                                                {pIdx + 1}
+                                              </td>
+                                              <td className="py-2 px-3">
+                                                <span className="font-bold text-slate-900 dark:text-zinc-100 block leading-snug">
+                                                  {ps.nama}
+                                                  {ps.isNonUndangan && (
+                                                    <span className="ml-1.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400">
+                                                      (Non-Undangan)
+                                                    </span>
+                                                  )}
+                                                </span>
+                                                <span className="text-[11px] font-medium text-slate-600 dark:text-zinc-400 block mt-0.5">
+                                                  {ps.jabatan || "-"}
+                                                </span>
+                                                <span className="md:hidden text-[10px] font-medium text-slate-500 dark:text-zinc-500 block mt-0.5">
+                                                  {ps.instansi}
+                                                </span>
+                                                {ps.status === "MEWAKILI" && ps.namaPerwakilan && (
+                                                  <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 block mt-0.5">
+                                                    Diwakili: {ps.namaPerwakilan}
+                                                    {ps.jabatanPerwakilan
+                                                      ? ` (${ps.jabatanPerwakilan})`
+                                                      : ""}
+                                                  </span>
+                                                )}
+                                                {ps.keterangan && (
+                                                  <span className="text-[11px] text-slate-500 dark:text-zinc-400 block mt-0.5 italic">
+                                                    Ket: {ps.keterangan}
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td className="hidden md:table-cell py-2 px-2.5 font-medium text-slate-700 dark:text-zinc-300">
+                                                {ps.instansi}
+                                              </td>
+                                              <td className="py-2 px-2 text-center">
+                                                {ps.eselon ? (
+                                                  <span className="text-[11px] font-bold text-slate-700 dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-zinc-700">
+                                                    {ps.eselon}
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-400 dark:text-zinc-600">
+                                                    -
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-2.5 text-center">
+                                                <span
+                                                  className={`inline-block px-2 py-0.5 rounded border text-[11px] font-bold ${stClass}`}
+                                                >
+                                                  {stLabel}
+                                                </span>
+                                              </td>
+                                              <td className="hidden sm:table-cell py-2 px-3 text-right">
+                                                {ps.waktuInput ? (
+                                                  <div className="inline-flex flex-col items-end">
+                                                    <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-zinc-300">
+                                                      <Clock className="w-3 h-3 text-slate-400" />
+                                                      {formatWita(ps.waktuInput, "HH:mm")} WITA
+                                                    </span>
+                                                    {ps.isInsideRadius === false ? (
+                                                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                                        Luar Titik
+                                                      </span>
+                                                    ) : ps.isInsideRadius === true ? (
+                                                      <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                                        Di Lokasi
+                                                      </span>
+                                                    ) : null}
+                                                  </div>
+                                                ) : (
+                                                  <span className="text-slate-400 dark:text-zinc-600">
+                                                    -
+                                                  </span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </div>
   );
