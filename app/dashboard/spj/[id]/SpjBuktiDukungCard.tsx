@@ -17,6 +17,8 @@ import {
   Trash2,
   Loader2,
   Link2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { formatWita } from "@/lib/date-utils";
 import { toast } from "sonner";
@@ -52,7 +54,25 @@ export default function SpjBuktiDukungCard({
   onDeleted,
 }: SpjBuktiDukungCardProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<UploadedBuktiDukungItem | null>(null);
+
+  const handleCopyLink = async (item: UploadedBuktiDukungItem) => {
+    try {
+      const fullUrl =
+        item.fileUrl.startsWith("/") && typeof window !== "undefined"
+          ? `${window.location.origin}${item.fileUrl}`
+          : item.fileUrl;
+      await navigator.clipboard.writeText(fullUrl);
+      setCopiedId(item.id);
+      toast.success("Link dokumen PDF berhasil disalin!");
+      setTimeout(() => {
+        setCopiedId((curr) => (curr === item.id ? null : curr));
+      }, 2000);
+    } catch {
+      toast.error("Gagal menyalin link dokumen.");
+    }
+  };
 
   const handleDelete = async (item: UploadedBuktiDukungItem) => {
     if (!confirm(`Hapus dokumen PDF "${item.judul}" dari penyimpanan Cloudflare R2?`)) return;
@@ -136,7 +156,27 @@ export default function SpjBuktiDukungCard({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyLink(item)}
+                      className="h-8 px-2.5 text-xs"
+                      title="Salin link dokumen PDF"
+                    >
+                      {copiedId === item.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                          <span className="text-emerald-700 font-semibold">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                          Salin Link
+                        </>
+                      )}
+                    </Button>
                     <Button
                       type="button"
                       size="sm"
@@ -221,14 +261,33 @@ export default function SpjBuktiDukungCard({
               {previewItem?.judul || "Pratinjau Dokumen PDF"}
             </DialogTitle>
             {previewItem && (
-              <a
-                href={previewItem.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1 mr-6 shrink-0"
-              >
-                Buka Tab Baru <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              <div className="flex items-center gap-3 mr-6 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleCopyLink(previewItem)}
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-950 inline-flex items-center gap-1"
+                >
+                  {copiedId === previewItem.id ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Tersalin</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Salin Link</span>
+                    </>
+                  )}
+                </button>
+                <a
+                  href={previewItem.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Buka Tab Baru <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             )}
           </DialogHeader>
           <div className="flex-1 bg-slate-100 min-h-0">
