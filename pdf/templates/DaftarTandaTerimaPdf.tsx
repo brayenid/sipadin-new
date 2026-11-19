@@ -245,7 +245,7 @@ export default function DaftarTandaTerimaPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.kpa ? spj.kpa.jabatanLabel : 'Mengetahui :\nKuasa Pengguna Anggaran,\nKepala Bagian Organisasi'}
             </Text>
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={65} offset={45} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={65} offset={45} />
             <View style={[styles.footerNamaBlock, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.kpa ? spj.kpa.nama : '...........................'}
@@ -261,7 +261,7 @@ export default function DaftarTandaTerimaPdf({
             <Text style={[styles.footerJabatanLabel, { textAlign: 'center' }]}>
               {spj.pptk ? spj.pptk.jabatanLabel : 'Pejabat Pelaksana Teknis Kegiatan'}
             </Text>
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={65} offset={45} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={65} offset={45} />
             <View style={[styles.footerNamaBlock, { alignItems: 'center' }, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.pptk ? spj.pptk.nama : '...........................'}
@@ -278,7 +278,7 @@ export default function DaftarTandaTerimaPdf({
               {bppDateLine}{'\n'}
               {spj.bpp ? spj.bpp.jabatanLabel : 'Bendahara Pengeluaran Pembantu'}
             </Text>
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={3} standardHeight={40} srikandiHeight={65} offset={45} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={65} offset={45} />
             <View style={[styles.footerNamaBlock, { alignItems: 'center' }, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.bpp ? spj.bpp.nama : '...........................'}

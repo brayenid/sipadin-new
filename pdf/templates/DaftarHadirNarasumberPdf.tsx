@@ -133,7 +133,7 @@ export default function DaftarHadirNarasumberPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.pejabatKiri ? spj.pejabatKiri.jabatanLabel : 'Mengetahui :'}
             </Text>
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={30} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={30} />
             <View style={styles.footerNamaBlock}>
               <Text style={styles.footerNama}>
                 {spj.pejabatKiri ? spj.pejabatKiri.nama : '...........................'}
@@ -149,7 +149,7 @@ export default function DaftarHadirNarasumberPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.pejabatKanan ? spj.pejabatKanan.jabatanLabel : 'Pejabat Pelaksana Teknis Kegiatan'}
             </Text>
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={50} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={50} />
             <View style={[styles.footerNamaBlock, { alignItems: 'flex-end' }]}>
               <Text style={styles.footerNama}>
                 {spj.pejabatKanan ? spj.pejabatKanan.nama : '...........................'}

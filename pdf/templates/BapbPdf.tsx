@@ -188,7 +188,7 @@ export default function BapbPdf({
                 <View style={[styles.pRow, { marginTop: isSrikandiActive ? 20 : 15, height: isSrikandiActive ? 50 : undefined, alignItems: 'center' }]}>
                   <Text style={styles.pLabel}>Tanda Tangan</Text>
                   <Text style={styles.pColon}></Text>
-                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttdIndexed(1) : "......................................"}</Text>
+                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttd : "......................................"}</Text>
                 </View>
               </View>
             </View>
@@ -215,7 +215,7 @@ export default function BapbPdf({
                 <View style={[styles.pRow, { marginTop: isSrikandiActive ? 20 : 15, height: isSrikandiActive ? 50 : undefined, alignItems: 'center' }]}>
                   <Text style={styles.pLabel}>Tanda Tangan</Text>
                   <Text style={styles.pColon}></Text>
-                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttdIndexed(2) : "......................................"}</Text>
+                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttd : "......................................"}</Text>
                 </View>
               </View>
             </View>

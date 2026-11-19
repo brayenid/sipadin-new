@@ -243,7 +243,7 @@ export default function KuitansiPdf({
             <Text style={styles.signerTitle}>Menyetujui</Text>
             <Text style={styles.signerTitle}>Kuasa Pengguna Anggaran,</Text>
 
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={55} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={55} />
 
             <Text style={styles.signerNameUnderline}>{signers.kpa?.nama ?? ''}</Text>
             <Text style={styles.signerNip}>NIP. {signers.kpa?.nip ?? ''}</Text>
@@ -253,7 +253,7 @@ export default function KuitansiPdf({
             <Text style={styles.signerTitle}> </Text>
             <Text style={styles.signerTitle}>Bendahara Pengeluaran Pembantu,</Text>
 
-            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={55} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={55} />
 
             <Text style={styles.signerNameUnderline}>{signers.bpp?.nama ?? ''}</Text>
             <Text style={styles.signerNip}>NIP. {signers.bpp?.nip ?? ''}</Text>

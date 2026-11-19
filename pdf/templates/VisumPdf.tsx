@@ -176,7 +176,7 @@ export default function VisumPdf(props: VisumPdfProps): React.ReactElement<Docum
 
                 <Text style={styles.iSignerLabel}>{signerJabatanLabel || dots()}</Text>
 
-                <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={36} srikandiHeight={68} offset={50} />
+                <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={36} srikandiHeight={68} offset={50} />
 
                 <Text style={styles.signerName}>{signerName}</Text>
                 <Text style={styles.signerNip}>NIP. {signerNip}</Text>
@@ -202,7 +202,7 @@ export default function VisumPdf(props: VisumPdfProps): React.ReactElement<Docum
 
                 <RowField label="Pejabat yang memberi perintah" value={signerJabatanLabel || dots()} />
 
-                <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={36} srikandiHeight={68} offset={50} />
+                <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={36} srikandiHeight={68} offset={50} />
 
                 <Text style={styles.signerName}>{signerName}</Text>
                 <Text style={styles.signerNip}>NIP. {signerNip}</Text>

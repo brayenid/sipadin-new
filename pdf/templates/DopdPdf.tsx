@@ -383,14 +383,14 @@ export function buildDopdDocument({ spj, roster, items, signers, config, isSrika
             <View style={styles.signerCol}>
               <Text style={styles.signerTitle}>Mengetahui/ Menyetujui</Text>
               <Text style={styles.signerTitle}>Kuasa Pengguna Anggaran</Text>
-              <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={50} />
+              <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={50} />
               <Text style={styles.signerNameUnderline}>{kpaNama}</Text>
               <Text style={styles.signerNip}>{kpaNip ? `NIP. ${kpaNip}` : ''}</Text>
             </View>
             <View style={styles.signerCol}>
               <View style={styles.space} />
               <Text style={styles.signerTitle}>Bendahara Pengeluaran Pembantu</Text>
-              <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={50} />
+              <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={50} />
               <Text style={styles.signerNameUnderline}>{bppNama}</Text>
               <Text style={styles.signerNip}>{bppNip ? `NIP. ${bppNip}` : ''}</Text>
             </View>

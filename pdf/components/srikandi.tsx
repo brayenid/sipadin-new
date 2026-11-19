@@ -5,7 +5,7 @@ export const SRIKANDI_TAGS = {
   nomor: '${nomor_naskah}',
   tanggal: '${tanggal_naskah}',
   ttd: '${ttd_pengirim}',
-  ttdIndexed: (index?: number) => (index ? `\${ttd_pengirim${index}}` : '${ttd_pengirim}'),
+  ttdIndexed: (_index?: number) => '${ttd_pengirim}',
 }
 
 export type SrikandiSignatureProps = {
@@ -38,7 +38,7 @@ export function SrikandiSignature({
     return <View style={[{ height: standardHeight }, style]} />
   }
 
-  const code = SRIKANDI_TAGS.ttdIndexed(index)
+  const code = SRIKANDI_TAGS.ttd
 
   return (
     <View
