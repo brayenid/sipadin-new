@@ -557,7 +557,7 @@ export async function getOrCreateSesiAgenda(
           nip: t.nip || null,
           jabatan: t.jabatan,
           instansi: t.instansi,
-          eselon: t.eselon || "II.b",
+          eselon: t.eselon || null,
           urutan: t.urutan ?? idx + 1,
           status: StatusKehadiran.TIDAK_HADIR,
           isSelfInput: false,
@@ -740,7 +740,7 @@ export async function createAgendaAbsensi(payload: {
           nip: p.nip || null,
           jabatan: p.jabatan,
           instansi: p.instansi,
-          eselon: p.eselon || "II.b",
+          eselon: p.eselon || null,
           urutan: p.urutanOpd ?? idx + 1,
         })),
       });
@@ -774,7 +774,7 @@ export async function createAgendaAbsensi(payload: {
           nip: p.nip || null,
           jabatan: p.jabatan,
           instansi: p.instansi,
-          eselon: p.eselon || "II.b",
+          eselon: p.eselon || null,
           urutan: p.urutanOpd ?? idx + 1,
           status: StatusKehadiran.TIDAK_HADIR,
           isSelfInput: false,
@@ -1547,7 +1547,7 @@ export async function submitSelfAbsensi(payload: {
     let targetNip: string | null = payload.nip ? payload.nip.trim() : null;
     let targetJabatan: string = (payload.jabatan || "").trim();
     let targetInstansi: string = (payload.instansi || "").trim();
-    let targetEselon: string = payload.eselon || "II.b";
+    let targetEselon: string | null = payload.eselon || null;
     let targetUrutan: number = 1;
 
     // Cari dari template undangan
@@ -2362,7 +2362,7 @@ export async function addPesertaManualToAgenda(
       nip: payload.nip || null,
       jabatan: payload.jabatan,
       instansi: payload.instansi,
-      eselon: payload.eselon || "II.b",
+      eselon: payload.eselon || null,
       urutan: count + 1,
       status: payload.status || StatusKehadiran.TIDAK_HADIR,
       namaPerwakilan: payload.namaPerwakilan || null,
@@ -2494,6 +2494,11 @@ export async function getRekapKehadiranOpd(params?: {
           id: true,
           agendaId: true,
           pegawaiId: true,
+          pegawai: {
+            select: {
+              eselon: true,
+            },
+          },
           nama: true,
           nip: true,
           jabatan: true,
@@ -2772,7 +2777,7 @@ export async function processAgendasToRekap(
           nip: p.nip,
           jabatan: p.jabatan,
           instansi: p.instansi,
-          eselon: p.eselon ?? null,
+          eselon: (p as any).pegawai ? ((p as any).pegawai.eselon || null) : (p.eselon ?? null),
           status: p.status,
           keterangan: p.keterangan,
           namaPerwakilan: p.namaPerwakilan,
@@ -2931,7 +2936,7 @@ export async function processAgendasToRekap(
                 nip: t.nip,
                 jabatan: t.jabatan,
                 instansi: t.instansi,
-                eselon: t.eselon ?? null,
+                eselon: (t as any).pegawai ? ((t as any).pegawai.eselon || null) : (t.eselon ?? null),
                 totalDiundang: 0,
                 hadir: 0,
                 hadirValid: 0,
@@ -3221,7 +3226,7 @@ export async function processAgendasToRekap(
           nip: p.nip,
           jabatan: p.jabatan,
           instansi: p.instansi,
-          eselon: p.eselon ?? null,
+          eselon: (p as any).pegawai ? ((p as any).pegawai.eselon || null) : (p.eselon ?? null),
           totalDiundang: 0,
           hadir: 0,
           hadirValid: 0,
@@ -3540,7 +3545,7 @@ export async function addPesertaBulkToAgenda(
           nip: p.nip || null,
           jabatan: p.jabatan,
           instansi: p.instansi,
-          eselon: p.eselon || "II.b",
+          eselon: p.eselon || null,
           urutan: count + idx + 1,
           status: StatusKehadiran.TIDAK_HADIR,
         },
@@ -3820,6 +3825,11 @@ export async function getPublicRekapMonitorData(token: string) {
           id: true,
           agendaId: true,
           pegawaiId: true,
+          pegawai: {
+            select: {
+              eselon: true,
+            },
+          },
           nama: true,
           nip: true,
           jabatan: true,

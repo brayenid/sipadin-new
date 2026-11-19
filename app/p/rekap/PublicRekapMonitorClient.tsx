@@ -585,10 +585,13 @@ export default function PublicRekapMonitorClient({
 
     list.sort((a, b) => {
       if (opdShortcut === "TERAJIN") {
+        const aTotalHadir = a.hadir + a.mewakili;
+        const bTotalHadir = b.hadir + b.mewakili;
         return (
+          bTotalHadir - aTotalHadir ||
           b.persentaseKehadiran - a.persentaseKehadiran ||
-          b.hadir + b.mewakili - (a.hadir + a.mewakili) ||
-          a.tidakHadir - b.tidakHadir
+          a.tidakHadir - b.tidakHadir ||
+          a.instansi.localeCompare(b.instansi, "id")
         );
       }
       if (opdShortcut === "KRITIS") {
@@ -675,9 +678,10 @@ export default function PublicRekapMonitorClient({
 
       if (pegawaiShortcut === "TERAJIN") {
         return (
-          b.persentaseKehadiran - a.persentaseKehadiran ||
           bHadir - aHadir ||
-          (a.tidakHadir || 0) - (b.tidakHadir || 0)
+          b.persentaseKehadiran - a.persentaseKehadiran ||
+          (a.tidakHadir || 0) - (b.tidakHadir || 0) ||
+          a.nama.localeCompare(b.nama, "id")
         );
       }
       if (pegawaiShortcut === "JARANG") {
@@ -1781,15 +1785,6 @@ export default function PublicRekapMonitorClient({
                         onClick={() => handleTogglePegawaiSort("instansi")}
                       />
                     </th>
-                    <th className="py-2.5 px-1.5 text-center w-16">
-                      <SortHeaderButton
-                        label="Eselon"
-                        active={pegawaiSort.key === "eselon"}
-                        dir={pegawaiSort.dir}
-                        align="center"
-                        onClick={() => handleTogglePegawaiSort("eselon")}
-                      />
-                    </th>
                     <th className="py-2.5 px-2 text-right w-16">
                       <SortHeaderButton
                         label="Undang"
@@ -1841,7 +1836,7 @@ export default function PublicRekapMonitorClient({
                   {filteredPegawaiList.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         className="py-12 text-center text-slate-600 dark:text-zinc-400 font-medium text-xs"
                       >
                         Tidak ada data pejabat/pegawai yang sesuai dengan filter.
@@ -1885,15 +1880,6 @@ export default function PublicRekapMonitorClient({
                             >
                               {p.instansi}
                             </span>
-                          </td>
-                          <td className="py-2.5 px-1.5 text-center">
-                            {p.eselon ? (
-                              <span className="text-[11px] font-bold text-slate-700 dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-zinc-700">
-                                {p.eselon}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 dark:text-zinc-600">-</span>
-                            )}
                           </td>
                           <td className="py-2.5 px-2 text-right font-semibold text-slate-700 dark:text-zinc-300">
                             {p.totalDiundang}
