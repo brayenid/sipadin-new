@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { CenteredNomor } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 function fmtDateId(date: Date | undefined | null) {
@@ -138,7 +139,11 @@ export default function SuratPerintahPdf({ data, signer, kepada }: SuratPerintah
 
         <View style={styles.titleBlock}>
           <Text style={styles.titleText}>SURAT PERINTAH</Text>
-          <Text style={styles.nomorText}>NOMOR: {fullNomor}</Text>
+          <CenteredNomor
+            label="NOMOR :"
+            nomor={fullNomor}
+            style={styles.nomorText}
+          />
         </View>
 
         <View style={styles.section}>

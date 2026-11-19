@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { CenteredNomor } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 function fmtDateId(date: string | Date | null | undefined) {
@@ -477,7 +478,13 @@ export default function SuratUmumPdf({ data, signer, parafList = [], layout }: S
         {tampilkanJudul && posisiNomor === 'BELOW_TITLE' && (
           <View style={styles.titleBlock}>
             <Text style={styles.titleLabel}>{judulTeks.toUpperCase()}</Text>
-            <Text style={styles.titleLabel}>NOMOR {fullNomor}</Text>
+            <CenteredNomor
+              label="NOMOR :"
+              nomor={fullNomor}
+              style={styles.titleLabel}
+              labelStyle={{ fontWeight: 700 }}
+              nomorStyle={{ fontWeight: 700 }}
+            />
             {data.hal && <Text style={styles.titleLabel}>TENTANG {data.hal.toUpperCase()}</Text>}
           </View>
         )}

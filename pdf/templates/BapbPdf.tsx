@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
-import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
+import { SrikandiSignature, SRIKANDI_TAGS, CenteredNomor } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type BapbSpj = {
@@ -99,7 +99,13 @@ export default function BapbPdf({
         {/* Title */}
         <View style={styles.titleWrap}>
           <Text style={styles.title}>BERITA ACARA PEMERIKSAAN BARANG</Text>
-          <Text style={styles.nomor}>NOMOR : {isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}</Text>
+          <CenteredNomor
+            label="NOMOR :"
+            nomor={isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}
+            style={styles.nomor}
+            labelStyle={{ fontWeight: 700, fontSize: 12 }}
+            nomorStyle={{ fontWeight: 700, fontSize: 12 }}
+          />
         </View>
 
         {/* Content */}

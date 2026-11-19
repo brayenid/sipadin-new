@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
-import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
+import { SrikandiSignature, SRIKANDI_TAGS, CenteredNomor } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type BastbItem = {
@@ -113,7 +113,11 @@ export default function BastbPdf({
 
         <View style={styles.titleWrap}>
           <Text style={styles.title}>BERITA ACARA SERAH TERIMA BARANG</Text>
-          <Text style={styles.nomor}>Nomor : {isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}</Text>
+          <CenteredNomor
+            label="Nomor :"
+            nomor={isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}
+            style={styles.nomor}
+          />
         </View>
 
         <View style={styles.content}>

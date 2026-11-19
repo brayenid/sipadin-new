@@ -3,7 +3,7 @@ import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@rea
 
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
-import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
+import { SrikandiSignature, SRIKANDI_TAGS, CenteredNomor } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 const NUMBERS = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
@@ -238,9 +238,11 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
 
         <View style={styles.blockCenter}>
           <Text style={styles.titleText}>SURAT TUGAS</Text>
-          <Text style={styles.nomorText}>
-            NOMOR : {isSrikandiActive ? SRIKANDI_TAGS.nomor : (spj.noSuratTugas || '.......................................................')}
-          </Text>
+          <CenteredNomor
+            label="NOMOR :"
+            nomor={isSrikandiActive ? SRIKANDI_TAGS.nomor : (spj.noSuratTugas || '.......................................................')}
+            style={styles.nomorText}
+          />
         </View>
 
         <Text style={styles.memerintahkan}>MEMERINTAHKAN:</Text>

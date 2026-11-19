@@ -69,3 +69,61 @@ export function SrikandiSignature({
     </View>
   )
 }
+
+export type CenteredNomorProps = {
+  label?: string
+  nomor: string
+  style?: any
+  labelStyle?: any
+  nomorStyle?: any
+}
+
+/**
+ * Komponen untuk menampilkan Nomor Dokumen dengan slot nilai nomor tepat di tengah (centered),
+ * sehingga nomor dokumen tidak condong/berat ke sebelah kanan akibat adanya prefix label 'NOMOR :'.
+ */
+export function CenteredNomor({
+  label = 'NOMOR :',
+  nomor,
+  style,
+  labelStyle,
+  nomorStyle,
+}: CenteredNomorProps) {
+  const cleanLabel = (label ?? 'NOMOR :').trim()
+
+  const textBase = [
+    { fontSize: 11, fontFamily: 'Helvetica' },
+    style && {
+      fontSize: style.fontSize,
+      fontFamily: style.fontFamily,
+      fontWeight: style.fontWeight,
+      color: style.color,
+    },
+  ]
+
+  const containerStyle = [
+    {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    style && {
+      marginTop: style.marginTop,
+      marginBottom: style.marginBottom,
+    },
+  ]
+
+  return (
+    <View style={containerStyle}>
+      <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 4 }}>
+        <Text style={[textBase, labelStyle]}>{cleanLabel}</Text>
+      </View>
+      <View style={{ alignItems: 'center' }}>
+        <Text style={[textBase, nomorStyle]}>{nomor}</Text>
+      </View>
+      <View style={{ flex: 1 }} />
+    </View>
+  )
+}
