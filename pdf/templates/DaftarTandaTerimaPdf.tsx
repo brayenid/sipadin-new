@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type TandaTerimaItem = {
@@ -46,6 +47,7 @@ export default function DaftarTandaTerimaPdf({
   spj,
   narasumber,
   layout,
+  isSrikandi,
 }: {
   spj: DaftarTandaTerimaSpj;
   narasumber: TandaTerimaItem[];
@@ -55,11 +57,14 @@ export default function DaftarTandaTerimaPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const judul = `DAFTAR TANDA TERIMA`;
   const subJudul = (spj.perihal || '').toUpperCase();
-  const tanggalLine = `TANGGAL ${(spj.tanggalLabel || '').toUpperCase()}`;
+  const tanggalLine = isSrikandiActive ? `TANGGAL ${SRIKANDI_TAGS.tanggal}` : `TANGGAL ${(spj.tanggalLabel || '').toUpperCase()}`;
 
   const totalJumlah = narasumber.reduce((sum, item) => sum + item.jumlah, 0);
   const totalPph = narasumber.reduce((sum, item) => sum + item.pph, 0);
@@ -81,7 +86,7 @@ export default function DaftarTandaTerimaPdf({
   }
   
   // Use a wide space before the month string for handwritten date
-  const bppDateLine = `Sendawar,           ${monthYearStr}`;
+  const bppDateLine = isSrikandiActive ? `Sendawar, ${SRIKANDI_TAGS.tanggal}` : `Sendawar,           ${monthYearStr}`;
 
   return (
     <Document>
@@ -240,7 +245,8 @@ export default function DaftarTandaTerimaPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.kpa ? spj.kpa.jabatanLabel : 'Mengetahui :\nKuasa Pengguna Anggaran,\nKepala Bagian Organisasi'}
             </Text>
-            <View style={styles.footerNamaBlock}>
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={65} offset={45} />
+            <View style={[styles.footerNamaBlock, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.kpa ? spj.kpa.nama : '...........................'}
               </Text>
@@ -255,7 +261,8 @@ export default function DaftarTandaTerimaPdf({
             <Text style={[styles.footerJabatanLabel, { textAlign: 'center' }]}>
               {spj.pptk ? spj.pptk.jabatanLabel : 'Pejabat Pelaksana Teknis Kegiatan'}
             </Text>
-            <View style={[styles.footerNamaBlock, { alignItems: 'center' }]}>
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={65} offset={45} />
+            <View style={[styles.footerNamaBlock, { alignItems: 'center' }, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.pptk ? spj.pptk.nama : '...........................'}
               </Text>
@@ -271,7 +278,8 @@ export default function DaftarTandaTerimaPdf({
               {bppDateLine}{'\n'}
               {spj.bpp ? spj.bpp.jabatanLabel : 'Bendahara Pengeluaran Pembantu'}
             </Text>
-            <View style={[styles.footerNamaBlock, { alignItems: 'center' }]}>
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={3} standardHeight={40} srikandiHeight={65} offset={45} />
+            <View style={[styles.footerNamaBlock, { alignItems: 'center' }, isSrikandiActive ? { marginTop: 0 } : {}]}>
               <Text style={styles.footerNama}>
                 {spj.bpp ? spj.bpp.nama : '...........................'}
               </Text>

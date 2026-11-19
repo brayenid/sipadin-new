@@ -235,6 +235,7 @@ export default function BastbTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
               } : null}
               items={itemsData}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

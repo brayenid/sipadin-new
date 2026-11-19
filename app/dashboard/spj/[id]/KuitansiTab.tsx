@@ -299,6 +299,7 @@ export default function KuitansiTab({ spj, pegawaiList = [], onDirtyChange }: { 
                 bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null
               }}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

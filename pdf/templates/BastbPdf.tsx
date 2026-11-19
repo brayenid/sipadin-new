@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type BastbItem = {
@@ -75,7 +76,8 @@ export default function BastbPdf({
   vendor,
   pptk,
   items,
-  layout
+  layout,
+  isSrikandi,
 }: {
   spj: BastbSpj;
   vendor: BastbVendor | null;
@@ -87,8 +89,11 @@ export default function BastbPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const terbilang = getDateTerbilang(spj.tanggalBastb);
 
   return (
@@ -108,12 +113,14 @@ export default function BastbPdf({
 
         <View style={styles.titleWrap}>
           <Text style={styles.title}>BERITA ACARA SERAH TERIMA BARANG</Text>
-          <Text style={styles.nomor}>Nomor : {spj.nomorSurat}</Text>
+          <Text style={styles.nomor}>Nomor : {isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}</Text>
         </View>
 
         <View style={styles.content}>
           <Text style={styles.paragraph}>
-            Pada hari ini {terbilang.hari} Tanggal {terbilang.tanggal} Bulan {terbilang.bulan} Tahun {terbilang.tahun}, kami yang bertanda tangan dibawah ini :
+            {isSrikandiActive 
+              ? `Pada hari ini, tanggal ${SRIKANDI_TAGS.tanggal}, kami yang bertanda tangan dibawah ini :`
+              : `Pada hari ini ${terbilang.hari} Tanggal ${terbilang.tanggal} Bulan ${terbilang.bulan} Tahun ${terbilang.tahun}, kami yang bertanda tangan dibawah ini :`}
           </Text>
 
           <View style={styles.pihakList}>
@@ -244,7 +251,7 @@ export default function BastbPdf({
         <View style={styles.signatureContainer} wrap={false}>
           <View style={styles.signatureCol}>
             <Text style={styles.bold}>PIHAK KEDUA</Text>
-            <View style={styles.signerSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={50} />
             <Text style={styles.signerNameUnderline}>{pptk?.nama || "......................................"}</Text>
             <Text>NIP. {pptk?.nip || "......................................"}</Text>
           </View>

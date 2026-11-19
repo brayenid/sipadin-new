@@ -807,8 +807,10 @@ export default function DopdTab({ spj, pegawaiList = [], onDirtyChange }: { spj:
                   kpaNipOverride: config.content?.kpaNipOverride,
                   bppNamaOverride: config.content?.bppNamaOverride,
                   bppNipOverride: config.content?.bppNipOverride
-                }
+                },
+                isSrikandi: config.isSrikandi
               }}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

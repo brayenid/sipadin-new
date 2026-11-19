@@ -267,6 +267,7 @@ export default function SuratTugasTab({ spj, pegawaiList }: { spj: any, pegawaiL
               suratTugas={suratTugasData} 
               roster={rosterData} 
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

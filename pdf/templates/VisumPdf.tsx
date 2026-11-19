@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 export type Signer = {
@@ -24,7 +25,9 @@ export type VisumPdfProps = {
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }
 
 // ===== helpers
@@ -111,7 +114,8 @@ function StageBlock({ no, leftTitle, rightTitle }: { no: number; leftTitle: stri
 }
 
 export default function VisumPdf(props: VisumPdfProps): React.ReactElement<DocumentProps> {
-  const { spj, stageCount: rawStageCount, signer, layout } = props
+  const { spj, stageCount: rawStageCount, signer, layout, isSrikandi } = props
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const stageCount = safeStageCount(rawStageCount)
 
   const signerName = signer?.nama ?? ''
@@ -168,11 +172,11 @@ export default function VisumPdf(props: VisumPdfProps): React.ReactElement<Docum
                 </View>
 
                 <RowField label="Ke" value={props.spj.tempatTujuan || dots()} />
-                <RowField label="Pada Tanggal" />
+                <RowField label="Pada Tanggal" value={isSrikandiActive ? SRIKANDI_TAGS.tanggal : undefined} />
 
                 <Text style={styles.iSignerLabel}>{signerJabatanLabel || dots()}</Text>
 
-                <View style={styles.signSpaceI} />
+                <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={36} srikandiHeight={68} offset={50} />
 
                 <Text style={styles.signerName}>{signerName}</Text>
                 <Text style={styles.signerNip}>NIP. {signerNip}</Text>
@@ -194,11 +198,11 @@ export default function VisumPdf(props: VisumPdfProps): React.ReactElement<Docum
               <Text style={styles.stageNo}>{roman(stageCount + 2)}.</Text>
               <View style={styles.stageContent}>
                 <RowField label="Tiba di" value={props.spj.tempatBerangkat} strongValue />
-                <RowField label="Pada Tanggal" />
+                <RowField label="Pada Tanggal" value={isSrikandiActive ? SRIKANDI_TAGS.tanggal : undefined} />
 
                 <RowField label="Pejabat yang memberi perintah" value={signerJabatanLabel || dots()} />
 
-                <View style={styles.signSpaceVI} />
+                <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={36} srikandiHeight={68} offset={50} />
 
                 <Text style={styles.signerName}>{signerName}</Text>
                 <Text style={styles.signerNip}>NIP. {signerNip}</Text>

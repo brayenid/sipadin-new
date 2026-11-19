@@ -3,6 +3,7 @@
 import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
 import { formatWita } from '@/lib/date-utils'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 type RosterRole = 'KEPALA_JALAN' | 'PENGIKUT'
@@ -54,6 +55,7 @@ export type DopdConfig = {
     marginBottom?: number
     marginHorizontal?: number
     fontSize?: number
+    isSrikandi?: boolean
   }
   content?: {
     kpaNamaOverride?: string
@@ -61,6 +63,7 @@ export type DopdConfig = {
     bppNamaOverride?: string
     bppNipOverride?: string
   }
+  isSrikandi?: boolean
 }
 
 export type DopdPdfProps = {
@@ -72,9 +75,11 @@ export type DopdPdfProps = {
     bpp?: DopdSigner | null
   }
   config?: DopdConfig
+  isSrikandi?: boolean
 }
 
-export function buildDopdDocument({ spj, roster, items, signers, config }: DopdPdfProps): React.ReactElement<DocumentProps> {
+export function buildDopdDocument({ spj, roster, items, signers, config, isSrikandi }: DopdPdfProps): React.ReactElement<DocumentProps> {
+  const isSrikandiActive = Boolean(isSrikandi ?? config?.isSrikandi ?? config?.styles?.isSrikandi);
   const globalMarginTop = config?.styles?.marginTop ?? 38
   const globalMarginBottom = config?.styles?.marginBottom ?? 48
   const globalMarginHorizontal = config?.styles?.marginHorizontal ?? 38
@@ -370,7 +375,7 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
             <View style={styles.paidRow}>
               <Text style={styles.paidLabel}>Pada Tanggal</Text>
               <Text style={styles.paidColon}>:</Text>
-              <Text style={styles.paidValue}>{tglFormatted}</Text>
+              <Text style={styles.paidValue}>{isSrikandiActive ? SRIKANDI_TAGS.tanggal : tglFormatted}</Text>
             </View>
           </View>
 
@@ -378,14 +383,14 @@ export function buildDopdDocument({ spj, roster, items, signers, config }: DopdP
             <View style={styles.signerCol}>
               <Text style={styles.signerTitle}>Mengetahui/ Menyetujui</Text>
               <Text style={styles.signerTitle}>Kuasa Pengguna Anggaran</Text>
-              <View style={styles.signerSpace} />
+              <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={50} />
               <Text style={styles.signerNameUnderline}>{kpaNama}</Text>
               <Text style={styles.signerNip}>{kpaNip ? `NIP. ${kpaNip}` : ''}</Text>
             </View>
             <View style={styles.signerCol}>
               <View style={styles.space} />
               <Text style={styles.signerTitle}>Bendahara Pengeluaran Pembantu</Text>
-              <View style={styles.signerSpace} />
+              <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={50} />
               <Text style={styles.signerNameUnderline}>{bppNama}</Text>
               <Text style={styles.signerNip}>{bppNip ? `NIP. ${bppNip}` : ''}</Text>
             </View>

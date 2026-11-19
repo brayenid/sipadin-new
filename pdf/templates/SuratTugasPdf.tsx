@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@rea
 
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 const NUMBERS = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
@@ -78,7 +79,9 @@ export type SuratTugasPdfProps = {
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }
 
 const styles = StyleSheet.create({
@@ -201,7 +204,8 @@ const styles = StyleSheet.create({
 })
 
 export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactElement<DocumentProps> {
-  const { spj, suratTugas, roster, layout } = props
+  const { spj, suratTugas, roster, layout, isSrikandi } = props
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
 
   const lamaPerjalanan = spj.lamaPerjalanan || 1;
   const lamaText = spj.overrideLamaText || `${terbilangId(lamaPerjalanan)} hari, tanggal ${fmtDateId(spj.tglBerangkat)} s.d. tanggal ${fmtDateId(spj.tglKembali)}`;
@@ -235,7 +239,7 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
         <View style={styles.blockCenter}>
           <Text style={styles.titleText}>SURAT TUGAS</Text>
           <Text style={styles.nomorText}>
-            NOMOR : {spj.noSuratTugas || '.......................................................'}
+            NOMOR : {isSrikandiActive ? SRIKANDI_TAGS.nomor : (spj.noSuratTugas || '.......................................................')}
           </Text>
         </View>
 
@@ -316,10 +320,10 @@ export default function SuratTugasPdf(props: SuratTugasPdfProps): React.ReactEle
         <View style={styles.ttdWrap}>
           <View style={styles.ttdBox}>
             <Text style={styles.ttdDate}>
-              {spj.kotaTandaTangan}, {'     '} {fmtMonthYear(spj.tglSuratTugas)}
+              {spj.kotaTandaTangan}, {isSrikandiActive ? SRIKANDI_TAGS.tanggal : `     ${fmtMonthYear(spj.tglSuratTugas)}`}
             </Text>
             <Text style={styles.ttdJabatan}>{suratTugas.signerJabatan},</Text>
-            <View style={styles.ttdSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={72} offset={60} />
             <Text style={styles.ttdName}>{suratTugas.signerNama}</Text>
             <Text style={styles.ttdPangkat}>{suratTugas.signerPangkatGolongan ?? '-'}</Text>
             <Text style={styles.ttdNip}>NIP. {suratTugas.signerNip ?? '-'}</Text>

@@ -309,6 +309,7 @@ export default function BapbTab({ spj, pegawaiList }: { spj: any, pegawaiList: a
               kpa={kpa ? { nama: kpa.nama, nip: kpa.nip, jabatan: "Kuasa Pengguna Anggaran" } : null}
               pptk={pptk ? { nama: pptk.nama, nip: pptk.nip, jabatan: "Pejabat Pelaksana Teknis Kegiatan" } : null} 
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

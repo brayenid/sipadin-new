@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@rea
 
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 const NUMBERS = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
@@ -89,7 +90,9 @@ export type SpdPdfProps = {
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }
 
 const BW = 0.7
@@ -184,7 +187,8 @@ function Cell({ children, style, lastCol, lastRow }: any) {
 }
 
 export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentProps> {
-  const { spj, roster, signer, layout } = props
+  const { spj, roster, signer, layout, isSrikandi } = props
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const rosterSorted = sortRoster(roster)
   const kepala = rosterSorted.find((r) => r.role === 'KEPALA_JALAN') ?? rosterSorted[0] ?? null
   const pengikut = rosterSorted.filter((r) => r.role === 'PENGIKUT')
@@ -221,7 +225,7 @@ export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentP
         <View style={styles.titleWrap}>
           <Text style={styles.title}>SURAT PERJALANAN DINAS (SPD)</Text>
           <Text style={styles.nomor}>
-            Nomor : {props.spj.noSpd ?? '..................................................'}
+            Nomor : {isSrikandiActive ? SRIKANDI_TAGS.nomor : (props.spj.noSpd ?? '..................................................')}
           </Text>
         </View>
 
@@ -461,10 +465,10 @@ export default function SpdPdf(props: SpdPdfProps): React.ReactElement<DocumentP
           <View style={styles.signBox}>
             <Text>Dikeluarkan di {props.spj.kotaTandaTangan}</Text>
             <Text>
-              Tanggal, {'            '} {fmtMonthYear(props.spj.tglSpd)}
+              Tanggal, {isSrikandiActive ? SRIKANDI_TAGS.tanggal : `            ${fmtMonthYear(props.spj.tglSpd)}`}
             </Text>
             <Text>{signerJabatan ? `${signerJabatan},` : ''}</Text>
-            <View style={styles.signSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={48} srikandiHeight={72} offset={70} />
             <Text style={styles.signName}>{signer?.nama ?? ''}</Text>
             <Text>{fmtPangkatGol(signer?.pangkat ?? null, signer?.golongan ?? null)}</Text>
             <Text>{signer?.nip ? `NIP. ${signer.nip}` : ''}</Text>

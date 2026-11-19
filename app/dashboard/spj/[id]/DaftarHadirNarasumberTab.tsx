@@ -309,6 +309,7 @@ export default function DaftarHadirNarasumberTab({ spj, pegawaiList }: { spj: an
                 kegiatan: kegiatanLabel,
               }))}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

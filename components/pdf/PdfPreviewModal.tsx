@@ -12,6 +12,7 @@ import { Loader2, Save, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateSpjMetaDokumen } from "@/app/actions/pdf-meta";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // PDFViewer client-side only
 const PDFViewer = dynamic(
@@ -26,8 +27,10 @@ export type PdfConfig = {
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
   content?: Record<string, any>;
+  isSrikandi?: boolean;
 };
 
 const DEFAULT_STYLES = {
@@ -83,11 +86,12 @@ export default function PdfPreviewModal({
   });
 
   // Raw styles state allows empty strings while user is editing/typing
-  const [styleInputs, setStyleInputs] = useState<Record<string, string | number>>(() => ({
+  const [styleInputs, setStyleInputs] = useState<Record<string, any>>(() => ({
     ...effectiveDefaults,
     ...(initialConfig?.styles || {})
   }));
   const [contentInputs, setContentInputs] = useState<Record<string, any>>(() => initialConfig?.content || {});
+  const [isSrikandi, setIsSrikandi] = useState<boolean>(() => Boolean(initialConfig?.isSrikandi ?? initialConfig?.styles?.isSrikandi));
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync state whenever modal is opened or initialConfig changes
@@ -98,6 +102,7 @@ export default function PdfPreviewModal({
         ...(initialConfig?.styles || {})
       });
       setContentInputs(initialConfig?.content || {});
+      setIsSrikandi(Boolean(initialConfig?.isSrikandi ?? initialConfig?.styles?.isSrikandi));
     }
   }, [isOpen, initialConfig, effectiveDefaults]);
 
@@ -130,10 +135,12 @@ export default function PdfPreviewModal({
         marginHorizontal: parseNum(styleInputs.marginHorizontal, effectiveDefaults.marginHorizontal),
         fontSize: parseNum(styleInputs.fontSize, effectiveDefaults.fontSize),
         lineHeight: parseNum(styleInputs.lineHeight, effectiveDefaults.lineHeight),
+        isSrikandi,
       },
-      content: contentInputs
+      content: contentInputs,
+      isSrikandi,
     };
-  }, [styleInputs, contentInputs, effectiveDefaults]);
+  }, [styleInputs, contentInputs, effectiveDefaults, isSrikandi]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -152,10 +159,66 @@ export default function PdfPreviewModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full h-[100dvh] sm:h-[95vh] max-h-[100dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 [&>button[data-slot=dialog-close]]:hidden rounded-none sm:rounded-lg border-0 sm:border">
         <DialogHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between gap-2">
-          <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 flex-1 text-left">
-            {title.toLowerCase().startsWith("pratinjau") ? title : `Pratinjau: ${title}`}
-          </DialogTitle>
+          <div className="flex items-center gap-3 min-w-0">
+            <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 text-left">
+              {title.toLowerCase().startsWith("pratinjau") ? title : `Pratinjau: ${title}`}
+            </DialogTitle>
+            
+            {/* Toggle Format: Standar vs Versi Srikandi */}
+            <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(false)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded transition-all",
+                  !isSrikandi
+                    ? "bg-white text-slate-800 shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Standar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(true)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded transition-all flex items-center gap-1.5",
+                  isSrikandi
+                    ? "bg-indigo-600 text-white shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", isSrikandi ? "bg-emerald-300 animate-pulse" : "bg-slate-400")} />
+                Versi Srikandi
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
+            {/* Mobile Toggle */}
+            <div className="flex sm:hidden items-center bg-slate-100 p-0.5 rounded-md border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(false)}
+                className={cn(
+                  "px-2 py-0.5 text-[10px] font-medium rounded",
+                  !isSrikandi ? "bg-white text-slate-800 font-bold shadow-xs" : "text-slate-500"
+                )}
+              >
+                Std
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(true)}
+                className={cn(
+                  "px-2 py-0.5 text-[10px] font-medium rounded",
+                  isSrikandi ? "bg-indigo-600 text-white font-bold shadow-xs" : "text-slate-500"
+                )}
+              >
+                Srikandi
+              </button>
+            </div>
+
             <Button onClick={handleSave} disabled={isSaving} size="sm" className="h-8 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-4">
               {isSaving ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 animate-spin" /> : <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />}
               <span className="hidden sm:inline">Simpan Layout</span>

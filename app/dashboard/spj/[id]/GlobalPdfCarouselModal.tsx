@@ -18,8 +18,11 @@ import BapbPdf from "@/pdf/templates/BapbPdf";
 import SuratPengantarPdf from "@/pdf/templates/SuratPengantarPdf";
 import BastbPdf from "@/pdf/templates/BastbPdf";
 import DaftarHadirPdf from "@/pdf/templates/DaftarHadirPdf";
+import DaftarHadirNarasumberPdf from "@/pdf/templates/DaftarHadirNarasumberPdf";
+import DaftarTandaTerimaPdf from "@/pdf/templates/DaftarTandaTerimaPdf";
 import NotulaPdf from "@/pdf/templates/NotulaPdf";
 import { formatWita } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 const PDFViewer = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
@@ -37,6 +40,7 @@ type Props = {
 
 export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiList, selectedDocId, onGoToTab }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSrikandi, setIsSrikandi] = useState(false);
 
   const documents = useMemo(() => {
     const docs = [];
@@ -88,6 +92,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             roster={rosterData}
             signer={signer}
             config={meta.telaahanStaf || meta.telaahanStafConfig}
+            isSrikandi={isSrikandi}
           />
         )
       });
@@ -127,7 +132,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             nama: pengesahPegawai.nama,
             nip: pengesahPegawai.nip
           } : null;
-          return <SuratPengantarPdf spj={spjData} items={itemsData} pptk={pengesah} layout={config.styles} />;
+          return <SuratPengantarPdf spj={spjData} items={itemsData} pptk={pengesah} layout={config.styles} isSrikandi={isSrikandi} />;
         }
       });
     }
@@ -161,6 +166,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               kpa={kpa ? { nama: kpa.nama, nip: kpa.nip, jabatan: "Kuasa Pengguna Anggaran" } : null}
               pptk={pptk ? { nama: pptk.nama, nip: pptk.nip, jabatan: "Pejabat Pelaksana Teknis Kegiatan" } : null} 
               layout={config.styles}
+              isSrikandi={isSrikandi}
             />
           );
         }
@@ -213,6 +219,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               } : null}
               items={itemsData}
               layout={config.styles}
+              isSrikandi={isSrikandi}
             />
           );
         }
@@ -248,6 +255,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               spj={spjData} 
               jumlahPeserta={Number(dhMeta.jumlahPeserta) || 10}
               layout={config.styles}
+              isSrikandi={isSrikandi}
             />
           );
         }
@@ -323,8 +331,140 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             data={notulaData}
             signer={mainSigner}
             ketuaSigner={ketuaSigner}
+            isSrikandi={isSrikandi}
           />
         ),
+      });
+    }
+
+    // --- DAFTAR HADIR NARASUMBER (HONORARIUM) ---
+    if (spj.jenisSpj === 'HONORARIUM') {
+      const dhMeta = meta.daftarHadirNarasumber || {};
+      const config = meta.daftarHadirNarasumberPdf || meta.daftarHadirNarasumberPdfConfig || { content: {}, styles: {} };
+      const kpa = pegawaiList.find((p) => p.id === dhMeta.kpaId);
+      const pptk = pegawaiList.find((p) => p.id === dhMeta.pptkId);
+      const tanggalLabel = spj.tanggalPelaksanaan
+        ? formatWita(spj.tanggalPelaksanaan, "dd MMMM yyyy")
+        : "";
+      const kegiatanLabel = spj.perihal
+        ? spj.perihal.toUpperCase() + (spj.tanggalPelaksanaan ? " TANGGAL " + tanggalLabel.toUpperCase() : "")
+        : "";
+      const narasumber = (dhMeta.narasumber || []).map((n: any) => ({
+        ...n,
+        kegiatan: kegiatanLabel,
+      }));
+
+      docs.push({
+        id: "daftar-hadir-narasumber",
+        title: "Daftar Hadir Narasumber",
+        tabId: "daftar-hadir-narasumber",
+        render: () => {
+          const spjData = {
+            perihal: spj.perihal || "",
+            tanggalLabel: tanggalLabel,
+            pejabatKiri: kpa
+              ? {
+                  jabatanLabel: "Mengetahui :\nKuasa Pengguna Anggaran,\nKepala Bagian Organisasi",
+                  nama: kpa.nama,
+                  nip: kpa.nip || null,
+                }
+              : null,
+            pejabatKanan: pptk
+              ? {
+                  jabatanLabel: "Pejabat Pelaksana Teknis Kegiatan",
+                  nama: pptk.nama,
+                  nip: pptk.nip || null,
+                }
+              : null,
+          };
+          return (
+            <DaftarHadirNarasumberPdf
+              spj={spjData}
+              narasumber={narasumber}
+              layout={config.styles}
+              isSrikandi={isSrikandi}
+            />
+          );
+        }
+      });
+    }
+
+    // --- DAFTAR TANDA TERIMA (HONORARIUM) ---
+    if (spj.jenisSpj === 'HONORARIUM') {
+      const dttMeta = meta.daftarTandaTerima || {};
+      const config = meta.daftarTandaTerimaPdf || meta.daftarTandaTerimaPdfConfig || { content: {}, styles: {} };
+      const kpa = pegawaiList.find((p) => p.id === dttMeta.kpaId);
+      const pptk = pegawaiList.find((p) => p.id === dttMeta.pptkId);
+      const bpp = pegawaiList.find((p) => p.id === dttMeta.bppId);
+      const tanggalLabel = spj.tanggalPelaksanaan
+        ? formatWita(spj.tanggalPelaksanaan, "dd MMMM yyyy")
+        : "";
+
+      const details = spj.pengeluaranDetails || [];
+      const savedNarasumber = dttMeta.narasumber || [];
+      const combinedData = details.map((d: any, idx: number) => {
+        const itemPph = Number(d.pph) || 0;
+        const itemPphTarif = Number(d.pphTarif) || 0;
+        const itemPotonganLainnya = Number(d.potonganLainnya) || 0;
+        const itemJumlah = Number(d.nominal) || 0;
+        const itemNetto = itemJumlah - itemPph - itemPotonganLainnya;
+        const savedItem = savedNarasumber[idx] || {};
+
+        return {
+          id: d.id || `row-${idx}`,
+          nama: d.uraian || "",
+          golongan: savedItem.golongan || "",
+          jabatan: savedItem.jabatan || "",
+          kegiatan: spj.perihal || "",
+          honorarium: itemJumlah,
+          pph21Tarif: itemPphTarif,
+          pph21: itemPph,
+          penerimaanBersih: itemNetto,
+          nomorRekening: savedItem.nomorRekening || "",
+          namaBank: savedItem.namaBank || "",
+        };
+      });
+
+      docs.push({
+        id: "daftar-tanda-terima",
+        title: "Daftar Tanda Terima",
+        tabId: "daftar-tanda-terima",
+        render: () => {
+          const spjData = {
+            perihal: spj.perihal || "",
+            tanggalLabel: tanggalLabel,
+            tanggalTandaTerima: dttMeta.tanggalTandaTerima,
+            kpa: kpa
+              ? {
+                  jabatanLabel: "Mengetahui :\nKuasa Pengguna Anggaran,\nKepala Bagian Organisasi",
+                  nama: kpa.nama,
+                  nip: kpa.nip || null,
+                }
+              : null,
+            pptk: pptk
+              ? {
+                  jabatanLabel: "Pejabat Pelaksana Teknis Kegiatan",
+                  nama: pptk.nama,
+                  nip: pptk.nip || null,
+                }
+              : null,
+            bpp: bpp
+              ? {
+                  jabatanLabel: "Bendahara Pengeluaran Pembantu",
+                  nama: bpp.nama,
+                  nip: bpp.nip || null,
+                }
+              : null,
+          };
+          return (
+            <DaftarTandaTerimaPdf
+              spj={spjData}
+              narasumber={combinedData}
+              layout={config.styles}
+              isSrikandi={isSrikandi}
+            />
+          );
+        }
       });
     }
 
@@ -361,7 +501,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           signerPangkatGolongan: (stSigner?.pangkat || "") + (stSigner?.golongan ? " (" + stSigner.golongan + ")" : "")
         };
         const stLayout = meta.suratTugasPdf?.styles || meta.suratTugasPdfConfig?.styles;
-        return <SuratTugasPdf spj={spjData} suratTugas={suratTugasData} roster={rosterData} layout={stLayout} />;
+        return <SuratTugasPdf spj={spjData} suratTugas={suratTugasData} roster={rosterData} layout={stLayout} isSrikandi={isSrikandi} />;
       }
     });
 
@@ -400,7 +540,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             jabatanTampil: spdSigner?.jabatan || "-",
           };
           const spdLayout = meta.spdPdf?.styles || meta.spdPdfConfig?.styles;
-          return <SpdPdf spj={spdSpj} roster={rosterData} signer={signerData} layout={spdLayout} />;
+          return <SpdPdf spj={spdSpj} roster={rosterData} signer={signerData} layout={spdLayout} isSrikandi={isSrikandi} />;
         }
       });
     }
@@ -428,7 +568,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
             };
           }
           const visLayout = meta.visumPdf?.styles || meta.visumPdfConfig?.styles;
-          return <VisumPdf spj={visSpj} stageCount={stageCount} signer={signer} layout={visLayout} />;
+          return <VisumPdf spj={visSpj} stageCount={stageCount} signer={signer} layout={visLayout} isSrikandi={isSrikandi} />;
         }
       });
     }
@@ -479,7 +619,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
           tanggalKuitansiLabel: null
         };
         const kuitansiLayout = meta.kuitansiPdf?.styles || meta.kuitansiPdfConfig?.styles;
-        return <KuitansiPdf spj={kuitansiSpj} penerima={penerima} rincian={rincian} signers={{ kpa: kpa ? { nama: kpa.nama, nip: kpa.nip } : null, bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null }} layout={kuitansiLayout} />;
+        return <KuitansiPdf spj={kuitansiSpj} penerima={penerima} rincian={rincian} signers={{ kpa: kpa ? { nama: kpa.nama, nip: kpa.nip } : null, bpp: bpp ? { nama: bpp.nama, nip: bpp.nip } : null }} layout={kuitansiLayout} isSrikandi={isSrikandi} />;
       }
     });
 
@@ -529,6 +669,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               };
             })}
             signers={{ kpa: kpaD ? { nama: kpaD.nama, nip: kpaD.nip } : null, bpp: bppD ? { nama: bppD.nama, nip: bppD.nip } : null }}
+            isSrikandi={isSrikandi}
           />
         )
       });
@@ -562,6 +703,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
                 };
               })}
               signers={{ kpa: kpaD ? { nama: kpaD.nama, nip: kpaD.nip } : null, bpp: bppD ? { nama: bppD.nama, nip: bppD.nip } : null }}
+              isSrikandi={isSrikandi}
             />
           )
         });
@@ -608,6 +750,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
               roster={rosterData.map((r: any) => ({ ...r, role: r.role || "PENGIKUT" }))} 
               laporan={lapData} 
               config={lapConfig}
+              isSrikandi={isSrikandi}
             />
           );
         }
@@ -615,7 +758,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
     }
 
     return docs;
-  }, [spj, pegawaiList]);
+  }, [spj, pegawaiList, isSrikandi]);
 
   useEffect(() => {
     if (isOpen && selectedDocId) {
@@ -667,8 +810,61 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Srikandi toggle switch (desktop) */}
+            <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 ml-2">
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(false)}
+                className={cn(
+                  "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+                  !isSrikandi
+                    ? "bg-white text-slate-800 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Standar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(true)}
+                className={cn(
+                  "px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
+                  isSrikandi
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", isSrikandi ? "bg-emerald-300 animate-pulse" : "bg-slate-400")} />
+                Versi Srikandi
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2 ml-auto">
+            {/* Mobile Toggle */}
+            <div className="flex sm:hidden items-center bg-slate-100 p-0.5 rounded-md border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(false)}
+                className={cn(
+                  "px-2 py-0.5 text-[10px] font-medium rounded",
+                  !isSrikandi ? "bg-white text-slate-800 font-bold shadow-xs" : "text-slate-500"
+                )}
+              >
+                Std
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(true)}
+                className={cn(
+                  "px-2 py-0.5 text-[10px] font-medium rounded",
+                  isSrikandi ? "bg-indigo-600 text-white font-bold shadow-xs" : "text-slate-500"
+                )}
+              >
+                Srikandi
+              </button>
+            </div>
+
             <Button onClick={handleEditClick} variant="outline" className="border-primary text-primary hover:bg-primary/5">
               <Edit className="w-4 h-4 mr-2" />
               Edit di Tab {currentDoc.title}
@@ -681,7 +877,7 @@ export default function GlobalPdfCarouselModal({ isOpen, onClose, spj, pegawaiLi
 
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 h-full bg-slate-500 flex flex-col relative min-h-0">
-            <PDFViewer width="100%" height="100%" className="border-none w-full h-full flex-1">
+            <PDFViewer key={`${currentDoc.id}-${isSrikandi}`} width="100%" height="100%" className="border-none w-full h-full flex-1">
               {currentDoc.render()}
             </PDFViewer>
           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type BapbSpj = {
@@ -60,7 +61,8 @@ export default function BapbPdf({
   spj,
   kpa,
   pptk,
-  layout
+  layout,
+  isSrikandi,
 }: {
   spj: BapbSpj;
   kpa: BapbSigner | null;
@@ -71,8 +73,11 @@ export default function BapbPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const terbilang = getDateTerbilang(spj.tanggalBapb);
 
   return (
@@ -94,13 +99,15 @@ export default function BapbPdf({
         {/* Title */}
         <View style={styles.titleWrap}>
           <Text style={styles.title}>BERITA ACARA PEMERIKSAAN BARANG</Text>
-          <Text style={styles.nomor}>NOMOR : {spj.nomorSurat}</Text>
+          <Text style={styles.nomor}>NOMOR : {isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}</Text>
         </View>
 
         {/* Content */}
         <View style={styles.content}>
           <Text style={styles.paragraph}>
-            Pada hari ini {terbilang.hari} Tanggal {terbilang.tanggal} Bulan {terbilang.bulan} Tahun {terbilang.tahun}, kami yang bertanda tangan dibawah ini :
+            {isSrikandiActive 
+              ? `Pada hari ini, tanggal ${SRIKANDI_TAGS.tanggal}, kami yang bertanda tangan dibawah ini :`
+              : `Pada hari ini ${terbilang.hari} Tanggal ${terbilang.tanggal} Bulan ${terbilang.bulan} Tahun ${terbilang.tahun}, kami yang bertanda tangan dibawah ini :`}
           </Text>
 
           <View style={styles.pejabatList}>
@@ -178,10 +185,10 @@ export default function BapbPdf({
                   <Text style={styles.pColon}></Text>
                   <Text>{kpa?.jabatan || "Kuasa Pengguna Anggaran"}</Text>
                 </View>
-                <View style={[styles.pRow, { marginTop: 15 }]}>
+                <View style={[styles.pRow, { marginTop: isSrikandiActive ? 20 : 15, height: isSrikandiActive ? 50 : undefined, alignItems: 'center' }]}>
                   <Text style={styles.pLabel}>Tanda Tangan</Text>
                   <Text style={styles.pColon}></Text>
-                  <Text>......................................</Text>
+                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttdIndexed(1) : "......................................"}</Text>
                 </View>
               </View>
             </View>
@@ -205,10 +212,10 @@ export default function BapbPdf({
                   <Text style={styles.pColon}></Text>
                   <Text>{pptk?.jabatan || "Pejabat Pelaksana Teknis Kegiatan"}</Text>
                 </View>
-                <View style={[styles.pRow, { marginTop: 15 }]}>
+                <View style={[styles.pRow, { marginTop: isSrikandiActive ? 20 : 15, height: isSrikandiActive ? 50 : undefined, alignItems: 'center' }]}>
                   <Text style={styles.pLabel}>Tanda Tangan</Text>
                   <Text style={styles.pColon}></Text>
-                  <Text>......................................</Text>
+                  <Text style={isSrikandiActive ? { paddingLeft: 12 } : {}}>{isSrikandiActive ? SRIKANDI_TAGS.ttdIndexed(2) : "......................................"}</Text>
                 </View>
               </View>
             </View>

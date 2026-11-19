@@ -2,6 +2,7 @@ import React from 'react'
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 import type { PdfConfig } from '@/components/pdf/PdfPreviewModal'
 
@@ -51,6 +52,7 @@ export type LaporanPdfProps = {
   roster: RosterItem[]
   laporan: Laporan | null
   config?: PdfConfig
+  isSrikandi?: boolean
 }
 
 function sortRoster(list: RosterItem[]) {
@@ -102,6 +104,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
   const rosterSorted = sortRoster(props.roster ?? [])
   const laporan = props.laporan
   const config = props.config
+  const isSrikandiActive = Boolean(props.isSrikandi ?? config?.isSrikandi ?? config?.styles?.isSrikandi);
 
   const dasar = safeText(
     config?.content?.dasarLaporan ?? laporan?.dasarLaporan ?? (props.spj.noSuratTugas ? `Surat Tugas Nomor ${props.spj.noSuratTugas}` : null),
@@ -455,7 +458,7 @@ export default function LaporanPdf(props: LaporanPdfProps): React.ReactElement<D
             <View style={styles.signColLeft}>
               <Text style={styles.signLabel}>Mengetahui,</Text>
               <Text style={styles.signLabel}>{signerJabatanLabel}</Text>
-              <View style={styles.signSpace} />
+              <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={70} offset={45} />
               <Text style={styles.signName}>{signerNama}</Text>
               {signerPangkatGol ? <Text style={styles.signSub}>{signerPangkatGol}</Text> : null}
               {signerNip ? <Text style={styles.signSub}>NIP. {signerNip}</Text> : null}

@@ -8,6 +8,7 @@ import { Loader2, X } from "lucide-react"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 const PDFViewer = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
@@ -20,6 +21,7 @@ export type PdfLayoutOptions = {
   marginHorizontal: number
   fontSize: number
   lineHeight: number
+  isSrikandi?: boolean
 }
 
 type Props = {
@@ -35,7 +37,8 @@ export default function NaskahDinasPdfPreview({
   title,
   renderDocument,
 }: Props) {
-  const [layout, setLayout] = useState<PdfLayoutOptions>({
+  const [isSrikandi, setIsSrikandi] = useState(false)
+  const [layout, setLayout] = useState<Omit<PdfLayoutOptions, 'isSrikandi'>>({
     marginTop: 30,
     marginBottom: 30,
     marginHorizontal: 42,
@@ -43,13 +46,47 @@ export default function NaskahDinasPdfPreview({
     lineHeight: 1.35
   })
 
+  const fullLayout: PdfLayoutOptions = {
+    ...layout,
+    isSrikandi
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full h-[100dvh] sm:h-[95vh] max-h-[100dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 [&>button]:hidden rounded-none sm:rounded-lg border-0 sm:border">
         <DialogHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between gap-2">
-          <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 flex-1 text-left">
-            {title}
-          </DialogTitle>
+          <div className="flex items-center gap-3 min-w-0">
+            <DialogTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-1 text-left">
+              {title}
+            </DialogTitle>
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(false)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded transition-all",
+                  !isSrikandi
+                    ? "bg-white text-slate-800 shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Standar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSrikandi(true)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded transition-all flex items-center gap-1.5",
+                  isSrikandi
+                    ? "bg-indigo-600 text-white shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", isSrikandi ? "bg-emerald-300 animate-pulse" : "bg-slate-400")} />
+                Versi Srikandi
+              </button>
+            </div>
+          </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
@@ -123,8 +160,8 @@ export default function NaskahDinasPdfPreview({
 
           <div className="flex-1 min-h-[50vh] lg:min-h-0 w-full bg-slate-500/20">
             {isOpen && (
-              <PDFViewer width="100%" height="100%" className="border-none w-full h-full flex-1">
-                {renderDocument(layout)}
+              <PDFViewer key={JSON.stringify(fullLayout)} width="100%" height="100%" className="border-none w-full h-full flex-1">
+                {renderDocument(fullLayout)}
               </PDFViewer>
             )}
           </div>

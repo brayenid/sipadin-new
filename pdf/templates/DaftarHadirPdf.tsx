@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type DaftarHadirSpj = {
@@ -13,7 +14,8 @@ export type DaftarHadirSpj = {
 export default function DaftarHadirPdf({
   spj,
   jumlahPeserta,
-  layout
+  layout,
+  isSrikandi,
 }: {
   spj: DaftarHadirSpj;
   jumlahPeserta: number;
@@ -23,8 +25,11 @@ export default function DaftarHadirPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const participants = Array.from({ length: jumlahPeserta }, (_, i) => i + 1);
 
   return (
@@ -50,7 +55,7 @@ export default function DaftarHadirPdf({
           <View style={styles.hRow}>
             <Text style={styles.hLabel}>TANGGAL</Text>
             <Text style={styles.hColon}>:</Text>
-            <Text style={styles.hVal}>{spj.tanggalLabel || "......................................"}</Text>
+            <Text style={styles.hVal}>{isSrikandiActive ? SRIKANDI_TAGS.tanggal : (spj.tanggalLabel || "......................................")}</Text>
           </View>
           <View style={styles.hRow}>
             <Text style={styles.hLabel}>WAKTU</Text>

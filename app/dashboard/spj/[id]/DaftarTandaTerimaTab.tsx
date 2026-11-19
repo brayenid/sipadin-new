@@ -354,6 +354,7 @@ export default function DaftarTandaTerimaTab({ spj, pegawaiList }: { spj: any; p
               spj={spjData}
               narasumber={combinedData}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

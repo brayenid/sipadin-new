@@ -239,6 +239,7 @@ export default function SuratPengantarTab({ spj, pegawaiList }: { spj: any, pega
               items={itemsData} 
               pptk={selectedPegawai ? { nama: selectedPegawai.nama, nip: selectedPegawai.nip } : null} 
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

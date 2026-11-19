@@ -281,6 +281,7 @@ export default function SpdTab({ spj, pegawaiList }: { spj: any, pegawaiList: an
               roster={rosterData}
               signer={signerData}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

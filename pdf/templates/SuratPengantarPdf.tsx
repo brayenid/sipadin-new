@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type SuratPengantarSpj = {
@@ -29,7 +30,8 @@ export default function SuratPengantarPdf({
   spj,
   items,
   pptk,
-  layout
+  layout,
+  isSrikandi,
 }: {
   spj: SuratPengantarSpj;
   items: SuratPengantarItem[];
@@ -40,8 +42,11 @@ export default function SuratPengantarPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   return (
     <Document>
       <Page size="A4" style={[styles.page, layout ? { 
@@ -60,7 +65,7 @@ export default function SuratPengantarPdf({
 
         {/* Tujuan (Kanan Atas) */}
         <View style={styles.tujuanWrap}>
-          <Text>Sendawar, {spj.tanggalSurat ? spj.tanggalSurat : '................................'}</Text>
+          <Text>Sendawar, {isSrikandiActive ? SRIKANDI_TAGS.tanggal : (spj.tanggalSurat ? spj.tanggalSurat : '................................')}</Text>
           <Text style={{ marginTop: 2 }}>Kepada</Text>
           <View style={styles.ythWrap}>
             <Text style={styles.ythLabel}>Yth</Text>
@@ -76,7 +81,7 @@ export default function SuratPengantarPdf({
         <View style={styles.titleWrap}>
           <Text style={styles.title}>SURAT PENGANTAR PERMINTAAN BARANG</Text>
           <Text style={styles.title}>{spj.bagianOrganisasiLabel.toUpperCase()}</Text>
-          <Text style={styles.nomor}>Nomor: {spj.nomorSurat}</Text>
+          <Text style={styles.nomor}>Nomor: {isSrikandiActive ? SRIKANDI_TAGS.nomor : spj.nomorSurat}</Text>
         </View>
 
         {/* Content */}
@@ -143,7 +148,7 @@ export default function SuratPengantarPdf({
           <View style={styles.signerColRight}>
             <Text style={[styles.signerTitle, styles.bold]}>Pejabat Pelaksana Teknis Kegiatan</Text>
             
-            <View style={styles.signerSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={68} offset={50} />
 
             <Text style={styles.signerNameUnderline}>{pptk?.nama ?? ''}</Text>
             <Text style={styles.signerNip}>NIP. {pptk?.nip ?? ''}</Text>

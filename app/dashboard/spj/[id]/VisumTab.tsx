@@ -119,6 +119,7 @@ export default function VisumTab({ spj, pegawaiList }: { spj: any, pegawaiList: 
               stageCount={Number(form.stageCount) || 3}
               signer={signerData}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

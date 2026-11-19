@@ -135,6 +135,7 @@ export default function DaftarHadirTab({ spj }: { spj: any }) {
               spj={spjData}
               jumlahPeserta={Number(form.jumlahPeserta) || 10}
               layout={config.styles}
+              isSrikandi={config.isSrikandi}
             />
           );
         }}

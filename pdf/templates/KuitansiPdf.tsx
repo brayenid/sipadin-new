@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import KopSurat from '@/pdf/components/kop-surat';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type KuitansiSpj = {
@@ -121,7 +122,8 @@ export default function KuitansiPdf({
   penerima,
   rincian,
   signers,
-  layout
+  layout,
+  isSrikandi,
 }: {
   spj: KuitansiSpj;
   penerima: KuitansiPenerima;
@@ -133,8 +135,11 @@ export default function KuitansiPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const total = sum((rincian ?? []).map((x) => x.jumlah));
 
   const baseFontSize = layout?.fontSize ?? styles.page.fontSize;
@@ -221,7 +226,7 @@ export default function KuitansiPdf({
         <View style={styles.penerimaConatainer}>
           <View style={styles.penerimaWrap}>
             <Text style={styles.sendawarLabel}>
-              {safeText(spj.kotaTandaTangan)}, {spj.tanggalKuitansiLabel ? '' : ''}
+              {safeText(spj.kotaTandaTangan)}, {isSrikandiActive ? SRIKANDI_TAGS.tanggal : (spj.tanggalKuitansiLabel ? '' : '')}
             </Text>
             <Text style={styles.penerimaText}>Penerima</Text>
 
@@ -238,7 +243,7 @@ export default function KuitansiPdf({
             <Text style={styles.signerTitle}>Menyetujui</Text>
             <Text style={styles.signerTitle}>Kuasa Pengguna Anggaran,</Text>
 
-            <View style={styles.signerSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={55} />
 
             <Text style={styles.signerNameUnderline}>{signers.kpa?.nama ?? ''}</Text>
             <Text style={styles.signerNip}>NIP. {signers.kpa?.nip ?? ''}</Text>
@@ -248,7 +253,7 @@ export default function KuitansiPdf({
             <Text style={styles.signerTitle}> </Text>
             <Text style={styles.signerTitle}>Bendahara Pengeluaran Pembantu,</Text>
 
-            <View style={styles.signerSpace} />
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={55} />
 
             <Text style={styles.signerNameUnderline}>{signers.bpp?.nama ?? ''}</Text>
             <Text style={styles.signerNip}>NIP. {signers.bpp?.nip ?? ''}</Text>

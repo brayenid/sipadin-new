@@ -504,6 +504,7 @@ export default function TelaahanTab({ spj, pegawaiList, onDirtyChange }: { spj: 
             }}
             roster={spj.roster || []}
             config={config}
+            isSrikandi={config.isSrikandi}
             signer={getSignerData()}
           />
         )}

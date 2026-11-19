@@ -3,6 +3,7 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
 import { formatWita } from '@/lib/date-utils'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 function fmtDateId(date: Date | undefined | null) {
@@ -57,6 +58,7 @@ export type TelaahanStafConfig = {
     marginHorizontal?: number
     fontSize?: number
     lineHeight?: number
+    isSrikandi?: boolean
   }
   content?: Partial<TelaahanPdfData> & { 
     dariOverride?: string;
@@ -64,6 +66,7 @@ export type TelaahanStafConfig = {
     nipOverride?: string;
     pangkatOverride?: string;
   }
+  isSrikandi?: boolean
 }
 
 export type TelaahanStafPdfProps = {
@@ -75,6 +78,7 @@ export type TelaahanStafPdfProps = {
   instansiLine2?: string
   alamatLine?: string
   config?: TelaahanStafConfig
+  isSrikandi?: boolean
 }
 
 function splitParagraphs(text: string) {
@@ -103,8 +107,11 @@ export function buildTelaahanStafDocument(props: TelaahanStafPdfProps): React.Re
     instansiLine1 = 'PEMERINTAH KABUPATEN KUTAI BARAT',
     instansiLine2 = 'SEKRETARIAT DAERAH',
     alamatLine = 'Jalan Kompleks Perkantoran Pemerintah Kabupaten Kutai Barat, Telepon (0542) 594754\nKode Pos 75776 Fax (0542) 404384 Website: setda.kutaibaratkab.go.id',
-    config
+    config,
+    isSrikandi
   } = props
+
+  const isSrikandiActive = Boolean(isSrikandi ?? config?.isSrikandi ?? config?.styles?.isSrikandi);
 
   // Merge konten dasar dengan override dari config
   const telaahan = { ...baseTelaahan, ...(config?.content || {}) }
@@ -287,13 +294,13 @@ export function buildTelaahanStafDocument(props: TelaahanStafPdfProps): React.Re
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Tanggal</Text>
               <Text style={styles.metaColon}>:</Text>
-              <Text style={styles.metaValue}>{tanggal}</Text>
+              <Text style={styles.metaValue}>{isSrikandiActive ? SRIKANDI_TAGS.tanggal : tanggal}</Text>
             </View>
 
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Nomor</Text>
               <Text style={styles.metaColon}>:</Text>
-              <Text style={styles.metaValue}>{nomor}</Text>
+              <Text style={styles.metaValue}>{isSrikandiActive ? SRIKANDI_TAGS.nomor : nomor}</Text>
             </View>
 
             <View style={styles.metaRow}>
@@ -422,7 +429,7 @@ export function buildTelaahanStafDocument(props: TelaahanStafPdfProps): React.Re
             <View style={styles.signerWrap}>
               <View style={styles.signerBox}>
                 <Text style={styles.signerJabatan}>{dari},</Text>
-                <View style={styles.signerSpace} />
+                <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={40} srikandiHeight={72} offset={60} />
                 <Text style={styles.signerName}>{signerNama}</Text>
                 <Text style={styles.signerPangkat}>{signerPangkat}</Text>
                 <Text style={styles.signerNip}>NIP. {signerNip}</Text>

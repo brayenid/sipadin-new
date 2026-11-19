@@ -1,6 +1,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import KopSurat from '@/pdf/components/kop-surat'
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi'
 import '@/pdf/fonts'
 
 function fmtPangkatGolongan(pangkat?: string | null, golongan?: string | null) {
@@ -79,7 +80,9 @@ export type NotulaPdfProps = {
     marginHorizontal?: number
     fontSize?: number
     lineHeight?: number
+    isSrikandi?: boolean
   }
+  isSrikandi?: boolean
 }
 
 // Clean outer block tags but preserve inline formatting tags
@@ -386,8 +389,10 @@ export default function NotulaPdf({
   instansiLine1 = 'PEMERINTAH KABUPATEN KUTAI BARAT',
   instansiLine2 = 'SEKRETARIAT DAERAH',
   alamatLine = 'Jalan Komplek Perkantoran Pemerintah Kabupaten Kutai Barat. Telepon (0542) 594754\nKode Pos 75576 Fax (0545) 4043843 Website setda.kutaibaratkab.go.id',
-  layout
+  layout,
+  isSrikandi,
 }: NotulaPdfProps) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi)
   const marginTop = layout?.marginTop ?? 20
   const marginBottom = layout?.marginBottom ?? 30
   const marginHorizontal = layout?.marginHorizontal ?? 45
@@ -480,7 +485,7 @@ export default function NotulaPdf({
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Hari/Tanggal</Text>
             <Text style={styles.metaSeparator}>:</Text>
-            <Text style={styles.metaValue}>{data.hariTanggal || '-'}</Text>
+            <Text style={styles.metaValue}>{isSrikandiActive ? SRIKANDI_TAGS.tanggal : (data.hariTanggal || '-')}</Text>
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Pukul</Text>
@@ -625,9 +630,8 @@ export default function NotulaPdf({
             <Text style={styles.signatureTitle}>PIMPINAN RAPAT</Text>
             {data.ttdTampilkanJabatan !== false && signerJabatan ? (
               <Text style={styles.signatureJabatan}>{signerJabatan}</Text>
-            ) : (
-              <View style={{ marginBottom: 50 }} />
-            )}
+            ) : null}
+            <SrikandiSignature isSrikandi={isSrikandiActive} standardHeight={data.ttdTampilkanJabatan !== false && signerJabatan ? 40 : 50} srikandiHeight={68} offset={55} />
             <Text style={styles.signatureName}>{signerNama}</Text>
             {data.ttdTampilkanPangkat && signerPangkat && signerPangkat !== '-' && (
               <Text style={styles.signatureNip}>{signerPangkat}</Text>

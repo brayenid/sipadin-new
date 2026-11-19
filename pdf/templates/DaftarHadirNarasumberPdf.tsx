@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { SrikandiSignature, SRIKANDI_TAGS } from '@/pdf/components/srikandi';
 import '@/pdf/fonts';
 
 export type NarasumberItem = {
@@ -27,6 +28,7 @@ export default function DaftarHadirNarasumberPdf({
   spj,
   narasumber,
   layout,
+  isSrikandi,
 }: {
   spj: DaftarHadirNarasumberSpj;
   narasumber: NarasumberItem[];
@@ -36,11 +38,14 @@ export default function DaftarHadirNarasumberPdf({
     marginHorizontal?: number;
     fontSize?: number;
     lineHeight?: number;
+    isSrikandi?: boolean;
   };
+  isSrikandi?: boolean;
 }) {
+  const isSrikandiActive = Boolean(isSrikandi ?? layout?.isSrikandi);
   const judul = `DAFTAR HADIR NARASUMBER DALAM RANGKA`;
   const subJudul = (spj.perihal || '').toUpperCase();
-  const tanggalLine = `TANGGAL ${(spj.tanggalLabel || '').toUpperCase()}`;
+  const tanggalLine = isSrikandiActive ? `TANGGAL ${SRIKANDI_TAGS.tanggal}` : `TANGGAL ${(spj.tanggalLabel || '').toUpperCase()}`;
 
   return (
     <Document>
@@ -128,6 +133,7 @@ export default function DaftarHadirNarasumberPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.pejabatKiri ? spj.pejabatKiri.jabatanLabel : 'Mengetahui :'}
             </Text>
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={1} standardHeight={40} srikandiHeight={68} offset={30} />
             <View style={styles.footerNamaBlock}>
               <Text style={styles.footerNama}>
                 {spj.pejabatKiri ? spj.pejabatKiri.nama : '...........................'}
@@ -143,6 +149,7 @@ export default function DaftarHadirNarasumberPdf({
             <Text style={styles.footerJabatanLabel}>
               {spj.pejabatKanan ? spj.pejabatKanan.jabatanLabel : 'Pejabat Pelaksana Teknis Kegiatan'}
             </Text>
+            <SrikandiSignature isSrikandi={isSrikandiActive} index={2} standardHeight={40} srikandiHeight={68} offset={50} />
             <View style={[styles.footerNamaBlock, { alignItems: 'flex-end' }]}>
               <Text style={styles.footerNama}>
                 {spj.pejabatKanan ? spj.pejabatKanan.nama : '...........................'}
