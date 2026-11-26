@@ -1,5 +1,6 @@
 "use server";
 
+import { spjVisibilityFilter } from "@/lib/spj-visibility";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2OrLocal } from "@/lib/r2";
@@ -649,6 +650,7 @@ export async function getSpjForExport(startDateStr: string | null, endDateStr: s
   if (!session) throw new Error("Unauthorized");
 
   const whereClause: any = {
+    ...(await spjVisibilityFilter(session.user.role)),
     ...(session.user.role === 'SUPER_ADMIN' ? { teamId: session.user.teamId } : { createdById: session.user.id }),
   };
 

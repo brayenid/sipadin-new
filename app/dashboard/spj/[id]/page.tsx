@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { serializeBigInt } from "@/lib/utils";
 import { formatWita } from "@/lib/date-utils";
+import { isSpjHidden } from "@/lib/spj-visibility";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export const metadata = {
@@ -58,6 +59,8 @@ export default async function SpjDetailPage(props: { params: Promise<{ id: strin
       }
     }
   });
+
+  if (spj && session.user.role !== "SUPER_ADMIN" && isSpjHidden(spj.metaDokumen)) notFound();
 
   // Hanya pegawai Tim Internal yang dimuat untuk dropdown/penandatangan SPJ
   const pegawaiList = await prisma.pegawai.findMany({

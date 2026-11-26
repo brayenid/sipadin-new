@@ -1,3 +1,4 @@
+import { spjVisibilityFilter } from "@/lib/spj-visibility";
 import { auth } from "@/lib/auth";
 import {
   FileText,
@@ -52,6 +53,7 @@ export default async function DashboardPage() {
 
   const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
 
+  const hiddenFilter = await spjVisibilityFilter(session.user.role);
   const spjWhereFilter = isSuperAdmin 
     ? {
         isDeleted: false,
@@ -60,6 +62,7 @@ export default async function DashboardPage() {
     : {
         isDeleted: false,
         createdById: session.user.id,
+        ...hiddenFilter,
         ...(activeTahunAnggaranId ? { kodeRekening: { subKegiatan: { kegiatan: { tahunAnggaranId: activeTahunAnggaranId } } } } : {})
       };
 

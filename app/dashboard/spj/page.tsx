@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import SpjFilters from './SpjFilters'
 import SpjDeleteButton from './SpjDeleteButton'
+import SpjVisibilityButton from './SpjVisibilityButton'
+import { spjVisibilityFilter, isSpjHidden } from '@/lib/spj-visibility'
 import SpjDuplicateButton from './SpjDuplicateButton'
 import SpjExportModal from './SpjExportModal'
 import SpjMobileNav from './SpjMobileNav'
@@ -61,6 +63,7 @@ export default async function SpjListPage({
 
   const whereClause: Prisma.SpjWhereInput = {
     isDeleted: false,
+    ...(await spjVisibilityFilter(session.user.role)),
     ...(session.user.role === 'SUPER_ADMIN' ? {} : { createdById: session.user.id }),
     ...(jenisQuery ? { jenisSpj: jenisQuery as any } : {}),
     ...(searchQuery
@@ -396,6 +399,7 @@ export default async function SpjListPage({
                               kodeRekening: spj.kodeRekening,
                             }}
                           />
+                          {session.user.role === 'SUPER_ADMIN' && <SpjVisibilityButton spjId={spj.id} hidden={isSpjHidden(spj.metaDokumen)} />}
                           <SpjDeleteButton spjId={spj.id} />
                         </div>
                       </TableCell>
